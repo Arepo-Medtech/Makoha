@@ -4,7 +4,7 @@
  * Otherwise uses stub retrieval. Produces context packet and runs verifier.
  */
 import { verify } from "./verifier.js";
-import { retrieveViaMcp } from "./retrieval-mcp.js";
+import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
@@ -19,6 +19,7 @@ function routing(_userInput, trunk) {
     needs_static_docs: ["Choosing Wisely", "red-flag questions"],
     needs_live_calls: ["IHI", "terminology"],
     needs_structured_kg: kgByTrunk[trunk] || [],
+    needs_fhir_reads: trunk === "6.0" ? ["Observation"] : [],
     trunk_id: trunk,
   };
 }
@@ -153,8 +154,20 @@ export async function runPipeline(options = {}) {
     continuation_blocked = true;
   }
 
+  // Live(-ish) lab source: on the MCP path, fetch fhir Observations and feed their
+  // RAW values into the investigation parser (via raw_investigations) — the raw
+  // number is never placed in the packet directly.
+  let rawInvestigations = options.raw_investigations || [];
+  if (useMcp && (plan.needs_fhir_reads || []).includes("Observation")) {
+    try {
+      rawInvestigations = [...rawInvestigations, ...(await retrieveFhirObservations(plan))];
+    } catch (err) {
+      process.stderr?.write?.("fhir observation retrieval failed: " + err.message + "\n");
+    }
+  }
+
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
-  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: options.raw_investigations }));
+  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations }));
 
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
   const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));

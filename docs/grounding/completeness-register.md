@@ -9,7 +9,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Method.** Tree enumeration with byte sizes; placeholder-marker grep (`TODO/FIXME/XXX/STUB/z.any()/.passthrough()/return {}/throw new Error('not`); schema-integrity reads; producer→consumer wiring from `mcpServers.template.json`, the pipeline, and `.claude/schema-index.md`; hashing/zod/firewall greps. Evidence is recorded per item, not inferred.
 
-**Scan summary:** 3 MCP servers built (`docs`, `identity-au`, `terminology`); 4 unbuilt (`knowledge`, `fhir-broker`, `pharmacology`, `messaging-geo`). 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
+**Scan summary:** _(updated 2026-06-30)_ — **all 7 MCP servers now have a mock implementation**: `docs`/`identity-au`/`terminology` (stubs), and `pharmacology` (+ Trunk 8.0 firewall), `knowledge` (+ datasets), `fhir-broker` (+ Observation→parser), `messaging-geo` (never-sends) as mock cores. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology contract (ICD-10-AM/LOINC/PBS). _(Original Phase-0 line: 3 built / 4 unbuilt.)_ 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
 
 ---
 
@@ -60,7 +60,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: no-raw-lab-numbers-to-LLM-context — now enforced at parser source AND packet gate
   risk: Critical
   blocks_patient_facing: true
-  build_action: DONE for mock/dev (named release blocker "deterministic investigation parser built" engine met). Before patient-facing: authoritative ranges sign-off (lab-reference-ranges-provisional) + fhir-broker live source.
+  build_action: DONE for mock/dev (engine met). A MOCK fhir-broker lab source is now wired (Trunk 6.0 Observations → parser). Before patient-facing: authoritative ranges sign-off (lab-reference-ranges-provisional) + a LIVE fhir-broker/EHR source.
   gap_register_link: R-21
   status: in-progress
   last_scanned: 2026-06-30
@@ -263,18 +263,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: fhir-broker-unbuilt
-  path: mcp/servers/fhir-broker/ (absent; template → dist/index.js)
+  path: mcp/servers/fhir-broker/{index.js,mock-resources.json}, test/contract-fhir-broker.js, verification/{retrieval-mcp,pipeline}.js
   component_type: mcp-server
-  state: UNBUILT
-  evidence: dir absent; template unresolved.
-  blocks: live FHIR resource pulls; Trunk 6.0 live investigations (with parser)
+  state: PARTIAL
+  evidence: MOCK BUILT 2026-06-30 — fhir_read/fhir_search return templated AU Core resources (incl. lab Observations); fhir_write SAFE_STUB. Wired: on the MCP path, Trunk 6.0 Observations flow through the investigation parser into sanitised lab_result facts (raw number never in the packet). Contract-tested. PARTIAL: live FHIR/SMART-on-FHIR/EHR + AU Core/AUCDI conformance validation (fhir-r4-aucdi-conformance-unbuilt) pending.
+  blocks: (mock cleared) — live EHR + conformance validation remain
   safety_class: degrades_safe
-  invariant_exposure: none
+  invariant_exposure: no-raw-lab-numbers (raw fhir values pass through the parser)
   risk: Medium
   blocks_patient_facing: false
-  build_action: build per AU Core 0.3.0 + AUCDI R3 (see fhir-r4-aucdi-conformance-unbuilt); connect last (build order step 6).
+  build_action: REMAINING — live FHIR R4 base URL + SMART-on-FHIR/mTLS + AU Core 0.3.0/AUCDI R3 conformance validator; patient consent for MHR.
   gap_register_link: gap-fhir-broker
-  status: open
+  status: in-progress
   last_scanned: 2026-06-30
 ```
 
@@ -314,18 +314,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: messaging-geo-unbuilt
-  path: mcp/servers/messaging-geo/ (absent; template → dist/index.js)
+  path: mcp/servers/messaging-geo/index.js, test/contract-messaging-geo.js
   component_type: mcp-server
-  state: UNBUILT
-  evidence: dir absent; template unresolved.
-  blocks: SMS/email + pharmacy geo features
-  safety_class: degrades_safe
-  invariant_exposure: none
+  state: PARTIAL
+  evidence: MOCK BUILT 2026-06-30 — geo_locate/pharmacy_search return mock results; msg_send is a SAFE_STUB that NEVER sends (mock_not_sent, recipient redacted/not echoed), flagged not-patient-facing. Contract-tested. NOT wired into the trunk pipeline (patient-facing, gated by the Clinician Verification Portal). PARTIAL: live MSG/GEO/pharmacy-directory providers pending.
+  blocks: (mock cleared) — live providers + patient-facing gate remain
+  safety_class: degrades_safe (never sends; not patient-facing)
+  invariant_exposure: human-in-the-loop (no patient-facing send path)
   risk: Medium
   blocks_patient_facing: false
-  build_action: build last (build order step 6).
+  build_action: REMAINING — live MSG_PROVIDER/GEO_PROVIDER/pharmacy directory; wire only behind the Clinician Verification Portal.
   gap_register_link: gap-messaging-geo
-  status: open
+  status: in-progress
   last_scanned: 2026-06-30
 ```
 

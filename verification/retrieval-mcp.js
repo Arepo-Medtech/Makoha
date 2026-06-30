@@ -187,6 +187,44 @@ async function retrieveKnowledge(plan) {
 }
 
 /**
+ * Call fhir-broker: fhir_search Observations and extract raw lab inputs.
+ * Returns [{loinc, value, unit}] — RAW values that MUST be passed through the
+ * deterministic investigation parser before reaching the LLM (no-raw-lab limit).
+ * @param {{ needs_fhir_reads?: string[] }} plan
+ */
+export async function retrieveFhirObservations(plan) {
+  const reads = plan.needs_fhir_reads || [];
+  if (!reads.includes("Observation")) return [];
+
+  const transport = new StdioClientTransport({
+    command: "node",
+    args: [join(REPO_ROOT, "mcp/servers/fhir-broker/index.js")],
+    env: { ...process.env, HEYDOC_MODE_DEFAULT: "mock" },
+    cwd: REPO_ROOT,
+  });
+  const client = new Client({ name: "heydoc-pipeline", version: "0.1.0" });
+  await client.connect(transport);
+
+  try {
+    const result = await client.callTool({ name: "fhir_search", arguments: { resource_type: "Observation", mode: "mock" } });
+    const content = result.content?.[0]?.text;
+    if (!content) return [];
+    const entries = (JSON.parse(content).bundle && JSON.parse(content).bundle.entry) || [];
+    return entries
+      .map((e) => {
+        const o = e.resource || {};
+        const loinc = (o.code && o.code.coding && o.code.coding.find((c) => /loinc/i.test(c.system || "")) || {}).code;
+        const value = o.valueQuantity && o.valueQuantity.value;
+        const unit = o.valueQuantity && o.valueQuantity.unit;
+        return loinc && typeof value === "number" ? { loinc, value, unit } : null;
+      })
+      .filter(Boolean);
+  } finally {
+    client.close();
+  }
+}
+
+/**
  * Run MCP retrieval for a grounding plan. Returns receipts in pipeline shape.
  * @param {{ needs_static_docs?: string[], needs_live_calls?: string[], needs_structured_kg?: string[] }} plan
  * @returns {Promise<Array<{ kind: string, citation_id?: string, ref?: string, request_id?: string, upstream?: string, receipt?: object }>>}

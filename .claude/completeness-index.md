@@ -3,7 +3,7 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser). Resolved: hashing-unimplemented, verifier-untested, verifier-weak-code-detection, pipeline-edges-uncontracted, context-graph/patient-kg (reclassified). investigation-parser engine built (mock/dev). Opened: content-store-production-gated, terminology-contract-incomplete, lab-reference-ranges-provisional, FHIR/AUCDI items. receipt-store mock-resolved.
+Last synced: 2026-06-30 (full session: hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser, pharmacology + Trunk 8.0 firewall, knowledge server + datasets, fhir-broker + messaging-geo). All 7 MCP servers now built (mock); investigation parser has a mock fhir lab source. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology-contract (ICD-10-AM/LOINC/PBS).
 
 ## Critical
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · PARTIAL (mock core + Trunk 8.0 firewall wired; only live vendor pending) · Critical · pf:true
@@ -18,8 +18,8 @@ Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests/hardeni
 
 ## Medium
 - knowledge-server-unbuilt · mcp/servers/knowledge/ · PARTIAL (mock built; live PostgreSQL graph store pending) · Medium · pf:false
-- fhir-broker-unbuilt · mcp/servers/fhir-broker/ · UNBUILT · Medium · pf:false
-- messaging-geo-unbuilt · mcp/servers/messaging-geo/ · UNBUILT · Medium · pf:false
+- fhir-broker-unbuilt · mcp/servers/fhir-broker/ · PARTIAL (mock read/search + Observation→parser wired; live EHR + conformance pending) · Medium · pf:false
+- messaging-geo-unbuilt · mcp/servers/messaging-geo/ · PARTIAL (mock; never-sends; live providers pending) · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false

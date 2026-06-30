@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## fhir-broker + messaging-geo (mock) + FHIR→parser path (2026-06-30)
+
+**Status:** Mock complete. Branch `chore/import-and-remediate`. Advances `fhir-broker-unbuilt` + `messaging-geo-unbuilt` to PARTIAL — the last two servers now have mock implementations, so **all 7 MCP servers are built (mock)**.
+
+### Changes
+- `mcp/servers/fhir-broker/` (index.js + mock-resources.json): `fhir_read`/`fhir_search` return templated AU Core resources (incl. lab Observations with raw values); `fhir_write` SAFE_STUB. **FHIR→parser path:** on the MCP path, Trunk 6.0 Observations → `retrieveFhirObservations` → `raw_investigations` → the deterministic parser → sanitised `lab_result` facts (raw number never in the packet).
+- `mcp/servers/messaging-geo/index.js`: `geo_locate`/`pharmacy_search` mock; `msg_send` SAFE_STUB that NEVER sends (recipient redacted/not echoed, flagged not-patient-facing). Not wired into the trunk pipeline (patient-facing, gated by the Clinician Verification Portal).
+- `verification/{retrieval-mcp,pipeline}.js`: `retrieveFhirObservations`; `routing()` sets `needs_fhir_reads:["Observation"]` for Trunk 6.0; fhir labs merge into `raw_investigations`.
+- `test/contract-fhir-broker.js` + `test/contract-messaging-geo.js` wired into `npm test` (13/13).
+- `mcpServers.template.json` both paths `dist/index.js` → `index.js`; server-status / mcp-server-map / registers updated.
+
+### Register movement
+- `fhir-broker-unbuilt` → **PARTIAL** (mock read/search + Observation→parser; live EHR + AU Core/AUCDI conformance pending). `messaging-geo-unbuilt` → **PARTIAL** (mock; never-sends; live providers pending). `investigation-parser-unbuilt` now has a mock fhir lab source.
+
+### Verification
+- `npm test` 13/13; `trunk:stub:all` 9/9 stub + live MCP; Trunk 6.0 (MCP) → 2 sanitised HH lab facts from fhir, raw values absent from the packet.
+
+---
+
 ## Knowledge server (mock) + curated datasets (2026-06-30)
 
 **Status:** Mock complete. Branch `chore/import-and-remediate`. Mock-resolves `knowledge-datasets-empty` + gap-register **R-13**; advances `knowledge-server-unbuilt`; opens `knowledge-datasets-provisional` (High).

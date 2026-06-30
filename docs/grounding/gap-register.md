@@ -97,10 +97,10 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 
 ### `fhir-broker` — FHIR Patient Record
 
-- **Stub:** Returns mock FHIR resources. No real EHR connection.
-- **Live requires:** FHIR R4 base URL, SMART-on-FHIR or mTLS auth, AU Core 0.3.0 profile conformance.
-- **Tools:** `fhir_read`, `fhir_search`
-- **Gap:** EHR/MHR connector selection, SMART-on-FHIR client registration, patient consent for MHR access.
+- **Mock (2026-06-30):** fhir_read/fhir_search return templated AU Core resources (incl. lab Observations); fhir_write SAFE_STUB. Wired so Trunk 6.0 Observations flow through the investigation parser (raw values never reach the LLM). Contract-tested.
+- **Live requires:** FHIR R4 base URL, SMART-on-FHIR or mTLS auth, AU Core 0.3.0 / AUCDI R3 conformance validation (fhir-r4-aucdi-conformance-unbuilt).
+- **Tools:** `fhir_read`, `fhir_search` (built); `fhir_write` (SAFE_STUB).
+- **Gap:** EHR/MHR connector selection, SMART-on-FHIR client registration, patient consent for MHR access, conformance validator.
 
 ### `pharmacology` — Pharmacology Firewall
 
@@ -111,9 +111,9 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 
 ### `messaging-geo` — Messaging and Geolocation
 
-- **Stub:** Mock SMS/email receipts and mock pharmacy geo results.
+- **Mock (2026-06-30):** geo_locate/pharmacy_search return mock results; msg_send is a SAFE_STUB that NEVER sends (recipient redacted, not echoed) and is flagged not-patient-facing. Contract-tested. Not wired into the trunk pipeline.
 - **Live requires:** `MSG_PROVIDER` (SMS/email vendor), `GEO_PROVIDER` (geocoding API), `PHARMACY_DIRECTORY_PROVIDER` (AU pharmacy directory).
-- **Gap:** All three providers unselected. Pharmacy directory data source and licensing TBD.
+- **Gap:** All three providers unselected; pharmacy directory data source + licensing TBD. msg_send may only be wired behind the Clinician Verification Portal.
 
 ---
 
