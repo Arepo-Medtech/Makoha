@@ -34,18 +34,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: pharmacology-server-unbuilt
-  path: mcp/servers/pharmacology/ (absent; template points at dist/index.js)
+  path: mcp/servers/pharmacology/{index.js,schemas.js,mock-data.json}, test/contract-pharmacology.js, mcp/mcpServers.template.json
   component_type: mcp-server
-  state: UNBUILT
-  evidence: dir absent under mcp/servers/; mcpServers.template.json `pharmacology -> mcp/servers/pharmacology/dist/index.js` resolves to nothing.
-  blocks: Trunk 8.0 firewall (real PharmCheck), every prescription-adjacent feature, patient-facing readiness
+  state: PARTIAL
+  evidence: MOCK CORE BUILT 2026-06-30 — deterministic server (MCP SDK ^1, zod I/O) with all 5 checks (allergy x-react, DDI, renal, AU scheduling, S8 PDMP) on a versioned MOCK dataset; dose_guidance ONLY here and ONLY on PASS/WARN, never on HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric→flag, no dose; facts-absent→BLOCKED_NO_PROOF; receipt mode=mock. Contract-tested (test/contract-pharmacology.js); template path fixed (index.js). PARTIAL: not wired behind Trunk 8.0 (next task) and no live vendor.
+  blocks: (mock core cleared) — Trunk 8.0 firewall wiring (next) + live vendor remain
   safety_class: can_emit_fabrication
-  invariant_exposure: no-autonomous-prescription; no-HARD_FAIL-override (HARD_FAIL currently runs on mock only)
+  invariant_exposure: no-autonomous-prescription (doses only here) — enforced; HARD_FAIL terminal enforcement is wired in the firewall task
   risk: Critical
   blocks_patient_facing: true
-  build_action: build deterministic pharmacology server (Appendix A master plan); doses sourced ONLY here; HARD_FAIL terminal; paediatric → flag-for-in-person-review.
-  gap_register_link: gap-pharmacology-vendor
-  status: open
+  build_action: NEXT — wire intent→PharmCheck→firewall_status behind Trunk 8.0 + verifier HARD_FAIL-blocks-continuation. THEN live vendor (MIMS-AU/SafeScript) in staging (Appendix A Phase 4) before patient-facing.
+  gap_register_link: R-22
+  status: in-progress
   last_scanned: 2026-06-30
 ```
 

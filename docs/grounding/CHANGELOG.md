@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Pharmacology server — deterministic mock core (2026-06-30)
+
+**Status:** Mock core complete (not wired). Branch `chore/import-and-remediate`. Advances `pharmacology-server-unbuilt` (#1 gap) / gap-register **R-22**.
+
+The highest-leverage Critical: the only permitted source of dose guidance and the Trunk 8.0 firewall.
+
+### Changes
+- `mcp/servers/pharmacology/mock-data.json` (new): versioned, **MOCK/SYNTHETIC-ONLY — not a clinical source**; allergy cross-reactivity groups, DDI pairs, renal rules, AU schedule map, mock dose guidance.
+- `mcp/servers/pharmacology/schemas.js` (new): zod PharmIntent (lenient input) + PharmCheck (strict output) + validators.
+- `mcp/servers/pharmacology/index.js` (new): McpServer (SDK ^1, stdio) with `pharm_check` + `pharm_intent`. Deterministic engine — allergy x-react, DDI, renal dosing, AU scheduling, S8 PDMP. Invariants: dose_guidance ONLY on PASS/WARN and NEVER on HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric (<18) → flag, no dose; absent facts → NOT_RUN → BLOCKED_NO_PROOF; every result mode=mock, MOCK vendor_reference.
+- `test/contract-pharmacology.js` (new), wired into `npm test` (9/9): PASS+dose, BLOCKED_NO_PROOF, allergy HARD_FAIL no-dose, S8 HARD_FAIL, paediatric HARD_FAIL no-dose, receipt mode=mock.
+- `mcpServers.template.json`: pharmacology path `dist/index.js` → `index.js` (no build step). `.claude/server-status.md` updated.
+
+### Register movement
+- `pharmacology-server-unbuilt`: Critical, UNBUILT → **PARTIAL / in-progress** (mock core; firewall wiring = next task, live vendor = standing gap).
+
+### Next / not done
+- Wire intent→PharmCheck→firewall_status behind Trunk 8.0 + verifier HARD_FAIL-blocks-continuation (next task). Live vendor (MIMS-AU/SafeScript) in staging before patient-facing. Mock data is not a clinical source.
+
+### Verification
+- `npm test` 9/9; engine smoke across all scenarios correct; dose never present on HARD_FAIL/BLOCKED/paediatric.
+
+---
+
 ## Deterministic investigation parser (sanitiser) — built for mock/dev (2026-06-30)
 
 **Status:** Complete (mock/dev). Branch `chore/import-and-remediate`. Resolves `investigation-parser-unbuilt` engine / gap-register **R-21** (named release blocker); opens `lab-reference-ranges-provisional` (High).

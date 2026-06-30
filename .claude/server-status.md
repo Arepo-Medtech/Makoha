@@ -9,12 +9,12 @@ All seven servers default to `HEYDOC_MODE_DEFAULT=mock`. Status drives what you 
 | `terminology` | ✓ Implemented (stub) | `term-` | Stub SNOMED/ICD/LOINC lookups | NCTS Ontoserver (or equiv); SNOMED CT AU Edition 20240301 licence via NCTS |
 | `knowledge` | ⚠ Stub only — `dist/index.js` not built | `kg-` | ContextGraph/PatientKG queries; benign registry, axis-b-templates, redflags bank all UNPOPULATED | PostgreSQL at HEYDOC_KG_DB_URL; populate the three datasets |
 | `fhir-broker` | ✗ Not built | `fhir-` | — | FHIR_BASE_URL; SMART-on-FHIR or mTLS; AU Core 0.3.0 conformance; deterministic investigation parser (also not built) |
-| `pharmacology` | ✗ Not built — **CRITICAL gap** | `pharmchk-` | HARD_FAIL runs on mock data only; the only server permitted to return dose guidance | Vendor (MIMS-AU or equiv): NTI database, allergy cross-reactivity, DDI, renal dosing, AU scheduling; SafeScript WA for S8 PDMP. **Must NOT be patient-facing until a live vendor is connected and validated.** |
+| `pharmacology` | ◑ Implemented (mock core) — live vendor + firewall wiring pending | `pharmchk-` | Deterministic 5-check engine (allergy x-react, DDI, renal, AU scheduling, S8 PDMP) on MOCK data; dose guidance ONLY here; HARD_FAIL terminal; paediatric→flag no dose. Not yet wired behind Trunk 8.0. | Vendor (MIMS-AU or equiv): NTI, allergy x-react, DDI, renal dosing, AU scheduling; SafeScript WA for S8 PDMP. **Must NOT be patient-facing until a live vendor is connected and validated.** |
 | `messaging-geo` | ✗ Not built | `msg-` | — | SMS/email vendor; geocoding API; licensed AU pharmacy directory provider |
 
 ## Downstream effects of the unbuilt/unpopulated servers
 - **knowledge unpopulated** → Trunk 5.0 returns `blocked_no_templates`, Trunk 7.0 benign-gate degrades, Trunk 9.0 returns `blocked_no_questionnaire_data`. Degrades safely; never fabricates.
-- **pharmacology not built** → Trunk 8.0 HARD_FAIL operates on mock only; no prescription-adjacent feature is patient-ready.
+- **pharmacology mock core built, not wired** → Trunk 8.0 firewall wiring + verifier HARD_FAIL-blocks-continuation is the next task; live vendor still required before patient-ready.
 - **fhir-broker not built + no investigation parser** → no live data may enter Trunk 6.0 safely.
 
 ## Allowed Service Registry
