@@ -4,6 +4,35 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Maintenance — Supply-chain advisory remediation (2026-06-30)
+
+**Status:** Complete (mock environment). Branch `chore/bump-mcp-sdk-1.29`.
+
+Cleared all 3 High + 4 moderate `npm audit` advisories, all transitive via
+`@modelcontextprotocol/sdk`. None lay on an exercised code path — every server
+and the verifier client use stdio transport, not the vulnerable HTTP/SSE stack —
+but `<security_and_secrets>` makes High/Critical advisories build-blocking, so
+they were cleared regardless.
+
+### Changes
+- `package.json`: `@modelcontextprotocol/sdk` floor `^1.0.0` → `^1.29.0`.
+- `package-lock.json`: re-locked. Patched transitive deps now pinned:
+  `hono 4.12.27`, `fast-uri 3.1.3`, `path-to-regexp 8.4.2`, `ip-address 10.2.0`,
+  `qs 6.15.3`, `express-rate-limit 8.5.2`. No `overrides` needed; no major bumps;
+  `zod` unchanged at 3.x. Stays within MCP SDK `^1` — no stack swap.
+- `.github/workflows/ci.yml`: added a blocking `npm audit --audit-level=high`
+  step after `npm ci`.
+- `gap-register.md`: added risk **R-14** (dependency advisory reaching build —
+  Controlled) and **R-15** (no SAST/secret-scanning in CI — Open gap, still to be
+  added before any patient-facing release).
+
+### Verification
+- `npm audit --audit-level=high` → 0 High/Critical.
+- Clean `npm ci` from the new lockfile → `found 0 vulnerabilities` (reproducible).
+- `npm test`, `npm run verification`, `npm run trunk:stub:all` all green.
+
+---
+
 ## Checkpoint E — Design artifacts committed (2025-03-19)
 
 **Status:** Complete.
