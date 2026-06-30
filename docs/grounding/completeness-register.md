@@ -350,16 +350,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: context-graph-orphan
   path: mcp/schemas/context-graph.schema.json
   component_type: schema
-  state: DEAD_END
-  evidence: well-formed schema; referenced by 0 JS files; no producer writes a ContextGraph, no consumer reads one.
-  blocks: nothing (unwired)
+  state: COMPLETE
+  evidence: RECLASSIFIED 2026-06-30 — NOT a true DEAD_END. The schema is contracted across the spec: grounding-plan.needs_structured_kg + live_call_specs (graph_kind="ContextGraph"), evidence-node kg_node supports (ref = ContextGraph node_id), and the knowledge server's kg.query (mcp/README, mcp-server-map). No JS produces it yet only because its producer — the knowledge server — is UNBUILT (same status as pharm-intent/pharm-check vs the pharmacology server). Wired when knowledge-server-unbuilt is built.
+  blocks: nothing (contracted; awaits knowledge server producer)
   safety_class: none
   invariant_exposure: none
   risk: Medium
   blocks_patient_facing: false
-  build_action: wire to the session-graph writer (Trunk 3.0/6.0/verifier per its `writers` field) under an approved plan, or remove if superseded by ContextPacket.
-  gap_register_link: none
-  status: open
+  build_action: produced/consumed when the knowledge server is built (kg.query graph_kind=ContextGraph); tracked under knowledge-server-unbuilt. No standalone action.
+  gap_register_link: gap-knowledge-datasets
+  status: resolved
   last_scanned: 2026-06-30
 ```
 
@@ -367,16 +367,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: patient-knowledge-graph-orphan
   path: mcp/schemas/patient-knowledge-graph.schema.json
   component_type: schema
-  state: DEAD_END
-  evidence: well-formed schema; referenced by 0 JS files; no producer/consumer (knowledge + identity boundary unbuilt).
-  blocks: nothing (unwired)
+  state: COMPLETE
+  evidence: RECLASSIFIED 2026-06-30 — NOT a true DEAD_END. Contracted across the spec: grounding-plan ("patient-baseline" PatientKnowledgeGraph pull), evidence-node kg_node supports, knowledge server kg.query (graph_kind="PatientKnowledgeGraph"), data-buckets. Producer is the UNBUILT knowledge server (+ identity boundary). Same awaiting-producer status as the pharm-* schemas.
+  blocks: nothing (contracted; awaits knowledge server + identity boundary)
   safety_class: none
   invariant_exposure: none
   risk: Medium
   blocks_patient_facing: false
-  build_action: wire to knowledge server + identity boundary when built, or remove; decide under plan.
-  gap_register_link: none
-  status: open
+  build_action: produced/consumed when the knowledge server + identity boundary are built; tracked under knowledge-server-unbuilt. No standalone action.
+  gap_register_link: gap-knowledge-datasets
+  status: resolved
   last_scanned: 2026-06-30
 ```
 
@@ -440,7 +440,7 @@ Then the curated build order (gap-register Part D.11):
 
 Cross-cutting / decide under plan:
 
-- ~~`receipt-store-append-only-unbuilt`~~ **mock-resolved 2026-06-30** (R-17; production WORM + retention still to configure); `content-store-production-gated` (**Medium**, new — synthetic-only until persistence Critical); `session-persistence-unenforced` (**Critical**), `context-graph-orphan` + `patient-knowledge-graph-orphan` (wire or remove), `claudemd-behind-charter` + `derived-docs-unverified` (**Low**).
+- ~~`receipt-store-append-only-unbuilt`~~ **mock-resolved 2026-06-30** (R-17; production WORM + retention still to configure); `content-store-production-gated` (**Medium**, new — synthetic-only until persistence Critical); `session-persistence-unenforced` (**Critical**); ~~`context-graph-orphan` + `patient-knowledge-graph-orphan`~~ **reclassified 2026-06-30** (not dead-ends — contracted schemas awaiting the knowledge-server producer; tracked under `knowledge-server-unbuilt`); `claudemd-behind-charter` + `derived-docs-unverified` (**Low**).
 
 ---
 

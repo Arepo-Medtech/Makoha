@@ -25,8 +25,6 @@ Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests, verifi
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
 - fhir-r4-aucdi-conformance-unbuilt · mcp/servers/fhir-broker/ (FHIR R4 / AU Core / AUCDI R3) · UNBUILT · Medium · pf:false
 - aucdi-r3-valueset-binding-unbuilt · AUCDI R3 binding tables + verifier · UNBUILT · Medium · pf:false
-- context-graph-orphan · mcp/schemas/context-graph.schema.json · DEAD_END · Medium · pf:false
-- patient-knowledge-graph-orphan · mcp/schemas/patient-knowledge-graph.schema.json · DEAD_END · Medium · pf:false
 
 ## Low
 - claudemd-behind-charter · CLAUDE.md · STALE · Low · pf:false

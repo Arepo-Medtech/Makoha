@@ -4,6 +4,19 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Register correction — ContextGraph / PatientKnowledgeGraph are not dead-ends (2026-06-30)
+
+**Status:** Reclassification (no code). Register/doc-only.
+
+Phase 0 over-flagged `context-graph` and `patient-knowledge-graph` as DEAD_END. Investigation shows both are contracted across the spec — `grounding-plan` (`needs_structured_kg`, `live_call_specs` graph_kind), `evidence-node` (`kg_node` supports), the knowledge server's `kg.query` (mcp/README, mcp-server-map), architecture and data-buckets docs. They have no JS producer only because the **knowledge server is UNBUILT** — the same awaiting-producer status as `pharm-intent`/`pharm-check` vs the pharmacology server. Removing them would break those references; the correct resolution is to keep and track them under `knowledge-server-unbuilt`.
+
+- Completeness Register: both reclassified DEAD_END → COMPLETE (contracted schema awaiting registered producer), `gap_register_link` → knowledge datasets; dropped from the dead-end build-checklist line.
+- `.claude/completeness-index.md`: removed (no longer open findings).
+
+No schema files changed.
+
+---
+
 ## Pipeline edges contracted — GroundingPlan + ContextPacket gated (2026-06-30)
 
 **Status:** Complete. Branch `chore/import-and-remediate`. Resolves `pipeline-edges-uncontracted` (Medium).
