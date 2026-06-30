@@ -16,6 +16,7 @@ The briefing repeatedly calls for “firewalls” between probabilistic generati
 
 ### Boundary 4: Patient-identifying data minimization
 - AU identifiers (IHI) are handled only in the identity boundary; all downstream trunks should use encounter-scoped references and receipts, not demographics.
+- **Raw lab numbers never reach the LLM.** A raw numeric investigation result must pass through the `deterministic-investigation-parser` (`verification/investigation-parser.js`) before entering a ContextPacket: it becomes an HL7 interpretation + qualitative string with no raw number, tagged `sanitised_by`. The ContextPacket gate (`pipeline-schemas.js`) rejects any `lab_result` fact lacking `sanitised_by` or carrying a numeric value. Reference ranges are DEV/SYNTHETIC-ONLY pending clinical sign-off.
 
 ### Boundary 5: Auditability
 - Every critical decision point must produce EvidenceNodes tying the decision to receipts/citations.

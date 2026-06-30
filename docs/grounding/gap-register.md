@@ -2,7 +2,7 @@
 
 **Document ID:** `heydoc-grounding:gap-register:2026-06`  
 **Version:** 1.0.0  
-**Last reviewed:** 2026-06-30 (R-16 hashing; R-17 audit-ledger mock; R-18 verifier tests; R-19 verifier hardening — resolved. R-20 terminology contract — open)  
+**Last reviewed:** 2026-06-30 (R-16 hashing; R-17 audit-ledger mock; R-18 verifier tests; R-19 verifier hardening — resolved. R-21 investigation parser — mock/dev built. R-20 terminology contract — open)  
 **Citation ID:** `gap-register:v1.0.0:2026-06`
 
 This register is the primary source of truth for what HeyDoc currently is and is not. It is retrieved by the docs MCP server when trunks need to ground their scope assertions, and it is the authoritative list for the verifier's `no_repo_invention` check. Every trunk agent that references an internal service name must confirm it appears in the Allowed Service Registry below before citing it.
@@ -186,6 +186,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-18 | Deterministic verifier (5 hard checks) untested | High | High | Promoted from `verifier-untested`. test/contract-verifier.js covers all 5 checks (pass/fail/receipt-flip), hash return, overall-pass logic, and pipeline integration; wired into npm test + CI. | Resolved 2026-06-30 |
 | R-19 | Weak code detection — no per-code binding, ICD-10-AM/LOINC/PBS unmatched, mock not flagged | High | High | Promoted from `verifier-weak-code-detection`. Patterns span SNOMED/ICD-10-AM/ICD-11/LOINC/PBS w/ FP guards; true per-code↔receipt binding (SNOMED/ICD-10-AM/LOINC); mock-mode flag+block; MCP upstream bug fixed. Tested; trunk:stub:all 9/9 stub+MCP. | Resolved 2026-06-30 |
 | R-20 | Terminology contract grounds only SNOMED + ICD-11 vs invariant's SNOMED/ICD-10-AM/LOINC/PBS | High | High | Promoted from `terminology-contract-incomplete`. ICD-10-AM/LOINC/PBS ungroundable -> hardened verifier blocks them (fail-safe). Extend terminology contract+server; reconcile ICD-10-AM vs ICD_11. Feeds AUCDI R3 value-set binding. | Open |
+| R-21 | Deterministic investigation parser (sanitiser) not built — raw lab numbers could reach LLM | Medium (was) | Critical | Promoted from `investigation-parser-unbuilt` (named release blocker). Deterministic parser built (HL7 banding, no raw number, fail-safe), wired into contextInjection, enforced at the ContextPacket gate, tested. Reference ranges are DEV/SYNTHETIC-ONLY (`lab-reference-ranges-provisional`) — clinical + regulatory sign-off + a live fhir-broker source required before patient-facing. | Mock/dev built 2026-06-30 (ranges + live source pending) |
 
 ---
 

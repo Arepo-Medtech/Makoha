@@ -6,6 +6,7 @@
 import { verify } from "./verifier.js";
 import { retrieveViaMcp } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
+import { sanitiseInvestigation } from "./investigation-parser.js";
 
 /**
  * Stub routing: return a GroundingPlan.
@@ -72,8 +73,14 @@ function contextInjection(plan, receipts, meta = {}) {
       };
     });
 
+  // Raw investigation results are NEVER placed in the packet directly — each is
+  // run through the deterministic parser first, so only the sanitised (no-raw-
+  // number) lab_result fact reaches the trunk. There is no live lab source yet
+  // (fhir-broker unbuilt); callers/tests supply raw_investigations.
+  const facts = (meta.raw_investigations || []).map((raw) => sanitiseInvestigation(raw).fact);
+
   return {
-    facts: [],
+    facts,
     evidence,
     constraints: ["no diagnosis", "no dosages"],
     receipts: receiptsClean,
@@ -86,7 +93,7 @@ function contextInjection(plan, receipts, meta = {}) {
 
 /**
  * Run the full pipeline and verification.
- * @param {{ user_input?: string, trunk?: string, candidate_output?: string, use_mcp?: boolean }} options
+ * @param {{ user_input?: string, trunk?: string, candidate_output?: string, use_mcp?: boolean, raw_investigations?: Array<{loinc?: string, analyte?: string, value: number, unit?: string}> }} options
  * @returns {Promise<{{ plan, packet, output, verification, run_id, timestamp_utc }}>}
  */
 export async function runPipeline(options = {}) {
@@ -115,7 +122,7 @@ export async function runPipeline(options = {}) {
     receipts = retrievalStub(plan);
   }
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
-  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode }));
+  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: options.raw_investigations }));
 
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
   const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));

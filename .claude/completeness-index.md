@@ -3,11 +3,11 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests, verifier hardening). Resolved: hashing-unimplemented, verifier-untested, verifier-weak-code-detection. Opened: content-store-production-gated, terminology-contract-incomplete, FHIR/AUCDI items. receipt-store mock-resolved.
+Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser). Resolved: hashing-unimplemented, verifier-untested, verifier-weak-code-detection, pipeline-edges-uncontracted, context-graph/patient-kg (reclassified). investigation-parser engine built (mock/dev). Opened: content-store-production-gated, terminology-contract-incomplete, lab-reference-ranges-provisional, FHIR/AUCDI items. receipt-store mock-resolved.
 
 ## Critical
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · UNBUILT · Critical · pf:true
-- investigation-parser-unbuilt · (no file) Trunk 6.0 sanitiser · UNBUILT · Critical · pf:true
+- investigation-parser-unbuilt · verification/investigation-parser.js · PARTIAL (engine built mock/dev; provisional ranges + no live source) · Critical · pf:true
 - clinician-verification-portal-unbuilt · (no file) · UNBUILT · Critical · pf:true
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
 
@@ -23,6 +23,7 @@ Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests, verifi
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
+- lab-reference-ranges-provisional · verification/data/lab-reference-ranges.json · PARTIAL (dev-only; clinical sign-off needed) · High · pf:true
 - fhir-r4-aucdi-conformance-unbuilt · mcp/servers/fhir-broker/ (FHIR R4 / AU Core / AUCDI R3) · UNBUILT · Medium · pf:false
 - aucdi-r3-valueset-binding-unbuilt · AUCDI R3 binding tables + verifier · UNBUILT · Medium · pf:false
 

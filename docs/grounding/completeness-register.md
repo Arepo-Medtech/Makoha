@@ -51,17 +51,34 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: investigation-parser-unbuilt
-  path: (no file) — specified as deterministic-investigation-parser, consumed by Trunk 6.0 / fhir-broker
+  path: verification/investigation-parser.js, verification/data/lab-reference-ranges.json, verification/pipeline.js, verification/pipeline-schemas.js, test/contract-investigation-parser.js
   component_type: parser
-  state: UNBUILT
-  evidence: grep `sanitis|investigation.parser|parseInvestigation` → only a comment in verifier.js; pipeline contextInjection always emits `facts: []`.
-  blocks: Trunk 6.0 live data ingestion; safe injection of lab values; fhir-broker
-  safety_class: degrades_safe (no live labs flow today — fhir-broker unbuilt)
-  invariant_exposure: no-raw-lab-numbers-to-LLM-context
+  state: PARTIAL
+  evidence: RESOLVED FOR MOCK/DEV 2026-06-30 — deterministic sanitiseInvestigation() maps (analyte/LOINC, numeric) → HL7 band + qualitative value with NO raw number; unknown/non-numeric fail safe to "U"; emits a dataset_version+checksum receipt; wired into contextInjection (runPipeline raw_investigations → sanitised facts); ContextPacket gate enforces sanitised_by + non-numeric value for lab_result. Tested (test/contract-investigation-parser.js). PARTIAL: reference ranges are provisional/dev (lab-reference-ranges-provisional) and there is no live lab source until fhir-broker.
+  blocks: (engine cleared) — live use awaits authoritative ranges + fhir-broker
+  safety_class: degrades_safe
+  invariant_exposure: no-raw-lab-numbers-to-LLM-context — now enforced at parser source AND packet gate
   risk: Critical
   blocks_patient_facing: true
-  build_action: build deterministic parser that converts raw numerics → sanitised qualitative form + receipt ref before any ContextPacket injection; unit-test it; gate Trunk 6.0 on it.
-  gap_register_link: gap-investigation-parser
+  build_action: DONE for mock/dev (named release blocker "deterministic investigation parser built" engine met). Before patient-facing: authoritative ranges sign-off (lab-reference-ranges-provisional) + fhir-broker live source.
+  gap_register_link: R-21
+  status: in-progress
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: lab-reference-ranges-provisional
+  path: verification/data/lab-reference-ranges.json
+  component_type: dataset
+  state: PARTIAL
+  evidence: OPENED 2026-06-30 — 8 analytes, adult sex-agnostic, explicitly DEV/SYNTHETIC-ONLY and NOT clinically authoritative. Banner in the dataset; sign-off not obtained.
+  blocks: patient-facing use of the investigation parser
+  safety_class: degrades_safe (marked non-authoritative; mock/dev only)
+  invariant_exposure: clinical-safety (ranges must be clinically validated before live)
+  risk: High
+  blocks_patient_facing: true
+  build_action: obtain clinical + regulatory sign-off on authoritative AU reference ranges (sex/age-specific); expand analyte coverage; version + checksum. Until then, parser is dev/synthetic-only.
+  gap_register_link: R-21
   status: open
   last_scanned: 2026-06-30
 ```

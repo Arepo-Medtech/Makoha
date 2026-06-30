@@ -4,6 +4,29 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Deterministic investigation parser (sanitiser) — built for mock/dev (2026-06-30)
+
+**Status:** Complete (mock/dev). Branch `chore/import-and-remediate`. Resolves `investigation-parser-unbuilt` engine / gap-register **R-21** (named release blocker); opens `lab-reference-ranges-provisional` (High).
+
+Enforces the hard limit "no raw lab numbers to LLM context": a raw numeric result is converted to an HL7 interpretation + qualitative string before it can enter a packet — the raw number never reaches the trunk.
+
+### Changes
+- `verification/data/lab-reference-ranges.json` (new): 8 LOINC-keyed analytes, dataset_version, **DEV/SYNTHETIC-ONLY — not clinically authoritative** banner, adult sex-agnostic bands.
+- `verification/investigation-parser.js` (new): `sanitiseInvestigation()` → conformant `lab_result` fact (HL7 N/H/L/HH/LL + qualitative value, no raw number, `sanitised_by`) + dataset_version/checksum receipt; unknown/non-numeric fail safe to `U`.
+- `verification/pipeline-schemas.js`: ContextPacket refinement — `lab_result` facts must carry `sanitised_by` and a non-numeric value.
+- `verification/pipeline.js`: `contextInjection` runs `options.raw_investigations` through the parser into sanitised facts (parser now has a real consumer).
+- `test/contract-investigation-parser.js` (new) + pipeline integration test (raw 6.8 → `HH` fact; raw number absent from the whole packet). `npm test` 8/8.
+- `architecture/trust-boundaries.md`: documented the no-raw-lab enforcement.
+
+### Register movement
+- `investigation-parser-unbuilt`: Critical, UNBUILT → **PARTIAL / in-progress** (engine built mock/dev; named-blocker engine criterion met).
+- **Opened** `lab-reference-ranges-provisional` (High): dev ranges need clinical + regulatory sign-off before patient-facing; live lab source (fhir-broker) also pending.
+
+### Verification
+- `npm test` 8/8; `verification` + `trunk:stub:all` 9/9 stub + live MCP; integration confirms the raw value never reaches the packet.
+
+---
+
 ## Register correction — ContextGraph / PatientKnowledgeGraph are not dead-ends (2026-06-30)
 
 **Status:** Reclassification (no code). Register/doc-only.

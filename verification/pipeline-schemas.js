@@ -128,7 +128,24 @@ export const ContextPacketSchema = z
     blocked: z.boolean().optional(),
     block_reasons: z.array(z.string()).optional(),
   })
-  .strict();
+  .strict()
+  // Hard-limit enforcement: every lab_result fact MUST be sanitised (carry
+  // sanitised_by) and MUST NOT carry a bare/leading numeric value — raw lab
+  // numbers must go through the deterministic investigation parser before they
+  // can enter a packet the LLM sees (<non_negotiable_invariants>).
+  .superRefine((packet, ctx) => {
+    (packet.facts || []).forEach((f, i) => {
+      if (f.category !== "lab_result") return;
+      if (!f.sanitised_by) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["facts", i, "sanitised_by"], message: "lab_result fact must be sanitised (sanitised_by required) — raw lab values must go through the investigation parser" });
+      }
+      const v = f.value;
+      const looksNumeric = typeof v === "number" || (typeof v === "string" && /^\s*[-+]?\d/.test(v));
+      if (looksNumeric) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["facts", i, "value"], message: "lab_result value must be sanitised qualitative text, not a (leading) number" });
+      }
+    });
+  });
 
 function makeValidator(schema, label) {
   return (value) => {
