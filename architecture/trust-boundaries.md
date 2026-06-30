@@ -6,6 +6,8 @@ The briefing repeatedly calls for “firewalls” between probabilistic generati
 - **LLM may**: summarize, ask questions, format payloads, perform routing logic on *provided* facts.
 - **LLM must not**: mint codes, invent lab values, claim guidelines, claim identity verification, or assert external operational status.
 
+- **Pharmacology firewall (Trunk 8.0).** Doses originate only from the pharmacology server's PharmCheck. The firewall runs deterministically (`verification/pipeline.js` via `mcp/servers/pharmacology/engine.js`): `firewall_status` gates continuation, and a `HARD_FAIL` blocks continuation **unconditionally — no override path** (`continuation_blocked` is derived purely from `firewall_status`). A HARD_FAIL is receipt-backed so verifier check 5 distinguishes a legitimate firewall hard-stop from an LLM-invented one. (Mock vendor data until a live vendor is connected.)
+
 ### Boundary 2: Static documentation vs. operational facts
 - **Static docs** justify *why* a rule exists (“Choosing Wisely recommends …”) but do not provide patient-specific facts.
 - **Operational facts** (IHI, SNOMED codes, results, delivery) must be tool-derived receipts.

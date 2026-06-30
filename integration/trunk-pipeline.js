@@ -39,7 +39,7 @@ const TRUNK_CONSTRAINTS = {
  * @returns {Promise<{ pass: boolean, report: object, packet: object, verification: object }>}
  */
 export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
-  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp } = options;
+  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts } = options;
   const constraints = TRUNK_CONSTRAINTS[trunkId] ?? ["no diagnosis", "no dosages"];
 
   const result = await runPipeline({
@@ -47,13 +47,21 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
     trunk: trunkId,
     candidate_output: candidateOutput,
     use_mcp: useMcp,
+    pharm_intent: pharmIntent,
+    resolved_facts: resolvedFacts,
   });
 
   // Override packet constraints with trunk-specific ones
   result.packet.constraints = constraints;
 
+  const hardFail = result.firewall_status === "HARD_FAIL";
   const out = {
     pass: result.verification.pass,
+    // Firewall gate (Trunk 8.0): continuation_blocked is set purely from the
+    // pharmacology firewall_status — a HARD_FAIL blocks continuation with no
+    // override path (no-HARD_FAIL-override hard limit).
+    firewall_status: result.firewall_status,
+    continuation_blocked: !!result.continuation_blocked,
     report: {
       run_id: result.run_id,
       timestamp_utc: result.timestamp_utc,
@@ -65,6 +73,7 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
       // Medicolegal anchor — required field; computed in verify().
       candidate_output_hash: result.verification.candidate_output_hash,
       mock_receipt_flags: result.verification.mock_receipt_flags,
+      ...(result.hard_stops && result.hard_stops.length ? { hard_stops: result.hard_stops, overall_severity: "critical" } : {}),
     },
     packet: result.packet,
     verification: result.verification,

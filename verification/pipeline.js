@@ -7,6 +7,7 @@ import { verify } from "./verifier.js";
 import { retrieveViaMcp } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
+import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
 
 /**
  * Stub routing: return a GroundingPlan.
@@ -121,6 +122,31 @@ export async function runPipeline(options = {}) {
     if (useMcp) process.stderr?.write?.("MCP retrieval failed, using stub: " + err.message + "\n");
     receipts = retrievalStub(plan);
   }
+  // Pharmacology firewall (Trunk 8.0). Runs the deterministic check in-process and
+  // gates continuation. A HARD_FAIL blocks continuation UNCONDITIONALLY (no override
+  // path) and is receipt-backed; BLOCKED_NO_PROOF also blocks (cannot prescribe
+  // without proof). The PharmCheck receipt is added to receipts so it flows to the
+  // packet + ledger, and is the hard_stop_receipt that lets the verifier tell a
+  // legitimate (receipt-backed) HARD_FAIL from an invented one.
+  let firewall_status;
+  let continuation_blocked = false;
+  let hard_stops = [];
+  let hardStopReceipt;
+  if (options.pharm_intent) {
+    const pc = runPharmCheck(options.pharm_intent, options.resolved_facts || {});
+    firewall_status = pc.status;
+    receipts.push({ kind: "live_data", request_id: pc.receipt.request_id, upstream: pc.receipt.upstream, mode: pc.receipt.mode, receipt: pc.receipt });
+    if (firewall_status === "HARD_FAIL") {
+      hardStopReceipt = pc.receipt.request_id;
+      hard_stops = [`HARD_FAIL: pharmacology firewall (${pc.check_id}) blocked continuation — ${pc.flags.map((f) => f.flag_type).join(", ") || "unsafe"}`];
+    }
+    continuation_blocked = firewall_status === "HARD_FAIL" || firewall_status === "BLOCKED_NO_PROOF";
+  } else if (trunk === "8.0") {
+    // Firewall trunk with no intent supplied -> cannot run the check -> blocked.
+    firewall_status = "BLOCKED_NO_PROOF";
+    continuation_blocked = true;
+  }
+
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
   const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: options.raw_investigations }));
 
@@ -147,7 +173,7 @@ export async function runPipeline(options = {}) {
     terminology_receipts: terminologyReceipts,
     terminology,
     live_receipts: liveReceipts,
-    hard_stop_receipt: undefined,
+    hard_stop_receipt: hardStopReceipt,
     context_mode,
     receipt_modes,
   });
@@ -159,6 +185,9 @@ export async function runPipeline(options = {}) {
     packet,
     output: candidate_output,
     verification,
+    firewall_status,
+    continuation_blocked,
+    hard_stops,
   };
 }
 

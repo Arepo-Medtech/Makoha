@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Trunk 8.0 pharmacology firewall — wired + HARD_FAIL enforced (2026-06-30)
+
+**Status:** Complete (mock). Branch `chore/import-and-remediate`. Advances `pharmacology-server-unbuilt` / gap-register **R-22** — only the live vendor remains.
+
+Turns the pharmacology mock core into an enforced firewall behind Trunk 8.0.
+
+### Changes
+- `mcp/servers/pharmacology/engine.js` (new): pure `runPharmCheck()` extracted from `index.js` (refactor — same logic), so the MCP server and the in-process firewall share one engine.
+- `verification/pipeline.js`: when a Trunk 8.0 turn carries `pharm_intent`, runs the firewall in-process — `firewall_status` gates continuation; **HARD_FAIL → `continuation_blocked` with no override path** + `hard_stops` + receipt-backed `hard_stop_receipt`; the PharmCheck receipt flows into the packet + ledger. No-intent on Trunk 8.0 → BLOCKED_NO_PROOF + blocked. Grounding-pass kept separate (the honest BLOCKED_NO_PROOF stub stays green).
+- `integration/trunk-pipeline.js`: accepts `{ pharmIntent, resolvedFacts }`; surfaces `firewall_status`/`continuation_blocked` and report `hard_stops`/`overall_severity`.
+- `test/contract-firewall.js` (new) wired into `npm test` (10/10): HARD_FAIL blocks (no override) + receipt-backed check 5; an invented HARD_FAIL (no receipt) fails check 5; PASS doesn't block; no-intent → BLOCKED_NO_PROOF + blocked + grounding-passes.
+- `architecture/trust-boundaries.md`, server-status, registers updated.
+
+### Register movement
+- `pharmacology-server-unbuilt`: remaining gap narrowed to **live vendor only** (firewall + HARD_FAIL enforcement done). Enforces no-autonomous-prescription + no-HARD_FAIL-override hard limits.
+
+### Verification
+- `npm test` 10/10; `trunk:stub:all` 9/9 (stub unaffected); HARD_FAIL blocks with no override, invented hard-stop rejected by check 5.
+
+---
+
 ## Pharmacology server — deterministic mock core (2026-06-30)
 
 **Status:** Mock core complete (not wired). Branch `chore/import-and-remediate`. Advances `pharmacology-server-unbuilt` (#1 gap) / gap-register **R-22**.

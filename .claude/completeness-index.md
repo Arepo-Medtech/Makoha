@@ -6,7 +6,7 @@ Source of truth: `docs/grounding/completeness-register.md` + the live scan. If t
 Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser). Resolved: hashing-unimplemented, verifier-untested, verifier-weak-code-detection, pipeline-edges-uncontracted, context-graph/patient-kg (reclassified). investigation-parser engine built (mock/dev). Opened: content-store-production-gated, terminology-contract-incomplete, lab-reference-ranges-provisional, FHIR/AUCDI items. receipt-store mock-resolved.
 
 ## Critical
-- pharmacology-server-unbuilt · mcp/servers/pharmacology/ · PARTIAL (mock core built; firewall wiring + live vendor pending) · Critical · pf:true
+- pharmacology-server-unbuilt · mcp/servers/pharmacology/ · PARTIAL (mock core + Trunk 8.0 firewall wired; only live vendor pending) · Critical · pf:true
 - investigation-parser-unbuilt · verification/investigation-parser.js · PARTIAL (engine built mock/dev; provisional ranges + no live source) · Critical · pf:true
 - clinician-verification-portal-unbuilt · (no file) · UNBUILT · Critical · pf:true
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true

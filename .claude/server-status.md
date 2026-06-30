@@ -14,7 +14,7 @@ All seven servers default to `HEYDOC_MODE_DEFAULT=mock`. Status drives what you 
 
 ## Downstream effects of the unbuilt/unpopulated servers
 - **knowledge unpopulated** → Trunk 5.0 returns `blocked_no_templates`, Trunk 7.0 benign-gate degrades, Trunk 9.0 returns `blocked_no_questionnaire_data`. Degrades safely; never fabricates.
-- **pharmacology mock core built, not wired** → Trunk 8.0 firewall wiring + verifier HARD_FAIL-blocks-continuation is the next task; live vendor still required before patient-ready.
+- **pharmacology mock core built + Trunk 8.0 firewall wired** → HARD_FAIL blocks continuation with no override (receipt-backed); only a live vendor connection remains before patient-ready.
 - **fhir-broker not built + no investigation parser** → no live data may enter Trunk 6.0 safely.
 
 ## Allowed Service Registry
