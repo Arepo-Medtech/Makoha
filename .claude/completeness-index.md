@@ -20,7 +20,6 @@ Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests, verifi
 - knowledge-datasets-empty · benign registry / Axis B / red-flag bank · EMPTY · Medium · pf:false
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · UNBUILT · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · UNBUILT · Medium · pf:false
-- pipeline-edges-uncontracted · GroundingPlan/ContextPacket/EvidenceNode edges (VerificationReport edge now gated) · MISSING_CONTRACT · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false

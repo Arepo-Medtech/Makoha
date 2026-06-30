@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Pipeline edges contracted — GroundingPlan + ContextPacket gated (2026-06-30)
+
+**Status:** Complete. Branch `chore/import-and-remediate`. Resolves `pipeline-edges-uncontracted` (Medium).
+
+The routing→retrieval and context-injection step boundaries passed data with no schema gate. Added zod validators mirroring the JSON contracts and enforced them; reworked the stub so the packet actually conforms.
+
+### Changes
+- `verification/pipeline-schemas.js` (new): zod `GroundingPlanSchema`, `ContextPacketSchema`, `EvidenceNodeSchema`, `ReceiptSchema` + `validateGroundingPlan()`/`validateContextPacket()` (throw).
+- `verification/pipeline.js`: validate the GroundingPlan after routing and the ContextPacket after injection. Reworked `contextInjection()` to emit a conformant packet — `receipts[]` holds only clean Receipts (request_id/timestamp_utc/upstream/mode; `validated_codes`/`kind` dropped), and `static_doc` citations move into `evidence[].supports[]`.
+- `test/contract-pipeline.js` (new), wired into `npm test` (now 7/7): validators accept conformant data; reject missing-required, extra-key, receipt-missing-timestamp, receipt-with-validated_codes, and malformed EvidenceNodes.
+- `.claude/schema-index.md`: noted the zod gate on grounding-plan / context-packet.
+
+### Notes
+- The VerificationReport edge was already gated (report-schema.js); with this, all four named pipeline contracts are enforced. EvidenceNode and Receipt are validated as part of the ContextPacket.
+- `recordRun()`/ledger and the evidence_tree builder remain compatible with the conformant packet; citations are now represented in evidence rather than as pseudo-receipts in the ledger.
+
+### Verification
+- `npm test` 7/7; `npm run verification` + `trunk:stub:all` green on stub and live (HEYDOC_USE_MCP=1); produced GroundingPlan + ContextPacket validate; ledger chain VALID.
+
+---
+
 ## Verifier hardening — code detection + binding + mock-mode (2026-06-30)
 
 **Status:** Complete. Branch `chore/import-and-remediate`. Resolves `verifier-weak-code-detection` / gap-register **R-19**; opens `terminology-contract-incomplete` / **R-20** (High).

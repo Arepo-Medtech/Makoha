@@ -297,18 +297,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: pipeline-edges-uncontracted
-  path: verification/pipeline.js (routing/retrievalStub/contextInjection); mcp/schemas/{grounding-plan,context-packet,verification-report,evidence-node}.schema.json
+  path: verification/pipeline.js, verification/pipeline-schemas.js, verification/report-schema.js, test/contract-pipeline.js
   component_type: parser
-  state: MISSING_CONTRACT
-  evidence: PARTIALLY ADDRESSED 2026-06-30 — the VerificationReport edge is now zod-gated (verification/report-schema.js validateReport(), enforced in both writers). GroundingPlan, ContextPacket, and evidence-node edges remain ungated (those schema files still imported/validated by no JS).
-  blocks: schema-first guarantee on the remaining pipeline edges (routing output, context injection, evidence nodes)
-  safety_class: degrades_safe (stub data only today)
-  invariant_exposure: engineering_standards schema-first; trust boundary 1
+  state: COMPLETE
+  evidence: RESOLVED 2026-06-30 — all named pipeline edges now zod-gated: VerificationReport (report-schema.js), and GroundingPlan + ContextPacket + EvidenceNode + Receipt (pipeline-schemas.js, validateGroundingPlan/validateContextPacket enforced at the routing and context-injection boundaries). The stub contextInjection was reworked to emit a conformant packet (clean Receipts; citations moved to EvidenceNode supports). Covered by test/contract-pipeline.js; trunk:stub:all 9/9 stub + MCP.
+  blocks: (cleared)
+  safety_class: degrades_safe
+  invariant_exposure: engineering_standards schema-first; trust boundary 1 — now enforced at all named edges
   risk: Medium
   blocks_patient_facing: false
-  build_action: add zod validators for GroundingPlan, ContextPacket, and EvidenceNode; validate at the routing→retrieval and context-injection step boundaries. (VerificationReport edge done.)
+  build_action: DONE — see evidence. (When routing/retrieval logic is un-stubbed under pipeline-routing-retrieval-stub, the same validators continue to gate the real output.)
   gap_register_link: none
-  status: open
+  status: resolved
   last_scanned: 2026-06-30
 ```
 

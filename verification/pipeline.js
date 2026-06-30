@@ -5,15 +5,17 @@
  */
 import { verify } from "./verifier.js";
 import { retrieveViaMcp } from "./retrieval-mcp.js";
+import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 
 /**
  * Stub routing: return a GroundingPlan.
  */
-function routing(_userInput, _trunk) {
+function routing(_userInput, trunk) {
   return {
     needs_static_docs: ["Choosing Wisely", "red-flag questions"],
     needs_live_calls: ["IHI", "terminology"],
     needs_structured_kg: [],
+    trunk_id: trunk,
   };
 }
 
@@ -35,20 +37,50 @@ function retrievalStub(plan) {
 }
 
 /**
- * Build context packet from plan and receipts.
+ * Build a schema-conformant ContextPacket from the plan and raw retrieval receipts.
+ *
+ * Contract distinctions enforced here (context-packet.schema.json):
+ *   - receipts[] holds ONLY true Receipts (live tool calls), cleaned to the
+ *     receipt.schema shape (request_id/timestamp_utc/upstream/mode) — the binding
+ *     aid `validated_codes` and the internal `kind` tag are dropped.
+ *   - static_doc citations are NOT receipts; they are represented as EvidenceNode
+ *     supports (kind "static_doc", ref = citation_id).
  */
-function contextInjection(plan, receipts) {
-  const evidence = receipts.map((r, i) => ({
-    id: `ev-${i + 1}`,
-    claim: r.kind === "static_doc" ? "Guideline citation" : "Operational fact",
-    supports: [{ kind: r.kind === "static_doc" ? "static_doc" : "live_data_receipt", ref: r.citation_id || r.request_id }],
-    provenance: { created_at_utc: new Date().toISOString(), created_by: "pipeline-stub", verification: { status: "verified" } },
-  }));
+function contextInjection(plan, receipts, meta = {}) {
+  const now = new Date().toISOString();
+  const mode = meta.mode || "mock";
+
+  const evidence = receipts.map((r, i) => {
+    const isDoc = r.kind === "static_doc";
+    return {
+      id: `ev-${i + 1}`,
+      claim: isDoc ? "Guideline citation" : "Operational fact",
+      supports: [{ kind: isDoc ? "static_doc" : "live_data_receipt", ref: r.citation_id || r.request_id }],
+      provenance: { created_at_utc: now, created_by: "pipeline-stub", verification: { status: "verified" } },
+    };
+  });
+
+  const receiptsClean = receipts
+    .filter((r) => r.kind === "live_data")
+    .map((r) => {
+      const src = r.receipt || r;
+      return {
+        request_id: src.request_id || r.request_id,
+        timestamp_utc: src.timestamp_utc || now,
+        upstream: src.upstream || r.upstream || "stub",
+        mode: src.mode || r.mode || mode,
+      };
+    });
+
   return {
     facts: [],
     evidence,
     constraints: ["no diagnosis", "no dosages"],
-    receipts,
+    receipts: receiptsClean,
+    run_id: meta.run_id,
+    trunk_id: meta.trunk_id,
+    assembled_at_utc: now,
+    mode,
   };
 }
 
@@ -65,8 +97,11 @@ export async function runPipeline(options = {}) {
 
   const run_id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const timestamp_utc = new Date().toISOString();
+  // Effective run mode (mock by default per HEYDOC_MODE_DEFAULT).
+  const context_mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
 
-  const plan = routing(user_input, trunk);
+  // Step 1 — Routing. Gate the GroundingPlan before retrieval acts on it.
+  const plan = validateGroundingPlan(routing(user_input, trunk));
   let receipts;
   try {
     if (useMcp) {
@@ -79,7 +114,8 @@ export async function runPipeline(options = {}) {
     if (useMcp) process.stderr?.write?.("MCP retrieval failed, using stub: " + err.message + "\n");
     receipts = retrievalStub(plan);
   }
-  const packet = contextInjection(plan, receipts);
+  // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
+  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode }));
 
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
   const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));
@@ -92,9 +128,8 @@ export async function runPipeline(options = {}) {
   }));
   const liveReceipts = receipts.filter((r) => r.kind === "live_data").map((r) => r.request_id);
 
-  // Effective run mode + per-receipt modes, so the verifier can flag mock receipts
-  // (and block them in a non-mock context). Mock by default per HEYDOC_MODE_DEFAULT.
-  const context_mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  // Per-receipt modes, so the verifier can flag mock receipts (and block them in a
+  // non-mock context). context_mode computed above.
   const receipt_modes = receipts.map((r) => ({
     id: r.request_id || r.citation_id || r.ref,
     mode: (r.receipt && r.receipt.mode) || r.mode || context_mode,
