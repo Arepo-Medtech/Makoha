@@ -5,6 +5,7 @@
 import { runPipeline } from "../verification/pipeline.js";
 import { verify } from "../verification/verifier.js";
 import { validateReport } from "../verification/report-schema.js";
+import { recordRun } from "../verification/audit-store.js";
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -73,6 +74,9 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
     validateReport(out.report);
     if (!existsSync(VERIFICATION_DIR)) mkdirSync(VERIFICATION_DIR, { recursive: true });
     writeFileSync(join(VERIFICATION_DIR, "report.json"), JSON.stringify(out.report, null, 2));
+
+    // Append to the append-only medicolegal ledger (+ synthetic content store).
+    recordRun(result, { trunkId, sessionRef });
     const evidenceTree = [
       "# Evidence tree",
       "",

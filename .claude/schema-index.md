@@ -16,7 +16,8 @@ One line per schema: what it contracts · producer · consumer. Open the schema 
 | `terminology-lookup.schema.json` | SNOMED CT / ICD-10-AM / LOINC lookup result + receipt | terminology server (Step 2) | Trunk 6.0 (LOINC), 7.0 (code lock), 9.0 (SNOMED keying) |
 | `pharm-intent.schema.json` | PharmIntent: drug identity, class, route (NO dose values) | Trunk 8.0 | pharmacology server pharm.check |
 | `pharm-check.schema.json` | PharmCheck result: PASS/WARN/HARD_FAIL, dose guidance, interactions, scheduling, PDMP | pharmacology server | Trunk 8.0 firewall gate |
-| `verification-report.schema.json` | Machine-readable pass/fail, reasons, missing receipts, candidate_output_hash (SHA-256) | Step 5 Verification | Audit/medicolegal record · release gate |
+| `verification-report.schema.json` | Machine-readable pass/fail, reasons, missing receipts, candidate_output_hash (SHA-256, required) | Step 5 Verification (zod-gated: report-schema.js) | Audit/medicolegal record · release gate |
+| `audit-ledger-entry.schema.json` | Append-only hash-chained ledger record: anchor hash + run metadata + pass + check booleans + receipt metadata (NO PHI) | Step 5 writers via audit-store.js (medicolegal-audit-ledger) | verify:rehash · medicolegal audit retrieval |
 
 ## Case store — `data/schemas/`
 

@@ -3,7 +3,7 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (Phase 0 full scan; updated after hashing build — hashing-unimplemented resolved).
+Last synced: 2026-06-30 (Phase 0 full scan; updated after hashing build + audit-ledger build — hashing-unimplemented resolved; receipt-store mock-resolved; content-store-production-gated opened).
 
 ## Critical
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · UNBUILT · Critical · pf:true
@@ -14,7 +14,7 @@ Last synced: 2026-06-30 (Phase 0 full scan; updated after hashing build — hash
 ## High
 - verifier-untested · verification/verifier.js + test/ · PARTIAL · High · pf:true
 - verifier-weak-code-detection · verification/verifier.js CODE_PATTERNS · PARTIAL · High · pf:true
-- receipt-store-append-only-unbuilt · (no file) audit ledger · UNBUILT · High · pf:true
+- receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
 
 ## Medium
 - knowledge-server-unbuilt · mcp/servers/knowledge/ · UNBUILT · Medium · pf:false
@@ -24,6 +24,7 @@ Last synced: 2026-06-30 (Phase 0 full scan; updated after hashing build — hash
 - pipeline-edges-uncontracted · GroundingPlan/ContextPacket/EvidenceNode edges (VerificationReport edge now gated) · MISSING_CONTRACT · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
+- content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
 - context-graph-orphan · mcp/schemas/context-graph.schema.json · DEAD_END · Medium · pf:false
 - patient-knowledge-graph-orphan · mcp/schemas/patient-knowledge-graph.schema.json · DEAD_END · Medium · pf:false
 

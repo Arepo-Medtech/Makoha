@@ -4,6 +4,36 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Append-only audit ledger + synthetic content store + rehash (2026-06-30)
+
+**Status:** Complete (mock/staging scope). Branch `chore/import-and-remediate`.
+
+Mock-resolves Completeness Register `receipt-store-append-only-unbuilt` / gap-register **R-17**, and opens `content-store-production-gated` (Medium). Builds the durable, tamper-evident audit trail required by `<observability_and_audit>` while respecting `<data_handling>` patient-data minimisation via a two-store split.
+
+### Design
+- **Append-only hash-chained ledger** (`medicolegal-audit-ledger`) — non-PHI: hash anchor + run/trunk metadata + pass gate + per-check booleans + receipt metadata. Each entry's `entry_hash` chains over its canonical content + the previous entry's hash, so any edit/insert/reorder breaks the chain.
+- **Synthetic-only content store** — exact output text, content-addressed by hash; `persistContent()` mechanically refuses non-synthetic data; live entries are forced `content_persisted=false`. Real-patient persistence is deferred to the session-persistence Critical + consent.
+
+### Changes
+- `mcp/schemas/audit-ledger-entry.schema.json` + `verification/ledger-schema.js` (new): ledger record contract + zod `validateLedgerEntry()` (throws; rejects PHI keys and live+persisted).
+- `verification/audit-store.js` (new): `appendEntry` (hash-chain), `verifyChain`, `persistContent` (synthetic guard), `readContent`, `recordRun`; `HEYDOC_DATA_DIR` override.
+- `verification/run.js` + `integration/trunk-pipeline.js`: call `recordRun()` after `validateReport()`.
+- `verification/rehash.js` (new) + `verify:rehash` script: `--integrity` (recompute vs ledger + verify chain), `--reissue` (re-verify stored outputs → fresh hashed reports + ledger entries), `<path>` ingest.
+- `test/contract-audit-store.js` (new), wired into `npm test`.
+- `.heydoc-data/` stays gitignored — the store is runtime data, never committed.
+- Docs: `architecture/trust-boundaries.md` (Boundary 5 + the patient-data split), `.claude/schema-index.md`.
+
+### Register movement
+- `receipt-store-append-only-unbuilt`: High, UNBUILT → **PARTIAL / in-progress** (mock-resolved; prod WORM + retention pending) — R-17.
+- **Opened** `content-store-production-gated`: Medium, PARTIAL (synthetic-only until session-persistence Critical + consent).
+- `session-persistence-unenforced` (Critical): unchanged — explicitly not claimed.
+
+### Verification
+- `npm test` → 5/5 (adds `contract-audit-store: OK`).
+- `verify:rehash --integrity` → chain VALID, hashes match; `--reissue` → outputs re-verified, hashes reproduce; planted content drift → exit 1.
+
+---
+
 ## Medicolegal hashing — candidate_output_hash implemented (2026-06-30)
 
 **Status:** Complete. Branch `chore/import-and-remediate`.

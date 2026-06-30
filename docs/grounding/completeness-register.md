@@ -140,17 +140,34 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: receipt-store-append-only-unbuilt
-  path: (no file) — receipt store / medicolegal-audit-ledger
+  path: verification/audit-store.js, verification/ledger-schema.js, mcp/schemas/audit-ledger-entry.schema.json, verification/rehash.js, test/contract-audit-store.js
   component_type: repository-store
-  state: UNBUILT
-  evidence: receipts are returned in-memory by pipeline/servers; no durable append-only store; observability_and_audit requires retrievable, tamper-evident receipts + report retention.
-  blocks: auditability trust boundary (5); reconstructing any past decision
+  state: PARTIAL
+  evidence: RESOLVED FOR MOCK 2026-06-30 — append-only, hash-chained medicolegal-audit-ledger built (.heydoc-data/audit-ledger.jsonl); both report writers append per run via recordRun(); receipt metadata + candidate_output_hash captured; verifyChain() tamper-evidence; verify:rehash re-verifies. PARTIAL because production durability (WORM substrate) + org retention policy (a regulatory_posture decision) are not yet configured.
+  blocks: production-grade durable retention (mock/staging covered)
   safety_class: none
-  invariant_exposure: auditability; observability append-only requirement
+  invariant_exposure: auditability — now enforced for mock/staging
   risk: High
   blocks_patient_facing: true
-  build_action: design append-only, tamper-evident receipt + VerificationReport store with retention policy (mock/local first, durable later); plan-gated.
-  gap_register_link: pending-promotion
+  build_action: configure durable WORM substrate + retention policy for production (the local JSONL ledger covers mock/staging today).
+  gap_register_link: R-17
+  status: in-progress
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: content-store-production-gated
+  path: verification/audit-store.js (persistContent / content store)
+  component_type: repository-store
+  state: PARTIAL
+  evidence: OPENED 2026-06-30 — exact-output content store + verify:rehash --reissue are built but mechanically restricted to synthetic data (persistContent refuses non-synthetic; live entries forced content_persisted=false). Real-patient output persistence is deliberately deferred.
+  blocks: batch rehash over real-patient outputs
+  safety_class: degrades_safe (refuses non-synthetic)
+  invariant_exposure: patient-data minimisation; no-persistence-beyond-session
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: enable governed (consented, encrypted, retention-bound) content persistence ONLY after session-persistence-unenforced (Critical) + consent are green; keep the synthetic-only guard until then.
+  gap_register_link: none
   status: open
   last_scanned: 2026-06-30
 ```
@@ -372,7 +389,7 @@ Then the curated build order (gap-register Part D.11):
 
 Cross-cutting / decide under plan:
 
-- `receipt-store-append-only-unbuilt` (**High**), `session-persistence-unenforced` (**Critical**), `context-graph-orphan` + `patient-knowledge-graph-orphan` (wire or remove), `claudemd-behind-charter` + `derived-docs-unverified` (**Low**).
+- ~~`receipt-store-append-only-unbuilt`~~ **mock-resolved 2026-06-30** (R-17; production WORM + retention still to configure); `content-store-production-gated` (**Medium**, new — synthetic-only until persistence Critical); `session-persistence-unenforced` (**Critical**), `context-graph-orphan` + `patient-knowledge-graph-orphan` (wire or remove), `claudemd-behind-charter` + `derived-docs-unverified` (**Low**).
 
 ---
 

@@ -10,6 +10,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { runPipeline } from "./pipeline.js";
 import { validateReport } from "./report-schema.js";
+import { recordRun } from "./audit-store.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERIFICATION_DIR = join(__dirname);
@@ -44,6 +45,10 @@ async function main() {
 
   if (!existsSync(VERIFICATION_DIR)) mkdirSync(VERIFICATION_DIR, { recursive: true });
   writeFileSync(join(VERIFICATION_DIR, "report.json"), JSON.stringify(report, null, 2));
+
+  // Append the run to the append-only medicolegal ledger (and, for synthetic
+  // data, the content store). This is the durable, tamper-evident audit trail.
+  recordRun(result);
 
   const evidenceTree = buildEvidenceTreeMd(result);
   writeFileSync(join(VERIFICATION_DIR, "evidence_tree.md"), evidenceTree);

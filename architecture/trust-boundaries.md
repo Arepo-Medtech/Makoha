@@ -19,4 +19,6 @@ The briefing repeatedly calls for “firewalls” between probabilistic generati
 
 ### Boundary 5: Auditability
 - Every critical decision point must produce EvidenceNodes tying the decision to receipts/citations.
+- Every verification run is recorded to the **append-only, hash-chained medicolegal ledger** (`medicolegal-audit-ledger`, `verification/audit-store.js` → `.heydoc-data/audit-ledger.jsonl`): `candidate_output_hash` (SHA-256) + run/trunk metadata + pass gate + per-check booleans + receipt metadata. The ledger carries **no PHI**; tamper-evidence is the hash-chain (`verifyChain()`), and `verify:rehash` re-verifies stored outputs.
+- **Patient-data split:** the exact output text lives only in a separately-governed, content-addressed store that is **synthetic-only** until session-bound persistence + consent are enforced (Boundary 4). `persistContent()` mechanically refuses non-synthetic output.
 

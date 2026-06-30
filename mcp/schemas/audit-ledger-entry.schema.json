@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/audit-ledger-entry.schema.json",
+  "title": "AuditLedgerEntry",
+  "description": "One record in the append-only, hash-chained medicolegal audit ledger (the registered internal component `medicolegal-audit-ledger`). Persisted one-per-line to .heydoc-data/audit-ledger.jsonl by both report writers (verification/run.js, integration/trunk-pipeline.js). CRITICAL DATA RULE: this record carries NO patient-identifiable information — no facts, no demographics, no candidate output text. It holds only audit anchors: the SHA-256 candidate_output_hash, run/trunk/session metadata, the pass gate, per-check results, and receipt METADATA (request_id/upstream/mode/timestamp only — never payloads). The exact output text lives in the separately-governed, synthetic-only content store, content-addressed by candidate_output_hash. Tamper-evidence: entry_hash chains over this record's canonical content plus prev_hash, so any insertion, edit, or reorder breaks the chain (verifyChain()).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "entry_id",
+    "recorded_at_utc",
+    "prev_hash",
+    "entry_hash",
+    "run_id",
+    "candidate_output_hash",
+    "pass",
+    "check_results",
+    "receipts",
+    "mode",
+    "content_persisted"
+  ],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic 0-based sequence number of this entry in the ledger. seq=0 is the genesis-linked first entry."
+    },
+    "entry_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Unique identifier for this ledger entry. Convention: 'ledger-<epoch-ms>-<random-7-chars>'."
+    },
+    "recorded_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of when this entry was appended to the ledger. Distinct from the verification run timestamp; this is the audit-write time."
+    },
+    "prev_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "entry_hash of the immediately preceding ledger entry, forming the append-only chain. The first entry (seq=0) uses the fixed genesis value sha256:0000…0000 (64 zeros)."
+    },
+    "entry_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 over the canonical JSON of this entry's content (all fields except entry_hash) concatenated with prev_hash. This is the chain link: recomputing it for every entry and checking prev_hash linkage detects any tampering, insertion, or reorder."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "The pipeline run_id this audit entry records. Joins to the VerificationReport.run_id and the per-run artifacts."
+    },
+    "trunk_id": {
+      "type": "string",
+      "enum": ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"],
+      "description": "Optional. The trunk whose output was verified, when known (present for runTrunkWithGrounding, absent for the standalone run.js)."
+    },
+    "session_ref": {
+      "type": "string",
+      "minLength": 6,
+      "description": "Optional. Encounter-scoped pseudonymous session reference — NEVER demographics or IHI. Enables joining all audit entries for one consultation without storing identity."
+    },
+    "candidate_output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "The medicolegal anchor: SHA-256 of the exact trunk output (from verify()). Also the content-store key — when content_persisted=true the output text is at .heydoc-data/content/<hex>.txt."
+    },
+    "pass": {
+      "type": "boolean",
+      "description": "The VerificationReport pass gate for this run."
+    },
+    "check_results": {
+      "type": "array",
+      "description": "Per-check pass/fail summary mirrored from the VerificationReport. No reasons/excerpts that could carry output content — passed booleans only.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check", "passed"],
+        "properties": {
+          "check": {
+            "type": "string",
+            "enum": [
+              "no_invented_codes",
+              "no_invented_guidelines",
+              "no_invented_operations",
+              "no_repo_invention",
+              "hard_stop_enforcement"
+            ]
+          },
+          "passed": { "type": "boolean" }
+        }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "description": "Receipt METADATA only — the proof that retrieval happened, never the retrieved content. Lets any past decision's receipts be retrieved by request_id.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id", "upstream", "mode"],
+        "properties": {
+          "request_id": { "type": "string", "minLength": 1 },
+          "upstream": { "type": "string", "minLength": 1 },
+          "mode": { "type": "string", "enum": ["live", "dry_run", "mock"] },
+          "timestamp_utc": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["live", "dry_run", "mock"],
+      "description": "Effective mode of the run that produced this entry. mock/staging entries are synthetic; live entries are real and must never have content_persisted=true until session-bound persistence + consent are enforced."
+    },
+    "content_persisted": {
+      "type": "boolean",
+      "description": "Whether the exact output text was written to the synthetic-only content store for this entry. MUST be false for any non-synthetic (live) output — the patient-data-minimisation guard. true is only valid for synthetic/mock+staging data."
+    }
+  }
+}
