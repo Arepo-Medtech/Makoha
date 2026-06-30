@@ -37,6 +37,7 @@ async function main() {
     missing_receipts: result.verification.missing_receipts,
     // Medicolegal anchor — required field; computed in verify().
     candidate_output_hash: result.verification.candidate_output_hash,
+    mock_receipt_flags: result.verification.mock_receipt_flags,
   };
 
   // Gate the audit record on its contract before persisting: a defective

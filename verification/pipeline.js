@@ -27,7 +27,9 @@ function retrievalStub(plan) {
   }
   if (plan.needs_live_calls?.length) {
     receipts.push({ kind: "live_data", request_id: "id-mock-ihi-1", upstream: "heydoc-mcp-identity-au" });
-    receipts.push({ kind: "live_data", request_id: "term-mock-1", upstream: "terminology" });
+    // Mock terminology receipt declares the code it validated (matches the mock
+    // terminology server's SNOMED concept), so legitimately-looked-up codes bind.
+    receipts.push({ kind: "live_data", request_id: "term-mock-1", upstream: "terminology", mode: "mock", validated_codes: ["279039003"] });
   }
   return receipts;
 }
@@ -80,14 +82,32 @@ export async function runPipeline(options = {}) {
   const packet = contextInjection(plan, receipts);
 
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
-  const terminologyReceipts = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology"))).map((r) => r.request_id);
+  const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));
+  const terminologyReceipts = terminologyRaw.map((r) => r.request_id);
+  // Per-code binding evidence: each terminology receipt's validated codes + mode.
+  const terminology = terminologyRaw.map((r) => ({
+    request_id: r.request_id,
+    codes: r.validated_codes || (r.receipt && r.receipt.validated_codes) || [],
+    mode: (r.receipt && r.receipt.mode) || r.mode || "mock",
+  }));
   const liveReceipts = receipts.filter((r) => r.kind === "live_data").map((r) => r.request_id);
+
+  // Effective run mode + per-receipt modes, so the verifier can flag mock receipts
+  // (and block them in a non-mock context). Mock by default per HEYDOC_MODE_DEFAULT.
+  const context_mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  const receipt_modes = receipts.map((r) => ({
+    id: r.request_id || r.citation_id || r.ref,
+    mode: (r.receipt && r.receipt.mode) || r.mode || context_mode,
+  }));
 
   const verification = verify(candidate_output, {
     citations,
     terminology_receipts: terminologyReceipts,
+    terminology,
     live_receipts: liveReceipts,
     hard_stop_receipt: undefined,
+    context_mode,
+    receipt_modes,
   });
 
   return {

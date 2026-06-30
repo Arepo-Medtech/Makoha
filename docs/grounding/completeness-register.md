@@ -123,17 +123,34 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: verifier-weak-code-detection
-  path: verification/verifier.js (CODE_PATTERNS, lines 19-24; receipt binding lines 62-63)
+  path: verification/{verifier.js,pipeline.js,retrieval-mcp.js}, test/contract-verifier.js
   component_type: verifier
-  state: PARTIAL
-  evidence: CODE_PATTERNS match `ICD11` only — system pins ICD-10-AM; a present terminology receipt lets ALL code-like text pass (no code↔receipt binding); bare codes without the literal word "code" can slip.
-  blocks: robustness of no-invented-codes check
-  safety_class: can_emit_fabrication
-  invariant_exposure: no-fabricated-codes (SNOMED/ICD-10-AM/LOINC/PBS)
+  state: COMPLETE
+  evidence: RESOLVED 2026-06-30 — CODE_PATTERNS now span SNOMED/ICD-10-AM/ICD-11/LOINC/PBS with false-positive guards; true per-code binding for SNOMED/ICD-10-AM/LOINC (each token must appear in a terminology receipt's validated_codes; ICD-11/PBS coarse, documented); mock-mode flagging (flag in mock, block in non-mock context). Fixed a pre-existing terminology-receipt upstream-naming bug on the MCP path. Covered by test/contract-verifier.js; trunk:stub:all 9/9 on stub + live MCP.
+  blocks: (cleared)
+  safety_class: degrades_safe (ungroundable codes now blocked)
+  invariant_exposure: no-fabricated-codes — now bound per code
   risk: High
   blocks_patient_facing: true
-  build_action: extend patterns to ICD-10-AM/LOINC/PBS shapes; bind each detected code to a specific terminology receipt; add SNOMED bare-code heuristics; cover with tests.
-  gap_register_link: pending-promotion
+  build_action: DONE — see evidence. Exact ICD-11/PBS token binding remains future work, bounded by terminology-contract-incomplete + aucdi-r3-valueset-binding-unbuilt.
+  gap_register_link: R-19
+  status: resolved
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: terminology-contract-incomplete
+  path: mcp/schemas/terminology-lookup.schema.json, mcp/servers/terminology/index.js
+  component_type: schema
+  state: PARTIAL
+  evidence: OPENED 2026-06-30 — terminology `system` enum is ["SNOMED_CT","ICD_11"] only; the no-fabricated-codes invariant + standards_pins require SNOMED CT, ICD-10-AM, LOINC, PBS. So ICD-10-AM/LOINC/PBS codes cannot be grounded and are blocked by the hardened verifier (fail-safe). ICD-10-AM-vs-ICD_11 is also a pin divergence.
+  blocks: grounding (and therefore emission) of ICD-10-AM, LOINC, PBS codes
+  safety_class: degrades_safe (ungroundable codes blocked)
+  invariant_exposure: no-fabricated-codes (3 of 4 mandated systems ungroundable)
+  risk: High
+  blocks_patient_facing: true
+  build_action: extend terminology contract + server to ICD-10-AM (reconcile vs ICD_11), LOINC, PBS; then enable per-code binding for those systems. Feeds aucdi-r3-valueset-binding-unbuilt.
+  gap_register_link: R-20
   status: open
   last_scanned: 2026-06-30
 ```

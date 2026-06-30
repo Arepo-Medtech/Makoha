@@ -25,10 +25,45 @@ const passed = (out, evidence, checkName) => {
   return r && r.passed === true;
 };
 
-// 1. no_invented_codes — SNOMED/ICD code without a terminology receipt.
+// 1. no_invented_codes — codes across SNOMED/ICD-10-AM/ICD-11/LOINC/PBS need a receipt.
 check("codes: clean output passes", passed("Triage only, no codes.", {}, "no_invented_codes"));
 check("codes: code-like text without receipt fails", failed("SNOMED CT code: 22298006 assigned.", {}, "no_invented_codes"));
-check("codes: terminology receipt flips to pass", passed("SNOMED CT code: 22298006 assigned.", { terminology_receipts: ["term-1"] }, "no_invented_codes"));
+// true per-code binding: a receipt that validated THIS code flips it to pass
+const term = (codes) => ({ terminology: [{ request_id: "t1", codes, mode: "mock" }] });
+check("codes: matching validated code binds (pass)", passed("SNOMED CT code: 22298006 assigned.", term(["22298006"]), "no_invented_codes"));
+check("codes: receipt for a DIFFERENT code does not bind (fail)", failed("SNOMED CT code: 22298006 assigned.", term(["999999"]), "no_invented_codes"));
+check("codes: ICD-10-AM dotted binds when validated (pass)", passed("Diagnosis M54.5 documented.", term(["M54.5"]), "no_invented_codes"));
+check("codes: LOINC binds when validated (pass)", passed("Result for 2160-0 pending.", term(["2160-0"]), "no_invented_codes"));
+check("codes: ICD-11 coarse passes with a terminology receipt present", passed("ICD-11 code ME84.0 assigned.", { terminology_receipts: ["t1"] }, "no_invented_codes"));
+// per-system detection (each fails without a receipt)
+check("codes: bare SNOMED concept id fails", failed("Concept 22298006 noted.", {}, "no_invented_codes"));
+check("codes: ICD-10-AM dotted fails", failed("Diagnosis M54.5 documented.", {}, "no_invented_codes"));
+check("codes: ICD-11 (context) fails", failed("ICD-11 code ME84.0 assigned.", {}, "no_invented_codes"));
+check("codes: LOINC dash-check fails", failed("Result for 2160-0 pending.", {}, "no_invented_codes"));
+check("codes: PBS (context) fails", failed("PBS item 2622B supplied.", {}, "no_invented_codes"));
+// false-positive GUARDS (no code → must PASS without a receipt)
+check("codes FP: vitamin B12 passes", passed("Patient takes vitamin B12 daily.", {}, "no_invented_codes"));
+check("codes FP: vitals number passes", passed("Blood pressure was 120 over 80.", {}, "no_invented_codes"));
+check("codes FP: citation date passes", passed("Citation cw-au:imaging-lbp:2024-01 applies.", {}, "no_invented_codes"));
+check("codes FP: weeks ago passes", passed("Seen 2 weeks ago, no red flags.", {}, "no_invented_codes"));
+
+// Mock-mode flagging + non-mock blocking.
+{
+  // mock context (default): mock receipt is flagged but still grounds.
+  const mockEv = { terminology: [{ request_id: "t-mock", codes: ["22298006"], mode: "mock" }] };
+  const vMock = verify("SNOMED 22298006 noted.", mockEv);
+  check("mock: receipt flagged", Array.isArray(vMock.mock_receipt_flags) && vMock.mock_receipt_flags.includes("t-mock"));
+  check("mock: code still binds (pass) in mock context", vMock.results.find((r) => r.check === "no_invented_codes").passed === true);
+
+  // non-mock context: a mock-only receipt does NOT ground -> code blocked.
+  const liveCtx = { ...mockEv, context_mode: "live", receipt_modes: [{ id: "t-mock", mode: "mock" }] };
+  const vLive = verify("SNOMED 22298006 noted.", liveCtx);
+  check("non-mock: mock-only code is blocked", vLive.results.find((r) => r.check === "no_invented_codes").passed === false);
+
+  // non-mock context with a LIVE receipt grounds normally.
+  const liveOk = { terminology: [{ request_id: "t-live", codes: ["22298006"], mode: "live" }], context_mode: "live", receipt_modes: [{ id: "t-live", mode: "live" }] };
+  check("non-mock: live receipt grounds (pass)", verify("SNOMED 22298006 noted.", liveOk).results.find((r) => r.check === "no_invented_codes").passed === true);
+}
 
 // 2. no_invented_guidelines — guideline claim without a docs citation.
 check("guidelines: clean output passes", passed("We discuss options with the patient.", {}, "no_invented_guidelines"));

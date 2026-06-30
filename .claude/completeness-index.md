@@ -3,7 +3,7 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (Phase 0 full scan; + hashing build, audit-ledger build, verifier tests — hashing-unimplemented & verifier-untested resolved; receipt-store mock-resolved; content-store-production-gated opened).
+Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests, verifier hardening). Resolved: hashing-unimplemented, verifier-untested, verifier-weak-code-detection. Opened: content-store-production-gated, terminology-contract-incomplete, FHIR/AUCDI items. receipt-store mock-resolved.
 
 ## Critical
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · UNBUILT · Critical · pf:true
@@ -12,7 +12,7 @@ Last synced: 2026-06-30 (Phase 0 full scan; + hashing build, audit-ledger build,
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
 
 ## High
-- verifier-weak-code-detection · verification/verifier.js CODE_PATTERNS · PARTIAL · High · pf:true
+- terminology-contract-incomplete · terminology schema/server (SNOMED+ICD_11 only) · PARTIAL · High · pf:true
 - receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
 
 ## Medium

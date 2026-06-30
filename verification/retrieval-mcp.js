@@ -121,12 +121,25 @@ async function retrieveTerminology(plan) {
     const payload = JSON.parse(content);
     const receipt = payload.receipt;
     if (!receipt) return [];
+    // Capture the code(s) this lookup validated so the verifier can bind output
+    // codes to the receipt that actually returned them.
+    const concept = payload.response && payload.response.concept;
+    const candidates = (payload.response && payload.response.candidates) || [];
+    const validated_codes = [
+      ...(concept && concept.code ? [concept.code] : []),
+      ...candidates.map((c) => c.code).filter(Boolean),
+    ];
     return [
       {
         kind: "live_data",
+        // Logical source for pipeline routing/filtering — the vendor name lives in
+        // receipt.upstream (e.g. "stub", "NCTS-AU"). The pipeline identifies a
+        // terminology receipt by this field, so keep it stable as "terminology".
+        upstream: "terminology",
         request_id: receipt.request_id,
-        upstream: receipt.upstream || "terminology",
-        receipt: { request_id: receipt.request_id, timestamp_utc: receipt.timestamp_utc, upstream: receipt.upstream, mode: receipt.mode },
+        validated_codes,
+        mode: receipt.mode,
+        receipt: { request_id: receipt.request_id, timestamp_utc: receipt.timestamp_utc, upstream: receipt.upstream, mode: receipt.mode, validated_codes },
       },
     ];
   } finally {

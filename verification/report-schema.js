@@ -61,6 +61,7 @@ export const VerificationReportSchema = z
     trunk_id: z.enum(["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"]).optional(),
     session_ref: z.string().min(6).optional(),
     overall_severity: z.enum(["critical", "fail", "warning", "pass"]).optional(),
+    mock_receipt_flags: z.array(z.string()).optional(),
     hard_stops: z.array(z.string().min(5)).optional(),
     candidate_output_excerpt: z.string().max(500).optional(),
     packet_summary: z

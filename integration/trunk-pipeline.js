@@ -64,6 +64,7 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
       missing_receipts: result.verification.missing_receipts,
       // Medicolegal anchor — required field; computed in verify().
       candidate_output_hash: result.verification.candidate_output_hash,
+      mock_receipt_flags: result.verification.mock_receipt_flags,
     },
     packet: result.packet,
     verification: result.verification,

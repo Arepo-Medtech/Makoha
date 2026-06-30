@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Verifier hardening — code detection + binding + mock-mode (2026-06-30)
+
+**Status:** Complete. Branch `chore/import-and-remediate`. Resolves `verifier-weak-code-detection` / gap-register **R-19**; opens `terminology-contract-incomplete` / **R-20** (High).
+
+The `no_invented_codes` check was weak: it matched ICD-11 only (not the pinned ICD-10-AM), let any terminology receipt clear all codes, and never flagged mock receipts.
+
+### Changes
+- `verification/verifier.js`: detection across SNOMED CT / ICD-10-AM / ICD-11 / LOINC / PBS with false-positive guards (dotted/dash-check/labelled forms always flagged; bare ICD/PBS context-gated so "vitamin B12", vitals, and YYYY-MM dates don't trip). **True per-code↔receipt binding** for SNOMED/ICD-10-AM/LOINC (each token must be in a receipt's validated_codes; ICD-11/PBS coarse, documented). **Mock-mode flagging**: mock receipts listed in `mock_receipt_flags`; in a non-mock `context_mode` they no longer ground (block).
+- `verification/pipeline.js`: threads validated codes + per-receipt modes + context_mode into evidence; mock terminology receipt declares its validated code.
+- `verification/retrieval-mcp.js`: captures `validated_codes` from the live lookup; **fixes a pre-existing bug** where the terminology receipt's outer `upstream` was the vendor name, so the pipeline never recognised it (binding silently failed on the MCP path).
+- `mcp/schemas/verification-report.schema.json` + `report-schema.js` + both writers: optional `mock_receipt_flags`.
+- `test/contract-verifier.js`: per-system detection, FP guards, binding (match/mismatch), mock flag + non-mock block.
+
+### Register movement
+- `verifier-weak-code-detection`: High, PARTIAL → **COMPLETE/resolved** (R-19).
+- **Opened** `terminology-contract-incomplete` (High, R-20): terminology grounds only SNOMED + ICD-11; ICD-10-AM/LOINC/PBS ungroundable → hardened verifier blocks them (fail-safe). Feeds the AUCDI R3 value-set binding item.
+
+### Verification
+- `npm test` 6/6; `trunk:stub:all` 9/9 on both stub and live (HEYDOC_USE_MCP=1) paths.
+
+---
+
 ## Standards registration — FHIR R4 / AUCDI R3 grounding scoped (2026-06-30)
 
 **Status:** Registered (not built). Operator request to ground HL7 FHIR R4 + AUCDI Release 3.
