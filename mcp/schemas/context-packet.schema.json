@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/context-packet.schema.json",
+  "title": "ContextPacket",
+  "description": "The bounded context bundle assembled in pipeline Step 3 (Context Injection) and injected into each trunk agent's system context. This is the ONLY information a trunk LLM is permitted to use — it must not draw on parametric memory for any clinical claim, code, guideline, or operational fact. The packet is produced by contextInjection() in verification/pipeline.js from the GroundingPlan's retrieval output, then passed to trunk-pipeline.js which overrides constraints[] with trunk-specific rules before the LLM call. The VerificationReport (File 5) references this packet's run_id and evidence to confirm every claim in the trunk's output is grounded here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "facts",
+    "evidence",
+    "constraints",
+    "receipts"
+  ],
+  "properties": {
+
+    "facts": {
+      "type": "array",
+      "description": "Sanitised clinical facts the trunk may use. Drawn from FHIR resource pulls (fhir-broker), patient-reported history (PatientKnowledgeGraph), and curated datasets (knowledge MCP). CRITICAL RULE: raw numeric lab values must NOT appear here unless they have been through the deterministic investigation parser — the LLM must never see a bare 'Troponin I = 250 ng/L' because it will hallucinate on it. Sanitised form: 'Troponin I elevated (critical threshold exceeded) — see receipt fhir-XXXXX'. Trunk 1.0–4.0 typically receive demographic + symptom + history facts. Trunk 6.0 receives sanitised investigation summaries. Trunk 8.0 receives medication intent facts only.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "category", "label", "value"],
+        "properties": {
+          "fact_id": {
+            "type": "string",
+            "description": "Unique identifier for this fact within the packet. Convention: 'fact-<zero-padded-seq>', e.g. 'fact-001'. Referenced by evidence_node_id to link facts to their EvidenceNodes.",
+            "examples": ["fact-001", "fact-012", "fact-045"]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "demographic",
+              "symptom",
+              "past_history",
+              "medication",
+              "allergy",
+              "vital_sign",
+              "lab_result",
+              "risk_score",
+              "family_history",
+              "social_history",
+              "clinical_assessment",
+              "care_plan",
+              "investigation",
+              "immunisation",
+              "procedure",
+              "routing_signal",
+              "pertinent_negative"
+            ],
+            "description": "Clinical category of this fact. Determines how trunks interpret and cite it. 'routing_signal': a non-clinical fact that affects pipeline routing (e.g. 'patient unable to self-transport'). 'pertinent_negative': a deliberately documented absence (e.g. 'no jaw radiation reported'). Maps to Digital Tablet resource sections: demographic→Patient, symptom→Condition._freetext_HPC_tags, vital_sign→Observation.vital_signs_full_map, lab_result→Observation.pathology_map, risk_score→Observation.functional_social_scores, social_history→SDOH_Observations.full_SDOH_field_map, clinical_assessment→ClinicalImpression._freetext_reasoning_tags."
+          },
+          "fhir_path": {
+            "type": "string",
+            "description": "Optional. Dot-notation path into the Digital Tablet (digital_tablet_omnibus.json) that this fact was drawn from. Enables the scorer to cross-reference the AI Doctor's output against the synthetic patient record. Use the same path convention as EvidenceNode.fhir_path.",
+            "examples": [
+              "Patient.birthDate",
+              "Patient.gender.value",
+              "Condition._freetext_HPC_tags.onset",
+              "Condition._freetext_HPC_tags.site_radiation",
+              "Observation.vital_signs_full_map.BP_systolic",
+              "Observation.pathology_map.Troponin_I",
+              "Observation.functional_social_scores.HEART_score",
+              "MedicationRequest.medicationCode.example_AMT_SNOMED.Metformin_500mg_tab",
+              "AllergyIntolerance.NKA_NKDACodes.NKDA",
+              "SDOH_Observations.full_SDOH_field_map.smoking_status",
+              "ClinicalImpression._freetext_reasoning_tags.risk_stratification",
+              "RiskAssessment.risk_tools_full_map.HEART_score"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Human-readable label for this fact. Used by the trunk LLM to identify the fact in its output. Should be the FHIR display name or LOINC display name where available.",
+            "examples": [
+              "Systolic blood pressure",
+              "Onset of symptoms",
+              "Current medications",
+              "Troponin I (sanitised status)",
+              "Smoking status",
+              "HEART score",
+              "No known drug allergy (NKDA)"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The sanitised fact value as a string. For numeric observations, this MUST be a sanitised interpretation string, not a raw number, unless the trunk is explicitly authorised to receive raw values (only Trunk 6.0 investigation interpreter, and only after deterministic parser). Examples of correct sanitisation: 'elevated (critical)' not '250 ng/L'; 'Stage 3a CKD' not 'eGFR 42'; 'controlled' not 'HbA1c 7.1%'. For coded values, include the display term.",
+            "examples": [
+              "148 mm[Hg]",
+              "2 weeks, gradual onset",
+              "Metformin 500mg BD (regular adherence)",
+              "elevated (critical threshold) — see receipt fhir-1719014400000-b4d8e1f",
+              "Ex-smoker, quit 2015",
+              "HEART score 6 (high risk)",
+              "No known drug allergy"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "description": "Optional. UCUM unit string for numeric facts. Include only when the value is numeric and the unit is clinically meaningful for the trunk's task. Omit for categorical or free-text values.",
+            "examples": ["mm[Hg]", "mmol/L", "g/L", "mL/min/1.73m2", "%", "kg", "cm", "{score}", "ng/L"]
+          },
+          "interpretation": {
+            "type": "string",
+            "enum": ["N", "H", "L", "HH", "LL", "A", "AA", "U"],
+            "description": "Optional. HL7 observation interpretation code. N=Normal, H=High, L=Low, HH=Critical high, LL=Critical low, A=Abnormal, AA=Critical abnormal, U=Unknown. Only populate for Observation facts (vital signs, lab results). Omit for non-numeric categories."
+          },
+          "snomed_code": {
+            "type": "string",
+            "description": "Optional. SNOMED CT concept code if this fact maps to a coded clinical concept. Must correspond to a terminology lookup receipt referenced in the linked EvidenceNode. Do not populate without a receipt — the verifier will reject it.",
+            "examples": ["271649006", "279039007", "44054006", "59621000"]
+          },
+          "receipt_id": {
+            "type": "string",
+            "description": "Optional but strongly recommended for all live-data facts. The request_id of the Receipt (receipt.schema.json) that sourced this fact. Must also appear in receipts[] at the packet level. When present, the verifier can trace this fact directly to its proof artifact.",
+            "examples": [
+              "fhir-1719014400000-b4d8e1f",
+              "term-1719014400000-a3f7b2c",
+              "ihi-1719014400002-c5e9f2g"
+            ]
+          },
+          "evidence_node_id": {
+            "type": "string",
+            "description": "Optional. The id of the EvidenceNode in evidence[] that grounds this fact. Creates a direct link between the fact and its proof chain. Convention: 'ev-<creator>-<seq>' matching the EvidenceNode.id.",
+            "examples": ["ev-trunk3-001", "ev-mcp-terminology-042", "ev-trunk6-003"]
+          },
+          "sanitised_by": {
+            "type": "string",
+            "description": "Optional. For lab_result and investigation facts: identifies which component sanitised the raw value before it entered this packet. Mandatory for any lab_result fact where the raw value could mislead the LLM. If absent for a lab_result, the verifier should flag it.",
+            "enum": [
+              "mcp-fhir-broker-parser",
+              "deterministic-investigation-parser",
+              "clinical-case-builder",
+              "trunk-pipeline-sanitiser",
+              "not-applicable"
+            ]
+          }
+        }
+      }
+    },
+
+    "evidence": {
+      "type": "array",
+      "description": "Array of EvidenceNode objects providing proof for the injected facts and claims. The trunk LLM must cite only from this array — every claim in its output that relates to a guideline, code, or operational fact must reference an EvidenceNode.id from here. The verifier checks that every EvidenceNode in this array has at least one supports[] entry resolving to a real artifact. EvidenceNode schema defined in evidence-node.schema.json (File 2).",
+      "items": {
+        "$ref": "evidence-node.schema.json"
+      },
+      "minItems": 0
+    },
+
+    "constraints": {
+      "type": "array",
+      "description": "Trunk-specific hard constraints injected as negative instructions into the LLM system context. Populated from TRUNK_CONSTRAINTS in trunk-pipeline.js, or from GroundingPlan.constraints if that overrides. The trunk MUST NOT violate any constraint — constraint violations are caught by the verifier's pattern checks (no_invented_codes, no_invented_guidelines, no_invented_operations, no_repo_invention, hard_stop_enforcement). All trunks share the first two constraints; trunks 1–4 add role-scope constraints; trunks 5–9 add domain-specific constraints.",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "examples": [
+        ["no diagnosis", "no dosages", "triage only"],
+        ["no diagnosis", "no dosages", "history enrichment only"],
+        ["no diagnosis", "no dosages", "Axis B rule-out per template"],
+        ["no diagnosis", "no dosages", "investigation interpretation only", "LOINC-derived"],
+        ["no diagnosis", "no dosages", "code lock-in requires terminology receipt", "benign registry gating"],
+        ["no diagnosis", "no dosages", "no autonomous prescribing", "pharmacology firewall HARD_FAIL blocks"],
+        ["no diagnosis", "no dosages", "red-flag questionnaires keyed by SNOMED"]
+      ]
+    },
+
+    "receipts": {
+      "type": "array",
+      "description": "All Receipt objects collected during pipeline Step 2 (Retrieval). These are the raw proof artifacts. The verifier in Step 5 checks that every EvidenceNode.supports[] ref with kind='live_data_receipt' has a corresponding receipt here with matching request_id. Static doc refs (citation_ids) are validated against the docs index, not this array. Receipt schema defined in receipt.schema.json (File 1).",
+      "items": {
+        "$ref": "receipt.schema.json"
+      },
+      "minItems": 0
+    },
+
+    "trunk_id": {
+      "type": "string",
+      "enum": ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"],
+      "description": "Optional. The trunk this packet is destined for. When present, trunk-specific validation rules apply: Trunk 8.0 packets must contain a pharm_check_receipt; Trunk 6.0 packets must have at least one investigation fact with sanitised_by set; Trunk 7.0 packets must have at least one SNOMED terminology receipt in receipts[]."
+    },
+
+    "session_ref": {
+      "type": "string",
+      "minLength": 6,
+      "description": "Optional. The encounter/session ID this packet belongs to. Matches ContextGraph.encounter_id and GroundingPlan.session_ref. When present, receipts[] items should carry this as their correlation_id.",
+      "examples": ["enc-20260623-001", "enc-stub-001"]
+    },
+
+    "run_id": {
+      "type": "string",
+      "description": "Optional. The pipeline run ID from runPipeline(). Format: 'run-<epoch-ms>-<random-7-chars>'. Propagated into VerificationReport.run_id for end-to-end tracing.",
+      "examples": ["run-1719014400000-a3f7b2c"]
+    },
+
+    "assembled_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional. ISO 8601 UTC timestamp of when the packet was assembled in Step 3. Useful for latency analysis and for verifying that receipts were not stale at assembly time."
+    },
+
+    "mode": {
+      "type": "string",
+      "enum": ["live", "dry_run", "mock"],
+      "description": "Optional. The effective operating mode of this packet, derived from the mode of the receipts[] it contains. If any receipt is mode='live', packet mode is 'live'. If all are 'mock', packet mode is 'mock'. Used by the verifier to decide whether to enforce the 'no mock receipts in production' rule.",
+      "default": "mock"
+    },
+
+    "grounding_plan_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. A compact summary of the GroundingPlan that produced this packet, for audit trail completeness without re-embedding the full plan.",
+      "properties": {
+        "static_docs_retrieved": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Topics from needs_static_docs that were successfully retrieved and have citation_ids in evidence[]."
+        },
+        "live_calls_made": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Service names from needs_live_calls for which receipts were collected."
+        },
+        "structured_kg_queried": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Dataset names from needs_structured_kg that were queried."
+        },
+        "retrieval_gaps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Items from the GroundingPlan that were requested but not retrieved (timeout, not-found, stub fallback). These are the missing-receipt candidates the verifier will flag."
+        }
+      }
+    },
+
+    "pharm_check_receipt": {
+      "type": "object",
+      "description": "Optional. Present only in Trunk 8.0 packets. The Receipt from the pharm.check MCP tool call. When present, its request_id must also appear in receipts[]. The trunk output MUST reference this receipt's request_id in any pharmacology-related EvidenceNode. A HARD_FAIL in the associated PharmCheck object must be surfaced in the trunk output and blocks continuation.",
+      "$ref": "receipt.schema.json"
+    },
+
+    "blocked": {
+      "type": "boolean",
+      "description": "Optional. When true, the packet signals that the trunk must NOT generate output — a hard prerequisite for safe generation was not met. Set by the assembly layer when: a required live call returned HARD_FAIL, a required receipt is missing and priority='urgent', or the IHI lookup failed in a production context. When blocked=true, the trunk should return only a block reason, never a clinical output.",
+      "default": false
+    },
+
+    "block_reasons": {
+      "type": "array",
+      "description": "Required when blocked=true. Human-readable list of why generation is blocked. Each entry should identify the missing artifact or HARD_FAIL that caused the block.",
+      "items": {
+        "type": "string",
+        "minLength": 5
+      },
+      "examples": [
+        ["pharm.check returned HARD_FAIL: aspirin contraindicated — documented NSAID allergy"],
+        ["IHI lookup failed — patient identity not verified; cannot proceed in live mode"],
+        ["Required terminology receipt missing for Trunk 7.0 code lock-in"]
+      ]
+    }
+
+  },
+
+  "_integration_notes": {
+    "current_code_shape": "contextInjection() in verification/pipeline.js returns { facts: [], evidence: [], constraints: [], receipts: [] }. This schema formalises that exact shape as the required minimum. All additional fields are optional. trunk-pipeline.js overwrites constraints[] with TRUNK_CONSTRAINTS[trunkId] after contextInjection() returns — this schema accommodates that override by not restricting the constraints content.",
+    "backwards_compatibility": "The four required fields (facts, evidence, constraints, receipts) exactly match the current contextInjection() return value. The existing stub returns empty arrays for facts, which is valid. Existing evidence stub objects (id, claim, supports, provenance) are valid against evidence-node.schema.json.",
+    "facts_sanitisation_rule": "lab_result facts MUST have sanitised_by set to a non-'not-applicable' value. The raw numeric value must never reach the trunk LLM context. This is the primary guard against LLM hallucination on investigation results.",
+    "verification_chain": "Every EvidenceNode in evidence[] with kind='live_data_receipt' needs a matching receipt in receipts[]. The verifier in verification/verifier.js checks this. Missing receipts are listed in VerificationReport.missing_receipts (see File 5).",
+    "consumed_by": [
+      "All 9 trunk agents via runTrunkWithGrounding() in integration/trunk-pipeline.js",
+      "verification/verifier.js — evidence[] and receipts[] are the proof inputs to verify()",
+      "verification/run.js — packet is returned in pipeline output and written to report.json"
+    ],
+    "digital_tablet_ref": "facts[].fhir_path dot-notation maps to digital_tablet_omnibus.json schema structure. When building Wave 6 synthetic cases, the case builder populates fhir_path to link each fact to the patient record field it came from.",
+    "schema_refs": {
+      "evidence_items": "evidence-node.schema.json (File 2) — $ref for evidence[] items",
+      "receipts_items": "receipt.schema.json (File 1) — $ref for receipts[] items and pharm_check_receipt",
+      "produced_from": "grounding-plan.schema.json (File 3) — GroundingPlan.needs_* arrays determine packet contents",
+      "verified_by": "verification-report.schema.json (File 5) — VerificationReport checks this packet's evidence against trunk output"
+    }
+  }
+}

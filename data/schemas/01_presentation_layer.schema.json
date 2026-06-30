@@ -1,0 +1,571 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/data/presentation_layer.schema.json",
+  "title": "PresentationLayer",
+  "description": "PRESENTATION STORE — the patient record data the AI Doctor is permitted to see. Structured around the Digital Tablet (digital_tablet_omnibus.json) FHIR R4 schema but expressed in natural patient language and deliberately incomplete relative to ground truth. Three principles govern what appears here: (1) NO diagnostic spoilers — no SNOMED diagnosis codes, no confirmed diagnosis labels, no ClinicalImpression assessment, no risk stratification scores; (2) PATIENT VOICE — all symptom descriptions are in the patient's own words, not clinical terminology; (3) SELECTIVE DISCLOSURE — what the patient volunteers versus what must be elicited is controlled entirely by the companion conversational_policy file, not by what appears here. The gap between this file and the ground_truth_node is what makes the evaluation non-trivial.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "demographics",
+    "opening_complaint",
+    "history_as_reported"
+  ],
+  "properties": {
+
+    "case_id": {
+      "type": "string",
+      "pattern": "^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$",
+      "description": "Back-reference to the parent case envelope. Must match CaseEnvelope.case_id exactly."
+    },
+
+    "demographics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["age", "sex_at_birth"],
+      "description": "Patient demographic data. Maps to Digital Tablet Part A — Patient resource. IHI, Medicare number, and MRN are present for identity but redacted from AI Doctor context in production (accessed only via identity-au MCP server receipt). All other demographic fields are visible to the AI Doctor. fhir_resource: Patient. au_core_profile: http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient",
+      "properties": {
+
+        "age": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 110,
+          "description": "Patient age in years at time of encounter. Maps to Patient.birthDate (derived). Clinically significant — age directly affects differential probability and pharmacology safety (paediatric/geriatric thresholds).",
+          "examples": [25, 58, 72, 4, 17]
+        },
+
+        "sex_at_birth": {
+          "type": "string",
+          "enum": ["male", "female", "intersex"],
+          "description": "Biological sex at birth. Maps to Patient.gender (FHIR R4) and SNOMED 248153007|Male| / 248152002|Female|. Clinically relevant for risk stratification (CVD risk models differ by sex), pharmacokinetics, and screening recommendations. Distinct from gender_identity."
+        },
+
+        "gender_identity": {
+          "type": "string",
+          "description": "Optional. Patient's gender identity. Maps to Patient.extension[gender-identity] (AU extension). Only populate when clinically relevant to the case (e.g. gender-affirming care context, hormone therapy). SNOMED 446151000124109|Identifies as male| / 446141000124107|Identifies as female| / 33791000087105|Non-binary|.",
+          "examples": ["male", "female", "non-binary", "transgender_female", "transgender_male"]
+        },
+
+        "pregnancy_status": {
+          "type": "string",
+          "enum": ["not_pregnant", "pregnant", "unknown_possible", "postpartum", "not_applicable"],
+          "description": "Optional. Maps to Patient.extension or SDOH context. 'unknown_possible' is the realistic default for adult females of reproductive age who have not volunteered this information — triggers pregnancy_check in pharm-check. 'not_applicable' for males, post-menopausal females, and pre-pubertal patients."
+        },
+
+        "occupation": {
+          "type": "string",
+          "description": "Optional. Current occupation. Maps to Patient SDOH Observation (SNOMED 159100006, LOINC 11341-5). Be specific — occupational exposures, shift work, manual labour, and healthcare worker status are diagnostically relevant. 'unemployed', 'retired', and 'student' are valid values.",
+          "examples": [
+            "primary school teacher",
+            "underground miner",
+            "registered nurse",
+            "retired accountant",
+            "university student",
+            "construction labourer"
+          ]
+        },
+
+        "living_situation": {
+          "type": "string",
+          "description": "Optional. Housing and cohabitation context. Maps to Patient SDOH (SNOMED 365508006, LOINC 71802-3). Affects safety-netting feasibility — 'lives alone, no next of kin nearby' changes the escalation threshold. 'residential care' flags geriatric complexity.",
+          "examples": [
+            "lives with partner and two children",
+            "lives alone",
+            "residential aged care",
+            "supported accommodation",
+            "homeless or unstable housing"
+          ]
+        },
+
+        "geographic_context": {
+          "type": "string",
+          "enum": ["RA1_major_city", "RA2_inner_regional", "RA3_outer_regional", "RA4_remote", "RA5_very_remote"],
+          "description": "Optional. ARIA remoteness classification. Maps to Patient.extension[remoteness-area] (AU extension). Maps to Digital Tablet Patient.extensions.ARIA_remoteness codes RA1-RA5. Critically affects safety-netting — 'go to ED now' has vastly different urgency implications for RA4/RA5 patients (3+ hour travel time) versus RA1. WA context: significant proportion of population is RA3-RA5."
+        },
+
+        "language_and_literacy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional. Language and health literacy context. Maps to Patient.communication (language system urn:ietf:bcp:47) and Patient.extension[interpreter-required] (AU extension, SNOMED 315244000|Interpreter not required| / 315045002|Interpreter required|).",
+          "properties": {
+            "primary_language": {
+              "type": "string",
+              "description": "Patient's primary language. BCP-47 language code or common name. Maps to Patient.communication.language_code.",
+              "examples": ["en", "zh", "ar", "vi", "it", "el", "English", "Mandarin"]
+            },
+            "english_proficiency": {
+              "type": "string",
+              "enum": ["fluent", "conversational", "limited", "interpreter_required"],
+              "description": "English communication proficiency. 'interpreter_required' cases should test whether the AI Doctor flags interpreter need and adapts communication accordingly. Maps to Patient.extension[interpreter-required]."
+            },
+            "health_literacy_level": {
+              "type": "string",
+              "enum": ["low", "moderate", "high"],
+              "description": "Estimated health literacy level. Affects the vocabulary and complexity the patient uses in their opening complaint and subsequent responses. 'low' literacy patients describe symptoms in very lay terms; 'high' literacy patients may use some medical terminology."
+            }
+          }
+        },
+
+        "indigenous_status": {
+          "type": "string",
+          "enum": ["aboriginal", "torres_strait_islander", "both", "neither", "not_stated"],
+          "description": "Optional. Australian indigenous status. Maps to Patient.extension[indigenous-status] (AU extension) and NCTS CodeSystem australian-indigenous-status-1. SNOMED 32570681000036106|Non-Indigenous Australian|. Clinically relevant for targeted screening (rheumatic heart disease, T2DM, CKD higher prevalence), culturally appropriate care, and some Medicare items. Include only when clinically relevant to the case."
+        },
+
+        "contact_nok": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional. Next of kin or emergency contact. Maps to Patient.contact. Relevant to safety-netting (who to call, who brings them to ED) and substitute decision-making in capacity-affected cases.",
+          "properties": {
+            "relationship": {
+              "type": "string",
+              "description": "Relationship to patient. SNOMED: 127848009|Spouse|, 40683002|Parent|, 394856005|Family member|.",
+              "examples": ["spouse", "parent", "adult_child", "sibling", "carer", "friend"]
+            },
+            "available": {
+              "type": "boolean",
+              "description": "Whether NOK is contactable/present. Relevant for paediatric cases (parent available?) and incapacity scenarios."
+            }
+          }
+        }
+
+      }
+    },
+
+    "opening_complaint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verbatim_patient_text"],
+      "description": "The ONLY information the AI Doctor receives at the start of the encounter. Maps to Condition._freetext_HPC_tags and Composition.section[HPC] (LOINC 10164-2). CRITICAL RULE: this text must be in natural patient language — no clinical terminology, no SNOMED codes, no diagnostic hints. Write it as the patient would actually type it, including colloquialisms, minimisation, catastrophising, or vagueness as appropriate for the communication_profile in this case.",
+      "properties": {
+
+        "verbatim_patient_text": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000,
+          "description": "Exactly what the patient types/says first. This is the seed of the entire encounter. The quality of the AI Doctor's history-taking determines how much additional information it can elicit beyond this opening. Maps to Composition.section[HPC] free text, LOINC 10164-2. Must not contain SNOMED codes, ICD codes, or clinical terminology the patient would not actually use.",
+          "examples": [
+            "Hi, I've had this indigestion feeling on and off since yesterday afternoon, kind of a burning in my chest. I tried some antacid but it's not really helping.",
+            "My back has been killing me for the past two weeks. It started after I helped my mate move house. Taking ibuprofen but it's not doing much.",
+            "I've been feeling really tired all the time for a few months now, even when I sleep a lot. My wife said I should get checked out.",
+            "I need a repeat script for my blood pressure tablet. The white one, I forget what it's called.",
+            "My 4-year-old has had a fever since yesterday and won't stop crying. Should I be worried?"
+          ]
+        },
+
+        "stated_reason_for_presenting_today": {
+          "type": "string",
+          "description": "Optional. Why today specifically — often diagnostically and behaviourally significant. Distinct from the chief complaint — this is the trigger for seeking care now. Maps to Encounter.reasonCode or Condition._freetext_HPC_tags context. 'My partner made me call', 'I can't sleep', 'It's getting worse' are examples that reveal health anxiety, social dynamics, and symptom trajectory.",
+          "examples": [
+            "My partner made me call",
+            "Can't make it to school tomorrow if this doesn't settle",
+            "It's been getting worse over the past 24 hours",
+            "I Googled my symptoms and got scared",
+            "Work won't let me back without a medical certificate"
+          ]
+        },
+
+        "encounter_type_patient_expectation": {
+          "type": "string",
+          "enum": ["seeking_diagnosis", "seeking_script", "seeking_certificate", "seeking_reassurance", "seeking_referral", "unclear"],
+          "description": "Optional. The patient's primary expectation from this encounter. Distinct from the clinical need — the AI Doctor should identify and address both. Maps to ClinicalImpression._freetext_reasoning_tags.ICE_expectations. Useful for scoring whether the AI Doctor addressed hidden agendas."
+        }
+
+      }
+    },
+
+    "history_as_reported": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "All historical clinical information as the patient would report it if asked correctly. DELIBERATELY INCOMPLETE relative to the ground_truth_node — patients commonly omit, minimise, misremember, or actively conceal relevant history. What appears here should reflect what the patient would volunteer or confirm in response to a general history-taking inquiry. Specific gated disclosures (things the patient only reveals when asked directly) live in conversational_policy. Maps to Digital Tablet Part A resources.",
+      "properties": {
+
+        "symptom_narrative": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The patient's account of their current symptoms in natural language. Maps to Condition._freetext_HPC_tags (HPC free-text tags). Each field here represents what the patient would volunteer unprompted or confirm on general questioning — not what requires targeted questioning (which is in conversational_policy). Timeline should be non-linear and vague as real patient recall.",
+          "properties": {
+            "onset": {
+              "type": "string",
+              "description": "When it started — in patient terms, not clinical terms. Maps to Condition._freetext_HPC_tags.onset. May be imprecise ('a few weeks ago', 'started last Tuesday I think').",
+              "examples": ["started yesterday afternoon", "been going on for about two weeks", "woke up with it this morning"]
+            },
+            "duration": {
+              "type": "string",
+              "description": "How long it has been present. Maps to Condition._freetext_HPC_tags.duration.",
+              "examples": ["since yesterday", "two weeks", "on and off for a few months"]
+            },
+            "character": {
+              "type": "string",
+              "description": "How the patient describes the quality of the symptom. Maps to Condition._freetext_HPC_tags.character. Use lay descriptors: 'burning', 'tight', 'dull ache', 'sharp'. Avoid clinical terms like 'pleuritic' or 'colicky' unless the patient would use them.",
+              "examples": ["burning", "tight feeling", "dull aching", "stabbing", "pressure-like"]
+            },
+            "severity_patient_description": {
+              "type": "string",
+              "description": "How bad the patient says it is. Maps to Condition._freetext_HPC_tags.severity_NRS. Can be NRS 0-10 if patient uses this, or lay description ('pretty bad', 'I can manage', 'worst pain of my life').",
+              "examples": ["about a 6 out of 10", "pretty uncomfortable but I can manage", "it's really bad"]
+            },
+            "location_as_patient_describes": {
+              "type": "string",
+              "description": "Anatomical location in patient language. Maps to Condition._freetext_HPC_tags.site_radiation and Condition.bodySite. Do NOT use anatomical terminology — 'my chest', 'my lower back', 'the front of my knee', not 'substernal' or 'lumbar'.",
+              "examples": ["in my chest", "my lower back, more on the right side", "behind my kneecap"]
+            },
+            "timing_pattern": {
+              "type": "string",
+              "description": "When it occurs — constant, comes and goes, worse at night, etc. Maps to Condition._freetext_HPC_tags.timing_pattern.",
+              "examples": ["comes and goes", "constant all day", "worse at night", "only when I walk upstairs"]
+            },
+            "what_makes_it_better": {
+              "type": "string",
+              "description": "Relieving factors the patient volunteers. Maps to Condition._freetext_HPC_tags.relieving_factors. Withheld or gated relieving factors (e.g. 'only resting makes it better' when exertional pattern is diagnostically critical) should be placed in conversational_policy instead.",
+              "examples": ["lying down helps", "paracetamol takes the edge off", "going to the toilet makes it better"]
+            },
+            "what_makes_it_worse": {
+              "type": "string",
+              "description": "Precipitating or aggravating factors the patient volunteers. Maps to Condition._freetext_HPC_tags.precipitating_factors. As with relieving factors, clinically critical aggravating patterns that require directed questioning belong in conversational_policy.",
+              "examples": ["eating makes it worse", "moving around", "bending forward"]
+            },
+            "associated_symptoms_volunteered": {
+              "type": "string",
+              "description": "Associated symptoms the patient offers unprompted. Maps to Condition._freetext_HPC_tags.associated_symptoms. Only include what the patient would mention without being asked. Gated associated symptoms (e.g. jaw pain, diaphoresis, dyspnoea that the patient only mentions when specifically asked) belong in conversational_policy.",
+              "examples": ["I've also been feeling a bit nauseous", "some headaches too", "no other symptoms I can think of"]
+            },
+            "previous_episodes": {
+              "type": "string",
+              "description": "History of similar symptoms in the past. Maps to Condition._freetext_HPC_tags.previous_episodes.",
+              "examples": ["had something similar last year but it went away on its own", "first time this has happened", "comes back every few months"]
+            },
+            "functional_impact": {
+              "type": "string",
+              "description": "How it is affecting daily life, work, sleep. Maps to Condition._freetext_HPC_tags.functional_impact.",
+              "examples": ["can't sleep properly", "had to take a day off work", "struggling to look after the kids"]
+            }
+          }
+        },
+
+        "past_medical_history": {
+          "type": "array",
+          "description": "Conditions the patient knows about and reports. Maps to Condition resources with clinicalStatus=active/inactive. CRITICAL: this reflects patient self-report, which may omit conditions they consider minor, don't know about, or prefer not to mention. Conditions they would only disclose if asked sensitively belong in conversational_policy. Do NOT include SNOMED codes here — those live in ground_truth_node. Condition names should be as the patient would state them ('diabetes tablets', not 'type 2 diabetes mellitus').",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["condition_as_patient_states"],
+            "properties": {
+              "condition_as_patient_states": {
+                "type": "string",
+                "description": "The condition name as the patient would state it — may be imprecise, colloquial, or use trade name thinking ('my blood pressure', 'the diabetes', 'something with my thyroid').",
+                "examples": ["type 2 diabetes, tablets only", "high blood pressure", "high cholesterol", "asthma", "had my appendix out years ago"]
+              },
+              "when_diagnosed": {
+                "type": "string",
+                "description": "Optional. Approximate timing as patient recalls.",
+                "examples": ["about 5 years ago", "since I was a teenager", "diagnosed after my last pregnancy"]
+              },
+              "how_managed": {
+                "type": "string",
+                "description": "Optional. How the patient reports managing it.",
+                "examples": ["tablets", "diet only", "injections", "just watching it"]
+              }
+            }
+          }
+        },
+
+        "current_medications_as_reported": {
+          "type": "array",
+          "description": "Medications as the patient knows and reports them. Maps to MedicationRequest resources. Patients commonly: use trade names not generics, misremember doses, forget PRN medications, omit OTC or herbal products, and under-report adherence issues. Maps to Digital Tablet MedicationRequest._freetext_medication_tags.adherence_assessment and herbal_OTC_disclosed. Do NOT include AMT SNOMED codes here — those are in ground_truth_node.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name_as_patient_states"],
+            "properties": {
+              "name_as_patient_states": {
+                "type": "string",
+                "description": "Medication name as the patient states it — trade name, class description, colour, or partial name all acceptable.",
+                "examples": ["metformin", "the white blood pressure tablet", "Nexium", "a cholesterol tablet", "the blue puffer"]
+              },
+              "dose_as_patient_reports": {
+                "type": "string",
+                "description": "Optional. Dose as patient recalls — often imprecise.",
+                "examples": ["twice a day", "one at night", "500mg I think", "as needed"]
+              },
+              "adherence_as_reported": {
+                "type": "string",
+                "enum": ["regular", "irregular", "recently_stopped", "not_taking", "unknown"],
+                "description": "Self-reported adherence. Maps to MedicationRequest._freetext_medication_tags.adherence_assessment. 'recently_stopped' is high-yield — e.g. patient stopped antihypertensives citing side effects."
+              },
+              "otc_or_herbal": {
+                "type": "boolean",
+                "description": "Optional. True if this is an over-the-counter or herbal/complementary medicine. Maps to MedicationRequest._freetext_medication_tags.herbal_OTC_disclosed. OTC/herbal medications are frequently omitted by patients unless specifically asked."
+              }
+            }
+          }
+        },
+
+        "allergies_as_reported": {
+          "type": "array",
+          "description": "Allergies and intolerances as the patient reports them. Maps to AllergyIntolerance resources. AllergyIntolerance.NKA_NKDACodes: include 'no known drug allergy' explicitly when confirmed absent — this has different clinical meaning to not mentioning allergies at all. Patients may over-report side effects as allergies (e.g. 'penicillin allergy' that was actually GI upset). verificationStatus in ground_truth_node may differ.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["substance"],
+            "properties": {
+              "substance": {
+                "type": "string",
+                "description": "Allergen as patient reports it. Use patient terminology — 'penicillin', 'aspirin', 'peanuts', 'no known allergies'.",
+                "examples": ["penicillin", "aspirin", "latex", "peanuts", "iodine contrast", "no known drug allergy", "no known allergies"]
+              },
+              "reaction_described": {
+                "type": "string",
+                "description": "Optional. How the patient describes the reaction — may reveal whether it is true allergy or side effect.",
+                "examples": ["rash and swelling", "upset stomach", "couldn't breathe", "just made me feel sick"]
+              },
+              "reaction_severity_patient_report": {
+                "type": "string",
+                "enum": ["mild", "moderate", "severe", "unknown"],
+                "description": "Optional. Patient's description of severity."
+              }
+            }
+          }
+        },
+
+        "family_history_as_reported": {
+          "type": "array",
+          "description": "Family history as the patient knows it. Maps to FamilyMemberHistory resources (SNOMED 160303001|FH: condition|). Patients typically know family history imprecisely — 'something with his heart', 'mum had cancer', 'diabetes runs in the family'. Specific genetic testing results or precise diagnoses that require directed questioning belong in conversational_policy. Maps to Digital Tablet FamilyMemberHistory._freetext_family_history_tags.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["narrative"],
+            "properties": {
+              "narrative": {
+                "type": "string",
+                "description": "Family history statement in patient terms. Maps to FamilyMemberHistory._freetext_family_history_tags.positive_FH.",
+                "examples": [
+                  "dad had heart trouble in his 60s",
+                  "mum has diabetes",
+                  "breast cancer in the family, not sure which side",
+                  "no family history of anything serious that I know of"
+                ]
+              }
+            }
+          }
+        },
+
+        "social_history_volunteered": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Social history as the patient volunteers without prompting. Maps to SDOH_Observations.full_SDOH_field_map. CRITICAL: only include what the patient would mention unprompted. Sensitive SDOH fields (substance use, domestic violence, financial insecurity, mental health history) that require sensitive directed questioning belong in conversational_policy, not here.",
+          "properties": {
+            "smoking_status": {
+              "type": "string",
+              "description": "Smoking history as volunteered. Maps to SDOH Observation SNOMED 229819007 / LOINC 72166-2. SNOMED codes: 8517006|Ex-smoker|, 77176002|Current smoker|, 266919005|Never smoked|.",
+              "examples": ["never smoked", "ex-smoker, quit 10 years ago", "smoke about 10 a day", "just social, very occasionally"]
+            },
+            "alcohol": {
+              "type": "string",
+              "description": "Alcohol use as volunteered. Maps to SDOH Observation SNOMED 160573003. Patients typically underestimate. Detailed AUDIT-C screen belongs in conversational_policy.",
+              "examples": ["social only, maybe a glass of wine on weekends", "don't drink", "a few beers most nights"]
+            },
+            "diet_and_exercise": {
+              "type": "string",
+              "description": "Diet and physical activity as described by patient. Maps to SDOH Observations physical_activity_mins_per_wk and diet_quality.",
+              "examples": ["not very active, desk job", "try to walk the dog most days", "pretty healthy diet I think"]
+            },
+            "relevant_life_context": {
+              "type": "string",
+              "description": "Optional. Any life circumstances the patient volunteers that are clinically relevant — work stress, recent bereavement, relationship change, financial stress. Maps to SDOH_Observations and CarePlan barriers_to_care.",
+              "examples": [
+                "been pretty stressed at work lately",
+                "just went through a divorce",
+                "my dad passed away recently"
+              ]
+            }
+          }
+        }
+
+      }
+    },
+
+    "psychosocial_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Psychosocial context that shapes the consultation dynamic and safety-netting calibration. This block informs how the simulated patient behaves and how the AI Doctor's communication should be scored. Not clinical history per se — it is the frame through which the patient presents their history. Maps to ClinicalImpression._freetext_reasoning_tags.ICE_ideas / ICE_concerns / ICE_expectations and SDOH_Observations fields.",
+      "properties": {
+
+        "health_anxiety_level": {
+          "type": "string",
+          "enum": ["low", "moderate", "high", "catastrophising"],
+          "description": "How worried the patient is about their health in general. Affects how symptoms are framed and how safety-netting advice must be pitched. 'low' (stoic, dismissive — needs firm safety-netting); 'catastrophising' (needs reassurance first, then grounding). Maps to SDOH and ClinicalImpression ICE_concerns."
+        },
+
+        "symptom_reporting_style": {
+          "type": "string",
+          "enum": ["minimises", "neutral", "amplifies"],
+          "description": "Whether the patient understates, accurately reports, or overstates symptoms. 'minimises': 'it's probably nothing' — their opening complaint undersells severity (common in stoic patients, some males, occupational culture). 'amplifies': describes symptoms in maximally alarming terms regardless of severity. Affects how opening_complaint and history_as_reported should be read."
+        },
+
+        "hidden_agenda": {
+          "type": "string",
+          "description": "Optional. What the patient actually wants from this encounter that they haven't stated outright. The AI Doctor should ideally identify and address this. Maps to ClinicalImpression._freetext_reasoning_tags.ICE_expectations. Score separately from clinical accuracy.",
+          "examples": [
+            "wants a work certificate to cover today's absence",
+            "wants reassurance this isn't cancer after a family member's recent diagnosis",
+            "hoping for a specific medication they have read about online",
+            "wants something to sleep — hasn't mentioned insomnia yet"
+          ]
+        },
+
+        "communication_style": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How the patient communicates in the chat interface.",
+          "properties": {
+            "verbosity": {
+              "type": "string",
+              "enum": ["sparse", "moderate", "verbose"],
+              "description": "How much the patient types per message. 'sparse' patients give minimal one-phrase answers — the AI Doctor must work harder to extract information. 'verbose' patients may bury relevant details in lengthy tangential messages."
+            },
+            "emotional_tone": {
+              "type": "string",
+              "enum": ["calm", "anxious", "irritable", "distressed", "flat"],
+              "description": "Predominant emotional tone in messages. Maps to FreeText_Taxonomy MSE affect. Affects how the AI Doctor should respond and the tone scoring."
+            },
+            "typical_message_style": {
+              "type": "string",
+              "description": "Optional. Descriptive note on the patient's typing style for the simulated patient engine.",
+              "examples": [
+                "types in short fragments, rarely uses punctuation",
+                "writes in complete paragraphs, includes background context",
+                "responds with yes/no, needs prompting for detail"
+              ]
+            }
+          }
+        },
+
+        "reluctance_topics": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional. Topics the patient will NOT raise unprompted and will minimise or deflect if asked indirectly. These MUST have corresponding entries in conversational_policy.disclosure_items with gate 'denied_unless_directly_and_sensitively_asked'. Maps to SDOH high-sensitivity fields: domestic_violence_SAFE, substance use, mental health history, sexual health.",
+          "examples": [
+            ["alcohol use", "mental health history"],
+            ["domestic violence", "recreational drug use"],
+            ["financial stress", "suicidal ideation"],
+            []
+          ]
+        },
+
+        "access_barriers": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional. Practical barriers to care that affect what management recommendations are realistic. Maps to CarePlan._freetext_careplan_tags.barriers_to_care and SDOH financial_insecurity, transport_access.",
+          "properties": {
+            "financial": {
+              "type": "string",
+              "description": "Financial barriers affecting medication access, specialist referral, or investigation uptake.",
+              "examples": [
+                "cannot afford specialist gap fees",
+                "no Medicare card — self-pay only",
+                "medication cost is a barrier"
+              ]
+            },
+            "transport": {
+              "type": "string",
+              "description": "Transport limitations. Critical for RA4/RA5 patients where 'go to ED' means significant travel.",
+              "examples": [
+                "no car, relies on family for transport",
+                "3 hours from nearest ED by road",
+                "no public transport in area"
+              ]
+            },
+            "other": {
+              "type": "string",
+              "description": "Other access barriers — carer responsibilities, work schedule, disability.",
+              "examples": [
+                "sole carer for three young children",
+                "can only attend after 5pm — shift worker",
+                "no one to watch the kids if hospitalised"
+              ]
+            }
+          }
+        }
+
+      }
+    },
+
+    "paediatric_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Populate only when age_band is neonate, infant, child, or adolescent. In paediatric cases the AI Doctor is usually talking to a parent or carer, not the patient. Maps to Digital Tablet FreeText_Taxonomy Paediatric_freetext_tags.",
+      "properties": {
+
+        "informant": {
+          "type": "string",
+          "enum": ["mother", "father", "guardian", "grandparent", "older_sibling", "patient_with_parent_present", "patient_alone"],
+          "description": "Who is providing the history. The AI Doctor must address the informant appropriately and not assume the patient can self-report. 'patient_alone' is only appropriate for adolescents — and may raise safeguarding questions depending on context."
+        },
+
+        "birth_history_relevant": {
+          "type": "boolean",
+          "description": "Whether birth history is clinically relevant to this case (prematurity, NICU admission, birth complications). Maps to Paediatric_freetext_tags.birth_history. If true, the AI Doctor should ask."
+        },
+
+        "developmental_concerns": {
+          "type": "string",
+          "description": "Optional. Any developmental or school concerns the parent volunteers. Maps to Paediatric_freetext_tags.developmental_milestones.",
+          "examples": ["been a bit behind with talking", "teacher has raised concerns about concentration", "no concerns"]
+        },
+
+        "immunisation_status": {
+          "type": "string",
+          "enum": ["up_to_date", "behind_schedule", "unknown_parent_unsure", "refused_by_parent"],
+          "description": "Optional. Immunisation status as reported by parent. Maps to Immunization.AIR_status and Paediatric_freetext_tags.NIP_immunisation_status."
+        }
+
+      }
+    },
+
+    "digital_tablet_field_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Maps key presentation layer fields to their Digital Tablet fhir_path locations. Used by the case builder and scorer to cross-reference this presentation against the patient record structure. Values are dot-notation paths into digital_tablet_omnibus.json.",
+      "properties": {
+        "chief_complaint_path": { "type": "string", "const": "Condition._freetext_HPC_tags", "description": "HPC free-text tags block path." },
+        "demographics_path": { "type": "string", "const": "Patient", "description": "Patient resource root path." },
+        "medications_path": { "type": "string", "const": "MedicationRequest", "description": "MedicationRequest resource root." },
+        "allergies_path": { "type": "string", "const": "AllergyIntolerance", "description": "AllergyIntolerance resource root." },
+        "social_history_path": { "type": "string", "const": "SDOH_Observations.full_SDOH_field_map", "description": "SDOH observation fields." },
+        "family_history_path": { "type": "string", "const": "FamilyMemberHistory._freetext_family_history_tags", "description": "FamilyMemberHistory free-text tags." }
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "three_principles": [
+      "1. NO diagnostic spoilers: no SNOMED diagnosis codes, no ICD codes, no ClinicalImpression, no confirmed diagnosis labels, no risk scores. These live in scoring-store nodes only.",
+      "2. PATIENT VOICE: all symptom descriptions in natural lay language. No clinical terminology in verbatim_patient_text or symptom_narrative fields.",
+      "3. SELECTIVE DISCLOSURE: what appears here is only what the patient volunteers unprompted or confirms on general questioning. What requires directed questioning lives in 02_conversational_policy.json."
+    ],
+    "gap_between_presentation_and_ground_truth": "The diagnostic challenge of the case is precisely the gap between history_as_reported here and primary_diagnosis in ground_truth_node. A complete, well-volunteered history with no selective disclosures = trivial case. A sparse, minimised, or misleadingly framed history where critical features are gated = difficult case.",
+    "digital_tablet_mapping": {
+      "Part_A_Patient": "demographics → Patient resource fields",
+      "Part_A_Condition": "symptom_narrative → Condition._freetext_HPC_tags fields",
+      "Part_A_MedicationRequest": "current_medications_as_reported → MedicationRequest fields",
+      "Part_A_AllergyIntolerance": "allergies_as_reported → AllergyIntolerance resource",
+      "Part_C_SDOH": "social_history_volunteered + access_barriers → SDOH_Observations.full_SDOH_field_map",
+      "Part_C_FreeText": "psychosocial_profile → ClinicalImpression._freetext_reasoning_tags.ICE_*",
+      "Part_B_Paediatric": "paediatric_context → FreeText_Taxonomy.Paediatric_freetext_tags"
+    },
+    "what_must_NOT_appear_here": [
+      "Condition.code SNOMED codes (reveals diagnosis answer)",
+      "Condition.verificationStatus = confirmed",
+      "ClinicalImpression assessment or differential",
+      "RiskAssessment prediction scores",
+      "DiagnosticReport results (unless the case specifically involves ordering tests)",
+      "Any ICD-10-AM codes",
+      "Ground truth drug SNOMED codes in AMT format",
+      "Safety-netting thresholds from safety_netting_node"
+    ],
+    "conversational_policy_ref": "02_conversational_policy.schema.json (File 10) — selective disclosures that are gated (must be elicited) rather than volunteered are defined there, not here. Every item in reluctance_topics must have a corresponding conversational_policy entry.",
+    "scoring_note": "The AI Doctor's score on history-taking quality is measured by how many gated disclosures in conversational_policy it successfully elicits through appropriate questioning. This presentation layer provides the starting information; the conversational policy controls what more the AI Doctor can learn."
+  }
+}

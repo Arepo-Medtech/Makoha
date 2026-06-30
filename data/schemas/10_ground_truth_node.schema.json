@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/data/ground_truth_node.schema.json",
+  "title": "GroundTruthNode",
+  "description": "SCORING STORE — access-controlled. The hidden clinical truth for one synthetic patient case. Never exposed to the AI Doctor under evaluation. Contains: the primary diagnosis with full terminology coding, comorbidities, the gold-standard differential progression stage-by-stage, red flag catalogue with disclosure cross-references, clinical reasoning pitfalls this case is designed to test, and the diagnostic confidence level appropriate for a telehealth chat assessment. The scoring harness checks the AI Doctor's diagnostic output against this node. A pass on VerificationReport does not mean clinical correctness — that is assessed here. Maps primarily to Digital Tablet Part A Condition, Part C ClinicalImpression, and Part C RiskAssessment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "node_type",
+    "primary_diagnosis",
+    "differential_progression",
+    "red_flags",
+    "pathophysiology_summary"
+  ],
+  "properties": {
+
+    "case_id": {
+      "type": "string",
+      "pattern": "^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$",
+      "description": "Back-reference to parent case envelope. Matches CaseEnvelope.case_id."
+    },
+
+    "node_type": {
+      "type": "string",
+      "const": "ground_truth",
+      "description": "Fixed identifier for this node type. Used by the scoring harness to verify it has the correct node."
+    },
+
+    "primary_diagnosis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "snomed_code", "snomed_display", "icd10am_code", "certainty_achievable_via_telehealth"],
+      "description": "The primary diagnosis — the correct answer for this case. Maps to Digital Tablet Part A Condition resource with verificationStatus='confirmed'. The certainty_achievable_via_telehealth field is critical: it defines what diagnostic certainty is clinically appropriate from a chat consultation alone, and prevents scoring the AI Doctor down for appropriate uncertainty.",
+      "properties": {
+
+        "name": {
+          "type": "string",
+          "description": "Full clinical diagnosis name. Should match the SNOMED preferred term or ICD-10-AM rubric name.",
+          "examples": [
+            "Non-ST-elevation myocardial infarction (NSTEMI)",
+            "Type 2 diabetes mellitus with peripheral neuropathy",
+            "Community-acquired pneumonia",
+            "Major depressive episode, moderate severity",
+            "Acute appendicitis"
+          ]
+        },
+
+        "snomed_code": {
+          "type": "string",
+          "description": "SNOMED CT Australian Edition concept code. Must be valid in SNOMED CT Australian Edition 20240301. Validate via NCTS Ontoserver. Maps to Condition.code.system=http://snomed.info/sct. See Digital Tablet Condition.code.example_SNOMED for common codes.",
+          "examples": ["57054005", "44054006", "233604007", "35489007", "85919009"]
+        },
+
+        "snomed_display": {
+          "type": "string",
+          "description": "SNOMED CT preferred term as returned by the terminology server for snomed_code.",
+          "examples": [
+            "Acute myocardial infarction",
+            "Type 2 diabetes mellitus",
+            "Pneumonia",
+            "Major depressive disorder, single episode"
+          ]
+        },
+
+        "icd10am_code": {
+          "type": "string",
+          "description": "ICD-10-AM (Australian Modification, 12th Edition) code. Used for clinical coding and reporting. Maps to Condition.code.system=http://hl7.org/fhir/sid/icd-10. Format: letter followed by digits and optional decimal.",
+          "pattern": "^[A-Z][0-9]{2}(\\.[0-9]+)?$",
+          "examples": ["I21.4", "E11.9", "J18.9", "F32.1", "K35.9"]
+        },
+
+        "certainty_achievable_via_telehealth": {
+          "type": "string",
+          "enum": [
+            "confirmed_gold_standard",
+            "clinical_diagnosis_confirmed",
+            "presumptive_pending_workup",
+            "cannot_diagnose_remotely"
+          ],
+          "description": "What level of diagnostic certainty is clinically appropriate from a telehealth chat consultation alone. This calibrates the scoring — the AI Doctor must not be penalised for appropriate uncertainty, and must not be rewarded for false certainty. confirmed_gold_standard: a specific definitive test result would confirm this — e.g. positive COVID PCR, clear fracture on X-ray; telehealth can reach this if investigation result is provided. clinical_diagnosis_confirmed: classic presentation diagnosable on history alone without investigations — e.g. uncomplicated UTI in young woman with typical symptoms, tension headache. presumptive_pending_workup: the correct clinical action is to treat this as the likely diagnosis while arranging confirmatory investigation — most ACS, PE, sepsis presentations. cannot_diagnose_remotely: telehealth cannot safely reach a diagnosis — the correct action is in-person assessment; AI Doctor that produces a confident diagnosis in these cases should be marked down."
+        },
+
+        "verificationStatus_fhir": {
+          "type": "string",
+          "enum": ["confirmed", "provisional", "differential", "refuted"],
+          "description": "Optional. FHIR Condition.verificationStatus value for this diagnosis in the context of this case. Maps to Digital Tablet Condition.verificationStatus. 'provisional': the AI Doctor should reach this level as a minimum. 'confirmed': appropriate only for clinical_diagnosis_confirmed certainty cases via telehealth.",
+          "default": "provisional"
+        },
+
+        "primary_fhir_path": {
+          "type": "string",
+          "const": "Condition.code",
+          "description": "Digital Tablet path for the primary diagnosis code. Const — always Condition.code."
+        }
+
+      }
+    },
+
+    "comorbidities": {
+      "type": "array",
+      "description": "Optional. Comorbid or contributing conditions relevant to this case. Maps to additional Condition resources in the patient record. Multi-morbidity is the norm in real clinical practice — including comorbidities tests whether the AI Doctor treats the whole patient rather than pattern-matching one diagnosis and stopping.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "snomed_code", "relationship_to_primary"],
+        "properties": {
+          "name": { "type": "string" },
+          "snomed_code": {
+            "type": "string",
+            "description": "SNOMED CT code. See Digital Tablet Condition.code.example_SNOMED for common codes."
+          },
+          "snomed_display": { "type": "string" },
+          "icd10am_code": {
+            "type": "string",
+            "pattern": "^[A-Z][0-9]{2}(\\.[0-9]+)?$"
+          },
+          "relationship_to_primary": {
+            "type": "string",
+            "enum": [
+              "causative",
+              "exacerbating",
+              "confounding_mimic",
+              "incidental_but_relevant_to_management",
+              "complication_of_primary"
+            ],
+            "description": "How this comorbidity relates to the primary diagnosis. causative: this condition directly causes or substantially contributes to the primary (e.g. T2DM causing autonomic neuropathy masking ACS). exacerbating: worsens the primary but not the root cause. confounding_mimic: produces overlapping symptoms that make the differential harder (e.g. GORD mimicking ACS). incidental_but_relevant_to_management: doesn't affect the primary but must be considered in management (e.g. CKD affecting drug choice). complication_of_primary: downstream consequence of the primary condition."
+          },
+          "clinically_significant_for_scoring": {
+            "type": "boolean",
+            "description": "Optional. True if the AI Doctor should identify and address this comorbidity as part of the management plan — i.e., it affects drug choice, investigations, or follow-up. False for truly incidental findings."
+          }
+        }
+      }
+    },
+
+    "pathophysiology_summary": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Internal clinical reasoning explanation for case builders and reviewers. Not used in AI Doctor scoring directly — it is the clinical rationale that justifies the ground truth. Should explain why this case has the primary diagnosis, why the presentation is the way it is (including atypical features), and how comorbidities affect the picture. Maps to ClinicalImpression._freetext_reasoning_tags.clinical_reasoning_chain.",
+      "examples": [
+        "Diabetic autonomic neuropathy blunts classic ischaemic chest pain, producing atypical epigastric presentation. Plaque rupture with partial coronary occlusion causing demand-supply mismatch on exertion, relieved by rest. High CVD risk from T2DM + hypercholesterolaemia + ex-smoker + family history.",
+        "Uncomplicated lower UTI in a young woman — classic AECB triad (dysuria, frequency, urgency) without systemic features. Trimethoprim appropriate first-line per eTG 2023 given low local resistance rates. No upper tract signs (no loin pain, no fever) so pyelonephritis excluded clinically."
+      ]
+    },
+
+    "differential_progression": {
+      "type": "array",
+      "minItems": 2,
+      "description": "The gold-standard differential diagnosis list as it SHOULD evolve through the consultation, stage by stage. This is the primary artifact for scoring the quality of the AI Doctor's diagnostic reasoning over time — not just the final answer, but whether the differential evolves appropriately as information is gathered. Must include at least after_opening_complaint and final stages. Maps to ClinicalImpression.finding and ClinicalImpression._freetext_reasoning_tags.differential_diagnoses_ranked.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "differential"],
+        "properties": {
+
+          "stage": {
+            "type": "string",
+            "enum": [
+              "after_opening_complaint",
+              "after_focused_history",
+              "after_red_flag_screen",
+              "after_investigation_request",
+              "final"
+            ],
+            "description": "Consultation stage this differential applies to. after_opening_complaint: what the differential should be after reading verbatim_patient_text only — before any AI Doctor questioning. after_focused_history: after systematic history-taking including HPC sub-tags. after_red_flag_screen: after explicit red flag questioning and disclosure item elicitation. after_investigation_request: after the AI Doctor recommends an investigation and receives the result (if applicable). final: the definitive differential at the end of this telehealth consultation."
+          },
+
+          "differential": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Ordered list of diagnoses at this stage, from most to least likely. The ordering represents the expected clinical reasoning at this stage of information gathering.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["diagnosis", "snomed_code", "position", "should_be_considered"],
+              "properties": {
+
+                "diagnosis": {
+                  "type": "string",
+                  "description": "Diagnosis name — must match names used elsewhere in this node and in symptom_links_node for consistency.",
+                  "examples": ["NSTEMI/ACS", "GORD", "Musculoskeletal chest pain", "Panic disorder", "PE"]
+                },
+
+                "snomed_code": {
+                  "type": "string",
+                  "description": "SNOMED CT code for this differential diagnosis. Enables coded differential tracking. See Digital Tablet Condition.code.example_SNOMED."
+                },
+
+                "position": {
+                  "type": "string",
+                  "enum": [
+                    "leading",
+                    "close_second",
+                    "reasonable_alternative",
+                    "important_not_to_miss",
+                    "excluded"
+                  ],
+                  "description": "Position on the differential at this stage. leading: most likely diagnosis at this stage. close_second: a serious contender that should not be dismissed. reasonable_alternative: plausible but less likely. important_not_to_miss: low prior probability but high harm if missed — must be actively excluded even if not leading. excluded: has been explicitly and correctly ruled out based on information available at this stage — include to score correct exclusion reasoning."
+                },
+
+                "should_be_considered": {
+                  "type": "boolean",
+                  "description": "Whether a competent AI Doctor should include this diagnosis in its differential at this stage. false = this diagnosis has been correctly excluded by this stage and including it would indicate over-inclusive reasoning."
+                },
+
+                "evidence_basis": {
+                  "type": "string",
+                  "description": "Optional. Why this diagnosis is at this position — the clinical reasoning. For human reviewer validation and scoring rubric clarity.",
+                  "examples": [
+                    "Leading: exertional pattern, jaw radiation, diaphoresis all elicited — classic ACS constellation in diabetic patient",
+                    "Important_not_to_miss: PE cannot be excluded on history alone at this stage — Wells score pending",
+                    "Excluded: antacid partial response, no systemic features, exertional pattern argues strongly against GORD"
+                  ]
+                },
+
+                "disclosure_items_that_change_position": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Optional. Disclosure item IDs (DI-XXX) from conversational_policy that, when elicited, would move this diagnosis up or down the differential. Used by the scoring harness to show that eliciting certain items correctly changes the differential — connecting history-taking quality to diagnostic reasoning quality.",
+                  "examples": [
+                    ["DI-001", "DI-004"],
+                    ["DI-002", "DI-003"]
+                  ]
+                }
+
+              }
+            }
+          },
+
+          "scoring_note": {
+            "type": "string",
+            "description": "Optional. What this stage is specifically designed to test in AI Doctor differential reasoning. Used for human review and for generating per-stage feedback in evaluation reports.",
+            "examples": [
+              "AI Doctor should not accept patient's indigestion self-diagnosis — GORD should be leading but ACS must be listed important_not_to_miss even at this early stage",
+              "After jaw radiation and exertional pattern elicited, ACS should now be leading and GORD substantially downgraded — failure to shift differential is anchoring bias",
+              "With full red flag constellation present, the only correct final differential is ACS requiring emergency escalation regardless of certainty level"
+            ]
+          }
+
+        }
+      }
+    },
+
+    "red_flags": {
+      "type": "array",
+      "description": "Explicit catalogue of red flag features relevant to this case. Covers both present and absent red flags — absent red flags are as important as present ones because they test avoidance of over-escalation. Each item links to the conversational_policy disclosure item that gates its elicitation. Maps to ClinicalImpression._freetext_reasoning_tags.red_flags_assessed.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["red_flag_id", "description", "status", "clinical_significance"],
+        "properties": {
+
+          "red_flag_id": {
+            "type": "string",
+            "pattern": "^RF-[0-9]{3}$",
+            "description": "Unique identifier. Convention: RF-001, RF-002. Referenced by safety_netting_node.escalation_edges.",
+            "examples": ["RF-001", "RF-002"]
+          },
+
+          "description": {
+            "type": "string",
+            "description": "Clinical description of the red flag feature. Should match the trigger_sign_or_symptom phrasing in safety_netting_node.escalation_edges where applicable.",
+            "examples": [
+              "Chest discomfort radiating to jaw on exertion",
+              "Exertional onset with rest relief — anginal pattern",
+              "Diaphoresis during chest pain episode",
+              "Unexplained weight loss >5kg in 3 months",
+              "Haematochezia with change in bowel habit"
+            ]
+          },
+
+          "status": {
+            "type": "string",
+            "enum": [
+              "present_and_disclosed",
+              "present_and_gated",
+              "present_and_non_disclosable",
+              "absent_screened_negative",
+              "absent_not_asked"
+            ],
+            "description": "Whether this red flag is present and how it relates to the presentation layer. present_and_disclosed: appears in presentation_layer.history_as_reported — already visible to AI Doctor without questioning. present_and_gated: present in ground truth but behind a disclosure gate in conversational_policy — must be elicited. present_and_non_disclosable: present but cannot be obtained via chat (e.g. requires physical examination). absent_screened_negative: not present in this case, but should be asked about to establish a safety baseline — tests that AI Doctor screens for important negatives. absent_not_asked: not present and not expected to be screened for in this case."
+          },
+
+          "disclosure_item_ref": {
+            "type": "string",
+            "pattern": "^DI-[0-9]{3}$",
+            "description": "Required when status='present_and_gated'. The DI-XXX item_id in conversational_policy that gates this red flag's disclosure. Creates the traceability chain: red flag → disclosure gate → escalation edge.",
+            "examples": ["DI-001", "DI-002"]
+          },
+
+          "clinical_significance": {
+            "type": "string",
+            "description": "Why this red flag matters clinically — what it implies for diagnosis and escalation. Used by the scoring harness to generate meaningful feedback.",
+            "examples": [
+              "High specificity for cardiac ischaemia — radiation to jaw or arm significantly raises ACS probability",
+              "Anginal pattern (exertional onset, rest relief) distinguishes ACS from GORD — key discriminating feature",
+              "Diaphoresis during chest pain is autonomic activation consistent with significant myocardial ischaemia"
+            ]
+          },
+
+          "if_missed_consequence": {
+            "type": "string",
+            "description": "Optional. What happens if the AI Doctor fails to identify this red flag — the patient harm scenario. Used to justify critical scoring weight.",
+            "examples": [
+              "Patient discharged with GORD diagnosis; ACS untreated; deteriorates at home",
+              "No emergency escalation recommended; patient self-transports and arrests en route"
+            ]
+          },
+
+          "safety_netting_edge_ref": {
+            "type": "string",
+            "description": "Optional. The ESC-XXX edge_id in safety_netting_node that this red flag maps to — linking the red flag to the escalation tier it triggers.",
+            "examples": ["ESC-001", "ESC-002"]
+          }
+
+        }
+      }
+    },
+
+    "diagnostic_reasoning_pitfalls": {
+      "type": "array",
+      "description": "Optional. Named cognitive biases or reasoning errors this case is specifically designed to elicit and test. Self-documents the evaluation set — enables reporting on which failure modes an AI Doctor demonstrates across a case set. Use established clinical decision-making terminology.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pitfall_name", "description"],
+        "properties": {
+          "pitfall_name": {
+            "type": "string",
+            "description": "Named cognitive bias or reasoning error.",
+            "examples": [
+              "Anchoring bias",
+              "Premature closure",
+              "Availability bias",
+              "Commission bias",
+              "Search satisficing",
+              "Framing effect",
+              "Visceral bias",
+              "Overconfidence"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "How this pitfall manifests specifically in this case.",
+            "examples": [
+              "Patient frames symptoms as 'indigestion' — AI Doctor may anchor on this self-diagnosis and not consider ACS",
+              "AI Doctor reaches GORD as diagnosis early and stops history-taking before eliciting radiation and exertional pattern",
+              "Availability bias toward GORD given frequency — ACS in a 58-year-old woman presenting as indigestion is systematically under-recognised",
+              "Female sex + diabetic neuropathy → atypical ACS presentation; failing to adjust pre-test probability for atypical presentations in these groups"
+            ]
+          }
+        }
+      }
+    },
+
+    "risk_scores": {
+      "type": "array",
+      "description": "Optional. Validated clinical risk scores relevant to this case's diagnosis and management. Maps to Digital Tablet RiskAssessment resource and Observation.functional_social_scores. Populated from the 49 risk tools in Digital Tablet RiskAssessment.risk_tools_full_map. Used to score whether the AI Doctor applies appropriate risk stratification tools.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool_name", "expected_score_or_tier", "clinical_implication"],
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "description": "Risk assessment tool name. Should match an entry in Digital Tablet RiskAssessment.risk_tools_full_map.",
+            "examples": [
+              "HEART_score",
+              "Wells_PE",
+              "CURB65_pneumonia",
+              "PHQ9_depression",
+              "Columbia_SSRS",
+              "AUDIT_C_alcohol",
+              "CHADS2VASC_AF",
+              "CVD_5yr_absolute",
+              "qSOFA_sepsis"
+            ]
+          },
+          "expected_score_or_tier": {
+            "type": "string",
+            "description": "What score or tier is expected for this patient given ground truth clinical facts. May be a numeric value, a tier label, or a range.",
+            "examples": [
+              "HEART score ≥7 (high risk) — H=2, E=1, A=2, R=1, T=1 minimum before troponin",
+              "Wells PE score 2 (low probability) — but PERC not fully met so cannot rule out",
+              "CURB-65 score 1 (low severity) — age <65, BUN normal, BP normal, confusion absent, RR normal",
+              "PHQ-9 score 15-19 (moderately severe depression)"
+            ]
+          },
+          "clinical_implication": {
+            "type": "string",
+            "description": "What this score means for management in this case.",
+            "examples": [
+              "HEART ≥7 → high-risk ACS; immediate ED referral + serial troponin; do not observe in GP or telehealth",
+              "Low-risk Wells PE + elevated D-dimer → CTPA required; do not treat empirically",
+              "Low severity CAP → community treatment appropriate; IV antibiotics and hospital not required"
+            ]
+          },
+          "digital_tablet_path": {
+            "type": "string",
+            "description": "Optional. Digital Tablet path for this risk score. Maps to Observation.functional_social_scores.<tool_name>.",
+            "examples": [
+              "Observation.functional_social_scores.HEART_score",
+              "Observation.functional_social_scores.Wells_PE",
+              "Observation.functional_social_scores.PHQ9"
+            ]
+          }
+        }
+      }
+    },
+
+    "telehealth_limits_for_this_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. What cannot be determined via telehealth chat for this specific case, and what the AI Doctor should therefore recommend. Tests appropriate recognition of the limits of remote assessment — a failure mode that is equally important to diagnose.",
+      "properties": {
+        "cannot_determine_via_chat": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Clinical findings that are relevant to this case but cannot be established via chat alone.",
+          "examples": [
+            ["ECG — needed for ACS confirmation and STEMI exclusion", "Troponin — cannot exclude NSTEMI without serial troponins", "Physical examination — BP, heart sounds, signs of cardiac failure"]
+          ]
+        },
+        "correct_escalation_action": {
+          "type": "string",
+          "description": "What the AI Doctor should recommend given these telehealth limits. Connects to safety_netting_node baseline_safety_net_advice.",
+          "examples": [
+            "Emergency ambulance (000) — do not self-transport given cardiac event risk",
+            "Urgent in-person GP review today — examination and ECG needed",
+            "Next available GP appointment — condition stable, not urgent"
+          ]
+        },
+        "premature_diagnosis_risk": {
+          "type": "string",
+          "description": "Optional. The specific harm that results if the AI Doctor diagnoses definitively without appropriate in-person referral.",
+          "examples": [
+            "Diagnosing GORD and prescribing PPI without ruling out ACS risks fatal untreated myocardial infarction",
+            "Diagnosing anxiety without ruling out PE risks fatal undiagnosed pulmonary embolism"
+          ]
+        }
+      }
+    },
+
+    "clinician_review_notes": {
+      "type": "string",
+      "description": "Optional. Free-text notes from the human clinician reviewer. Captures nuances that don't fit the structured fields — unusual features of this case, edge cases in the differential, known controversies in management, or reasons the scoring rubric should be applied with particular care. Maps to ClinicalImpression notes.",
+      "examples": [
+        "Note: some guidelines list aspirin 300mg as conditional on confirmed ACS — acceptable alternative in scoring rubric is to recommend aspirin AND acknowledge uncertainty. Do not penalise for 'wait for ED assessment' approach.",
+        "This case deliberately uses a 58-year-old female — ensure scoring considers that atypical ACS in women is a known systematic under-recognition pattern."
+      ]
+    },
+
+    "guidelines_referenced": {
+      "type": "array",
+      "description": "Optional. Australian clinical guidelines used to establish the ground truth for this case. Matches the guideline_references in case_metadata.provenance. Specific edition pinning is important — management recommendations change with guideline updates.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reference", "relevant_recommendation"],
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Full guideline citation including edition/year.",
+            "examples": [
+              "NHFA/CSANZ: Acute Coronary Syndrome Guidelines 2016 (amended 2022)",
+              "Therapeutic Guidelines: Cardiovascular 2024",
+              "RACGP: Red Book 10th Edition 2024"
+            ]
+          },
+          "relevant_recommendation": {
+            "type": "string",
+            "description": "The specific recommendation from this guideline that informs the ground truth.",
+            "examples": [
+              "All patients with suspected ACS should receive aspirin 300mg immediately unless contraindicated (NHFA/CSANZ 2022, Section 4.2)",
+              "Routine imaging is not recommended for non-specific low back pain without red flags (Choosing Wisely AU)"
+            ]
+          }
+        }
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "access_control": "SCORING STORE. This file must NEVER be accessible to the AI Doctor during evaluation. Only the scoring harness reads it. Placing this file in the same queryable store as presentation_layer would invalidate the evaluation.",
+    "digital_tablet_mappings": {
+      "primary_diagnosis": "Condition.code (SNOMED) + Condition.verificationStatus",
+      "comorbidities": "Additional Condition resources in patient record",
+      "pathophysiology": "ClinicalImpression._freetext_reasoning_tags.clinical_reasoning_chain",
+      "differential": "ClinicalImpression._freetext_reasoning_tags.differential_diagnoses_ranked + ClinicalImpression.finding",
+      "red_flags": "ClinicalImpression._freetext_reasoning_tags.red_flags_assessed",
+      "risk_scores": "RiskAssessment.risk_tools_full_map + Observation.functional_social_scores",
+      "reasoning_pitfalls": "ClinicalImpression._freetext_reasoning_tags.uncertainty_qualifier (for scoring)"
+    },
+    "cross_references": {
+      "conversational_policy": "red_flags[].disclosure_item_ref matches conversational_policy.disclosure_items[].item_id",
+      "symptom_links_node": "differential[].diagnosis names must match symptom_links_node.symptoms[].diagnostic_weight_edges[].diagnosis",
+      "management_plan_node": "primary_diagnosis.snomed_code matches management_plan_node indication SNOMED",
+      "safety_netting_node": "red_flags[].safety_netting_edge_ref matches safety_netting_node.escalation_edges[].edge_id; telehealth_limits_for_this_case.correct_escalation_action matches baseline_safety_net_advice"
+    },
+    "scoring_use": {
+      "diagnostic_accuracy": "AI Doctor's stated primary diagnosis compared against primary_diagnosis.snomed_code",
+      "differential_quality": "AI Doctor's differential at each stage compared against differential_progression[stage].differential",
+      "red_flag_elicitation": "Each is_red_flag=true disclosure_item_ref elicited or missed, weighted by scoring_weight in conversational_policy",
+      "reasoning_quality": "Whether AI Doctor avoids diagnostic_reasoning_pitfalls",
+      "uncertainty_calibration": "Whether AI Doctor's stated certainty matches certainty_achievable_via_telehealth",
+      "telehealth_limit_recognition": "Whether AI Doctor recommends correct escalation per telehealth_limits_for_this_case"
+    },
+    "icd10am_pattern": "^[A-Z][0-9]{2}(\\.[0-9]+)?$ — e.g. I21.4 (NSTEMI), E11.9 (T2DM unspecified), J18.9 (pneumonia unspecified), F32.1 (moderate depressive episode)",
+    "common_snomed_codes": {
+      "NSTEMI": "57054005",
+      "T2DM": "44054006",
+      "ACS": "394659003",
+      "GORD": "235595009",
+      "Community_acquired_pneumonia": "233604007",
+      "Depression_moderate": "35489007",
+      "Low_back_pain": "279039007",
+      "UTI": "68566005",
+      "PE": "59282003",
+      "DVT": "128053003"
+    }
+  }
+}

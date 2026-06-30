@@ -1,0 +1,428 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/data/case_envelope.schema.json",
+  "title": "CaseEnvelope",
+  "description": "Top-level wrapper for one synthetic patient case in the HeyDoc evaluation repository. Each case is represented by six files: this envelope plus five node files. The envelope contains the case identity, metadata, coverage matrix classification, Digital Tablet standards anchoring, and cross-references to the six supporting files split across two access tiers. PRESENTATION STORE (files 01-02, AI Doctor may read): presentation_layer_ref and conversational_policy_ref. SCORING STORE (files 10-13, AI Doctor must never read): ground_truth_node_ref, symptom_links_node_ref, management_plan_node_ref, safety_netting_node_ref. Access control between the two stores is the most critical operational requirement — a leak from scoring store to the AI Doctor invalidates the evaluation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "schema_version",
+    "case_metadata",
+    "digital_tablet_anchoring",
+    "node_refs"
+  ],
+  "properties": {
+
+    "case_id": {
+      "type": "string",
+      "description": "Globally unique case identifier. Convention: SPEC-{SPECIALTY}-{DIFFICULTY}-{seq} where SPECIALTY is the primary specialty code (2-6 uppercase chars), DIFFICULTY is the two-digit difficulty tier code (01-07), and seq is a zero-padded 5-digit sequence number per specialty-difficulty combination. Examples: SPEC-CARD-04-00001 (first atypical-high-risk cardiology case), SPEC-MH-07-00003 (third communication-barrier mental health case). The difficulty tier appears in the ID so the distribution is visible at a glance without opening the file.",
+      "pattern": "^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$",
+      "examples": [
+        "SPEC-CARD-04-00001",
+        "SPEC-RESP-01-00001",
+        "SPEC-MH-07-00003",
+        "SPEC-PAEDS-02-00001",
+        "SPEC-GI-03-00001",
+        "SPEC-EMG-05-00001"
+      ]
+    },
+
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Version of this schema set the case conforms to. Fixed at 1.0.0 for this initial build. Increment the minor version (1.1.0) when new optional fields are added to any node schema; increment major version (2.0.0) when required fields change or node structure changes fundamentally. Cases are valid until the major version they were created under changes."
+    },
+
+    "case_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "difficulty_tier",
+        "diagnosis_category",
+        "specialty_tags",
+        "provenance"
+      ],
+      "description": "Classification and provenance metadata. Never exposed to the AI Doctor under evaluation. Used for coverage matrix tracking, difficulty stratification, and audit. This block determines whether a case set has appropriate clinical breadth.",
+      "properties": {
+
+        "difficulty_tier": {
+          "type": "string",
+          "enum": [
+            "straightforward",
+            "atypical_presentation",
+            "red_herring_laden",
+            "atypical_presentation_high_risk",
+            "rare_condition",
+            "multi_morbidity_complex",
+            "communication_barrier"
+          ],
+          "description": "Primary difficulty axis for this case. Corresponds to the two-digit code in case_id: straightforward=01, atypical_presentation=02, red_herring_laden=03, atypical_presentation_high_risk=04 (e.g. atypical MI in a diabetic), rare_condition=05, multi_morbidity_complex=06, communication_barrier=07 (the clinical content is simple but eliciting it is hard — language, health literacy, minimisation). Build your case set to cover all 7 tiers but weight toward 01-04 which represent the majority of real clinical encounters."
+        },
+
+        "diagnosis_category": {
+          "type": "string",
+          "enum": [
+            "common",
+            "important_not_to_miss",
+            "zebra_rare"
+          ],
+          "description": "Clinical importance category of the primary diagnosis. 'common': high-prevalence condition the AI Doctor will encounter frequently (e.g. T2DM, hypertension, URTI, low back pain). 'important_not_to_miss': lower prevalence but high harm if missed (e.g. ACS, PE, meningitis, subarachnoid haemorrhage, ectopic pregnancy). 'zebra_rare': genuinely rare, included to prevent false confidence. Target distribution: ~60% common, ~30% important_not_to_miss, ~10% zebra_rare — mirrors real-world clinical encounter prevalence. An eval set skewed toward interesting rare cases will over-test for rare-disease detection while under-testing the common-condition accuracy that matters most clinically."
+        },
+
+        "specialty_tags": {
+          "type": "array",
+          "minItems": 1,
+          "description": "One or more specialty codes from the standard list. Multi-tag for crossover cases (e.g. a diabetic patient with ACS gets ['CARD','ENDO']). The first tag is the primary specialty for coverage matrix tracking. Code list: CARD=cardiology, RESP=respiratory, GI=gastrointestinal, NEURO=neurology, MSK=musculoskeletal, DERM=dermatology, PAEDS=paediatrics, MH=mental_health, ENDO=endocrinology, ID=infectious_disease, OBS=obstetrics_gynaecology, URO=urology, OPHTHAL=ophthalmology, SURG=surgery, EMG=emergency_medicine, ONCO=oncology, RHEUM=rheumatology, HAEMAT=haematology, RENAL=nephrology, VASC=vascular.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "CARD", "RESP", "GI", "NEURO", "MSK",
+              "DERM", "PAEDS", "MH", "ENDO", "ID",
+              "OBS", "URO", "OPHTHAL", "SURG", "EMG",
+              "ONCO", "RHEUM", "HAEMAT", "RENAL", "VASC"
+            ]
+          },
+          "examples": [
+            ["CARD"],
+            ["CARD", "ENDO"],
+            ["MH", "ID"],
+            ["PAEDS", "RESP"],
+            ["EMG", "NEURO"]
+          ]
+        },
+
+        "age_band": {
+          "type": "string",
+          "enum": [
+            "neonate",
+            "infant",
+            "child",
+            "adolescent",
+            "adult",
+            "older_adult"
+          ],
+          "description": "Optional. Coarse age stratification, derived from presentation_layer demographics.age. neonate=0-28 days, infant=29 days-1 year, child=1-12 years, adolescent=13-17 years, adult=18-64 years, older_adult=65+. Paediatric and older_adult cases require materially different schema emphasis (paediatric_context fields in presentation layer; polypharmacy and Beers Criteria in management plan). older_adult is the highest-complexity age band for pharmacology safety."
+        },
+
+        "encounter_setting": {
+          "type": "string",
+          "enum": [
+            "telehealth_chat",
+            "telehealth_video",
+            "in_person_simulated_handoff"
+          ],
+          "description": "Optional. The simulated encounter modality. Most HeyDoc cases should be telehealth_chat — the AI Doctor's primary modality. in_person_simulated_handoff cases test whether the AI Doctor correctly recognises the limits of remote assessment and directs to in-person review. The route_appropriateness_check in pharm-check.schema.json checks against this value.",
+          "default": "telehealth_chat"
+        },
+
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_type", "clinician_reviewed"],
+          "description": "Origin and verification status of the case.",
+          "properties": {
+
+            "source_type": {
+              "type": "string",
+              "enum": [
+                "guideline_classic_presentation",
+                "deidentified_real_pattern_derived",
+                "deliberately_constructed_edge_case",
+                "llm_generated_reviewed",
+                "llm_generated_unreviewed"
+              ],
+              "description": "How this case was created. guideline_classic_presentation: derived directly from an Australian clinical guideline's canonical presentation description. deidentified_real_pattern_derived: pattern extracted from a real (de-identified) clinical encounter. deliberately_constructed_edge_case: synthetic case designed to probe a specific failure mode. llm_generated_reviewed: Claude or similar LLM generated the initial case; a human clinician then reviewed and corrected it. llm_generated_unreviewed: LLM-generated, not yet clinician-checked — must NOT enter any scoring set until clinician_reviewed=true."
+            },
+
+            "clinician_reviewed": {
+              "type": "boolean",
+              "description": "Whether a human clinician has verified the clinical accuracy of: (1) primary diagnosis in ground_truth_node, (2) differential progression, (3) management plan including medications and safety-netting thresholds. MUST be true before the case enters any scoring set. Cases with clinician_reviewed=false may be used for prompt engineering and development but must be excluded from evaluation runs. LLM-generated ground truth that is never clinician-reviewed creates circular evaluation — the LLM may mark itself correct against errors it introduced."
+            },
+
+            "reviewer_id": {
+              "type": "string",
+              "description": "Optional. Initials or identifier of the reviewing clinician. Required when clinician_reviewed=true for audit trail.",
+              "examples": ["KL", "KL+colleague_initials"]
+            },
+
+            "review_date": {
+              "type": "string",
+              "format": "date",
+              "description": "Optional. ISO 8601 date of the most recent clinician review. Required when clinician_reviewed=true.",
+              "examples": ["2026-06-23"]
+            },
+
+            "guideline_references": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional. Australian clinical guideline sources used to construct or verify the ground truth and management plan. Pin to specific edition — guidelines are updated and the case's ground truth should be reviewed when a referenced guideline changes. Examples use consistent format: 'Publisher: Title Edition/Year'.",
+              "examples": [
+                [
+                  "NHFA/CSANZ: Acute Coronary Syndrome Guidelines 2016 (amended 2022)",
+                  "Therapeutic Guidelines: Cardiovascular 2024"
+                ],
+                [
+                  "RACGP: Red Book 10th Edition 2024",
+                  "RACGP: SNAP Framework"
+                ],
+                [
+                  "eTG: Antibiotic 2023",
+                  "Choosing Wisely Australia: Antibiotic stewardship 2024"
+                ]
+              ]
+            },
+
+            "intentional_test_features": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional. Named cognitive biases, traps, or specific competencies this case is designed to test. Self-documents the eval set — makes it possible to confirm a case set covers all major failure modes without inspecting every case individually. Use standard clinical decision-making terminology.",
+              "examples": [
+                [
+                  "anchoring bias on patient's self-diagnosis of indigestion",
+                  "atypical ACS presentation in diabetic patient",
+                  "red flag only surfaces on specific directed questioning"
+                ],
+                [
+                  "premature closure after common diagnosis identified",
+                  "failure to consider comorbidity interaction"
+                ],
+                [
+                  "interpreter need not recognised",
+                  "health literacy mismatch"
+                ]
+              ]
+            }
+
+          }
+        }
+
+      }
+    },
+
+    "digital_tablet_anchoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digital_tablet_version", "fhir_version", "snomed_edition"],
+      "description": "Standards anchoring block. Ties this case to a specific version of the Digital Tablet schema and its underlying clinical terminology standards. When the Digital Tablet is updated (new SNOMED edition, AU Core version bump), cases need to be reviewed against the new version. The version values here enable systematic identification of cases requiring review.",
+      "properties": {
+
+        "digital_tablet_version": {
+          "type": "string",
+          "description": "Version of digital_tablet_omnibus.json used to build this case's patient record fields. Matches the Digital Tablet's _digitalTablet.version field.",
+          "const": "1.0",
+          "examples": ["1.0"]
+        },
+
+        "fhir_version": {
+          "type": "string",
+          "description": "FHIR version. From Digital Tablet _digitalTablet.fhir_version.",
+          "const": "R4 (4.0.1)"
+        },
+
+        "snomed_edition": {
+          "type": "string",
+          "description": "SNOMED CT edition. From Digital Tablet _digitalTablet.snomed_edition. All SNOMED codes in node files must be valid in this edition.",
+          "const": "SNOMED CT Australian Edition 20240301"
+        },
+
+        "au_core_version": {
+          "type": "string",
+          "description": "Optional. AU Core implementation guide version. From Digital Tablet _digitalTablet.au_core. Relevant for FHIR profile conformance checking.",
+          "examples": ["0.3.0"]
+        },
+
+        "icd10am_edition": {
+          "type": "string",
+          "description": "Optional. ICD-10-AM edition used for any ICD codes in the case. From Digital Tablet _digitalTablet.icd10am.",
+          "examples": ["ICD-10-AM 12th Edition"]
+        },
+
+        "amt_version": {
+          "type": "string",
+          "description": "Optional. Australian Medicines Terminology version. Relevant when AMT SNOMED codes appear in management_plan_node MedicationRequest fields.",
+          "examples": ["AMT — Australian Medicines Terminology (current at build date)"]
+        },
+
+        "terminology_server": {
+          "type": "string",
+          "description": "Optional. The terminology server used to validate SNOMED codes during case construction. Should match one of the servers in the Digital Tablet's _digitalTablet.terminology_servers list.",
+          "examples": [
+            "https://r4.ontoserver.csiro.au/fhir",
+            "https://ncts.healthterminologies.gov.au/fhir"
+          ]
+        }
+
+      }
+    },
+
+    "node_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "presentation_layer_ref",
+        "conversational_policy_ref",
+        "ground_truth_node_ref",
+        "symptom_links_node_ref",
+        "management_plan_node_ref",
+        "safety_netting_node_ref"
+      ],
+      "description": "Cross-references to the five companion files for this case. The first two are in the PRESENTATION STORE (AI Doctor may read). The last four are in the SCORING STORE (AI Doctor must never read — access-controlled separately). References use relative file paths from the case directory, or document IDs in a graph database.",
+      "properties": {
+
+        "presentation_layer_ref": {
+          "type": "string",
+          "description": "Reference to the presentation_layer file (schema 01). PRESENTATION STORE. Convention: '01_presentation_layer.json' for file-based storage, or 'PL-{case_id}' for document-store IDs.",
+          "examples": ["01_presentation_layer.json", "PL-SPEC-CARD-04-00001"]
+        },
+
+        "conversational_policy_ref": {
+          "type": "string",
+          "description": "Reference to the conversational_policy file (schema 02). PRESENTATION STORE. Convention: '02_conversational_policy.json' or 'CP-{case_id}'.",
+          "examples": ["02_conversational_policy.json", "CP-SPEC-CARD-04-00001"]
+        },
+
+        "ground_truth_node_ref": {
+          "type": "string",
+          "description": "Reference to the ground_truth_node file (schema 10). SCORING STORE — access-controlled. Convention: '10_ground_truth_node.json' or 'GT-{case_id}'. Must never be resolvable by the AI Doctor evaluation query layer.",
+          "examples": ["10_ground_truth_node.json", "GT-SPEC-CARD-04-00001"]
+        },
+
+        "symptom_links_node_ref": {
+          "type": "string",
+          "description": "Reference to the symptom_links_node file (schema 11). SCORING STORE — access-controlled. Convention: '11_symptom_links_node.json' or 'SL-{case_id}'.",
+          "examples": ["11_symptom_links_node.json", "SL-SPEC-CARD-04-00001"]
+        },
+
+        "management_plan_node_ref": {
+          "type": "string",
+          "description": "Reference to the management_plan_node file (schema 12). SCORING STORE — access-controlled. Convention: '12_management_plan_node.json' or 'MP-{case_id}'.",
+          "examples": ["12_management_plan_node.json", "MP-SPEC-CARD-04-00001"]
+        },
+
+        "safety_netting_node_ref": {
+          "type": "string",
+          "description": "Reference to the safety_netting_node file (schema 13). SCORING STORE — access-controlled. Convention: '13_safety_netting_node.json' or 'SN-{case_id}'.",
+          "examples": ["13_safety_netting_node.json", "SN-SPEC-CARD-04-00001"]
+        }
+
+      }
+    },
+
+    "coverage_matrix_tags": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Additional classification tags for coverage matrix analysis. These supplement case_metadata with finer-grained attributes for ensuring the eval set covers the full clinical breadth needed for a confident AI Doctor assessment.",
+      "properties": {
+
+        "fhir_resources_exercised": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Patient", "Condition", "MedicationRequest", "AllergyIntolerance",
+              "Observation", "Procedure", "Immunization", "DiagnosticReport",
+              "FamilyMemberHistory", "ClinicalImpression", "CareTeam", "CarePlan",
+              "Goal", "Consent", "RiskAssessment", "SDOH_Observations",
+              "Encounter", "Composition"
+            ]
+          },
+          "description": "Which Digital Tablet FHIR resources are substantially populated for this case. Used to ensure the case set exercises all three Parts of the Digital Tablet across the repository — not all cases need all resources, but the repository as a whole should cover them all.",
+          "examples": [
+            ["Patient", "Condition", "MedicationRequest", "AllergyIntolerance", "Observation", "ClinicalImpression"],
+            ["Patient", "Condition", "DiagnosticReport", "Observation", "RiskAssessment"],
+            ["Patient", "Condition", "Immunization", "SDOH_Observations", "ClinicalImpression"]
+          ]
+        },
+
+        "red_flags_present": {
+          "type": "boolean",
+          "description": "Whether this case contains one or more red flag features in the ground truth. Cases with red flags test the AI Doctor's safety-netting and escalation calibration. Cases without red flags (true negatives) test avoidance of over-escalation. Both are essential in a balanced case set."
+        },
+
+        "requires_investigation_request": {
+          "type": "boolean",
+          "description": "Whether the correct clinical action for this case includes recommending an investigation (blood test, imaging, ECG, etc.) before or alongside management. Tests whether the AI Doctor appropriately recognises the limits of history-taking alone."
+        },
+
+        "requires_in_person_review": {
+          "type": "boolean",
+          "description": "Whether the correct action includes directing the patient to in-person review before definitive management. Tests appropriate recognition of telehealth's limits — particularly important for cases requiring physical examination findings."
+        },
+
+        "involves_pharmacology_check": {
+          "type": "boolean",
+          "description": "Whether a pharmacology safety check (pharm-intent/pharm-check flow) is expected as part of the correct management plan. When true, the management_plan_node scoring rubric should include pharmacology check completion as a must_include item."
+        },
+
+        "primary_digital_tablet_part": {
+          "type": "string",
+          "enum": ["Part_A", "Part_B", "Part_C", "All"],
+          "description": "Which Digital Tablet part is most substantially exercised. Part_A = Patient/Condition/Medication/Allergy dominant cases. Part_B = Observations/Investigations/Procedures dominant cases. Part_C = Reasoning/CarePlan/SDOH dominant cases. All = cases exercising all three parts substantially."
+        }
+
+      }
+    },
+
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional. ISO 8601 UTC timestamp of when this case envelope was first created.",
+      "examples": ["2026-06-23T00:00:00Z"]
+    },
+
+    "last_reviewed_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional. ISO 8601 UTC timestamp of the most recent clinician review. Should be updated whenever case_metadata.provenance.clinician_reviewed is set to true.",
+      "examples": ["2026-06-23T00:00:00Z"]
+    }
+
+  },
+
+  "_integration_notes": {
+    "access_control": {
+      "presentation_store": ["presentation_layer_ref", "conversational_policy_ref"],
+      "scoring_store": ["ground_truth_node_ref", "symptom_links_node_ref", "management_plan_node_ref", "safety_netting_node_ref"],
+      "rule": "The evaluation query layer MUST enforce that any query from the AI Doctor evaluation context can only resolve presentation_store refs. Scoring store refs must only be resolvable by the scoring harness. This is the single most important operational constraint in the entire synthetic record architecture."
+    },
+    "case_id_pattern_breakdown": {
+      "format": "SPEC-{SPECIALTY}-{DIFFICULTY}-{SEQ}",
+      "specialty_codes_20": ["CARD","RESP","GI","NEURO","MSK","DERM","PAEDS","MH","ENDO","ID","OBS","URO","OPHTHAL","SURG","EMG","ONCO","RHEUM","HAEMAT","RENAL","VASC"],
+      "difficulty_codes": {"01":"straightforward","02":"atypical_presentation","03":"red_herring_laden","04":"atypical_presentation_high_risk","05":"rare_condition","06":"multi_morbidity_complex","07":"communication_barrier"},
+      "seq_format": "zero-padded 5 digits, per specialty-difficulty combination",
+      "example": "SPEC-CARD-04-00001 = first atypical_high_risk cardiology case"
+    },
+    "file_layout_per_case": {
+      "directory": "data/cases/{case_id}/",
+      "files": [
+        "00_case_envelope.json      (this file — no access restriction)",
+        "01_presentation_layer.json (PRESENTATION STORE)",
+        "02_conversational_policy.json (PRESENTATION STORE)",
+        "10_ground_truth_node.json  (SCORING STORE — access-controlled)",
+        "11_symptom_links_node.json (SCORING STORE — access-controlled)",
+        "12_management_plan_node.json (SCORING STORE — access-controlled)",
+        "13_safety_netting_node.json (SCORING STORE — access-controlled)"
+      ]
+    },
+    "digital_tablet_integration": {
+      "version_lock": "digital_tablet_anchoring fields lock this case to a specific Digital Tablet version. When the Digital Tablet is updated, run a migration scan to identify all cases referencing the old version.",
+      "fhir_paths": "All fhir_path values in EvidenceNode.fhir_path and ContextPacket.facts[].fhir_path must resolve against the Digital Tablet version referenced in digital_tablet_anchoring.digital_tablet_version.",
+      "snomed_validation": "All SNOMED CT codes in node files must be valid in snomed_edition SNOMED CT Australian Edition 20240301 — validate via NCTS Ontoserver (https://r4.ontoserver.csiro.au/fhir) or the terminology server specified in digital_tablet_anchoring.terminology_server."
+    },
+    "coverage_recommendations": {
+      "minimum_viable_case_set": "At minimum: 3 difficulty tiers × 3 diagnosis categories × 5 specialty groups = 45 cases. Aim for 200+ for statistically meaningful evaluation.",
+      "distribution_targets": "60% common, 30% important_not_to_miss, 10% zebra_rare. 40% straightforward, 30% atypical/red_herring, 20% multi_morbidity, 10% rare/communication.",
+      "digital_tablet_coverage": "Ensure all 22 Digital Tablet resource types are exercised across the case set — track via fhir_resources_exercised tags."
+    },
+    "schema_refs": {
+      "presentation_layer": "data/01_presentation_layer.schema.json (File 9)",
+      "conversational_policy": "data/02_conversational_policy.schema.json (File 10)",
+      "ground_truth_node": "data/10_ground_truth_node.schema.json (File 11)",
+      "symptom_links_node": "data/11_symptom_links_node.schema.json (File 12)",
+      "management_plan_node": "data/12_management_plan_node.schema.json (File 13)",
+      "safety_netting_node": "data/13_safety_netting_node.schema.json (File 14)",
+      "pipeline_integration": "When scoring, the AI Doctor runs against presentation_layer + conversational_policy only; the scoring harness then evaluates the AI output against the four scoring-store nodes using the rubrics in management_plan_node and safety_netting_node."
+    }
+  }
+}

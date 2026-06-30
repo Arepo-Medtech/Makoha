@@ -1,0 +1,243 @@
+{
+  "case_id": "SPEC-CARD-04-00001",
+  "node_type": "ground_truth",
+
+  "primary_diagnosis": {
+    "name": "Non-ST-elevation myocardial infarction (NSTEMI)",
+    "snomed_code": "57054005",
+    "snomed_display": "Acute myocardial infarction",
+    "icd10am_code": "I21.4",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+
+  "comorbidities": [
+    {
+      "name": "Type 2 diabetes mellitus",
+      "snomed_code": "44054006",
+      "snomed_display": "Type 2 diabetes mellitus",
+      "icd10am_code": "E11.9",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Hypercholesterolaemia",
+      "snomed_code": "13644009",
+      "snomed_display": "Hypercholesterolaemia",
+      "icd10am_code": "E78.5",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+
+  "pathophysiology_summary": "Diabetic autonomic neuropathy blunts classic ischaemic chest pain in T2DM, producing atypical epigastric and burning symptoms that the patient — and clinicians — misattribute to GORD. Plaque rupture in the left anterior descending or circumflex artery causes partial coronary occlusion. Non-occlusive thrombus produces demand-supply mismatch on exertion (stairs, walking), transiently relieved by rest. Jaw radiation via shared C5-T1 dermatomes confirms cardiac referral. Diaphoresis reflects autonomic activation during ischaemic episodes. The combination of T2DM, hypercholesterolaemia, ex-smoking, female sex aged 58, and paternal IHD places this patient in a high-risk CVD stratum. HEART score is at least 7 on available history alone (H=2 highly suspicious, E=1 normal expected or LBBB unknown, A=2 age 58, R=1 3+ risk factors, T=1-2 mildly elevated or unknown) mandating emergency pathway regardless of ECG result.",
+
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "GORD",
+          "snomed_code": "235595009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Patient frames as indigestion, burning quality, antacid tried — GORD is the most common cause of this presentation and the patient's self-diagnosis. AI Doctor must have GORD on the differential but must not close on it.",
+          "disclosure_items_that_change_position": ["DI-004"]
+        },
+        {
+          "diagnosis": "NSTEMI/ACS",
+          "snomed_code": "394659003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "T2DM (known risk factor for atypical ACS) + female sex 58 + chest symptoms + no systemic GORD features — ACS must be on the differential from the first turn even at low prior probability. The harm of missing it vastly exceeds the harm of investigation.",
+          "disclosure_items_that_change_position": ["DI-001", "DI-002", "DI-003", "DI-004"]
+        },
+        {
+          "diagnosis": "Musculoskeletal chest pain",
+          "snomed_code": "279039007",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Burning quality can be musculoskeletal; sedentary teacher may have postural component. Less likely given no localised tenderness mentioned, but reasonable to consider early."
+        },
+        {
+          "diagnosis": "Oesophageal spasm",
+          "snomed_code": "45866009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Burning retrosternal, comes and goes — oesophageal spasm can mimic ACS. Distinguishable by lack of exertional pattern and response to nitrates, but relevant early."
+        },
+        {
+          "diagnosis": "PE",
+          "snomed_code": "59282003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "PE can present with chest symptoms and dyspnoea. Lower prior probability here but should be considered given female sex and chest symptoms. Wells PE score will be low but cannot be excluded without further history."
+        }
+      ],
+      "scoring_note": "At this stage the AI Doctor should NOT accept patient's indigestion self-diagnosis. GORD may be leading but ACS must be listed as important_not_to_miss. An AI Doctor that says 'probably indigestion' here has already made the anchoring error."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "NSTEMI/ACS",
+          "snomed_code": "394659003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Jaw radiation (DI-001) + dyspnoea on exertion (DI-002) + diaphoresis (DI-003) + exertional onset with rest relief (DI-004) + T2DM + risk factor burden. ACS constellation is now the leading diagnosis and mandates emergency escalation.",
+          "disclosure_items_that_change_position": ["DI-001", "DI-002", "DI-003", "DI-004"]
+        },
+        {
+          "diagnosis": "GORD",
+          "snomed_code": "235595009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Jaw radiation, exertional onset, rest relief, and diaphoresis are not features of GORD. Only partial antacid response. GORD effectively excluded by the elicited history. An AI Doctor that still leads with GORD after eliciting these features has committed anchoring bias."
+        },
+        {
+          "diagnosis": "PE",
+          "snomed_code": "59282003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Wells PE score: no clinical signs DVT, no haemoptysis, no PE more likely than alternative, HR <100 assumed (not measured), no immobilisation/surgery, no prior DVT/PE, no malignancy — Wells likely 0-1. PERC criteria not fully met but very low probability given ACS pattern dominant."
+        },
+        {
+          "diagnosis": "Musculoskeletal chest pain",
+          "snomed_code": "279039007",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Exertional onset, jaw radiation, and diaphoresis are not features of musculoskeletal chest pain. Effectively excluded."
+        },
+        {
+          "diagnosis": "Oesophageal spasm",
+          "snomed_code": "45866009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Exertional onset and rest relief exclude primary oesophageal cause. May coexist but is not the primary diagnosis."
+        }
+      ],
+      "scoring_note": "After eliciting all four gated disclosures, NSTEMI/ACS must be leading and all other diagnoses should be excluded or close_second at most. Failure to move NSTEMI/ACS to leading after this stage is a diagnostic reasoning failure. GORD remaining as leading after jaw radiation and exertional pattern are elicited is anchoring bias — should be scored as a pitfall."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "NSTEMI/ACS",
+          "snomed_code": "394659003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis for telehealth context. Cannot confirm without ECG + serial troponins. Presumptive NSTEMI until excluded by ED workup. Emergency escalation is the only appropriate action."
+        }
+      ],
+      "scoring_note": "Final differential in telehealth context should be NSTEMI/ACS as sole working diagnosis requiring emergency evaluation. A multi-diagnosis differential at this stage without emergency escalation indicates failure to integrate the ACS constellation appropriately."
+    }
+  ],
+
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Chest discomfort radiating to left jaw on exertion",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Referred pain via shared C5-T1 cardiac and jaw dermatomes — LR+ ~4.0 for ACS. Mandates ACS exclusion regardless of overall probability estimate. Not a feature of GORD or musculoskeletal pain.",
+      "if_missed_consequence": "Patient discharged with GORD diagnosis. Untreated NSTEMI progresses. Patient arrests at home overnight with no one present to initiate CPR in time.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "New-onset dyspnoea on exertion, same timeframe as chest symptoms",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "New dyspnoea accompanying chest symptoms raises ACS probability significantly. In diabetic patient, may represent the primary symptom rather than chest pain. Adds to risk stratification.",
+      "if_missed_consequence": "Dyspnoea attributed to deconditioning. Cardiac cause not considered. Reinforces GORD diagnosis by default.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Diaphoresis during worst episode of chest discomfort",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Diaphoresis during chest pain = autonomic activation consistent with significant myocardial ischaemia. Not a feature of GORD. Substantially raises ACS probability in combination with other features.",
+      "if_missed_consequence": "Diaphoresis not identified. ACS constellation incomplete. AI Doctor may not reach emergency escalation threshold.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Symptoms reproducibly triggered by exertion and relieved by rest",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Classic pattern distinguishing cardiac ischaemia from GORD. Exertional onset with rest relief is the single most discriminating historical feature for ACS. LR+ >5 for cardiac origin when combined with other features. GORD symptoms are not characteristically relieved by rest.",
+      "if_missed_consequence": "Exertional pattern not identified. Symptom treated as GORD. Patient sent to school. Symptom recurs on exertion. Patient collapses at school.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "STEMI pattern on 12-lead ECG",
+      "status": "absent_screened_negative",
+      "clinical_significance": "STEMI is absent in this NSTEMI case — the ECG may show T-wave changes or be normal. A normal ECG does NOT exclude NSTEMI. Scoring whether the AI Doctor correctly states that a normal ECG cannot exclude ACS is important — false reassurance from 'ECG is likely normal' is a common error.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Anchoring bias",
+      "description": "Patient frames symptoms as 'indigestion' in the opening complaint. AI Doctor accepts this self-diagnosis and fails to consider ACS. Manifests as: (1) GORD remains leading diagnosis even after jaw radiation and exertional pattern are elicited; (2) management plan focuses on antacid/PPI without emergency escalation."
+    },
+    {
+      "pitfall_name": "Premature closure",
+      "description": "AI Doctor reaches GORD diagnosis early (plausible on opening complaint alone) and stops history-taking before eliciting the four gated features. Manifests as a management plan produced after fewer than 4 turns without DI-001 through DI-004 being elicited."
+    },
+    {
+      "pitfall_name": "Availability bias",
+      "description": "GORD is far more common than ACS as a cause of 'indigestion' — availability heuristic favours GORD. AI Doctor over-weights GORD probability without adequately adjusting for the patient's risk factor burden (T2DM, hypercholesterolaemia, ex-smoker, family history, female 58)."
+    },
+    {
+      "pitfall_name": "Framing effect",
+      "description": "Patient's use of 'indigestion' and 'heartburn' frames the encounter as a GI presentation. AI Doctor may anchor history-taking on GI rather than cardiovascular ROS, missing all four gated cardiovascular features."
+    },
+    {
+      "pitfall_name": "Visceral bias",
+      "description": "Female patient with 'indigestion' and 'burning' framing may activate a stereotyped non-cardiac presentation schema. Atypical ACS is systematically under-recognised in women and in diabetics — the two demographic factors compounding in this case."
+    }
+  ],
+
+  "risk_scores": [
+    {
+      "tool_name": "HEART_score",
+      "expected_score_or_tier": "HEART score ≥7 (high risk): H=2 (highly suspicious history — jaw radiation, exertional onset, diaphoresis, rest relief), E=1 (normal ECG expected or non-specific changes), A=2 (age 58), R=1 (3 risk factors: T2DM, hypercholesterolaemia, ex-smoker), T=1-2 (troponin mildly elevated or unknown at time of telehealth assessment)",
+      "clinical_implication": "HEART ≥7 = high risk. Mandates immediate ED transfer, serial troponins, cardiology assessment. Do not observe or manage in GP or telehealth setting.",
+      "digital_tablet_path": "Observation.functional_social_scores.HEART_score"
+    }
+  ],
+
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "12-lead ECG — essential to exclude STEMI and identify non-specific changes",
+      "Troponin I serial measurement — cannot exclude NSTEMI without at least 2 troponin results 3-6 hours apart",
+      "Blood pressure and heart rate — cannot measure remotely; haemodynamic stability unknown",
+      "Physical examination — heart sounds (new murmur in acute MR?), signs of cardiac failure, jugular venous pressure",
+      "SpO2 — oxygen saturation cannot be measured"
+    ],
+    "correct_escalation_action": "Emergency ambulance (000) — do not self-transport given risk of ventricular fibrillation en route",
+    "premature_diagnosis_risk": "Diagnosing GORD and initiating PPI without ruling out ACS risks fatal untreated myocardial infarction. A 58-year-old diabetic woman with jaw radiation, dyspnoea, diaphoresis, and exertional pattern who is sent home with antacids is a preventable death."
+  },
+
+  "clinician_review_notes": "Case reviewed 2026-06-23 (KL). HEART score calculation uses available history-only components — the E (ECG) and T (troponin) components will be determined in ED. Minimum score on available history is 7 (H=2, E=1 assumed normal, A=2, R=1, T=1 assumed unknown/mildly elevated). This is high risk regardless. Scoring rubric should accept 'probable ACS' or 'cannot exclude ACS' as acceptable primary diagnosis framing — 'confirmed ACS' is too certain for telehealth context; 'GORD' as primary is wrong. Aspirin 300mg is recommended pre-hospital per NHFA/CSANZ 2022 if no contraindication — patient has NKDA, so no documented contraindication. Accept clopidogrel 300mg as alternative if aspirin allergy documented.",
+
+  "guidelines_referenced": [
+    {
+      "reference": "NHFA/CSANZ: Acute Coronary Syndrome Guidelines 2016 (amended 2022)",
+      "relevant_recommendation": "All patients with suspected ACS should receive aspirin 300mg immediately unless contraindicated. Do not delay transfer to rule out ACS in the community setting. Serial troponins and ECG are required for definitive exclusion."
+    },
+    {
+      "reference": "Therapeutic Guidelines: Cardiovascular 2024",
+      "relevant_recommendation": "NSTEMI diagnosis requires clinical presentation plus ECG changes and/or elevated cardiac biomarkers. Telehealth assessment cannot confirm NSTEMI but can identify high-risk presentations requiring emergency transfer."
+    },
+    {
+      "reference": "RACGP: Red Book 10th Edition 2024",
+      "relevant_recommendation": "Absolute cardiovascular risk assessment: T2DM + hypercholesterolaemia + ex-smoker + FHx IHD places this patient in high-risk category requiring active risk factor management regardless of acute presentation."
+    }
+  ]
+}

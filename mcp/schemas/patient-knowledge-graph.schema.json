@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/patient-knowledge-graph.schema.json",
+  "title": "PatientKnowledgeGraph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["patient_ref", "revision", "facts", "provenance"],
+  "properties": {
+    "patient_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "value"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "description": "Identifier system for the patient reference (e.g., AU-IHI)."
+        },
+        "value": { "type": "string" }
+      }
+    },
+    "revision": { "type": "integer", "minimum": 0 },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "type", "value", "evidence"],
+        "properties": {
+          "fact_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["pmhx", "medication", "allergy", "baseline_lab", "demographics_minimal"]
+          },
+          "value": { "type": "object" },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "evidence-node.schema.json" },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at_utc", "updated_at_utc", "sources"],
+      "properties": {
+        "created_at_utc": { "type": "string", "format": "date-time" },
+        "updated_at_utc": { "type": "string", "format": "date-time" },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "ref"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["fhir", "patient_reported", "curated"] },
+              "ref": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

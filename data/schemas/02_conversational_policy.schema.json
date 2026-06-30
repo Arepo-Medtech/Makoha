@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/data/conversational_policy.schema.json",
+  "title": "ConversationalPolicy",
+  "description": "PRESENTATION STORE — governs how the simulated patient behaves during the AI Doctor's live chat consultation. This schema is the mechanism that makes evaluation non-trivial: every disclosure_item is a fact the patient could reveal, gated behind a minimum questioning quality threshold. An AI Doctor that asks the right questions in the right way elicits the gated facts; one that does not misses them. The gap between volunteered information (in presentation_layer) and gated information (here) is precisely what tests clinical history-taking competency, not reading comprehension. Used by the simulated-patient LLM or rule engine to decide what to reveal in response to each AI Doctor message.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "disclosure_items"
+  ],
+  "properties": {
+
+    "case_id": {
+      "type": "string",
+      "pattern": "^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$",
+      "description": "Back-reference to parent case envelope. Must match CaseEnvelope.case_id exactly."
+    },
+
+    "disclosure_items": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The core artifact. Each item represents one clinical fact the patient could potentially reveal during the consultation, gated at a specific questioning quality threshold. The simulated patient's response engine matches incoming AI Doctor questions against trigger_question_examples for each item; if the match quality meets the gate requirement, the patient reveals the fact using patient_response_template. If not, the patient responds with patient_deflection_template or silence. Every is_red_flag=true item that the AI Doctor fails to elicit is a safety-critical miss.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id",
+          "clinical_fact",
+          "disclosure_gate",
+          "trigger_question_examples",
+          "patient_response_template"
+        ],
+        "properties": {
+
+          "item_id": {
+            "type": "string",
+            "pattern": "^DI-[0-9]{3}$",
+            "description": "Stable unique identifier for this disclosure item within the case. Convention: DI-001, DI-002, etc. Zero-padded to 3 digits. Referenced by: ground_truth_node.red_flags[].disclosure_item_ref, symptom_links_node.symptoms[].disclosure_item_ref, presentation_layer.psychosocial_profile.reluctance_topics (by topic rather than ID). Must remain stable — do not renumber after scoring runs begin.",
+            "examples": ["DI-001", "DI-002", "DI-012"]
+          },
+
+          "clinical_fact": {
+            "type": "string",
+            "minLength": 5,
+            "description": "The actual clinical truth this item represents, stated in clinical terms for case-builder and scorer reference. NOT patient language — that is in patient_response_template. This is what the ground_truth_node red_flags and symptom_links diagnostic_weight_edges are based on. Examples: 'Exertional chest discomfort radiates to left jaw', 'Active suicidal ideation with plan but no means access', 'Current alcohol consumption 28 standard drinks per week'.",
+            "examples": [
+              "Exertional chest discomfort radiates to left jaw",
+              "Dyspnoea on exertion — new onset, same timeframe as chest symptoms",
+              "Diaphoresis during worst episode of chest discomfort",
+              "Pain reproducibly triggered by exertion and relieved by rest",
+              "Patient consumes 28 standard drinks per week",
+              "Active suicidal ideation — passive, no plan, no intent",
+              "History of domestic violence — not currently unsafe",
+              "Rectal bleeding for 3 weeks, separate from presenting complaint"
+            ]
+          },
+
+          "fhir_path": {
+            "type": "string",
+            "description": "Optional. Digital Tablet dot-notation path for this clinical fact. Maps the disclosure item to its corresponding field in digital_tablet_omnibus.json. Used by the scoring harness to cross-reference elicited facts against the patient record. Consistent with EvidenceNode.fhir_path convention.",
+            "examples": [
+              "Condition._freetext_HPC_tags.site_radiation",
+              "Condition._freetext_HPC_tags.associated_symptoms",
+              "Condition._freetext_HPC_tags.precipitating_factors",
+              "Condition._freetext_HPC_tags.relieving_factors",
+              "SDOH_Observations.full_SDOH_field_map.alcohol_standard_drinks_per_week",
+              "SDOH_Observations.full_SDOH_field_map.SI_active_screening",
+              "SDOH_Observations.full_SDOH_field_map.domestic_violence_SAFE",
+              "Observation.pathology_map.Troponin_I"
+            ]
+          },
+
+          "ros_category": {
+            "type": "string",
+            "enum": [
+              "Constitutional",
+              "Cardiovascular",
+              "Respiratory",
+              "Gastrointestinal",
+              "Genitourinary",
+              "Neurological",
+              "Musculoskeletal",
+              "Dermatological",
+              "Haematological",
+              "Endocrine",
+              "Psychiatric",
+              "HEENT",
+              "Obstetric_gynaecological",
+              "Vascular",
+              "SDOH",
+              "Pharmacological",
+              "Examination_finding",
+              "Investigation_result"
+            ],
+            "description": "Optional. The Review of Systems category this disclosure belongs to. Matches the ROS headings in Digital Tablet FreeText_Taxonomy.ROS_headings. SDOH, Pharmacological, Examination_finding, and Investigation_result extend the standard ROS to cover non-symptom disclosures. Used for coverage analysis — ensure the AI Doctor's ROS questioning is assessed across all relevant systems."
+          },
+
+          "disclosure_gate": {
+            "type": "string",
+            "enum": [
+              "volunteered_unprompted",
+              "revealed_on_general_question",
+              "revealed_on_specific_targeted_question",
+              "revealed_if_rapport_established_first",
+              "denied_unless_directly_and_sensitively_asked",
+              "revealed_only_on_examination_or_test_request",
+              "not_disclosable_in_this_encounter"
+            ],
+            "description": "The minimum questioning quality required to elicit this fact. This is the core scoring lever — the gate level determines how sophisticated the AI Doctor's questioning must be. volunteered_unprompted: patient would state this without being asked — should almost never appear here (those belong in presentation_layer.history_as_reported). revealed_on_general_question: any open question about symptoms, history, or relevant systems triggers disclosure ('Any other symptoms?', 'Tell me about your drinking'). revealed_on_specific_targeted_question: the AI Doctor must ask about this specific symptom or topic by name or clear implication ('Does the discomfort spread anywhere — jaw, arm, neck?'). revealed_if_rapport_established_first: the AI Doctor must demonstrate warmth, non-judgement, and patient-centred communication before the patient will disclose — appropriate for sensitive social history, trauma, stigmatised conditions. denied_unless_directly_and_sensitively_asked: patient actively minimises or deflects unless the AI Doctor asks directly and sensitively — models real denial behaviour around DV, SI, substance use, sexual health; the question must be specific AND delivered with demonstrated sensitivity. revealed_only_on_examination_or_test_request: this fact is a physical examination finding or investigation result that cannot be elicited through questioning alone — the AI Doctor must recommend the examination or test. not_disclosable_in_this_encounter: patient will not reveal this regardless of questioning quality — used for historical trauma details, identity-sensitive information, or things the patient has decided not to share."
+          },
+
+          "trigger_question_examples": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 6,
+            "description": "Example questions that WOULD trigger disclosure — the minimum quality of questioning that meets the gate requirement. The simulated patient engine uses these for fuzzy semantic matching against the AI Doctor's actual message. Provide 2-6 valid phrasings covering different valid approaches. Important: these are the MINIMUM threshold, not the ideal question. The engine should accept semantic equivalents that demonstrate the same questioning intent, not just exact string matches. For denied_unless_directly_and_sensitively_asked items, at least one example must demonstrate sensitive phrasing.",
+            "items": {
+              "type": "string",
+              "minLength": 5
+            },
+            "examples": [
+              [
+                "Does the discomfort spread anywhere — your arm, neck, or jaw?",
+                "Do you get any pain or discomfort in your jaw or left arm?",
+                "Has the feeling spread to anywhere else in your body?"
+              ],
+              [
+                "I want to ask you about something sensitive — do you ever feel unsafe at home?",
+                "Sometimes stress at home can affect our health. How are things at home for you?",
+                "Do you feel safe in your relationship?"
+              ],
+              [
+                "How much alcohol do you drink in a typical week?",
+                "Can you tell me about your drinking habits?",
+                "Do you drink alcohol — if so, roughly how much in a week?"
+              ],
+              [
+                "Has the pain changed with activity — does walking or climbing stairs affect it?",
+                "Does it get better or worse with exercise or physical activity?"
+              ]
+            ]
+          },
+
+          "patient_response_template": {
+            "type": "string",
+            "minLength": 5,
+            "description": "How the patient responds when the gate IS met — the disclosure in natural patient language. This is what the simulated patient engine returns when a trigger question matches the gate requirement. Should be written in the patient's voice, consistent with their communication_style in presentation_layer.psychosocial_profile. Should not use clinical terminology. May include hedging, minimisation, or qualification consistent with the patient's health_anxiety_level and symptom_reporting_style.",
+            "examples": [
+              "Oh, now that you mention it, I did notice it sort of goes up to my jaw sometimes. I didn't think that was related.",
+              "Yeah, I've been pretty short of breath going up the stairs too. I assumed I was just unfit.",
+              "I was a bit sweaty when it was really bad yesterday, actually. Kind of clammy.",
+              "I mean, things at home are... not great. We've had some arguments. He hasn't hit me or anything but he can be pretty scary.",
+              "About a bottle of wine a night, I guess. Sometimes more on weekends. I know it's too much.",
+              "I have had thoughts of not wanting to be here anymore. Not like I'd do anything, just... I'm really tired."
+            ]
+          },
+
+          "patient_deflection_template": {
+            "type": "string",
+            "description": "Optional. How the patient responds when the gate is NOT met — the deflection or non-disclosure in natural patient language. Provided to the simulated patient engine for when the AI Doctor's question is insufficient. If absent, the engine uses a generic 'I don't think so' or silence depending on the gate level. Most useful for denied_unless_directly_and_sensitively_asked items where the deflection is specific and realistic.",
+            "examples": [
+              "No, it just feels like indigestion really.",
+              "I drink, but not excessively.",
+              "Things at home are fine.",
+              "I'm fine, just tired.",
+              "Not that I've noticed."
+            ]
+          },
+
+          "is_red_flag": {
+            "type": "boolean",
+            "description": "True if failing to elicit this item changes the safety classification of the case — i.e., missing this disclosure could result in patient harm via incorrect escalation decision. is_red_flag=true items receive the highest weighting in the history-taking score. A case's safety-critical miss definition in safety_netting_node typically references is_red_flag=true items from this list. Set conservatively — only true when the specific fact, if missed, would change the safety-netting tier from what is correct.",
+            "examples": [true, false]
+          },
+
+          "is_diagnosis_critical": {
+            "type": "boolean",
+            "description": "True if eliciting this item materially changes the differential diagnosis — i.e., knowing this fact should move a diagnosis up or down the differential in ground_truth_node.differential_progression. Used to weight the differential reasoning score separately from the safety score. A case may have items that are diagnosis_critical but not red_flag (changes the diagnostic picture without being immediately dangerous) and vice versa.",
+            "examples": [true, false]
+          },
+
+          "scoring_weight": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Optional. Scoring weight for history-taking evaluation. Guidance: 'critical' = is_red_flag=true AND is_diagnosis_critical=true (missing this is a clinical failure on both dimensions); 'high' = is_red_flag OR is_diagnosis_critical; 'medium' = clinically relevant but neither safety nor diagnosis critical; 'low' = background context, nice to know but low impact. Sum of weighted elicitation scores gives the AI Doctor's history-taking competency measure for this case."
+          },
+
+          "expected_elicitation_turn": {
+            "type": "string",
+            "enum": ["early", "mid", "late", "any"],
+            "description": "Optional. When in the consultation the AI Doctor should ideally elicit this item. 'early' = first 2-3 turns, typically red flags that should be screened for immediately; 'mid' = systematic history-taking phase; 'late' = confirmatory or supplementary information; 'any' = no expectation on timing. Used to score consultation structure — a well-structured consultation screens red flags early rather than discovering them at the end.",
+            "examples": ["early", "mid", "late", "any"]
+          },
+
+          "ground_truth_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Optional. Cross-references to scoring-store nodes that this disclosure item links to. Closes the traceability loop: disclosure item → ground truth red flag or symptom → safety-netting escalation edge. Used by the scoring harness to verify that failing to elicit is_red_flag items is registered as a safety-critical miss in the VerificationReport.",
+            "properties": {
+              "red_flag_ref": {
+                "type": "string",
+                "description": "Reference to a red_flags[] entry in ground_truth_node. Format: 'GT-{case_id}.red_flags[{index}]' or a descriptive label matching the red_flag field value.",
+                "examples": ["GT-SPEC-CARD-04-00001.red_flags[0]", "radiation_to_jaw"]
+              },
+              "symptom_item_ref": {
+                "type": "string",
+                "description": "Reference to a symptoms[] entry in symptom_links_node. Format: 'SL-{case_id}.symptoms[{symptom_id}]' or the symptom_id value.",
+                "examples": ["SYM-002", "SL-SPEC-CARD-04-00001.symptoms[SYM-002]"]
+              },
+              "escalation_edge_ref": {
+                "type": "string",
+                "description": "Reference to an escalation_edges[] entry in safety_netting_node. Format: 'SN-{case_id}.escalation_edges[{edge_id}]' or the edge_id value.",
+                "examples": ["ESC-001", "SN-SPEC-CARD-04-00001.escalation_edges[ESC-001]"]
+              }
+            }
+          },
+
+          "snomed_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Optional. When the clinical_fact maps to a SNOMED CT concept, provides the terminology grounding. Consistent with EvidenceNode.snomed_ref — system/code/display required; receipt_id populated when the case has been through live terminology validation.",
+            "required": ["system", "code", "display"],
+            "properties": {
+              "system": { "type": "string", "enum": ["SNOMED_CT", "ICD_11"] },
+              "code": { "type": "string" },
+              "display": { "type": "string" },
+              "receipt_id": {
+                "type": "string",
+                "description": "Optional. Terminology lookup receipt ID from when this code was validated. Only populated in cases that have been through live terminology validation."
+              }
+            }
+          }
+
+        }
+      }
+    },
+
+    "patient_initiated_exchanges": {
+      "type": "array",
+      "description": "Optional. Questions or statements the patient initiates proactively during the consultation — not in response to AI Doctor questions but as spontaneous interjections. Used to test whether the AI Doctor responds to patient-initiated content appropriately (addressing concerns, correcting misconceptions, not being derailed by tangents). Maps to ClinicalImpression._freetext_reasoning_tags.ICE_concerns and ICE_expectations.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["exchange_id", "trigger_condition", "patient_text"],
+        "properties": {
+
+          "exchange_id": {
+            "type": "string",
+            "pattern": "^PIE-[0-9]{3}$",
+            "description": "Unique identifier. Convention: PIE-001, PIE-002.",
+            "examples": ["PIE-001", "PIE-002"]
+          },
+
+          "trigger_condition": {
+            "type": "string",
+            "description": "When the patient initiates this exchange. Can be a turn number ('after_turn_3'), a topic trigger ('when_AI_mentions_cardiac'), or a timing label ('when_management_plan_discussed').",
+            "examples": [
+              "after_turn_2",
+              "when_AI_mentions_cardiac",
+              "when_management_plan_discussed",
+              "after_first_clinical_question",
+              "any_time_if_not_already_addressed"
+            ]
+          },
+
+          "patient_text": {
+            "type": "string",
+            "description": "What the patient says. In natural patient language.",
+            "examples": [
+              "Do you think it's just indigestion? I've had it before.",
+              "Is this something I should be worried about?",
+              "I really need to be at work tomorrow — can you give me something to fix it?",
+              "My mum had a heart attack last year and I'm a bit scared it might be the same thing.",
+              "Can you give me a certificate for work?"
+            ]
+          },
+
+          "expected_ai_doctor_response_quality": {
+            "type": "string",
+            "description": "Optional. What a good AI Doctor response to this patient initiation looks like — used for communication quality scoring. Not a required exact match, a description of the appropriate response type.",
+            "examples": [
+              "Acknowledge concern, explain that indigestion and cardiac symptoms can feel similar, continue systematic assessment rather than accepting patient's self-diagnosis",
+              "Validate concern without false reassurance; explain need to gather more information before answering",
+              "Acknowledge work concern empathetically but not at the expense of appropriate clinical assessment"
+            ]
+          }
+
+        }
+      }
+    },
+
+    "deflection_behaviours": {
+      "type": "array",
+      "description": "Optional. Scripted tangential behaviours the patient may exhibit — going off-topic, repeating concerns, volunteering irrelevant information. Used to test whether the AI Doctor can maintain consultation structure while remaining patient-centred. If absent, the simulated patient engine responds linearly to questions.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["behaviour_id", "description", "trigger_condition"],
+        "properties": {
+
+          "behaviour_id": {
+            "type": "string",
+            "pattern": "^DB-[0-9]{3}$",
+            "examples": ["DB-001", "DB-002"]
+          },
+
+          "description": {
+            "type": "string",
+            "description": "What the deflection behaviour is and how it should be scripted.",
+            "examples": [
+              "When asked about symptoms, patient mentions work stress at length before answering the clinical question",
+              "Patient repeatedly returns to concern about cancer diagnosis throughout consultation",
+              "Patient asks about a specific medication they've read about online, derailing systematic history"
+            ]
+          },
+
+          "trigger_condition": {
+            "type": "string",
+            "description": "When this behaviour activates.",
+            "examples": ["when_asked_about_triggers", "after_turn_3", "when_management_discussed"]
+          },
+
+          "deflection_text_template": {
+            "type": "string",
+            "description": "Optional. What the patient says when deflecting.",
+            "examples": [
+              "Yeah, the pain... actually I've been incredibly stressed at work lately, my manager is terrible. Anyway, the pain, yes, it's mainly on the left I think."
+            ]
+          }
+
+        }
+      }
+    },
+
+    "consultation_end_conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Defines when the simulated consultation should end. Used by evaluation harnesses to avoid infinite turn loops.",
+      "properties": {
+
+        "max_turns": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 30,
+          "description": "Maximum number of AI Doctor turns before the consultation is terminated. Default 15 if not specified. Overly long consultations suggest the AI Doctor is not being efficient.",
+          "default": 15,
+          "examples": [10, 15, 20]
+        },
+
+        "end_on_management_plan": {
+          "type": "boolean",
+          "description": "Whether the consultation ends when the AI Doctor produces a management plan output. Default true — most evaluations complete when management plan is delivered.",
+          "default": true
+        },
+
+        "end_on_emergency_escalation": {
+          "type": "boolean",
+          "description": "Whether the consultation ends immediately when the AI Doctor recommends emergency attendance (T4 or T5 escalation). Default true — once emergency escalation is recommended, further questioning is inappropriate.",
+          "default": true
+        },
+
+        "minimum_items_before_management": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional. Disclosure item IDs (DI-XXX) that must be elicited before a management plan is valid. If the AI Doctor produces a management plan without eliciting these, the scoring harness flags it as premature management — a common failure mode where diagnosis is reached before adequate history is taken.",
+          "examples": [
+            ["DI-001", "DI-002", "DI-003"],
+            ["DI-001"]
+          ]
+        }
+
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "mechanism": "The conversational policy is the mechanism that tests clinical history-taking competency, not reading comprehension. Items in presentation_layer.history_as_reported are available without asking. Items here require asking — and the gate level determines the quality of question required. The AI Doctor is scored on how many gated items it successfully elicits, weighted by scoring_weight.",
+    "simulated_patient_engine": "The simulated patient response engine (whether rule-based or LLM-powered) operates as follows: (1) receive AI Doctor message; (2) for each disclosure_item not yet disclosed, check if the message semantically matches any trigger_question_example at the required gate level; (3) if gate is met → respond with patient_response_template + mark item as disclosed; (4) if gate not met → respond with patient_deflection_template or generic deflection; (5) insert any relevant patient_initiated_exchanges based on trigger_conditions; (6) check deflection_behaviours for this turn.",
+    "gate_level_scoring": {
+      "volunteered_unprompted": "Should rarely appear in this file — these belong in presentation_layer. Include only when a key fact is so prominent the patient would state it unprompted even though it appears here for completeness.",
+      "revealed_on_general_question": "Score: AI Doctor asked any reasonable open question. Low bar — most consultations should achieve this.",
+      "revealed_on_specific_targeted_question": "Score: AI Doctor asked about this specific symptom/topic. Medium bar — tests whether the AI Doctor's systematic history-taking is complete.",
+      "revealed_if_rapport_established_first": "Score: AI Doctor demonstrated warmth and patient-centredness BEFORE asking. High bar — tests consultation manner, not just clinical content.",
+      "denied_unless_directly_and_sensitively_asked": "Score: AI Doctor asked directly AND sensitively. Highest bar — tests both clinical knowledge of what to ask AND communication skill in how to ask it.",
+      "revealed_only_on_examination_or_test_request": "Score: AI Doctor recommended the appropriate investigation or examination. Tests recognition of telehealth limits.",
+      "not_disclosable_in_this_encounter": "Score: not scored for elicitation — tests that AI Doctor appropriately manages cases with incomplete information."
+    },
+    "cross_references": {
+      "presentation_layer": "01_presentation_layer.schema.json — reluctance_topics in psychosocial_profile must match disclosure items with denied_unless_directly_and_sensitively_asked gate",
+      "ground_truth_node": "10_ground_truth_node.schema.json — red_flags[].disclosure_item_ref matches item_id; is_red_flag=true items correspond to red_flags in ground truth",
+      "symptom_links_node": "11_symptom_links_node.schema.json — symptoms[].disclosure_item_ref matches item_id; links the clinical fact to its diagnostic weight",
+      "safety_netting_node": "13_safety_netting_node.schema.json — escalation_edges that trigger on is_red_flag=true items",
+      "digital_tablet": "fhir_path values map to digital_tablet_omnibus.json structure; ros_category matches FreeText_Taxonomy.ROS_headings"
+    },
+    "item_id_convention": "DI-001 through DI-999 per case. Zero-padded 3 digits. Sequential within the case. Do not renumber after scoring runs begin — item_ids are referenced externally.",
+    "minimum_case_requirements": {
+      "disclosure_items_minimum": 3,
+      "red_flag_items_minimum": 1,
+      "gate_diversity": "A well-designed case should include at least one item at each of: revealed_on_general_question, revealed_on_specific_targeted_question, and (for appropriate cases) denied_unless_directly_and_sensitively_asked. An all-specific-targeted-question case tests narrow clinical knowledge; a balanced gate distribution tests the full range of history-taking skills."
+    }
+  }
+}
