@@ -4,6 +4,19 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Standards registration — FHIR R4 / AUCDI R3 grounding scoped (2026-06-30)
+
+**Status:** Registered (not built). Operator request to ground HL7 FHIR R4 + AUCDI Release 3.
+
+Placed in topology: FHIR R4 and AUCDI R3 are structure/data-model standards (trust boundary 3), not terminology code systems — distinct from the SNOMED/ICD/LOINC/PBS terminology layer. AUCDI R3 supplies required terminology bindings that can later enrich the verifier's code↔receipt binding.
+
+- `<standards_pins>` (CLAUDE.md): **AUCDI Release 3** added, supplementing AU Core 0.3.0. Whether AUCDI R3 re-targets or only supplements the AU Core conformance target is flagged as an unsettled org/regulatory decision.
+- gap-register §3: AUCDI R3 row added.
+- Completeness Register: opened `fhir-r4-aucdi-conformance-unbuilt` (Medium — deterministic FHIR R4 + AU Core + AUCDI R3 conformance validator in fhir-broker) and `aucdi-r3-valueset-binding-unbuilt` (Medium — AUCDI required-binding tables + verifier value-set enforcement).
+- Sequencing: registered now; to be scoped (Phase 1) after `verifier-weak-code-detection` (item 2), which it depends on.
+
+---
+
 ## Verifier test coverage — 5 hard checks under test (2026-06-30)
 
 **Status:** Complete. Branch `chore/import-and-remediate`. Resolves `verifier-untested` / gap-register **R-18**.

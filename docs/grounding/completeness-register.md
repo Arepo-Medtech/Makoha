@@ -221,8 +221,42 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none
   risk: Medium
   blocks_patient_facing: false
-  build_action: build per AU Core 0.3.0; connect last (build order step 6).
+  build_action: build per AU Core 0.3.0 + AUCDI R3 (see fhir-r4-aucdi-conformance-unbuilt); connect last (build order step 6).
   gap_register_link: gap-fhir-broker
+  status: open
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: fhir-r4-aucdi-conformance-unbuilt
+  path: mcp/servers/fhir-broker/ (conformance validator); standards: FHIR R4 4.0.1, AU Core 0.3.0, AUCDI R3
+  component_type: mcp-server
+  state: UNBUILT
+  evidence: OPENED 2026-06-30 (operator request) — no deterministic FHIR R4 / AU Core / AUCDI R3 conformance validation exists; fhir-broker unbuilt. AUCDI R3 newly pinned (supplements AU Core 0.3.0).
+  blocks: structured-output conformance grounding (trust boundary 3); receipt-backed conformance claims
+  safety_class: degrades_safe (no conformance claim in absence)
+  invariant_exposure: none directly (resource structure); supports auditability/grounding
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: build deterministic FHIR R4 + AU Core 0.3.0 + AUCDI R3 conformance validator in fhir-broker, emitting conformance receipts. Scope AFTER verifier-weak-code-detection (item 2). Confirm AUCDI re-target-vs-supplement (org decision) before pinning a single conformance target.
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: aucdi-r3-valueset-binding-unbuilt
+  path: AUCDI R3 required-binding tables (dataset) + verifier/terminology integration
+  component_type: dataset
+  state: UNBUILT
+  evidence: OPENED 2026-06-30 (operator request) — no AUCDI R3 required-binding tables (data element → value set / code system); item 2's code↔receipt binding is value-set-agnostic.
+  blocks: per-element value-set enforcement (a coded element drawn from the AUCDI-mandated value set)
+  safety_class: degrades_safe
+  invariant_exposure: no-fabricated-codes (enrichment — codes from the correct value set)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: curate AUCDI R3 required-binding tables; extend the hardened verifier binding to check element value-set membership. DEPENDS ON item 2 (code↔receipt binding) + terminology-contract-incomplete.
+  gap_register_link: none
   status: open
   last_scanned: 2026-06-30
 ```

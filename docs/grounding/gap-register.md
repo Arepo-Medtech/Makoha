@@ -126,6 +126,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | ICD-10-AM | 12th Edition | Not queried | Codes manually curated |
 | LOINC | 2.77 | Not queried | Mapping tables not built |
 | AU Core | 0.3.0 | fhir-broker (stub) | Conformance not validated |
+| AUCDI | Release 3 (supplements AU Core 0.3.0) | fhir-broker (unbuilt) | Conformance validator + required-binding tables not built; re-target vs supplement is an org decision |
 | PBS | Current | Not queried | No PBS API connected |
 | AMT | SNOMED CT AU basis | terminology (stub) | Product subset not validated |
 | SafeScript WA | Referenced in pharm-check | Not connected | PDMP integration gap |

@@ -327,6 +327,7 @@ Know what is real before you build on it. `docs/grounding/gap-register.md` (cita
 - SNOMED CT: Australian Edition, 20240301
 - ICD-10-AM: 12th Edition
 - AU Core: 0.3.0
+- AUCDI: Release 3 (supplements AU Core 0.3.0; logical core-data model + required terminology bindings. Conformance validator and binding tables not yet built. Whether AUCDI R3 re-targets or only supplements the AU Core 0.3.0 conformance target is an org/regulatory confirmation, not yet settled.)
 - LOINC: 2.77 (mapping tables not yet built)
 - PBS / AMT: current; no live PBS API connected; AMT subset not yet validated
 </standards_pins>
