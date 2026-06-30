@@ -46,6 +46,9 @@ check("codes FP: vitamin B12 passes", passed("Patient takes vitamin B12 daily.",
 check("codes FP: vitals number passes", passed("Blood pressure was 120 over 80.", {}, "no_invented_codes"));
 check("codes FP: citation date passes", passed("Citation cw-au:imaging-lbp:2024-01 applies.", {}, "no_invented_codes"));
 check("codes FP: weeks ago passes", passed("Seen 2 weeks ago, no red flags.", {}, "no_invented_codes"));
+// bare long integers (reference/phone numbers) must NOT be flagged as SNOMED codes
+check("codes FP: bare reference number passes", passed("Callback on reference 100000 in the file.", {}, "no_invented_codes"));
+check("codes FP: phone number passes", passed("Call the clinic on 0731234567 if symptoms worsen.", {}, "no_invented_codes"));
 
 // Mock-mode flagging + non-mock blocking.
 {

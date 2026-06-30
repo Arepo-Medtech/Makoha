@@ -30,9 +30,13 @@ const ALLOWED_SERVICE_NAMES = new Set([
  * text such as "vitamin B12" or a YYYY-MM date.
  */
 const CODE_PATTERNS = [
-  // SNOMED CT — bare concept ids are 6–18 digit integers; also explicit context.
+  // SNOMED CT — a long digit string is only treated as a concept id when it sits in
+  // a code context (SNOMED / "code:" / "concept:"). A bare 6–18 digit integer is NOT
+  // flagged: ordinary text (a phone/reference number, an epoch timestamp, a large
+  // count) routinely contains long integers, and flagging those rejects grounded,
+  // code-free output (false positive). Real trunk output that emits a SNOMED code
+  // labels it, so the context forms below catch the genuine cases.
   { system: "SNOMED CT", re: /\bSNOMED(?:[\s_-]?CT)?\b[\s\S]{0,24}?\b\d{6,18}\b/i },
-  { system: "SNOMED CT", re: /\b\d{6,18}\b/ },
   // ICD-10-AM — dotted form is unambiguous; the bare 3-char form is context-gated.
   { system: "ICD-10-AM", re: /\b[A-Z]\d{2}\.\d{1,4}\b/ },
   { system: "ICD-10-AM", re: /\bICD(?:[\s-]?10(?:[\s-]?AM)?)\b[\s\S]{0,24}?\b[A-Z]\d{2}(?:\.\d{1,4})?\b/i },
@@ -71,7 +75,8 @@ function extractBindableCodes(output) {
     let m;
     while ((m = re.exec(output)) !== null) found.push({ system, code: m[1] });
   };
-  scan("SNOMED CT", /\b(\d{6,18})\b/g);
+  // SNOMED: only a code-context digit string (not a bare long integer) — see CODE_PATTERNS.
+  scan("SNOMED CT", /(?:SNOMED(?:[\s_-]?CT)?|\bcode|\bconcept)[^\d\n]{0,24}?\b(\d{6,18})\b/gi);
   scan("ICD-10-AM", /\b([A-Z]\d{2}\.\d{1,4})\b/g);
   scan("LOINC", /\b(\d{4,5}-\d)\b/g);
   const seen = new Set();
@@ -118,7 +123,10 @@ export function verify(output, evidence = {}) {
   // not mock — treat mock proof as absent so anything grounded solely on mock
   // data fails. In mock/dev (the default) we flag but do not block.
   const contextMode = evidence.context_mode || "mock";
-  const enforceLive = contextMode !== "mock";
+  // Only a genuine LIVE context blocks mock-grounded output. dry_run is a development
+  // mode (query validated, upstream not called) — treating it as production would
+  // fail every legitimately mock-grounded output during dev.
+  const enforceLive = contextMode === "live";
   const receiptModes = evidence.receipt_modes || [];
   const mockIds = new Set(receiptModes.filter((m) => m.mode === "mock").map((m) => m.id));
   for (const e of terminologyEntries) if (e.mode === "mock" && e.request_id) mockIds.add(e.request_id);

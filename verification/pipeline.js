@@ -207,6 +207,10 @@ export async function runPipeline(options = {}) {
     firewall_status,
     continuation_blocked,
     hard_stops,
+    // Terminology receipts WITH their validated codes — recorded in the ledger so a
+    // later verify:rehash --reissue can faithfully re-bind codes (otherwise a
+    // previously-passing coded output would be re-recorded as FAIL).
+    terminology,
   };
 }
 

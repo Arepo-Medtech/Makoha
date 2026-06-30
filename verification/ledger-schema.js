@@ -36,6 +36,9 @@ const ReceiptMetaSchema = z
     upstream: z.string().min(1),
     mode: z.enum(MODE),
     timestamp_utc: z.string().datetime().optional(),
+    // Validated code(s) a terminology receipt returned — metadata, not PHI. Recorded
+    // so verify:rehash --reissue can faithfully re-bind codes.
+    codes: z.array(z.string()).optional(),
   })
   .strict();
 

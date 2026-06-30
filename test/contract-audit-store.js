@@ -40,7 +40,7 @@ async function run() {
       candidate_output_hash: h,
       pass: true,
       check_results: [{ check: "no_invented_codes", passed: true }],
-      receipts: [{ request_id: "term-1", upstream: "terminology", mode: "mock" }],
+      receipts: [{ request_id: "term-1", upstream: "terminology", mode: "mock", codes: ["279039003"] }],
       mode: "mock",
       content_persisted: true,
     });
@@ -48,6 +48,8 @@ async function run() {
 
   const L = readLedger();
   if (L.length !== 2) errors.push(`expected 2 entries, got ${L.length}`);
+  // Validated codes must survive the append (so verify:rehash --reissue can re-bind).
+  if (JSON.stringify(L[0].receipts?.[0]?.codes) !== JSON.stringify(["279039003"])) errors.push("ledger dropped terminology receipt codes (reissue would flip coded outputs to FAIL)");
   if (L[0].prev_hash !== GENESIS_HASH) errors.push("first entry does not link to genesis");
   if (L[1].prev_hash !== L[0].entry_hash) errors.push("second entry does not link to first");
   if (L[0].seq !== 0 || L[1].seq !== 1) errors.push("seq not monotonic from 0");

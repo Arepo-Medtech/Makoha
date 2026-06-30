@@ -97,12 +97,17 @@ export function runPharmCheck(intentInput, resolved = {}) {
     }
   } else addCheck("renal_dosing_check", "PASS", undefined, "no renal rule for this drug");
 
-  // 4. AU scheduling
-  const schedule = DATA.schedule_map[drug] || intent.drug_intent.schedule || "unknown";
+  // 4. AU scheduling — treat as S8 if EITHER the mock map OR the intent declares it,
+  // so a map miss (brand/spelling variant) or a map entry can't suppress the PDMP
+  // check for a controlled drug.
+  const mappedSchedule = DATA.schedule_map[drug];
+  const declaredSchedule = intent.drug_intent.schedule;
+  const schedule = mappedSchedule || declaredSchedule || "unknown";
+  const isS8 = mappedSchedule === "S8" || declaredSchedule === "S8";
   addCheck("schedule_check", "PASS", undefined, `AU schedule: ${schedule}`);
 
   // 5. S8 PDMP (SafeScript)
-  if (schedule === "S8") {
+  if (isS8) {
     if (resolved.s8_pdmp_checked === true) addCheck("schedule_8_check", "PASS", undefined, "PDMP check recorded");
     else {
       addCheck("schedule_8_check", "HARD_FAIL", "critical", "S8 drug requires a PDMP (SafeScript) check — not performed");
@@ -111,13 +116,23 @@ export function runPharmCheck(intentInput, resolved = {}) {
     }
   }
 
-  // Paediatric — flag for in-person review, NEVER a dose.
+  // Paediatric / age appropriateness. A KNOWN under-18 → HARD_FAIL (flag, no dose).
+  // An UNKNOWN age must NOT silently produce a dose: per the fail-safe default
+  // (missing proof → blocked/unknown) we mark the check NOT_RUN, which forces overall
+  // BLOCKED_NO_PROOF and withholds dose guidance until age is confirmed.
   let paediatric = false;
-  if (typeof age === "number" && age < 18) {
-    paediatric = true;
-    addCheck("age_appropriateness_check", "HARD_FAIL", "critical", "paediatric (<18): no paediatric dosing tables — in-person review required");
-    flags.push({ flag_id: "flag-paed", flag_type: "age_paediatric_weight_based", severity: "critical", description: "Patient under 18 — paediatric dosing not available; in-person review required" });
-    nextData.push("Refer for in-person paediatric review (no remote dosing).");
+  if (typeof age === "number") {
+    if (age < 18) {
+      paediatric = true;
+      addCheck("age_appropriateness_check", "HARD_FAIL", "critical", "paediatric (<18): no paediatric dosing tables — in-person review required");
+      flags.push({ flag_id: "flag-paed", flag_type: "age_paediatric_weight_based", severity: "critical", description: "Patient under 18 — paediatric dosing not available; in-person review required" });
+      nextData.push("Refer for in-person paediatric review (no remote dosing).");
+    } else {
+      addCheck("age_appropriateness_check", "PASS");
+    }
+  } else {
+    addCheck("age_appropriateness_check", "NOT_RUN", undefined, "patient age not provided — cannot confirm the patient is not paediatric", ["patient_age_years"]);
+    nextData.push("Provide patient age (no remote paediatric dosing).");
   }
 
   // Overall status (HARD_FAIL terminal > BLOCKED_NO_PROOF > WARN > PASS).

@@ -11,7 +11,7 @@ import { runTrunkWithGrounding } from "../integration/trunk-pipeline.js";
 
 const errors = [];
 const check = (label, cond) => { if (!cond) errors.push(label); };
-const intent = (over = {}) => ({ intent_id: "int-1", session_ref: "enc-stub-008", intent_type: "new_prescription", drug_intent: { drug_name: "oxycodone", drug_class: "opioid" }, patient_facts_ref: {}, mode: "mock", ...over });
+const intent = (over = {}) => ({ intent_id: "int-1", session_ref: "enc-stub-008", intent_type: "new_prescription", drug_intent: { drug_name: "oxycodone", drug_class: "opioid" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 45 }, mode: "mock", ...over });
 const run = (opts) => runTrunkWithGrounding("8.0", "pain meds?", { sessionRef: "enc-stub-008", writeArtifacts: false, ...opts });
 const check5 = (r) => r.verification.results.find((x) => x.check === "hard_stop_enforcement").passed;
 

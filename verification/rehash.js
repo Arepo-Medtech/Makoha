@@ -36,18 +36,23 @@ import { validateReport } from "./report-schema.js";
  *  reissued verification evaluates the same checks the original run had. */
 function evidenceFromReceipts(receipts = []) {
   const citations = [];
+  const terminology = [];
   const terminology_receipts = [];
   const live_receipts = [];
   for (const r of receipts) {
-    if (/doc/i.test(r.upstream)) citations.push(r.request_id);
-    else if (/terminolog/i.test(r.upstream)) {
+    if (/terminolog/i.test(r.upstream)) {
+      // Rebuild the per-code binding evidence from the recorded codes, so a coded
+      // output that originally passed re-binds (and passes) on reissue.
+      terminology.push({ request_id: r.request_id, codes: r.codes || [], mode: r.mode });
       terminology_receipts.push(r.request_id);
       live_receipts.push(r.request_id);
+    } else if (/doc/i.test(r.upstream)) {
+      citations.push(r.request_id);
     } else {
       live_receipts.push(r.request_id);
     }
   }
-  return { citations, terminology_receipts, live_receipts };
+  return { citations, terminology, terminology_receipts, live_receipts };
 }
 
 function integrity() {

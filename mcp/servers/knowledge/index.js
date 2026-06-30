@@ -53,7 +53,7 @@ server.registerTool(
       let rows = ds.records;
       if (query && query !== "*") {
         const q = String(query).toLowerCase();
-        rows = rows.filter((x) => x.key === query || (x.display && x.display.toLowerCase().includes(q)));
+        rows = rows.filter((x) => x.key.toLowerCase() === q || (x.display && x.display.toLowerCase().includes(q)));
       }
       return text({ rows, dataset_version: ds.dataset_version, checksum: ds.checksum, receipt: r });
     }

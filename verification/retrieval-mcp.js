@@ -209,7 +209,8 @@ export async function retrieveFhirObservations(plan) {
     const result = await client.callTool({ name: "fhir_search", arguments: { resource_type: "Observation", mode: "mock" } });
     const content = result.content?.[0]?.text;
     if (!content) return [];
-    const entries = (JSON.parse(content).bundle && JSON.parse(content).bundle.entry) || [];
+    const parsed = JSON.parse(content);
+    const entries = (parsed.bundle && parsed.bundle.entry) || [];
     return entries
       .map((e) => {
         const o = e.resource || {};
@@ -230,9 +231,13 @@ export async function retrieveFhirObservations(plan) {
  * @returns {Promise<Array<{ kind: string, citation_id?: string, ref?: string, request_id?: string, upstream?: string, receipt?: object }>>}
  */
 export async function retrieveViaMcp(plan) {
-  const docReceipts = await retrieveDocs(plan);
-  const identityReceipts = await retrieveIdentity(plan);
-  const terminologyReceipts = await retrieveTerminology(plan);
-  const knowledgeReceipts = await retrieveKnowledge(plan);
+  // The four retrievals are independent (separate servers, no shared data) — run them
+  // concurrently so pipeline latency is the max of the four, not their sum.
+  const [docReceipts, identityReceipts, terminologyReceipts, knowledgeReceipts] = await Promise.all([
+    retrieveDocs(plan),
+    retrieveIdentity(plan),
+    retrieveTerminology(plan),
+    retrieveKnowledge(plan),
+  ]);
   return [...docReceipts, ...identityReceipts, ...terminologyReceipts, ...knowledgeReceipts];
 }

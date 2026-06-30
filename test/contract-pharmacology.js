@@ -29,7 +29,8 @@ async function run() {
   const rpc = (id, method, params) => new Promise((res) => { pending.set(id, res); proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n"); });
   const notify = (method, params) => proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", method, params }) + "\n");
 
-  const intent = (over = {}) => ({ intent_id: "int-1", session_ref: "enc-stub-008", intent_type: "new_prescription", drug_intent: { drug_name: "amoxicillin", drug_class: "penicillin" }, patient_facts_ref: {}, mode: "mock", ...over });
+  // Adult age by default — an unknown age now fail-safes to BLOCKED_NO_PROOF (no dose).
+  const intent = (over = {}) => ({ intent_id: "int-1", session_ref: "enc-stub-008", intent_type: "new_prescription", drug_intent: { drug_name: "amoxicillin", drug_class: "penicillin" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 45 }, mode: "mock", ...over });
   let callId = 100;
   const pharmCheck = async (intentObj, resolved_facts) => {
     const r = await rpc(++callId, "tools/call", { name: "pharm_check", arguments: { intent: intentObj, resolved_facts, mode: "mock" } });
@@ -74,6 +75,16 @@ async function run() {
     if (paed.status !== "HARD_FAIL") errors.push("paediatric expected HARD_FAIL, got " + paed.status);
     if (paed.dose_guidance) errors.push("paediatric must NEVER carry dose_guidance");
     if (!paed.flags.some((f) => f.flag_type === "age_paediatric_weight_based")) errors.push("paediatric flag missing");
+
+    // unknown age -> fail-safe BLOCKED_NO_PROOF, no dose (cannot confirm not paediatric)
+    const noAge = await pharmCheck(intent({ clinical_context: {} }), { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true });
+    if (noAge.status !== "BLOCKED_NO_PROOF") errors.push("unknown-age expected BLOCKED_NO_PROOF, got " + noAge.status);
+    if (noAge.dose_guidance) errors.push("unknown-age must NOT carry dose_guidance");
+
+    // intent-declared S8 (not in mock schedule map) still triggers PDMP HARD_FAIL
+    const declaredS8 = await pharmCheck(intent({ drug_intent: { drug_name: "tapentadol", drug_class: "opioid", schedule: "S8" } }), { allergens: [], current_medications: [] });
+    if (declaredS8.status !== "HARD_FAIL") errors.push("intent-declared S8 expected HARD_FAIL (PDMP), got " + declaredS8.status);
+    if (!declaredS8.flags.some((f) => f.flag_type === "schedule_8_pdmp_required")) errors.push("intent-declared S8 PDMP flag missing");
   } finally {
     proc.kill("SIGTERM");
   }

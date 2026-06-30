@@ -19,14 +19,14 @@
  * (see lab-reference-ranges.json status). Clinical + regulatory sign-off is
  * required before any patient-facing use.
  */
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { sha256Prefixed } from "./hash.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATASET = JSON.parse(readFileSync(join(__dirname, "data", "lab-reference-ranges.json"), "utf8"));
-const DATASET_CHECKSUM = "sha256:" + createHash("sha256").update(JSON.stringify(DATASET.analytes), "utf8").digest("hex");
+const DATASET_CHECKSUM = sha256Prefixed(JSON.stringify(DATASET.analytes));
 const SANITISER = `deterministic-investigation-parser@${DATASET.dataset_version}`;
 
 /** Build the dataset receipt (receipt discipline: dataset_version + checksum). */

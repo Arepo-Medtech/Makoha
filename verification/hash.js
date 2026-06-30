@@ -29,6 +29,15 @@ export function hashCandidateOutput(output) {
       `hashCandidateOutput requires a string; received ${output === null ? "null" : typeof output}`
     );
   }
-  const digest = createHash("sha256").update(output, "utf8").digest("hex");
-  return `sha256:${digest}`;
+  return sha256Prefixed(output);
+}
+
+/**
+ * SHA-256 of a UTF-8 string as `sha256:<64 hex>`. Single source of the prefixed-hash
+ * format used for the medicolegal anchor, the ledger hash-chain, and dataset checksums.
+ * @param {string} input
+ * @returns {string} `sha256:<64 lowercase hex chars>`
+ */
+export function sha256Prefixed(input) {
+  return `sha256:${createHash("sha256").update(input, "utf8").digest("hex")}`;
 }

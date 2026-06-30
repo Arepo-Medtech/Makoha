@@ -23,7 +23,6 @@
  * multi-process safe. A production ledger needs atomic append + durable, WORM
  * storage + an org-defined retention policy (a <regulatory_posture> decision).
  */
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -34,6 +33,7 @@ import {
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateLedgerEntry } from "./ledger-schema.js";
+import { sha256Prefixed } from "./hash.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -71,10 +71,7 @@ function compact(obj) {
 
 /** entry_hash = sha256( canonical(entry-without-entry_hash) + prev_hash ). */
 function computeEntryHash(entryWithoutHash, prevHash) {
-  const digest = createHash("sha256")
-    .update(canonical(entryWithoutHash) + prevHash, "utf8")
-    .digest("hex");
-  return `sha256:${digest}`;
+  return sha256Prefixed(canonical(entryWithoutHash) + prevHash);
 }
 
 function randomId() {
@@ -121,7 +118,7 @@ export function appendEntry(core) {
     pass: core.pass,
     check_results: (core.check_results || []).map((r) => ({ check: r.check, passed: r.passed })),
     receipts: (core.receipts || []).map((r) =>
-      compact({ request_id: r.request_id, upstream: r.upstream, mode: r.mode, timestamp_utc: r.timestamp_utc })
+      compact({ request_id: r.request_id, upstream: r.upstream, mode: r.mode, timestamp_utc: r.timestamp_utc, codes: r.codes })
     ),
     mode: core.mode,
     content_persisted: !!core.content_persisted,
@@ -242,6 +239,14 @@ export function recordRun(result, opts = {}) {
     content_persisted = true;
   }
 
+  // Carry each terminology receipt's validated codes into the ledger so a later
+  // reissue can rebind codes exactly (see rehash.js / pipeline.js terminology).
+  const codesByReq = new Map((result.terminology || []).map((t) => [t.request_id, t.codes || []]));
+  const receipts = receiptMeta(result.packet && result.packet.receipts).map((r) => {
+    const codes = codesByReq.get(r.request_id);
+    return codes && codes.length ? { ...r, codes } : r;
+  });
+
   return appendEntry({
     run_id: result.run_id,
     trunk_id: opts.trunkId,
@@ -249,7 +254,7 @@ export function recordRun(result, opts = {}) {
     candidate_output_hash: hash,
     pass: result.verification.pass,
     check_results: result.verification.results,
-    receipts: receiptMeta(result.packet && result.packet.receipts),
+    receipts,
     mode,
     content_persisted,
   });
