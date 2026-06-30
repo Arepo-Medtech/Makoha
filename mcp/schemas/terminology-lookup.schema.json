@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/terminology-lookup.schema.json",
+  "title": "TerminologyLookup",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request", "response", "receipt"],
+  "properties": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "query"],
+      "properties": {
+        "system": { "type": "string", "enum": ["SNOMED_CT", "ICD_11"] },
+        "query": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["text", "code"] },
+            "value": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["hit", "miss", "error"] },
+        "concept": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["system", "code", "display", "version"],
+          "properties": {
+            "system": { "type": "string" },
+            "code": { "type": "string" },
+            "display": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "display", "score"],
+            "properties": {
+              "code": { "type": "string" },
+              "display": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "error": { "type": "string" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "timestamp_utc", "upstream", "mode"],
+      "properties": {
+        "request_id": { "type": "string" },
+        "timestamp_utc": { "type": "string", "format": "date-time" },
+        "upstream": { "type": "string", "description": "Which terminology server answered this request." },
+        "mode": { "type": "string", "enum": ["live", "dry_run", "mock"] }
+      }
+    }
+  }
+}
+

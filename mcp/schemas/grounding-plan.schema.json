@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/grounding-plan.schema.json",
+  "title": "GroundingPlan",
+  "description": "Output of pipeline Step 1 (Routing / Identification). Produced by the routing() function in verification/pipeline.js and consumed by the retrieval layer (Step 2) to determine which MCP tool calls must be made before generation proceeds. Every trunk turn produces one GroundingPlan. The plan is NOT exposed to the LLM — it is a machine-to-machine contract between the router and the retrieval layer. The three core arrays (needs_static_docs, needs_live_calls, needs_structured_kg) match the existing code shape exactly. All additional fields are optional extensions that enrich the plan for typed retrieval and audit without breaking current pipeline.js behaviour.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "needs_static_docs",
+    "needs_live_calls",
+    "needs_structured_kg"
+  ],
+  "properties": {
+
+    "needs_static_docs": {
+      "type": "array",
+      "description": "Topics that must be retrieved and cited from the docs MCP server (docs_search → docs_cite) before generation. Each string is a topic name passed as the 'query' argument to docs_search. The retrieval layer iterates this array and collects citation_ids. If empty, no docs retrieval is performed. Format: human-readable topic label as used in the docs corpus index. Examples from existing code: 'Choosing Wisely', 'red-flag questions'. Expand per trunk as the docs index grows.",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "examples": [
+        ["Choosing Wisely", "red-flag questions"],
+        ["eTG cardiovascular antihypertensives"],
+        ["RACGP red book preventive care"],
+        ["Choosing Wisely imaging low back pain", "red-flag back pain"],
+        []
+      ]
+    },
+
+    "needs_live_calls": {
+      "type": "array",
+      "description": "Operational facts that must come from live MCP tool calls. In the current pipeline.js implementation this is a flat array of strings checked with includes('ihi') and includes('terminology'). This schema preserves that flat-string form as the minimum valid shape. The optional typed form (see live_call_specs) supersedes this when present — the retrieval layer should prefer live_call_specs if populated and fall back to needs_live_calls string matching otherwise. Allowed values map directly to the retrieval functions in retrieval-mcp.js and the servers in mcpServers.template.json.",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "examples": [
+        ["IHI", "terminology"],
+        ["terminology"],
+        ["IHI"],
+        ["pharmacology", "terminology"],
+        ["FHIR-patient", "FHIR-condition", "terminology"],
+        []
+      ]
+    },
+
+    "needs_structured_kg": {
+      "type": "array",
+      "description": "Curated knowledge graph datasets or ContextGraph/PatientKnowledgeGraph queries required before generation. Each string names a dataset or graph query type. The knowledge MCP server (kg.query) is called for each entry. If empty, no structured KG retrieval is performed. Dataset names should match versioned entries in the knowledge store. Examples: 'benign-registry' (Trunk 7.0 gating), 'axis-b-templates' (Trunk 5.0), 'redflags-lbp' (Trunk 9.0 questionnaire), 'patient-baseline' (PatientKnowledgeGraph pull for any trunk needing PMHx).",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "examples": [
+        ["benign-registry", "axis-b-templates"],
+        ["redflags-lbp"],
+        ["patient-baseline"],
+        []
+      ]
+    },
+
+    "trunk_id": {
+      "type": "string",
+      "description": "Optional. The trunk this plan was generated for. When present, the retrieval layer can apply trunk-specific retrieval logic (e.g. Trunk 8.0 always triggers pharmacology check; Trunk 6.0 always pulls FHIR investigation results). Must match a trunk defined in TRUNK_CONSTRAINTS in integration/trunk-pipeline.js.",
+      "enum": ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"]
+    },
+
+    "session_ref": {
+      "type": "string",
+      "description": "Optional. The encounter/session ID this plan belongs to. Matches ContextGraph.encounter_id. When present, the retrieval layer uses this to tag receipts with correlation_id so audit logs can join per-encounter.",
+      "minLength": 6,
+      "examples": ["enc-20260623-001", "enc-stub-001"]
+    },
+
+    "run_id": {
+      "type": "string",
+      "description": "Optional. The pipeline run ID. Matches the run_id generated in runPipeline() in verification/pipeline.js. Format: 'run-<epoch-ms>-<random-7-chars>'. When present in the plan, the VerificationReport references it for end-to-end tracing.",
+      "examples": ["run-1719014400000-a3f7b2c"]
+    },
+
+    "constraints": {
+      "type": "array",
+      "description": "Optional. Trunk-specific hard constraints to be injected into the ContextPacket. When populated here, trunk-pipeline.js uses this array directly instead of looking up TRUNK_CONSTRAINTS. Allows the router to override or extend the static constraint table for edge cases (e.g. a Trunk 3.0 turn that also needs pharmacology constraint because a sensitive medication was mentioned). Values are plain strings passed verbatim into ContextPacket.constraints.",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "examples": [
+        ["no diagnosis", "no dosages", "triage only"],
+        ["no diagnosis", "no dosages", "code lock-in requires terminology receipt", "benign registry gating"],
+        ["no diagnosis", "no dosages", "no autonomous prescribing", "pharmacology firewall HARD_FAIL blocks"]
+      ]
+    },
+
+    "needs_pharmacology_check": {
+      "type": "boolean",
+      "description": "Optional. When true, the retrieval layer must call pharm.intent and pharm.check (pharmacology MCP server) before generation proceeds. A HARD_FAIL from pharm.check blocks trunk continuation. Should be set to true automatically for any Trunk 8.0 plan. May also be set by earlier trunks if the router detects a prescribing intent in the input (e.g. patient requests a specific medication by name). Default false.",
+      "default": false
+    },
+
+    "needs_fhir_reads": {
+      "type": "array",
+      "description": "Optional. FHIR resource types that must be pulled from the fhir-broker MCP server before generation. Used primarily by Trunk 6.0 (investigation interpretation) to pull DiagnosticReport and Observation resources. Resource type names match FHIR R4 resource type strings and correspond to Digital Tablet Part B resources.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Patient",
+          "Condition",
+          "MedicationRequest",
+          "AllergyIntolerance",
+          "Observation",
+          "Procedure",
+          "Immunization",
+          "DiagnosticReport",
+          "FamilyMemberHistory",
+          "ClinicalImpression",
+          "CareTeam",
+          "CarePlan",
+          "Goal",
+          "Consent",
+          "RiskAssessment",
+          "Encounter",
+          "Composition"
+        ]
+      },
+      "examples": [
+        ["DiagnosticReport", "Observation"],
+        ["Condition", "MedicationRequest", "AllergyIntolerance"],
+        ["Patient"]
+      ]
+    },
+
+    "priority": {
+      "type": "string",
+      "enum": ["urgent", "routine"],
+      "description": "Optional. Retrieval priority for this plan turn. 'urgent' signals that safety-critical retrieval (IHI, pharmacology, red-flag questions) must complete before any generation proceeds, with no timeout fallback to stub. 'routine' allows the retrieval layer to use stubs if live calls time out. Should be set to 'urgent' whenever the clinical context contains potential red flags or Trunk 9.0 is active.",
+      "default": "routine"
+    },
+
+    "live_call_specs": {
+      "type": "array",
+      "description": "Optional. Typed replacement for needs_live_calls. When populated, the retrieval layer uses these structured specs instead of string-matching on needs_live_calls. Each spec identifies exactly which MCP server to call, which tool to invoke, and what query parameters to use. This is the typed, forward-compatible form that the retrieval layer should prefer when routing to specific lookups (e.g. a specific SNOMED concept, a specific FHIR resource ID).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["server", "tool"],
+        "properties": {
+          "server": {
+            "type": "string",
+            "enum": [
+              "docs",
+              "knowledge",
+              "identity-au",
+              "terminology",
+              "fhir-broker",
+              "pharmacology",
+              "messaging-geo"
+            ],
+            "description": "MCP server to call. Must match a key in mcpServers.template.json."
+          },
+          "tool": {
+            "type": "string",
+            "description": "Tool name within the server. Examples: 'terminology_lookup', 'identity_lookup_ihi', 'fhir_read', 'pharm_check', 'docs_cite', 'kg_query'.",
+            "examples": [
+              "docs_search",
+              "docs_cite",
+              "terminology_lookup",
+              "terminology_validate",
+              "identity_verify",
+              "identity_lookup_ihi",
+              "fhir_read",
+              "fhir_search",
+              "pharm_intent",
+              "pharm_check",
+              "kg_query",
+              "kg_provenance"
+            ]
+          },
+          "query": {
+            "type": "object",
+            "description": "Optional. Tool-specific query parameters. Shape depends on the tool being called. The retrieval layer passes this object as the 'arguments' to client.callTool(). If omitted, the retrieval layer uses sensible defaults based on the session context.",
+            "examples": [
+              { "system": "SNOMED_CT", "query": { "kind": "text", "value": "low back pain" }, "mode": "mock" },
+              { "attributes_minimal": {}, "mode": "mock" },
+              { "resource_type": "DiagnosticReport", "id": "dr-001", "mode": "mock" },
+              { "graph_kind": "ContextGraph", "query": "SELECT * WHERE type='symptom'", "mode": "mock" }
+            ]
+          },
+          "required_for_generation": {
+            "type": "boolean",
+            "description": "Optional. When true, a failure of this specific tool call (timeout, error, HARD_FAIL) must block generation entirely. When false, the retrieval layer may proceed with a stub receipt and flag the miss in the VerificationReport. Default true for pharmacology and identity calls; false for advisory calls like docs_search.",
+            "default": true
+          }
+        }
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "current_code_shape": "The routing() function in verification/pipeline.js returns { needs_static_docs, needs_live_calls, needs_structured_kg } as plain JS object. This schema formalises that exact shape as the required minimum. All additional fields are optional — the pipeline.js stub remains valid against this schema without modification.",
+    "backwards_compatibility": "The three required fields (needs_static_docs, needs_live_calls, needs_structured_kg) exactly match the current routing() return value. Any existing GroundingPlan object produced by the current code is valid against this schema.",
+    "consumed_by": [
+      "verification/pipeline.js — routing() produces it; retrieval layer consumes needs_static_docs + needs_live_calls + needs_structured_kg",
+      "verification/retrieval-mcp.js — retrieveDocs(plan), retrieveIdentity(plan), retrieveTerminology(plan) all take plan as argument",
+      "integration/trunk-pipeline.js — passes plan through runPipeline(); constraints array injected into ContextPacket",
+      "mcp/schemas/verification-report.schema.json — VerificationReport references the plan's run_id and trunk_id"
+    ],
+    "receipt_schema_ref": "receipt.schema.json — retrieval layer produces Receipt objects from each live_call_specs entry; receipts are collected into ContextPacket.receipts[]",
+    "context_packet_ref": "context-packet.schema.json (File 4) — the GroundingPlan's needs_* arrays determine what goes into ContextPacket.facts, evidence, and receipts",
+    "digital_tablet_ref": "needs_fhir_reads values map to Digital Tablet Part A (Patient, Condition, MedicationRequest, AllergyIntolerance) and Part B (Observation, Procedure, Immunization, DiagnosticReport, FamilyMemberHistory) resource names",
+    "trunk_constraint_source": "TRUNK_CONSTRAINTS in integration/trunk-pipeline.js — constraints field here overrides that lookup when present",
+    "pharmacology_gate": "needs_pharmacology_check=true triggers pharm.intent + pharm.check calls; HARD_FAIL from pharm.check must block generation (see pharm-check.schema.json, File 7)"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/context-graph.schema.json",
+  "title": "ContextGraph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["encounter_id", "revision", "nodes", "edges", "provenance"],
+  "properties": {
+    "encounter_id": { "type": "string", "minLength": 6 },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic revision number for the session graph."
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "type", "value", "evidence"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "symptom",
+              "timeline",
+              "pertinent_positive",
+              "pertinent_negative",
+              "risk_factor",
+              "investigation_result",
+              "policy_gate",
+              "routing_decision"
+            ]
+          },
+          "value": {
+            "type": "object",
+            "description": "Typed payload for the node; schema is enforced by the writer component."
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "evidence-node.schema.json" },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "type"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["supports", "contradicts", "precedes", "requires", "routes_to"]
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at_utc", "updated_at_utc", "writers"],
+      "properties": {
+        "created_at_utc": { "type": "string", "format": "date-time" },
+        "updated_at_utc": { "type": "string", "format": "date-time" },
+        "writers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Components that have written to the graph (e.g., trunk3, trunk6, verifier)."
+        }
+      }
+    }
+  }
+}
+

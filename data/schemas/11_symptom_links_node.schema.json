@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/data/symptom_links_node.schema.json",
+  "title": "SymptomLinksNode",
+  "description": "SCORING STORE — access-controlled. The graph's core symptom layer for one synthetic patient case. Maps every clinical finding — symptoms, pertinent negatives, physical signs, investigation results, and risk factors — to the diagnoses they support or argue against via typed, weighted graph edges. Also links each symptom to its conversational policy disclosure gate, its Digital Tablet FHIR path, and its elicitation method. This node enables two distinct scoring dimensions: (1) history-taking quality — did the AI Doctor elicit the symptom at all? and (2) diagnostic reasoning quality — did the AI Doctor correctly interpret the symptom's evidentiary weight? The symptom_clusters array captures gestalt pattern recognition above individual edge level. Maps primarily to Digital Tablet Part A Condition._freetext_HPC_tags, Part B Observation, and Part C FreeText_Taxonomy.HPC_sub_tags.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "node_type",
+    "symptoms"
+  ],
+  "properties": {
+
+    "case_id": {
+      "type": "string",
+      "pattern": "^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$",
+      "description": "Back-reference to parent case envelope."
+    },
+
+    "node_type": {
+      "type": "string",
+      "const": "symptom_links",
+      "description": "Fixed identifier for this node type."
+    },
+
+    "symptoms": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Array of symptom items — one per trackable clinical finding. Includes present findings, pertinent negatives (absent findings that are clinically important to establish), physical signs, investigation results, and risk factors. The diagnostic_weight_edges[] array on each item is the core graph structure — each edge connects this symptom to one candidate diagnosis with a typed, weighted relationship.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "symptom_id",
+          "symptom_name",
+          "symptom_type",
+          "present_in_case",
+          "elicitation_method",
+          "diagnostic_weight_edges"
+        ],
+        "properties": {
+
+          "symptom_id": {
+            "type": "string",
+            "pattern": "^SYM-[0-9]{3}$",
+            "description": "Unique identifier for this symptom within the case. Convention: SYM-001 through SYM-999. Zero-padded 3 digits. Referenced by symptom_clusters[].constituent_symptom_ids and by conversational_policy.disclosure_items[].ground_truth_ref.symptom_item_ref.",
+            "examples": ["SYM-001", "SYM-002", "SYM-012"]
+          },
+
+          "symptom_name": {
+            "type": "string",
+            "minLength": 3,
+            "description": "Clinical label for this finding in clinical terminology — not patient language. Use MeSH preferred terms or SNOMED preferred terms where applicable. The patient-facing version of this symptom lives in conversational_policy.patient_response_template for the corresponding disclosure item.",
+            "examples": [
+              "Exertional chest discomfort radiating to left jaw",
+              "Dyspnoea on exertion — new onset",
+              "Diaphoresis during chest pain episode",
+              "Exertional onset with rest relief — anginal pattern",
+              "Lower back pain — non-specific, no neurological deficit",
+              "Troponin I elevated (critical threshold)"
+            ]
+          },
+
+          "symptom_type": {
+            "type": "string",
+            "enum": [
+              "symptom",
+              "pertinent_negative",
+              "physical_sign",
+              "investigation_result",
+              "risk_factor",
+              "functional_finding"
+            ],
+            "description": "Category of this finding. symptom: patient-reported symptom. pertinent_negative: a finding that is specifically ABSENT — e.g. 'no neurological deficit' in back pain; important to establish because absence rules out serious pathology. physical_sign: examination finding (typically elicitation_method=requires_physical_examination). investigation_result: lab or imaging result — only available if the AI Doctor orders the investigation (elicitation_method=requires_specific_investigation). risk_factor: demographic or historical risk modifier — e.g. age, sex, smoking history, family history; affects pre-test probability rather than post-test. functional_finding: functional impairment — e.g. 'unable to climb stairs', relevant to severity and management."
+          },
+
+          "present_in_case": {
+            "type": "boolean",
+            "description": "Whether this finding is actually present (true) or absent (false) in this case. For pertinent_negative items, present_in_case=false means the absence IS the finding — i.e. the symptom is absent, which is the diagnostically relevant fact. For investigation_result items, present_in_case refers to whether the result would be abnormal if the test were ordered."
+          },
+
+          "fhir_path": {
+            "type": "string",
+            "description": "Optional. Digital Tablet dot-notation path for this symptom. Maps the clinical finding to its source field in digital_tablet_omnibus.json. Used by the scoring harness for cross-referencing. Consistent with EvidenceNode.fhir_path convention.",
+            "examples": [
+              "Condition._freetext_HPC_tags.site_radiation",
+              "Condition._freetext_HPC_tags.associated_symptoms",
+              "Condition._freetext_HPC_tags.precipitating_factors",
+              "Condition._freetext_HPC_tags.relieving_factors",
+              "Condition._freetext_HPC_tags.timing_pattern",
+              "Observation.vital_signs_full_map.BP_systolic",
+              "Observation.pathology_map.Troponin_I",
+              "Observation.functional_social_scores.HEART_score",
+              "SDOH_Observations.full_SDOH_field_map.smoking_status",
+              "FamilyMemberHistory.heritable_conditions_SNOMED.IHD"
+            ]
+          },
+
+          "snomed_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Optional. SNOMED CT coding for this symptom. When populated, enables coded symptom tracking in knowledge graph queries. Must reference a code valid in SNOMED CT Australian Edition 20240301.",
+            "required": ["system", "code", "display"],
+            "properties": {
+              "system": { "type": "string", "const": "SNOMED_CT" },
+              "code": {
+                "type": "string",
+                "description": "SNOMED CT concept code. From Digital Tablet FreeText_Taxonomy.HPC_sub_tags snomed values or Observation pathology_map snomed fields.",
+                "examples": ["57676002", "230145002", "415068001", "43396009", "105000003"]
+              },
+              "display": { "type": "string" }
+            }
+          },
+
+          "loinc_ref": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Optional. LOINC code for observation-type symptoms (vital signs, pathology, functional scores). From Digital Tablet Observation.vital_signs_full_map or pathology_map LOINC fields.",
+            "required": ["code", "display"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "examples": ["42757-5", "48066-5", "4548-4", "72514-3", "8480-6"]
+              },
+              "display": { "type": "string" },
+              "unit_ucum": {
+                "type": "string",
+                "description": "UCUM unit from Digital Tablet Observation fields.",
+                "examples": ["ng/L", "mm[Hg]", "%", "{score}", "mL/min/1.73m2"]
+              }
+            }
+          },
+
+          "disclosure_item_ref": {
+            "type": "string",
+            "pattern": "^DI-[0-9]{3}$",
+            "description": "Optional. The DI-XXX item_id in conversational_policy that gates the elicitation of this symptom. Links the symptom (clinical truth) to the mechanism by which the AI Doctor can discover it. Required for all symptom_type='symptom' items that require questioning to elicit — i.e. not volunteered in presentation_layer. Not required for risk_factor items derived from demographics, or for investigation_result items unlocked by investigation recommendation.",
+            "examples": ["DI-001", "DI-002", "DI-004"]
+          },
+
+          "onset": {
+            "type": "string",
+            "description": "Optional. Clinical onset description. Maps to Condition._freetext_HPC_tags.onset and Condition.onsetDateTime. In clinical terms, not patient language.",
+            "examples": ["acute onset 24 hours ago", "gradual over 2 weeks", "sudden at rest"]
+          },
+
+          "duration": {
+            "type": "string",
+            "description": "Optional. Duration of symptom. Maps to Condition._freetext_HPC_tags.duration.",
+            "examples": ["24 hours", "2 weeks", "intermittent for 3 months"]
+          },
+
+          "character": {
+            "type": "string",
+            "description": "Optional. Quality descriptor. Maps to Condition._freetext_HPC_tags.character and FreeText_Taxonomy.HPC_sub_tags.character_quality (SNOMED 255280003).",
+            "examples": ["burning", "pressure-like", "sharp", "dull aching", "cramping", "stabbing"]
+          },
+
+          "aggravating_factors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional. What makes it worse. Maps to Condition._freetext_HPC_tags.precipitating_factors (SNOMED 246493000).",
+            "examples": [["exertion", "climbing stairs", "walking quickly"], ["eating", "lying flat"]]
+          },
+
+          "relieving_factors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional. What makes it better. Maps to Condition._freetext_HPC_tags.relieving_factors (SNOMED 246493000). Relieving factors are often as diagnostically informative as aggravating ones — rest relief is a hallmark of anginal pattern.",
+            "examples": [["rest", "sitting down"], ["antacids", "milk"], ["GTN", "rest"]]
+          },
+
+          "associated_symptom_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^SYM-[0-9]{3}$"
+            },
+            "description": "Optional. SYM-XXX IDs of other symptoms in this case that cluster with this one. Builds the intra-node graph — defines which symptoms form constellations. Used by symptom_clusters[] to identify constituent symptoms, and by the scoring harness to assess whether the AI Doctor correctly identified symptom clusters.",
+            "examples": [
+              ["SYM-002", "SYM-003", "SYM-004"],
+              ["SYM-001"]
+            ]
+          },
+
+          "elicitation_method": {
+            "type": "string",
+            "enum": [
+              "history_question_sufficient",
+              "directed_clinical_question_required",
+              "requires_physical_examination",
+              "requires_specific_investigation",
+              "cannot_be_elicited_via_telehealth"
+            ],
+            "description": "How this finding can be obtained in a telehealth chat context. Defines the ceiling of what the AI Doctor can achieve for this symptom. history_question_sufficient: any reasonable open question about symptoms or history would surface this. directed_clinical_question_required: must ask about this specific symptom or system by name. requires_physical_examination: cannot be elicited by questioning — the AI Doctor should recommend in-person assessment; correlates with conversational_policy gate 'revealed_only_on_examination_or_test_request'. requires_specific_investigation: locked behind a specific investigation recommendation — e.g. troponin, ECG, CT scan; AI Doctor must recommend the correct investigation. cannot_be_elicited_via_telehealth: structurally impossible to obtain remotely (e.g. auscultation, fundoscopy, rectal examination) — AI Doctor should recognise and escalate."
+          },
+
+          "investigation_details": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Required when symptom_type='investigation_result'. Specifies which investigation must be recommended to unlock this finding, and what the finding would be.",
+            "properties": {
+              "investigation_name": {
+                "type": "string",
+                "description": "Name of the investigation. Should match entries in Digital Tablet DiagnosticReport.imaging_modalities_SNOMED or Observation.pathology_map.",
+                "examples": ["12-lead ECG", "Troponin I", "Chest X-ray", "CT pulmonary angiography", "D-dimer"]
+              },
+              "investigation_snomed": {
+                "type": "string",
+                "description": "SNOMED code for the investigation type. From Digital Tablet DiagnosticReport.imaging_modalities_SNOMED or Procedure.example_SNOMED.",
+                "examples": ["164847006", "399208008", "241055006"]
+              },
+              "expected_result": {
+                "type": "string",
+                "description": "What the result would show if ordered. Sanitised description — no raw numeric values that would spoil diagnostic reasoning.",
+                "examples": [
+                  "Elevated troponin I — consistent with myocardial injury",
+                  "No ST elevation; may show T-wave changes or be normal — normal ECG does NOT exclude NSTEMI",
+                  "Bilateral lower lobe consolidation",
+                  "Elevated D-dimer — non-specific but raises PE probability"
+                ]
+              },
+              "is_appropriate_first_line": {
+                "type": "boolean",
+                "description": "Whether recommending this investigation is appropriate first-line for this presentation. false = over-investigation; the AI Doctor recommending an inappropriate investigation should receive a neutral or slight penalty."
+              },
+              "if_not_ordered_consequence": {
+                "type": "string",
+                "description": "Optional. What happens clinically if this investigation is not ordered.",
+                "examples": [
+                  "NSTEMI cannot be excluded; patient may be incorrectly reassured",
+                  "PE remains undiagnosed; anticoagulation not initiated"
+                ]
+              }
+            }
+          },
+
+          "diagnostic_weight_edges": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The core graph edges — each connects this symptom to one candidate diagnosis with a typed, weighted evidentiary relationship. Multiple edges per symptom are expected — a symptom can support one diagnosis while arguing against another simultaneously. The set of edges across all symptoms in this node constitutes the clinical reasoning graph for this case.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["diagnosis", "edge_type", "strength"],
+              "properties": {
+
+                "diagnosis": {
+                  "type": "string",
+                  "description": "Diagnosis name — must exactly match a diagnosis name used in ground_truth_node.differential_progression.differential[].diagnosis. Consistent naming across nodes is required for graph traversal.",
+                  "examples": [
+                    "NSTEMI/ACS",
+                    "GORD",
+                    "Musculoskeletal chest pain",
+                    "PE",
+                    "Community-acquired pneumonia",
+                    "Non-specific low back pain"
+                  ]
+                },
+
+                "edge_type": {
+                  "type": "string",
+                  "enum": [
+                    "supports",
+                    "argues_against",
+                    "pathognomonic_for",
+                    "red_flag_for",
+                    "non_specific_neutral",
+                    "required_to_exclude"
+                  ],
+                  "description": "Type of evidentiary relationship between this symptom and the diagnosis. supports: this symptom makes the diagnosis more likely — most common edge type. argues_against: this symptom makes the diagnosis less likely. pathognomonic_for: this symptom alone is essentially diagnostic — use very sparingly, only when clinically justified (e.g. Koplik's spots for measles). red_flag_for: this symptom mandates immediate active exclusion of this diagnosis regardless of other probability estimates — even a low-probability ACS must be excluded when jaw radiation is present. non_specific_neutral: this symptom is present but does not meaningfully discriminate between diagnoses. required_to_exclude: this finding must be specifically ABSENT to safely rule out this diagnosis — typically used with pertinent_negative type items."
+                },
+
+                "strength": {
+                  "type": "string",
+                  "enum": ["definitive", "strong", "moderate", "weak"],
+                  "description": "Evidentiary strength of this edge. Maps to approximate likelihood ratio ranges. definitive: LR+ >10 or pathognomonic — conclusive shift in probability. strong: LR+ 5-10 — significant shift in probability. moderate: LR+ 2-5 — meaningful but not definitive shift. weak: LR+ 1-2 — small shift, clinically relevant in aggregate but not alone. For argues_against: definitive = LR- <0.1, strong = LR- 0.1-0.2, moderate = LR- 0.2-0.5, weak = LR- 0.5-1."
+                },
+
+                "likelihood_ratio": {
+                  "type": "number",
+                  "description": "Optional. Approximate positive likelihood ratio (LR+) for supports/pathognomonic/red_flag edges, or negative likelihood ratio (LR-) for argues_against edges. Drawn from published clinical epidemiology literature (e.g. McGee's Evidence-Based Physical Diagnosis, BMJ Best Practice, UpToDate). When populated, enables probabilistic scoring of differential reasoning quality. Omit when LR is not established in the literature for this specific symptom-diagnosis pair.",
+                  "examples": [4.0, 0.15, 2.3, 8.5, 0.3]
+                },
+
+                "evidence_basis": {
+                  "type": "string",
+                  "description": "Optional. Clinical reasoning for why this edge exists. Cites the mechanism, guideline, or epidemiological finding. Used for human reviewer validation and for generating feedback in evaluation reports.",
+                  "examples": [
+                    "Jaw/arm radiation: referred pain via C5-T1 dermatomes shared with heart — LR+ ~4.0 for ACS (McGee, Evidence-Based Physical Diagnosis)",
+                    "Rest relief of chest discomfort: classic anginal pattern — reliably associated with myocardial ischaemia",
+                    "Antacid partial response: common in both GORD and ACS — non-discriminating finding"
+                  ]
+                }
+
+              }
+            }
+          }
+
+        }
+      }
+    },
+
+    "symptom_clusters": {
+      "type": "array",
+      "description": "Optional. Named clinical patterns formed by combinations of symptoms in this case. Captures gestalt pattern recognition above the level of individual symptom edges — multiple individually weak signals that together constitute a strong or pathognomonic constellation. Used to score whether the AI Doctor recognised the overall clinical picture, not just individual features. A pattern-recognition score supplements the individual-edge elicitation score.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cluster_id", "cluster_name", "constituent_symptom_ids", "target_diagnosis", "clinical_significance"],
+        "properties": {
+
+          "cluster_id": {
+            "type": "string",
+            "pattern": "^SC-[0-9]{3}$",
+            "description": "Unique identifier. Convention: SC-001.",
+            "examples": ["SC-001", "SC-002"]
+          },
+
+          "cluster_name": {
+            "type": "string",
+            "description": "Clinically meaningful name for this pattern.",
+            "examples": [
+              "Atypical_ACS_constellation_diabetic",
+              "Classic_anginal_triad",
+              "Red_flag_back_pain_cluster",
+              "SIRS_criteria_sepsis",
+              "Wells_PE_high_risk_features",
+              "Bladder_outlet_obstruction_triad"
+            ]
+          },
+
+          "constituent_symptom_ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string",
+              "pattern": "^SYM-[0-9]{3}$"
+            },
+            "description": "The SYM-XXX ids that compose this cluster. Must reference symptom_ids in this node's symptoms array.",
+            "examples": [["SYM-001", "SYM-002", "SYM-003", "SYM-004"]]
+          },
+
+          "target_diagnosis": {
+            "type": "string",
+            "description": "The diagnosis this cluster pattern is associated with. Must match a diagnosis name in ground_truth_node.differential_progression.",
+            "examples": ["NSTEMI/ACS", "Sepsis", "PE", "Acute appendicitis"]
+          },
+
+          "clinical_significance": {
+            "type": "string",
+            "description": "Why this cluster matters — what the pattern means clinically and why the sum is greater than the parts.",
+            "examples": [
+              "No single ACS symptom is diagnostic alone, but exertional onset + jaw radiation + diaphoresis + rest relief together constitute a high-probability ACS cluster that mandates emergency evaluation regardless of atypical framing",
+              "Red flag back pain cluster: bilateral leg weakness + bladder dysfunction + saddle anaesthesia = cauda equina until proven otherwise — immediate neurosurgical referral"
+            ]
+          },
+
+          "cumulative_strength": {
+            "type": "string",
+            "enum": ["strong", "very_strong", "pathognomonic"],
+            "description": "Strength of the cluster as a whole. 'strong': the constellation substantially raises probability even if individual features are moderate. 'very_strong': the cluster makes the diagnosis highly probable, though not certain. 'pathognomonic': the specific constellation of findings is essentially diagnostic."
+          },
+
+          "all_items_required": {
+            "type": "boolean",
+            "description": "Optional. Whether all constituent symptom items must be elicited for the cluster to be recognised, or whether eliciting a majority is sufficient. Default false — partial elicitation of a cluster is still scored, proportionally.",
+            "default": false
+          }
+
+        }
+      }
+    },
+
+    "investigation_recommendations_expected": {
+      "type": "array",
+      "description": "Optional. Investigations the AI Doctor should recommend for this case, in clinical priority order. Each item links to the investigation_result symptom item it would unlock. Used to score the AI Doctor's investigation selection — both over-investigation (ordering inappropriate tests) and under-investigation (missing critical tests) are scored. Maps to Digital Tablet Part B DiagnosticReport and ServiceRequest resources.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["investigation_name", "priority", "rationale"],
+        "properties": {
+
+          "investigation_name": {
+            "type": "string",
+            "description": "Investigation name. Should match investigation_details.investigation_name in a symptoms[] item with type='investigation_result'.",
+            "examples": ["12-lead ECG", "Troponin I", "D-dimer", "Full blood count", "Chest X-ray", "CT pulmonary angiography"]
+          },
+
+          "priority": {
+            "type": "string",
+            "enum": ["immediate", "urgent", "semi_urgent", "routine", "not_recommended"],
+            "description": "Clinical priority of this investigation for this case. not_recommended: this investigation is commonly ordered but inappropriate for this presentation — used to test over-investigation. immediate: must be done before any other management (e.g. ECG in chest pain, HCG in female with acute abdomen). urgent: should be ordered in this consultation (e.g. troponin for ACS workup). semi_urgent: should be arranged within 24-48 hours. routine: appropriate but not time-critical."
+          },
+
+          "unlocks_symptom_id": {
+            "type": "string",
+            "pattern": "^SYM-[0-9]{3}$",
+            "description": "Optional. The SYM-XXX id of the investigation_result symptom item this investigation would unlock. Links investigation recommendation to its diagnostic weight edges.",
+            "examples": ["SYM-005", "SYM-006"]
+          },
+
+          "rationale": {
+            "type": "string",
+            "description": "Why this investigation is or is not recommended for this case.",
+            "examples": [
+              "ECG: mandatory first-line in all chest pain presentations — rules out STEMI requiring immediate intervention",
+              "Troponin I: serial troponins required to exclude NSTEMI — single troponin insufficient at <6 hours from symptom onset",
+              "CT brain: not indicated — no neurological features in this presentation, over-investigation would expose patient to unnecessary radiation"
+            ]
+          }
+
+        }
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "access_control": "SCORING STORE. Never accessible to the AI Doctor during evaluation. Only the scoring harness reads this node.",
+    "two_scoring_dimensions": {
+      "history_taking_quality": "Did the AI Doctor elicit the symptom? Measured by whether conversational_policy disclosure_item (DI-XXX via disclosure_item_ref) was gated and whether the AI Doctor's questioning met the gate requirement. Weighted by disclosure_item scoring_weight.",
+      "diagnostic_reasoning_quality": "Did the AI Doctor correctly interpret the symptom's evidentiary weight? Measured by comparing AI Doctor's differential at each stage against ground_truth_node.differential_progression, weighted by the strength of relevant edges."
+    },
+    "edge_consistency": "diagnosis names in diagnostic_weight_edges MUST exactly match diagnosis names used in ground_truth_node.differential_progression[].differential[].diagnosis. Inconsistent naming breaks graph traversal in the scoring harness. Maintain a controlled vocabulary of diagnosis names across both nodes.",
+    "digital_tablet_mappings": {
+      "symptom_items": "Condition._freetext_HPC_tags fields (onset, duration, character, site_radiation, associated_symptoms, timing_pattern, precipitating_factors, relieving_factors)",
+      "investigation_results": "Observation.pathology_map (Troponin_I SNOMED 105000003, D-dimer SNOMED 440685005, etc.) and DiagnosticReport resources",
+      "physical_signs": "FreeText_Taxonomy.Exam_headings fields (cardiovascular_exam, respiratory_exam, etc.)",
+      "risk_factors": "SDOH_Observations.full_SDOH_field_map (smoking_status SNOMED 229819007) and Patient demographics",
+      "functional_findings": "Observation[category=functional-status] and Condition._freetext_HPC_tags.functional_impact"
+    },
+    "cross_references": {
+      "conversational_policy": "disclosure_item_ref (DI-NNN) → conversational_policy.disclosure_items[].item_id",
+      "ground_truth_node": "diagnostic_weight_edges[].diagnosis must match ground_truth_node.differential_progression[].differential[].diagnosis; symptom_clusters[].target_diagnosis must match same",
+      "safety_netting_node": "investigation_result symptoms with elicitation_method=requires_specific_investigation link to safety_netting_node escalation thresholds",
+      "management_plan_node": "investigation_recommendations_expected links to management_plan_node investigations section"
+    },
+    "common_snomed_symptom_codes": {
+      "jaw_pain_radiation": "57676002",
+      "exertional_dyspnoea": "230145002",
+      "diaphoresis": "415068001",
+      "chest_pain": "29857009",
+      "low_back_pain": "279039007",
+      "dysuria": "49650001",
+      "headache": "25064002",
+      "nausea": "422587007",
+      "fatigue": "84229001",
+      "ankle_oedema": "267038008"
+    },
+    "pattern_guidance": "symptom_clusters should be used when: (1) no single symptom is pathognomonic but the combination is highly specific, (2) a named clinical syndrome has multiple component features that are individually non-specific, (3) the case tests gestalt pattern recognition as a specific competency."
+  }
+}

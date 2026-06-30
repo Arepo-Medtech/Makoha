@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/evidence-node.schema.json",
+  "title": "EvidenceNode",
+  "description": "The atomic grounding unit of the HeyDoc system. Every clinical claim — a symptom noted, a code assigned, a guideline cited, a lab result interpreted — must be backed by at least one EvidenceNode before the verification layer will pass it. EvidenceNodes are embedded in ContextGraph nodes, PatientKnowledgeGraph facts, ContextPacket evidence arrays, and all synthetic patient record nodes (Ground Truth, Symptom Links, Management Plan, Safety-Netting). The 'supports' array is the proof chain: each item links the claim to a real artifact — a docs citation, a live-data receipt, a curated dataset version, or a knowledge graph node. Without a valid supports entry the claim is ungrounded and will be rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim", "supports", "provenance"],
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "minLength": 4,
+      "description": "Stable, unique identifier for this EvidenceNode within its parent document or session. Convention: 'ev-<creator>-<sequence>', where creator is the trunk ID or MCP server name. Examples: 'ev-trunk1-001', 'ev-terminology-042', 'ev-trunk5-007'. Must remain stable if the node is updated — never regenerate on edit.",
+      "examples": [
+        "ev-trunk1-001",
+        "ev-trunk3-014",
+        "ev-trunk5-007",
+        "ev-terminology-042",
+        "ev-docs-003",
+        "ev-verifier-001"
+      ]
+    },
+
+    "claim": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "The single atomic clinical or operational claim this node asserts. Must satisfy all of the following rules: (1) One claim per node — do not bundle multiple assertions. (2) Falsifiable — it must be possible to check this against a receipt or citation. (3) No invented facts — the claim must be derivable from the injected context, not from LLM parametric memory. (4) Present tense, declarative — 'Patient reports lower back pain for 2 weeks' not 'Patient may have lower back pain'. (5) For coded claims, include the code: 'Diagnosis coded as SNOMED 279039007 (Low back pain)' not just 'Patient has low back pain'.",
+      "examples": [
+        "Patient reports lower back pain for 2 weeks with no red flag features per intake summary.",
+        "Imaging not recommended for non-specific low back pain without red flags per Choosing Wisely AU recommendation cw-au:imaging-lbp:2024-01.",
+        "Diagnosis coded as SNOMED CT 279039007 | Low back pain | per terminology lookup receipt term-1719014400000-a3f7b2c.",
+        "Pharmacology check PASS for paracetamol 1g QID: no NTI flag, no allergy match, no renal adjustment required per pharm receipt pharm-1719014400001-b4d8e1f.",
+        "Patient IHI verified as present and active per identity receipt ihi-1719014400002-c5e9f2g.",
+        "No bowel or bladder red flag symptoms reported by patient per structured history (pertinent negative)."
+      ]
+    },
+
+    "supports": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Array of proof artifacts that ground this claim. Minimum one item required — a claim with no supports is ungrounded and invalid. Multiple supports are allowed and encouraged when a claim is backed by both a guideline citation and a live data confirmation. Each item identifies the kind of proof and the specific reference to locate it.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref"],
+        "properties": {
+
+          "kind": {
+            "type": "string",
+            "enum": [
+              "static_doc",
+              "live_data_receipt",
+              "structured_dataset",
+              "kg_node"
+            ],
+            "description": "Category of proof source. Determines what 'ref' contains and which verification rule applies. 'static_doc': a citation from the docs MCP server — ref is a docs.cite citation_id (e.g. 'cw-au:imaging-lbp:2024-01'). 'live_data_receipt': a Receipt from a live MCP tool call — ref is the receipt's request_id (e.g. 'term-1719014400000-a3f7b2c'). This kind REQUIRES a matching Receipt object in the session receipt store. 'structured_dataset': a versioned curated dataset — ref is the dataset identifier and version (e.g. 'benign-registry:v0.2.1'). 'kg_node': a node in the ContextGraph or PatientKnowledgeGraph — ref is the node_id (e.g. 'node-sym-003')."
+          },
+
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The locator for the proof artifact. What this contains depends on 'kind': static_doc → docs.cite citation_id from the docs MCP server (format: '<corpus>:<topic>:<year-version>', e.g. 'cw-au:imaging-lbp:2024-01', 'etg-cardiovascular:antihypertensives:2024-03'). live_data_receipt → the exact request_id from a Receipt object (see receipt.schema.json) — must match a receipt in the session store for verification to pass. structured_dataset → dataset name and semantic version (e.g. 'benign-registry:v0.2.1', 'redflags-lbp:v1.0.0', 'axis-b-templates:v0.3.0'). kg_node → node_id from ContextGraph.nodes or PatientKnowledgeGraph.facts (e.g. 'node-sym-003', 'fact-med-001').",
+            "examples": [
+              "cw-au:imaging-lbp:2024-01",
+              "etg-cardiovascular:antihypertensives:2024-03",
+              "term-1719014400000-a3f7b2c",
+              "pharm-1719014400001-b4d8e1f",
+              "ihi-1719014400002-c5e9f2g",
+              "doc-1719014400003-d6f0a3h",
+              "benign-registry:v0.2.1",
+              "redflags-lbp:v1.0.0",
+              "node-sym-003",
+              "fact-med-001"
+            ]
+          },
+
+          "excerpt": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "Optional. A short human-readable snippet from the supporting artifact for review convenience. Not used by the machine verifier — the ref is the proof, not the excerpt. For static_doc: the relevant guideline sentence. For live_data_receipt: the key fact returned (e.g. 'SNOMED display: Low back pain'). For structured_dataset: the matching registry entry summary. Keep under 300 chars — this is a hint, not a quote."
+          }
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at_utc", "created_by", "verification"],
+      "description": "Audit trail for this EvidenceNode: who created it, when, and what the verification layer decided about it.",
+      "properties": {
+
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp of when this node was created. Must be UTC — no local offsets. Example: '2026-06-23T00:00:00Z'."
+        },
+
+        "created_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the component that created this node. Use trunk IDs for LLM-generated claims, MCP server names for tool-derived facts, and 'verifier' for nodes created during the verification pass.",
+          "examples": [
+            "trunk1",
+            "trunk2",
+            "trunk3",
+            "trunk4",
+            "trunk5",
+            "trunk6",
+            "trunk7",
+            "trunk8",
+            "trunk9",
+            "mcp-docs",
+            "mcp-terminology",
+            "mcp-identity-au",
+            "mcp-fhir-broker",
+            "mcp-pharmacology",
+            "mcp-knowledge",
+            "mcp-messaging-geo",
+            "verifier",
+            "synthetic-case-builder"
+          ]
+        },
+
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "description": "Verification status assigned by verifier.js during pipeline Step 5. Trunks create nodes with status 'unverified'. The verifier sets 'verified' or 'rejected' after checking that every supports[].ref resolves to a real artifact.",
+          "properties": {
+
+            "status": {
+              "type": "string",
+              "enum": ["unverified", "verified", "rejected"],
+              "description": "Current verification state. 'unverified': default state when trunk creates the node — has not yet been checked. 'verified': verifier confirmed all supports[].ref values resolve to real artifacts and the claim is consistent with them. 'rejected': verifier found at least one unresolvable ref, an invented code without a receipt, or a claim that contradicts the injected evidence. Rejected nodes block pipeline continuation when they back a critical claim."
+            },
+
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "description": "Required when status is 'rejected'. Human-readable list of why this node was rejected. Each entry should identify the failing check. Examples: 'SNOMED code 279039007 has no matching terminology.lookup receipt in session store', 'Citation cw-au:imaging-lbp:2024-01 not found in docs index', 'claim references invented internal repo name not in allowed service list'.",
+              "examples": [
+                "SNOMED code 279039007 has no matching terminology.lookup receipt in session store",
+                "Citation cw-au:imaging-lbp:2024-01 not found in docs index",
+                "live_data_receipt ref 'term-XXXX' not found in session receipt store",
+                "Claim references invented internal service 'deep-library-agent' not in allowed service list"
+              ]
+            },
+
+            "verified_at_utc": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Optional. UTC timestamp of when the verifier ran the check. Useful for audit trails when pipeline runs are replayed or re-verified."
+            }
+          }
+        }
+      }
+    },
+
+    "fhir_path": {
+      "type": "string",
+      "description": "Optional. The FHIR resource path in the Digital Tablet (digital_tablet_omnibus.json) that this claim corresponds to. Use dot-notation matching the Digital Tablet schema structure. Enables the synthetic case builder and AI Doctor output scorer to cross-reference claims against the patient record. Examples: 'Patient.birthDate', 'Condition.code.example_SNOMED.T2DM', 'Observation.vital_signs_full_map.BP_systolic', 'MedicationRequest.medicationCode.example_AMT_SNOMED.Metformin_500mg_tab'.",
+      "examples": [
+        "Patient.birthDate",
+        "Patient.gender.value",
+        "Condition.code.example_SNOMED.T2DM",
+        "Condition._freetext_HPC_tags.onset",
+        "Condition._freetext_HPC_tags.site_radiation",
+        "Observation.vital_signs_full_map.BP_systolic",
+        "Observation.pathology_map.Troponin_I",
+        "Observation.functional_social_scores.HEART_score",
+        "MedicationRequest.medicationCode.example_AMT_SNOMED.Aspirin_100mg_tab",
+        "AllergyIntolerance.NKA_NKDACodes.NKDA",
+        "ClinicalImpression._freetext_reasoning_tags.differential_diagnoses_ranked",
+        "ClinicalImpression._freetext_reasoning_tags.risk_stratification",
+        "RiskAssessment.risk_tools_full_map.HEART_score",
+        "SDOH_Observations.full_SDOH_field_map.smoking_status"
+      ]
+    },
+
+    "snomed_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. Present when the claim involves a SNOMED CT or ICD-11 coded concept. Links the code to a terminology lookup receipt, ensuring no codes appear in claims without a verifiable lookup. When populated, the receipt.request_id in 'receipt_id' must also appear in supports[] with kind='live_data_receipt'.",
+      "required": ["system", "code", "display", "receipt_id"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "enum": ["SNOMED_CT", "ICD_11"],
+          "description": "Terminology system. Matches the system field in terminology-lookup.schema.json."
+        },
+        "code": {
+          "type": "string",
+          "description": "The concept code. For SNOMED CT: numeric concept ID. For ICD-11: alphanumeric code.",
+          "examples": ["279039007", "57054005", "44054006", "59621000", "I21.4"]
+        },
+        "display": {
+          "type": "string",
+          "description": "Human-readable preferred term as returned by the terminology server.",
+          "examples": ["Low back pain", "Non-ST elevation myocardial infarction", "Type 2 diabetes mellitus"]
+        },
+        "receipt_id": {
+          "type": "string",
+          "description": "The request_id of the terminology lookup Receipt that confirmed this code. Must also appear in supports[] with kind='live_data_receipt'. This double-reference (here + in supports) makes code verification unambiguous."
+        }
+      }
+    }
+
+  },
+
+  "_integration_notes": {
+    "repo_version": "This schema extends the existing mcp/schemas/evidence-node.schema.json in the kenleefreo/heydoc repo. It is backwards compatible — all fields in the repo version are preserved unchanged. New optional fields added: fhir_path (links to Digital Tablet structure), snomed_ref (formalises coded concept grounding). The repo version should be updated to this annotated form.",
+    "backwards_compatibility": "Required fields unchanged: [id, claim, supports, provenance]. supports[].kind enum unchanged. verification.status enum unchanged. All existing documents valid against this schema.",
+    "where_embedded": [
+      "ContextGraph.nodes[].evidence — array of EvidenceNode, minItems 1",
+      "PatientKnowledgeGraph.facts[].evidence — array of EvidenceNode, minItems 1",
+      "ContextPacket.evidence — array of EvidenceNode injected into trunk context",
+      "data/cases/*/ground_truth_node.json — red_flags[].evidence_ref links to EvidenceNode",
+      "data/cases/*/symptom_links_node.json — symptoms[].evidence",
+      "data/cases/*/management_plan_node.json — medications[].evidence_ref",
+      "data/cases/*/safety_netting_node.json — escalation_edges[].evidence_ref"
+    ],
+    "key_rules": [
+      "Every supports item with kind='live_data_receipt' requires a Receipt in the session receipt store with matching request_id",
+      "Every supports item with kind='static_doc' requires the docs MCP server to resolve the citation_id",
+      "snomed_ref.receipt_id must also appear in supports[] — double-reference is intentional and required",
+      "fhir_path dot-notation must match the Digital Tablet schema structure (digital_tablet_omnibus.json)",
+      "id naming convention: ev-<creator>-<zero-padded-sequence> within its parent document",
+      "claim maxLength 500 chars — if a claim needs more, split into multiple EvidenceNodes",
+      "created_by 'synthetic-case-builder' is the correct value when populating Wave 6 synthetic case files"
+    ],
+    "receipt_schema_ref": "receipt.schema.json — request_id from a Receipt is the value stored in supports[].ref when kind='live_data_receipt'",
+    "digital_tablet_ref": "digital_tablet_omnibus.json — fhir_path values map to this document's schema structure (Part A, B, C resources)"
+  }
+}

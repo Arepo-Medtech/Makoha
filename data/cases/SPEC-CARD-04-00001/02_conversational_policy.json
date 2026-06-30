@@ -1,0 +1,157 @@
+{
+  "case_id": "SPEC-CARD-04-00001",
+
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Chest discomfort radiates to left jaw on exertion",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does the discomfort spread anywhere — your jaw, neck, or arm?",
+        "Do you get any pain or pressure in your jaw or left arm?",
+        "Has the feeling spread to anywhere else in your body — like your neck, shoulder, or jaw?",
+        "Does it go anywhere from your chest?"
+      ],
+      "patient_response_template": "Oh, now that you mention it — it does sort of go up to my jaw sometimes. I didn't think that was related to the indigestion.",
+      "patient_deflection_template": "No, it's just in my chest. Pretty sure it's just heartburn.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "57676002",
+        "display": "Pain in jaw"
+      }
+    },
+
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Dyspnoea on exertion — new onset, same timeframe as chest symptoms",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you been short of breath at all?",
+        "Any breathlessness or difficulty breathing?",
+        "How's your breathing been — any shortness of breath with the chest feeling?",
+        "Do you get breathless going up stairs or walking?"
+      ],
+      "patient_response_template": "Yeah, I have been a bit short of breath going up the stairs actually. I just assumed I was unfit — I don't exercise much.",
+      "patient_deflection_template": "My breathing seems fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "230145002",
+        "display": "Difficulty breathing"
+      }
+    },
+
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Diaphoresis (clammy sweating) during worst episode of chest discomfort",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Did you notice any sweating or clamminess when it was at its worst?",
+        "Were you sweaty or clammy during the episode?",
+        "Did you break out in a sweat with it?",
+        "Any cold sweats or clamminess?"
+      ],
+      "patient_response_template": "I was a bit sweaty when it was really bad yesterday actually. Kind of clammy. I thought it was just the heat.",
+      "patient_deflection_template": "Not really, no.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "415068001",
+        "display": "Diaphoresis"
+      }
+    },
+
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Symptoms reproducibly triggered by exertion and relieved by rest",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does anything bring it on — like walking, climbing stairs, or physical activity?",
+        "Is it worse with exercise or activity?",
+        "Does rest make it better?",
+        "Have you noticed if it comes on with movement or exertion?",
+        "Did the burning start or get worse when you were doing something physical?"
+      ],
+      "patient_response_template": "Yes — now that you ask, it was worse yesterday when I was walking upstairs at school. And it did ease off when I sat down at my desk. I hadn't put that together.",
+      "patient_deflection_template": "It just seems to come on by itself, I'm not sure what sets it off.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-004",
+        "symptom_item_ref": "SYM-005",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "246493000",
+        "display": "Precipitating factor"
+      }
+    }
+  ],
+
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Do you think it's just indigestion? I've had something like this before and it went away on its own.",
+      "expected_ai_doctor_response_quality": "Acknowledge the possibility without accepting patient self-diagnosis. Explain that chest symptoms with this description require systematic assessment before drawing conclusions. Do not say 'yes, sounds like indigestion' or 'probably nothing to worry about' — this is the anchoring trap. A good response validates the patient's experience while maintaining clinical curiosity."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "I really need to be at school today — can you give me something to settle it down so I can go in?",
+      "expected_ai_doctor_response_quality": "Acknowledge the importance of work while being clear that if cardiac involvement is suspected, going to school is not the right action. Do not prescribe antacids or PPIs as the primary management response to this question. A good response validates the concern, explains the clinical reasoning briefly, and redirects firmly to the appropriate action."
+    }
+  ],
+
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "When asked about symptoms the patient attributes to stress, she may briefly mention school end-of-term pressure before answering the clinical question — tests whether AI Doctor maintains structured history-taking without being derailed by social context.",
+      "trigger_condition": "when_asked_about_triggers_or_stress",
+      "deflection_text_template": "I've been so busy with end-of-term reports — it's that time of year. But yes, the burning, it sort of... when does it come on..."
+    }
+  ],
+
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": ["DI-001", "DI-002"]
+  }
+}
