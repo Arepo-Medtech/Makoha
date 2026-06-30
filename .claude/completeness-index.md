@@ -13,11 +13,11 @@ Last synced: 2026-06-30 (Phase 0 + hashing, audit-ledger, verifier tests/hardeni
 
 ## High
 - terminology-contract-incomplete · terminology schema/server (SNOMED+ICD_11 only) · PARTIAL · High · pf:true
+- knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
 - receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
 
 ## Medium
-- knowledge-server-unbuilt · mcp/servers/knowledge/ · UNBUILT · Medium · pf:false
-- knowledge-datasets-empty · benign registry / Axis B / red-flag bank · EMPTY · Medium · pf:false
+- knowledge-server-unbuilt · mcp/servers/knowledge/ · PARTIAL (mock built; live PostgreSQL graph store pending) · Medium · pf:false
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · UNBUILT · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · UNBUILT · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false

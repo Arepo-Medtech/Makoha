@@ -4,6 +4,26 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Knowledge server (mock) + curated datasets (2026-06-30)
+
+**Status:** Mock complete. Branch `chore/import-and-remediate`. Mock-resolves `knowledge-datasets-empty` + gap-register **R-13**; advances `knowledge-server-unbuilt`; opens `knowledge-datasets-provisional` (High).
+
+### Changes
+- `mcp/servers/knowledge/data/{benign-registry,axis-b-templates,redflags-bank}.json` (new): versioned, checksummed, **DEV/SYNTHETIC-ONLY — not clinically authoritative** datasets for Trunks 7.0/5.0/9.0.
+- `mcp/servers/knowledge/index.js` (new): McpServer; `kg_query`/`kg_provenance` real over the datasets; ContextGraph/PatientKnowledgeGraph return empty (no graph store — never fabricated); `kg_upsert`/`kg_export` SAFE_STUB (`unavailable`, no fake revision/artifact).
+- `verification/pipeline.js`: `routing()` sets `needs_structured_kg` per trunk (7.0→benign-registry, 5.0→axis-b-templates, 9.0→redflags-bank); `retrievalStub` emits a mock `structured_dataset` receipt; `contextInjection` maps `structured_dataset` → EvidenceNode support (ref = dataset_version).
+- `verification/retrieval-mcp.js`: `retrieveKnowledge()` (kg_query per dataset) on the MCP path.
+- `test/contract-knowledge.js` (new) wired into `npm test` (11/11).
+- `mcpServers.template.json` knowledge path `dist/index.js` → `index.js`; server-status / mcp-server-map / registers updated.
+
+### Register movement
+- `knowledge-datasets-empty` → **COMPLETE (dev)**; `knowledge-server-unbuilt` → **PARTIAL** (live PostgreSQL graph store pending); **opened** `knowledge-datasets-provisional` (High — clinical sign-off). R-13 mock-resolved. ContextGraph/PatientKnowledgeGraph now have a (mock, empty) producer.
+
+### Verification
+- `npm test` 11/11; `trunk:stub:all` 9/9 stub + live MCP; structured_dataset evidence reaches the packet (trunk 7.0 → benign-registry:v0.1.0-dev) and the packet validates.
+
+---
+
 ## Trunk 8.0 pharmacology firewall — wired + HARD_FAIL enforced (2026-06-30)
 
 **Status:** Complete (mock). Branch `chore/import-and-remediate`. Advances `pharmacology-server-unbuilt` / gap-register **R-22** — only the live vendor remains.

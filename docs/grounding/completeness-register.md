@@ -212,33 +212,50 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: knowledge-server-unbuilt
-  path: mcp/servers/knowledge/ (absent; template → dist/index.js)
+  path: mcp/servers/knowledge/index.js, mcp/servers/knowledge/data/*.json, test/contract-knowledge.js, verification/{pipeline,retrieval-mcp}.js
   component_type: mcp-server
-  state: UNBUILT
-  evidence: dir absent; template entry unresolved.
-  blocks: benign registry (Trunk 7.0), Axis B templates (Trunk 5.0), red-flag bank (Trunk 9.0)
-  safety_class: degrades_safe (BLOCKED_NO_PROOF)
+  state: PARTIAL
+  evidence: MOCK BUILT 2026-06-30 — knowledge MCP (kg_query/kg_provenance real over the 3 curated datasets; ContextGraph/PatientKnowledgeGraph return empty-not-fabricated; kg_upsert/kg_export SAFE_STUB 'unavailable'). Wired into retrieval (needs_structured_kg → kg_query) + contextInjection (structured_dataset evidence). Contract-tested; trunk:stub:all 9/9 stub + MCP. Also gives ContextGraph/PatientKnowledgeGraph a (mock, empty) producer. PARTIAL: live graph store (PostgreSQL) not built.
+  blocks: (mock cleared) — live PostgreSQL graph store remains
+  safety_class: degrades_safe (BLOCKED_NO_PROOF / empty graphs)
   invariant_exposure: none (fail-safe holds)
   risk: Medium
   blocks_patient_facing: false
-  build_action: build knowledge MCP (kg.query/upsert/provenance/export); seed curated datasets below.
+  build_action: REMAINING — live PostgreSQL graph store + the graph write path (kg_upsert/export) when a graph producer exists.
   gap_register_link: gap-knowledge-datasets
-  status: open
+  status: in-progress
   last_scanned: 2026-06-30
 ```
 
 ```md
 - id: knowledge-datasets-empty
-  path: (no files) — benign registry, Axis B templates, red-flag question bank
+  path: mcp/servers/knowledge/data/{benign-registry,axis-b-templates,redflags-bank}.json
   component_type: dataset
-  state: EMPTY
-  evidence: knowledge server unbuilt → backing datasets do not exist; gap-register §2 confirms unpopulated.
-  blocks: Trunk 5.0/7.0/9.0 producing curated content (currently BLOCKED_NO_PROOF)
+  state: COMPLETE
+  evidence: POPULATED (DEV) 2026-06-30 — three versioned, checksummed datasets seeded; served via kg_query as structured_dataset evidence. Content is DEV/SYNTHETIC-ONLY (see lab-reference-ranges-provisional sibling: knowledge-datasets-provisional).
+  blocks: (cleared for mock) — Trunks 5.0/7.0/9.0 now receive curated dev content
   safety_class: degrades_safe
   invariant_exposure: none
   risk: Medium
   blocks_patient_facing: false
-  build_action: populate with versioned, checksummed records + dataset_version receipts.
+  build_action: DONE for dev. See knowledge-datasets-provisional for the sign-off gate before live.
+  gap_register_link: gap-knowledge-datasets
+  status: resolved
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: knowledge-datasets-provisional
+  path: mcp/servers/knowledge/data/*.json
+  component_type: dataset
+  state: PARTIAL
+  evidence: OPENED 2026-06-30 — benign registry / Axis B templates / red-flag bank are DEV/SYNTHETIC-ONLY, not clinically authoritative (banners in each file). Sign-off not obtained.
+  blocks: patient-facing use of Trunk 5.0/7.0/9.0 curated content
+  safety_class: degrades_safe (marked non-authoritative; mock/dev only)
+  invariant_exposure: clinical-safety (curated clinical content must be validated before live)
+  risk: High
+  blocks_patient_facing: true
+  build_action: clinical + regulatory sign-off on authoritative content (benign criteria, must-not-miss differentials, red-flag tiers); expand coverage; version + checksum.
   gap_register_link: gap-knowledge-datasets
   status: open
   last_scanned: 2026-06-30

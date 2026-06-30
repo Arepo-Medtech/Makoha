@@ -148,6 +148,45 @@ async function retrieveTerminology(plan) {
 }
 
 /**
+ * Call knowledge MCP server: kg_query for each curated dataset in needs_structured_kg.
+ * Returns structured_dataset receipts (dataset_version + request_id).
+ * @param {{ needs_structured_kg?: string[] }} plan
+ */
+async function retrieveKnowledge(plan) {
+  const datasets = plan.needs_structured_kg || [];
+  if (!datasets.length) return [];
+
+  const transport = new StdioClientTransport({
+    command: "node",
+    args: [join(REPO_ROOT, "mcp/servers/knowledge/index.js")],
+    env: { ...process.env, HEYDOC_MODE_DEFAULT: "mock" },
+    cwd: REPO_ROOT,
+  });
+  const client = new Client({ name: "heydoc-pipeline", version: "0.1.0" });
+  await client.connect(transport);
+
+  try {
+    const out = [];
+    for (const name of datasets) {
+      const result = await client.callTool({ name: "kg_query", arguments: { graph_kind: name, mode: "mock" } });
+      const content = result.content?.[0]?.text;
+      if (!content) continue;
+      const payload = JSON.parse(content);
+      out.push({
+        kind: "structured_dataset",
+        ref: payload.dataset_version || `${name}:unknown`,
+        request_id: (payload.receipt && payload.receipt.request_id) || `kg-${name}`,
+        upstream: "knowledge",
+        receipt: payload.receipt,
+      });
+    }
+    return out;
+  } finally {
+    client.close();
+  }
+}
+
+/**
  * Run MCP retrieval for a grounding plan. Returns receipts in pipeline shape.
  * @param {{ needs_static_docs?: string[], needs_live_calls?: string[], needs_structured_kg?: string[] }} plan
  * @returns {Promise<Array<{ kind: string, citation_id?: string, ref?: string, request_id?: string, upstream?: string, receipt?: object }>>}
@@ -156,5 +195,6 @@ export async function retrieveViaMcp(plan) {
   const docReceipts = await retrieveDocs(plan);
   const identityReceipts = await retrieveIdentity(plan);
   const terminologyReceipts = await retrieveTerminology(plan);
-  return [...docReceipts, ...identityReceipts, ...terminologyReceipts];
+  const knowledgeReceipts = await retrieveKnowledge(plan);
+  return [...docReceipts, ...identityReceipts, ...terminologyReceipts, ...knowledgeReceipts];
 }

@@ -2,7 +2,7 @@
 
 **Document ID:** `heydoc-grounding:gap-register:2026-06`  
 **Version:** 1.0.0  
-**Last reviewed:** 2026-06-30 (R-16/17/18/19 resolved; R-21 parser + R-22 pharmacology — mock core built; R-20 terminology contract — open)  
+**Last reviewed:** 2026-06-30 (R-16/17/18/19 resolved; R-21 parser, R-22 pharmacology+firewall, R-13 knowledge — mock built; R-20 terminology contract — open)  
 **Citation ID:** `gap-register:v1.0.0:2026-06`
 
 This register is the primary source of truth for what HeyDoc currently is and is not. It is retrieved by the docs MCP server when trunks need to ground their scope assertions, and it is the authoritative list for the verifier's `no_repo_invention` check. Every trunk agent that references an internal service name must confirm it appears in the Allowed Service Registry below before citing it.
@@ -75,10 +75,10 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 
 ### `knowledge` — Structured Knowledge Graph
 
-- **Stub:** Returns empty graph responses. KG schema exists, no seed data loaded.
-- **Live requires:** PostgreSQL at `HEYDOC_KG_DB_URL`. Seed data: benign registry, red-flag questionnaire bank, Axis B templates, LOINC→semantic mappings.
-- **Tools:** `kg.query`, `kg.upsert`, `kg.provenance`, `kg.export`
-- **Gap:** Benign registry (Trunk 7.0), red-flag questionnaire bank (Trunk 9.0), Axis B templates (Trunk 5.0) not populated.
+- **Mock (2026-06-30):** kg_query/kg_provenance serve three seeded DEV datasets (benign-registry, axis-b-templates, redflags-bank); ContextGraph/PatientKnowledgeGraph return empty (no graph store); kg_upsert/kg_export are SAFE_STUBs. Wired into retrieval + contextInjection (structured_dataset evidence).
+- **Live requires:** PostgreSQL at `HEYDOC_KG_DB_URL`. Authoritative (signed-off) datasets + LOINC→semantic mappings + the graph write path.
+- **Tools:** `kg.query`, `kg.provenance` (built); `kg.upsert`, `kg.export` (SAFE_STUB).
+- **Gap:** datasets are DEV/SYNTHETIC-ONLY (`knowledge-datasets-provisional`) — clinical + regulatory sign-off required before patient-facing; live graph store not built.
 
 ### `identity-au` — Australian Identity / IHI
 
@@ -178,7 +178,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-10 | Patient data persists beyond session | High without controls | Critical | Architecture policy; not yet technically enforced | Gap |
 | R-11 | LLM invents internal service name | Medium (without verifier) | Moderate | `no_repo_invention` check; ALLOWED_SERVICE_NAMES list | Controlled |
 | R-12 | Mock pharmacology data used in patient context | High | Critical | `mode` field required; mode=mock must never reach patient | Policy only; technical gate TBD |
-| R-13 | Benign registry empty — Trunk 7.0 blocks all codes | High (current) | Moderate | Degrades to `BLOCKED_NO_PROOF`; no fabricated codes pass | Accepted gap |
+| R-13 | Benign registry empty — Trunk 7.0 blocks all codes | High (was) | Moderate | Knowledge server (mock) built + benign-registry / Axis B / red-flag datasets seeded (DEV), served via kg_query. Content is DEV/SYNTHETIC-ONLY (`knowledge-datasets-provisional`) — clinical sign-off before live. | Mock-resolved 2026-06-30 |
 | R-14 | High/Critical advisory in a dependency reaches build | Medium | High | `@modelcontextprotocol/sdk` floor raised to `^1.29.0` (patched transitive deps); CI `npm audit --audit-level=high` blocks the build | Controlled |
 | R-15 | No SAST / secret-scanning in CI before production path | High | High | `npm audit` gate added (deps only); static-analysis + secret-scanning still to be added before any patient-facing release | Open gap |
 | R-16 | candidate_output_hash (medicolegal SHA-256) not produced | High (was, pre-build) | Critical | Promoted from Completeness Register `hashing-unimplemented`. SHA-256 computed in verify() over exact output; required in verification-report.schema.json; zod validateReport() gates every write; tested (test/contract-verification-report.js). | Resolved 2026-06-30 |

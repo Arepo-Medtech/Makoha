@@ -13,10 +13,12 @@ import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
  * Stub routing: return a GroundingPlan.
  */
 function routing(_userInput, trunk) {
+  // Curated knowledge datasets each trunk needs (knowledge server kg_query).
+  const kgByTrunk = { "5.0": ["axis-b-templates"], "7.0": ["benign-registry"], "9.0": ["redflags-bank"] };
   return {
     needs_static_docs: ["Choosing Wisely", "red-flag questions"],
     needs_live_calls: ["IHI", "terminology"],
-    needs_structured_kg: [],
+    needs_structured_kg: kgByTrunk[trunk] || [],
     trunk_id: trunk,
   };
 }
@@ -35,6 +37,11 @@ function retrievalStub(plan) {
     // terminology server's SNOMED concept), so legitimately-looked-up codes bind.
     receipts.push({ kind: "live_data", request_id: "term-mock-1", upstream: "terminology", mode: "mock", validated_codes: ["279039003"] });
   }
+  for (const name of plan.needs_structured_kg || []) {
+    // Curated dataset proof (structured_dataset) — not a live Receipt; flows into
+    // evidence as a structured_dataset support, not into packet.receipts.
+    receipts.push({ kind: "structured_dataset", ref: `${name}:v0.1.0-dev`, request_id: `kg-mock-${name}`, upstream: "knowledge", mode: "mock" });
+  }
   return receipts;
 }
 
@@ -52,15 +59,14 @@ function contextInjection(plan, receipts, meta = {}) {
   const now = new Date().toISOString();
   const mode = meta.mode || "mock";
 
-  const evidence = receipts.map((r, i) => {
-    const isDoc = r.kind === "static_doc";
-    return {
-      id: `ev-${i + 1}`,
-      claim: isDoc ? "Guideline citation" : "Operational fact",
-      supports: [{ kind: isDoc ? "static_doc" : "live_data_receipt", ref: r.citation_id || r.request_id }],
-      provenance: { created_at_utc: now, created_by: "pipeline-stub", verification: { status: "verified" } },
-    };
-  });
+  const supportKind = (r) => (r.kind === "static_doc" ? "static_doc" : r.kind === "structured_dataset" ? "structured_dataset" : "live_data_receipt");
+  const claimFor = (r) => (r.kind === "static_doc" ? "Guideline citation" : r.kind === "structured_dataset" ? "Curated dataset" : "Operational fact");
+  const evidence = receipts.map((r, i) => ({
+    id: `ev-${i + 1}`,
+    claim: claimFor(r),
+    supports: [{ kind: supportKind(r), ref: r.citation_id || r.ref || r.request_id }],
+    provenance: { created_at_utc: now, created_by: "pipeline-stub", verification: { status: "verified" } },
+  }));
 
   const receiptsClean = receipts
     .filter((r) => r.kind === "live_data")
