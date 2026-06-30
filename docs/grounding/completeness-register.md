@@ -106,18 +106,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: verifier-untested
-  path: verification/verifier.js, verification/pipeline.js (no test/)
+  path: verification/verifier.js, verification/pipeline.js, test/contract-verifier.js
   component_type: test
-  state: PARTIAL
-  evidence: test/ holds only contract-docs/identity-au/terminology; no verifier or pipeline test.
-  blocks: confidence in the 5 hard checks; test_and_evaluation_gates (deterministic safety code must be tested)
+  state: COMPLETE
+  evidence: RESOLVED 2026-06-30 — test/contract-verifier.js covers all 5 checks (clean PASS + violation FAIL + receipt/citation flip), the candidate_output_hash return, overall-pass logic, and a runPipeline() integration (5 results). Wired into npm test (6/6) + CI.
+  blocks: (cleared)
   safety_class: none
-  invariant_exposure: all 5 verifier checks (untested = unproven enforcement)
+  invariant_exposure: all 5 verifier checks — now under test
   risk: High
   blocks_patient_facing: true
-  build_action: add unit tests for each verifier check (pass + fail cases) + a pipeline integration test; wire into npm test + CI.
-  gap_register_link: pending-promotion
-  status: open
+  build_action: DONE — see evidence. (Check coverage will be extended alongside verifier-weak-code-detection.)
+  gap_register_link: R-18
+  status: resolved
   last_scanned: 2026-06-30
 ```
 

@@ -4,6 +4,14 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Verifier test coverage — 5 hard checks under test (2026-06-30)
+
+**Status:** Complete. Branch `chore/import-and-remediate`. Resolves `verifier-untested` / gap-register **R-18**.
+
+`<test_and_evaluation_gates>` forbids untested deterministic safety code; the five verifier checks had no tests. Added `test/contract-verifier.js` covering, per check, a clean PASS, a violation FAIL, and the receipt/citation that flips FAIL→PASS — for `no_invented_codes`, `no_invented_guidelines`, `no_invented_operations`, `no_repo_invention`, `hard_stop_enforcement` — plus the `candidate_output_hash` return, overall-pass logic, and a `runPipeline()` integration (5 results). Wired into `npm test` (now 6/6). No verifier behaviour change; the tests assert the current contract and will be extended alongside `verifier-weak-code-detection`.
+
+---
+
 ## Append-only audit ledger + synthetic content store + rehash (2026-06-30)
 
 **Status:** Complete (mock/staging scope). Branch `chore/import-and-remediate`.

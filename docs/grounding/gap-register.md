@@ -2,7 +2,7 @@
 
 **Document ID:** `heydoc-grounding:gap-register:2026-06`  
 **Version:** 1.0.0  
-**Last reviewed:** 2026-06-30 (hashing build: R-16 resolved; audit-ledger build: R-17 mock-resolved)  
+**Last reviewed:** 2026-06-30 (R-16 hashing resolved; R-17 audit-ledger mock-resolved; R-18 verifier tests resolved)  
 **Citation ID:** `gap-register:v1.0.0:2026-06`
 
 This register is the primary source of truth for what HeyDoc currently is and is not. It is retrieved by the docs MCP server when trunks need to ground their scope assertions, and it is the authoritative list for the verifier's `no_repo_invention` check. Every trunk agent that references an internal service name must confirm it appears in the Allowed Service Registry below before citing it.
@@ -182,6 +182,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-15 | No SAST / secret-scanning in CI before production path | High | High | `npm audit` gate added (deps only); static-analysis + secret-scanning still to be added before any patient-facing release | Open gap |
 | R-16 | candidate_output_hash (medicolegal SHA-256) not produced | High (was, pre-build) | Critical | Promoted from Completeness Register `hashing-unimplemented`. SHA-256 computed in verify() over exact output; required in verification-report.schema.json; zod validateReport() gates every write; tested (test/contract-verification-report.js). | Resolved 2026-06-30 |
 | R-17 | No append-only, tamper-evident audit/receipt store | High | High | Promoted from `receipt-store-append-only-unbuilt`. Hash-chained medicolegal-audit-ledger (verification/audit-store.js) built; both writers append per run; receipt metadata + hash captured; verifyChain() + verify:rehash. Exact-output content store is synthetic-only (`content-store-production-gated`) until R-10/session-persistence + consent are green. Production WORM substrate + retention policy still to configure. | Mock-resolved 2026-06-30 (prod pending) |
+| R-18 | Deterministic verifier (5 hard checks) untested | High | High | Promoted from `verifier-untested`. test/contract-verifier.js covers all 5 checks (pass/fail/receipt-flip), hash return, overall-pass logic, and pipeline integration; wired into npm test + CI. | Resolved 2026-06-30 |
 
 ---
 
