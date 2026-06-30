@@ -2,6 +2,7 @@
  * Verification layer: mechanical checks on generation output.
  * Ensures no invented codes, guidelines, operations, or repo/API names; checks hard-stop enforcement.
  */
+import { hashCandidateOutput } from "./hash.js";
 
 /** Known MCP / allowed service names (from gap register and implemented servers). */
 const ALLOWED_SERVICE_NAMES = new Set([
@@ -45,9 +46,13 @@ const REPO_NAME_PATTERN = /`([a-z0-9-]+(?:-[a-z0-9]+)*)`/g;
  * Run all verification checks on output.
  * @param {string} output - Generation output text to verify
  * @param {{ citations: string[], terminology_receipts: string[], live_receipts: string[], hard_stop_receipt?: string }} evidence - Collected proof refs
- * @returns {{ pass: boolean, results: Array<{ check: string, passed: boolean, reason?: string }>, missing_receipts: string[] }}
+ * @returns {{ pass: boolean, results: Array<{ check: string, passed: boolean, reason?: string }>, missing_receipts: string[], candidate_output_hash: string }}
  */
 export function verify(output, evidence = {}) {
+  // Medicolegal anchor FIRST — hash the exact, unmodified output before any
+  // processing, so the hash proves precisely what was generated (prime directive).
+  const candidate_output_hash = hashCandidateOutput(output);
+
   const citations = new Set(evidence.citations || []);
   const terminologyReceipts = new Set(evidence.terminology_receipts || []);
   const liveReceipts = new Set(evidence.live_receipts || []);
@@ -100,5 +105,5 @@ export function verify(output, evidence = {}) {
   results.push({ check: "hard_stop_enforcement", passed: hardStopPass, reason: hasHardFail && !evidence.hard_stop_receipt ? "hard-stop mentioned without receipt" : undefined });
 
   const pass = results.every((r) => r.passed);
-  return { pass, results, missing_receipts };
+  return { pass, results, missing_receipts, candidate_output_hash };
 }

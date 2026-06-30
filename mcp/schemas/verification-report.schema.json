@@ -10,7 +10,8 @@
     "timestamp_utc",
     "pass",
     "results",
-    "missing_receipts"
+    "missing_receipts",
+    "candidate_output_hash"
   ],
   "properties": {
 
@@ -150,7 +151,7 @@
     "candidate_output_hash": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$",
-      "description": "Optional. SHA-256 hash of the full candidate output text, prefixed with 'sha256:'. This is the immutable medicolegal audit anchor — if the trunk output is later disputed, this hash proves exactly what was verified. Format: 'sha256:<64-hex-chars>'. Should be computed by the verifier before any processing of the output string.",
+      "description": "Required. SHA-256 hash of the full candidate output text, prefixed with 'sha256:'. This is the immutable medicolegal audit anchor — if the trunk output is later disputed, this hash proves exactly what was verified. Format: 'sha256:<64-hex-chars>'. Computed by the verifier (verify() in verification/verifier.js) over the exact, unmodified UTF-8 bytes of the candidate output before any processing — no normalisation, so the hash reflects exactly what was generated. A report without this field is not a valid medicolegal record and is rejected by validateReport() in verification/report-schema.js.",
       "examples": ["sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]
     },
 
@@ -215,9 +216,9 @@
 
   "_integration_notes": {
     "current_code_shape": {
-      "run_js": "Writes { run_id, timestamp_utc, pass, results, missing_receipts } to verification/report.json. All 5 required fields present.",
-      "trunk_pipeline_js": "Writes { run_id, timestamp_utc, trunk_id, session_ref, pass, results, missing_receipts } as the 'report' key of the runTrunkWithGrounding() return. Superset of run.js shape.",
-      "backwards_compatibility": "Both existing output shapes are valid against this schema — required fields are exactly the 5 present in run.js. trunk_id and session_ref are optional, matching their presence in trunk-pipeline but absence in run.js."
+      "run_js": "Writes { run_id, timestamp_utc, pass, results, missing_receipts, candidate_output_hash } to verification/report.json, validated via validateReport() before write. All 6 required fields present.",
+      "trunk_pipeline_js": "Writes { run_id, timestamp_utc, trunk_id, session_ref, pass, results, missing_receipts, candidate_output_hash } as the 'report' key of the runTrunkWithGrounding() return, validated via validateReport() before write. Superset of run.js shape.",
+      "required_fields_note": "candidate_output_hash is REQUIRED as of the hashing build — it is the medicolegal anchor and both writers populate it from result.verification.candidate_output_hash (computed in verify()). trunk_id and session_ref remain optional, matching their presence in trunk-pipeline but absence in run.js."
     },
     "check_severity_map": {
       "no_invented_codes": "critical",

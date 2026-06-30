@@ -2,7 +2,7 @@
 
 **Document ID:** `heydoc-grounding:gap-register:2026-06`  
 **Version:** 1.0.0  
-**Last reviewed:** 2026-06-30  
+**Last reviewed:** 2026-06-30 (hashing build: R-16 resolved)  
 **Citation ID:** `gap-register:v1.0.0:2026-06`
 
 This register is the primary source of truth for what HeyDoc currently is and is not. It is retrieved by the docs MCP server when trunks need to ground their scope assertions, and it is the authoritative list for the verifier's `no_repo_invention` check. Every trunk agent that references an internal service name must confirm it appears in the Allowed Service Registry below before citing it.
@@ -180,6 +180,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-13 | Benign registry empty — Trunk 7.0 blocks all codes | High (current) | Moderate | Degrades to `BLOCKED_NO_PROOF`; no fabricated codes pass | Accepted gap |
 | R-14 | High/Critical advisory in a dependency reaches build | Medium | High | `@modelcontextprotocol/sdk` floor raised to `^1.29.0` (patched transitive deps); CI `npm audit --audit-level=high` blocks the build | Controlled |
 | R-15 | No SAST / secret-scanning in CI before production path | High | High | `npm audit` gate added (deps only); static-analysis + secret-scanning still to be added before any patient-facing release | Open gap |
+| R-16 | candidate_output_hash (medicolegal SHA-256) not produced | High (was, pre-build) | Critical | Promoted from Completeness Register `hashing-unimplemented`. SHA-256 computed in verify() over exact output; required in verification-report.schema.json; zod validateReport() gates every write; tested (test/contract-verification-report.js). | Resolved 2026-06-30 |
 
 ---
 

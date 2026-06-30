@@ -3,10 +3,9 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (Phase 0 full scan).
+Last synced: 2026-06-30 (Phase 0 full scan; updated after hashing build — hashing-unimplemented resolved).
 
 ## Critical
-- hashing-unimplemented · verification/{pipeline,run}.js + report schema · PARTIAL · Critical · pf:true
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · UNBUILT · Critical · pf:true
 - investigation-parser-unbuilt · (no file) Trunk 6.0 sanitiser · UNBUILT · Critical · pf:true
 - clinician-verification-portal-unbuilt · (no file) · UNBUILT · Critical · pf:true
@@ -22,7 +21,7 @@ Last synced: 2026-06-30 (Phase 0 full scan).
 - knowledge-datasets-empty · benign registry / Axis B / red-flag bank · EMPTY · Medium · pf:false
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · UNBUILT · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · UNBUILT · Medium · pf:false
-- pipeline-edges-uncontracted · verification/pipeline.js + 4 schemas · MISSING_CONTRACT · Medium · pf:false
+- pipeline-edges-uncontracted · GroundingPlan/ContextPacket/EvidenceNode edges (VerificationReport edge now gated) · MISSING_CONTRACT · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
 - context-graph-orphan · mcp/schemas/context-graph.schema.json · DEAD_END · Medium · pf:false

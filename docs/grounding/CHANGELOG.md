@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Medicolegal hashing — candidate_output_hash implemented (2026-06-30)
+
+**Status:** Complete. Branch `chore/import-and-remediate`.
+
+Closes Completeness Register `hashing-unimplemented` (Critical) and gap-register **R-16**. Before this change, the SHA-256 medicolegal anchor mandated by the prime directive was computed nowhere; the VerificationReport schema defined the field but left it optional, and neither report writer populated it.
+
+### Changes
+- `verification/hash.js` (new): `hashCandidateOutput()` — SHA-256 (`node:crypto`) over the exact, unmodified UTF-8 bytes of the candidate output; throws on non-string. No normalisation — the hash reflects exactly what was generated.
+- `verification/verifier.js`: `verify()` computes `candidate_output_hash` first (before any output processing) and returns it.
+- `verification/report-schema.js` (new): zod `VerificationReportSchema` mirroring the JSON schema; `validateReport()` throws on a malformed audit record.
+- `verification/run.js`, `integration/trunk-pipeline.js`: both writers include `candidate_output_hash` and call `validateReport()` before persisting.
+- `mcp/schemas/verification-report.schema.json`: `candidate_output_hash` added to `required` (now 6); description + `_integration_notes` updated.
+- `test/contract-verification-report.js` (new), wired into `npm test`: known SHA-256 vector, determinism, end-to-end hash==output, gate rejects missing/malformed/unknown-key.
+
+### Register movement
+- `hashing-unimplemented`: Critical, PARTIAL → **COMPLETE / resolved** (gap_register_link R-16).
+- `pipeline-edges-uncontracted`: Medium → **partially addressed** (VerificationReport edge now zod-gated; GroundingPlan/ContextPacket/EvidenceNode edges remain open).
+
+### Verification
+- `npm test` → 4/4 (`contract-docs/identity-au/terminology/verification-report`: OK).
+- `npm run verification` and `npm run trunk:stub:all` → reports carry a valid `sha256:…` hash and pass `validateReport()`; `Pass: true`, trunks 9/9.
+
+---
+
 ## Maintenance — Supply-chain advisory remediation (2026-06-30)
 
 **Status:** Complete (mock environment). Branch `chore/bump-mcp-sdk-1.29`.

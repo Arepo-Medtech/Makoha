@@ -4,6 +4,7 @@
  */
 import { runPipeline } from "../verification/pipeline.js";
 import { verify } from "../verification/verifier.js";
+import { validateReport } from "../verification/report-schema.js";
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -60,12 +61,16 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
       pass: result.verification.pass,
       results: result.verification.results,
       missing_receipts: result.verification.missing_receipts,
+      // Medicolegal anchor — required field; computed in verify().
+      candidate_output_hash: result.verification.candidate_output_hash,
     },
     packet: result.packet,
     verification: result.verification,
   };
 
   if (writeArtifacts) {
+    // Gate the audit record on its contract before persisting (throws on failure).
+    validateReport(out.report);
     if (!existsSync(VERIFICATION_DIR)) mkdirSync(VERIFICATION_DIR, { recursive: true });
     writeFileSync(join(VERIFICATION_DIR, "report.json"), JSON.stringify(out.report, null, 2));
     const evidenceTree = [

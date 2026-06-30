@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { runPipeline } from "./pipeline.js";
+import { validateReport } from "./report-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERIFICATION_DIR = join(__dirname);
@@ -33,7 +34,13 @@ async function main() {
     pass: result.verification.pass,
     results: result.verification.results,
     missing_receipts: result.verification.missing_receipts,
+    // Medicolegal anchor — required field; computed in verify().
+    candidate_output_hash: result.verification.candidate_output_hash,
   };
+
+  // Gate the audit record on its contract before persisting: a defective
+  // VerificationReport must never be written (throws on failure).
+  validateReport(report);
 
   if (!existsSync(VERIFICATION_DIR)) mkdirSync(VERIFICATION_DIR, { recursive: true });
   writeFileSync(join(VERIFICATION_DIR, "report.json"), JSON.stringify(report, null, 2));

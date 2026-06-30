@@ -9,7 +9,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Method.** Tree enumeration with byte sizes; placeholder-marker grep (`TODO/FIXME/XXX/STUB/z.any()/.passthrough()/return {}/throw new Error('not`); schema-integrity reads; producer→consumer wiring from `mcpServers.template.json`, the pipeline, and `.claude/schema-index.md`; hashing/zod/firewall greps. Evidence is recorded per item, not inferred.
 
-**Scan summary:** 3 MCP servers built (`docs`, `identity-au`, `terminology`); 4 unbuilt (`knowledge`, `fhir-broker`, `pharmacology`, `messaging-geo`). 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present, untested. **No code computes `candidate_output_hash` (SHA-256) anywhere.** No JS validates against the shared `mcp/schemas/*.json` contracts (zod lives only inline in the 3 servers). Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
+**Scan summary:** 3 MCP servers built (`docs`, `identity-au`, `terminology`); 4 unbuilt (`knowledge`, `fhir-broker`, `pharmacology`, `messaging-geo`). 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
 
 ---
 
@@ -17,18 +17,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: hashing-unimplemented
-  path: verification/pipeline.js, verification/run.js, integration/trunk-pipeline.js, mcp/schemas/verification-report.schema.json
+  path: verification/{hash.js,verifier.js,report-schema.js,run.js}, integration/trunk-pipeline.js, mcp/schemas/verification-report.schema.json, test/contract-verification-report.js
   component_type: verifier
-  state: PARTIAL
-  evidence: grep for `candidate_output_hash|sha256|createHash|crypto` over all source → 0 hits; run.js report object omits the field; verification-report.schema lists it as a property but NOT in `required`.
-  blocks: medicolegal audit trail; observability_and_audit; any patient-facing promotion
+  state: COMPLETE
+  evidence: RESOLVED 2026-06-30 — hashCandidateOutput() (node:crypto, exact UTF-8 bytes) computed first in verify(); candidate_output_hash written by both report writers and now REQUIRED in verification-report.schema.json; validateReport() (zod) gates every write; covered by test/contract-verification-report.js (known vector, determinism, end-to-end hash==output, gate rejects missing/malformed). npm test 4/4 green.
+  blocks: (cleared)
   safety_class: none
-  invariant_exposure: prime_directive hashing ("candidate_output_hash, SHA-256 … the medicolegal record"); observability append-only audit
+  invariant_exposure: prime_directive hashing — now enforced mechanically
   risk: Critical
   blocks_patient_facing: true
-  build_action: compute SHA-256 over the exact trunk candidate output, write `candidate_output_hash` into every VerificationReport (run.js + integration path); add it to `required` in verification-report.schema.json; add a test asserting the hash matches and is present.
-  gap_register_link: pending-promotion
-  status: open
+  build_action: DONE — see evidence.
+  gap_register_link: R-16
+  status: resolved
   last_scanned: 2026-06-30
 ```
 
@@ -232,14 +232,14 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: verification/pipeline.js (routing/retrievalStub/contextInjection); mcp/schemas/{grounding-plan,context-packet,verification-report,evidence-node}.schema.json
   component_type: parser
   state: MISSING_CONTRACT
-  evidence: grep — none of grounding-plan/context-packet/verification-report/evidence-node schema files are imported/validated by any JS (zod only inline in 3 servers); pipeline emits plan/packet/report with no zod gate.
-  blocks: schema-first guarantee that data crossing pipeline steps is validated
+  evidence: PARTIALLY ADDRESSED 2026-06-30 — the VerificationReport edge is now zod-gated (verification/report-schema.js validateReport(), enforced in both writers). GroundingPlan, ContextPacket, and evidence-node edges remain ungated (those schema files still imported/validated by no JS).
+  blocks: schema-first guarantee on the remaining pipeline edges (routing output, context injection, evidence nodes)
   safety_class: degrades_safe (stub data only today)
   invariant_exposure: engineering_standards schema-first; trust boundary 1
   risk: Medium
   blocks_patient_facing: false
-  build_action: add zod validators mirroring each JSON schema; validate GroundingPlan → ContextPacket → VerificationReport at each step boundary.
-  gap_register_link: pending-promotion
+  build_action: add zod validators for GroundingPlan, ContextPacket, and EvidenceNode; validate at the routing→retrieval and context-injection step boundaries. (VerificationReport edge done.)
+  gap_register_link: none
   status: open
   last_scanned: 2026-06-30
 ```
@@ -356,7 +356,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 Safety-critical, no external dependency — **do first** (pure code, unblocks audit integrity):
 
-1. `hashing-unimplemented` — implement `candidate_output_hash` (SHA-256) + make it required in the report schema + test. **Critical.**
+1. ~~`hashing-unimplemented` — implement `candidate_output_hash` (SHA-256) + make it required in the report schema + test.~~ **DONE 2026-06-30** (R-16).
 2. `verifier-untested` — unit-test the 5 checks + pipeline integration test. **High.**
 3. `verifier-weak-code-detection` — ICD-10-AM/LOINC/PBS coverage + code↔receipt binding. **High.**
 4. `pipeline-edges-uncontracted` — add zod gates mirroring the JSON schemas. **Medium.**
