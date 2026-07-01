@@ -27,10 +27,10 @@ The Breath-Ezy AI Doctor lives in `kenleefreo/breath-ezy`. It contains everythin
 - Node.js 20, ESM (`"type": "module"`).
 - `@modelcontextprotocol/sdk` ^1.0.0 for all MCP server work.
 - `zod` ^3.23.0 for schema validation.
-- No build step for the implemented servers (plain `.js`); the unbuilt servers are specified to ship as `dist/index.js`.
+- No build step — every server is plain `.js` (`mcp/servers/<name>/index.js`); the `mcpServers.template.json` `dist/index.js` entries are the specified live-ship path, not the current mock cores.
 **Repo map (top level):**
-- `mcp/schemas/` — JSON Schemas (evidence-node, receipt, context-packet, grounding-plan, verification-report, context-graph, patient-knowledge-graph, terminology-lookup, pharm-intent, pharm-check, mcp-tool-envelope).
-- `mcp/servers/` — server implementations. Implemented stubs: `docs`, `identity-au`, `terminology`. Specified, not built: `knowledge`, `fhir-broker`, `pharmacology`, `messaging-geo`.
+- `mcp/schemas/` — JSON Schemas (evidence-node, receipt, context-packet, grounding-plan, verification-report, context-graph, patient-knowledge-graph, terminology-lookup, pharm-intent, pharm-check, mcp-tool-envelope, audit-ledger-entry).
+- `mcp/servers/` — server implementations. All seven are now mock-built and contract-tested: `docs`, `identity-au`, `terminology` (stubs); `knowledge`, `fhir-broker`, `pharmacology`, `messaging-geo` (mock cores, `PARTIAL` — live vendors/EHR + conformance pending). See `docs/grounding/completeness-register.md` for per-server state.
 - `mcp/mcpServers.template.json` — env/launch template; default mode `HEYDOC_MODE_DEFAULT=mock`.
 - `trunk/prompts/` — nine trunk system prompts (1.0–9.0). `trunk/*-stub-agent.js` — stub agents.
 - `integration/trunk-pipeline.js` — `runTrunkWithGrounding` orchestration.
@@ -305,20 +305,21 @@ A plan does not earn approval unless it states all of:
 <gap_register_and_build_sequence>
 Know what is real before you build on it. `docs/grounding/gap-register.md` (citation `gap-register:v1.0.0:2026-06`) is authoritative for build order and the curated, prioritised gap view. The exhaustive inventory — every empty, partial, stubbed, dead-end, or orphaned artifact — lives in the Completeness Register (`<completeness_audit>`); High and Critical findings there promote into this gap-register, one-way.
 **Implemented stubs:** docs, identity-au, terminology.
-**Specified, not built:** knowledge, fhir-broker, pharmacology, messaging-geo.
+**Mock-built (`PARTIAL`) — live connections pending:** knowledge (+ 3 dev datasets), fhir-broker (+ Observation→parser), pharmacology (+ Trunk 8.0 firewall wired), messaging-geo (never-sends). All contract-tested. Live vendors/EHR + conformance validation are the remaining work; see `docs/grounding/completeness-register.md`.
 **Highest-priority open gaps:**
-- Pharmacology vendor not contracted — HARD_FAIL runs on mock data only. **High.** Must not reach patient-facing use until resolved.
+- Pharmacology vendor not contracted — mock core + Trunk 8.0 firewall are built and tested, but HARD_FAIL still runs on mock data only. **High.** Must not reach patient-facing use until a live vendor is connected and validated.
 - Clinician Verification Portal not built — required gate before any output is patient-facing. **Critical.** Not started.
-- Benign registry, Axis B templates, red-flag question bank unpopulated in the knowledge server. **Medium.** Degrades safely to `BLOCKED_NO_PROOF`.
-- Deterministic investigation parser not built — blocks live data entering Trunk 6.0 safely. **Medium.**
+- Knowledge server's curated datasets (benign registry, Axis B templates, red-flag bank) are seeded DEV/SYNTHETIC-ONLY (`knowledge-datasets-provisional`) — clinical + regulatory sign-off required before patient-facing. **High.**
+- Deterministic investigation parser built for mock/dev; reference ranges are provisional (`lab-reference-ranges-provisional`) and there is no live lab source until fhir-broker goes live. **Medium.**
 - Patient-data persistence not technically enforced. **High.**
-**Recommended build order (Part D.11) — follow unless I direct otherwise:**
-1. Connect a pharmacology vendor (unblocks Trunk 8.0 and patient-facing readiness).
-2. Build the deterministic investigation parser (precondition for Trunk 6.0 and the FHIR broker).
-3. Populate the knowledge server's curated datasets (benign registry, Axis B templates, red-flag bank).
+- Terminology contract covers SNOMED + ICD_11 only — ICD-10-AM / LOINC / PBS binding still open (`terminology-contract-incomplete`). **High.**
+**Recommended build order (Part D.11) — follow unless I direct otherwise.** Items 1–3 have mock cores built (2026-06-30); remaining work on them is the live/sign-off step noted:
+1. Connect a live pharmacology vendor (mock firewall done; unblocks patient-facing readiness for Trunk 8.0).
+2. Investigation parser — done for mock/dev; obtain authoritative reference-range sign-off + a live lab source.
+3. Knowledge datasets — seeded DEV; obtain clinical sign-off before live.
 4. Build the Clinician Verification Portal (named release blocker).
 5. Expand the synthetic case set toward the 45-case minimum (60/30/10 difficulty distribution).
-6. Connect fhir-broker and messaging-geo last.
+6. Connect fhir-broker and messaging-geo to live providers last.
 </gap_register_and_build_sequence>
 
 <standards_pins>

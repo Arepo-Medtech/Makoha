@@ -423,16 +423,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: CLAUDE.md (repo root)
   component_type: derived-doc
   state: STALE
-  evidence: on-disk CLAUDE.md lacks the <completeness_audit> section, Phase 0, register context-loading, and Plan/Execute split present in the operator's current charter.
+  evidence: RESOLVED 2026-07-01 (operator-approved) — the charter's <completeness_audit>/Phase 0/Plan-Execute sections were already present; the remaining staleness was the server build-status prose, which described knowledge/fhir-broker/pharmacology/messaging-geo as "specified, not built" and the four as dist-shipping. Reconciled: repo map (line 33), the dist/index.js note (line 30, +audit-ledger-entry in the schema list line 32), and <gap_register_and_build_sequence> (mock-built PARTIAL status + build-order annotations) now match the register.
   blocks: next-agent fidelity to the governing prompt
   safety_class: none
   invariant_exposure: none
   risk: Low
   blocks_patient_facing: false
-  build_action: persist the operator-approved charter to CLAUDE.md (operator decision — do not self-edit without confirmation).
+  build_action: DONE — CLAUDE.md server-status prose reconciled to the register (operator approved the edit 2026-07-01).
   gap_register_link: none
-  status: open
-  last_scanned: 2026-06-30
+  status: resolved
+  last_scanned: 2026-07-01
 ```
 
 ```md
@@ -440,16 +440,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: .claude/schema-index.md, .claude/server-status.md
   component_type: derived-doc
   state: STALE
-  evidence: not re-validated against current sources this scan; schema-index lists no completeness-index yet; .claude/completeness-index.md created this phase.
+  evidence: RESOLVED 2026-07-01 — schema-index.md verified against disk (12/12 mcp/schemas + 7/7 data/schemas present and correctly attributed; no change needed). server-status.md pharmacology row was self-contradictory ("firewall wiring pending / Not yet wired behind Trunk 8.0" in the table vs "Trunk 8.0 firewall wired" in the narrative and gap-register R-22); table cell corrected to match the wired-and-contract-tested reality.
   blocks: trust in derived quick-references
   safety_class: none
   invariant_exposure: none
   risk: Low
   blocks_patient_facing: false
-  build_action: reconcile schema-index + server-status against sources; add completeness-index reference (done this phase).
+  build_action: DONE — schema-index verified accurate; server-status pharmacology row reconciled to gap-register R-22 + passing contract-firewall.js.
   gap_register_link: none
-  status: open
-  last_scanned: 2026-06-30
+  status: resolved
+  last_scanned: 2026-07-01
 ```
 
 ---

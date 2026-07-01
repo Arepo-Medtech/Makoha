@@ -3,7 +3,7 @@
 One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
 Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
 
-Last synced: 2026-06-30 (full session: hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser, pharmacology + Trunk 8.0 firewall, knowledge server + datasets, fhir-broker + messaging-geo). All 7 MCP servers now built (mock); investigation parser has a mock fhir lab source. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology-contract (ICD-10-AM/LOINC/PBS).
+Last synced: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `derived-docs-unverified` — CLAUDE.md server-status prose + .claude/server-status.md pharmacology row now match the register; schema-index verified accurate). Prior 2026-06-30 full session: hashing, audit-ledger, verifier tests/hardening, pipeline gates, investigation parser, pharmacology + Trunk 8.0 firewall, knowledge server + datasets, fhir-broker + messaging-geo. All 7 MCP servers now built (mock); investigation parser has a mock fhir lab source. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology-contract (ICD-10-AM/LOINC/PBS).
 
 ## Critical
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · PARTIAL (mock core + Trunk 8.0 firewall wired; only live vendor pending) · Critical · pf:true
@@ -28,8 +28,9 @@ Last synced: 2026-06-30 (full session: hashing, audit-ledger, verifier tests/har
 - aucdi-r3-valueset-binding-unbuilt · AUCDI R3 binding tables + verifier · UNBUILT · Medium · pf:false
 
 ## Low
-- claudemd-behind-charter · CLAUDE.md · STALE · Low · pf:false
-- derived-docs-unverified · .claude/{schema-index,server-status}.md · STALE · Low · pf:false
+- _(none open)_
+- ~~claudemd-behind-charter · CLAUDE.md~~ · **resolved 2026-07-01** (server-status prose reconciled to register)
+- ~~derived-docs-unverified · .claude/{schema-index,server-status}.md~~ · **resolved 2026-07-01** (schema-index verified; server-status pharmacology row fixed)
 
 ## Firewall status
 - Scoring-store (data/cases/*/10..13_*) NOT breached in code: no JS reads data/cases (case ingestion unbuilt). Re-check on any case-ingestion or context-injection change.

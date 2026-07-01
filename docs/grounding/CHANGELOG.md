@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Doc reconciliation: charter + derived docs vs register (2026-07-01)
+
+**Status:** Docs only — no code, schema, or contract touched; all three CI suites remain green (13/13 tests, verification pass, 9/9 trunk stubs). Closes two `Low`/`STALE` Completeness Register items. Operator-approved the CLAUDE.md edit before execution.
+
+### Why
+The registers and most derived docs were rebuilt 2026-06-30 and already reflected reality (all 7 servers mock-built, `PARTIAL`), but three prose artifacts lagged: CLAUDE.md still described the four mock-built servers as "specified, not built," and `.claude/server-status.md` contradicted itself on whether the pharmacology firewall was wired behind Trunk 8.0 (it is — R-22, `contract-firewall.js` passes).
+
+### Changes
+- `CLAUDE.md`: `<project_context>` repo map (line 33) now lists all seven servers as mock-built/`PARTIAL`; the no-build-step note (line 30) corrected (plain `.js`, not `dist/`); `audit-ledger-entry` added to the schema list (line 32); `<gap_register_and_build_sequence>` status lines + build-order annotated to reflect mock-complete items and the real remaining work (live vendors/EHR, sign-off, Clinician Portal, persistence, terminology contract).
+- `.claude/server-status.md`: pharmacology row corrected — "live vendor + firewall wiring pending / Not yet wired behind Trunk 8.0" → "mock core + Trunk 8.0 firewall wired; live vendor pending," with the receipt-backed HARD_FAIL + contract-test note.
+- `.claude/schema-index.md`: verified against disk (12/12 `mcp/schemas` + 7/7 `data/schemas`) — accurate, no change needed.
+- Register: `claudemd-behind-charter` and `derived-docs-unverified` → `status: resolved` (both `Low`); `.claude/completeness-index.md` synced.
+
+### Register / gap-register impact
+- Completeness Register: 2 `STALE` (Low) → `resolved`. No items opened. Gap-register: unchanged (neither item was ever promoted — both `Low`, `gap_register_link: none`).
+
+---
+
 ## fhir-broker + messaging-geo (mock) + FHIR→parser path (2026-06-30)
 
 **Status:** Mock complete. Branch `chore/import-and-remediate`. Advances `fhir-broker-unbuilt` + `messaging-geo-unbuilt` to PARTIAL — the last two servers now have mock implementations, so **all 7 MCP servers are built (mock)**.
