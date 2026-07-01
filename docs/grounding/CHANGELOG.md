@@ -185,6 +185,27 @@ The `no_invented_codes` check was weak: it matched ICD-11 only (not the pinned I
 
 ---
 
+## AU Core structural conformance validator (vendored SDs) (2026-06-30)
+
+**Status:** Structural validator complete (mock). Branch `feat/aucore-conformance` (stacked on `feat/terminology-r20`). Advances `fhir-r4-aucdi-conformance-unbuilt`.
+
+### Changes
+- `mcp/servers/fhir-broker/au-core/` (new): VENDORED AU Core StructureDefinition snapshot — 5 SDs (Patient/Condition/MedicationRequest/AllergyIntolerance/DiagnosticResult) at **2.0.1-ci-build** (FHIR 4.0.1), with a checksummed `manifest.json` (source URL + fetch date). CI build (not a stable release).
+- `mcp/servers/fhir-broker/conformance.js` (new) + `fhir_validate` tool: deterministic structural validation over the snapshot — profile/type match, required (min≥1), cardinality, fixed code-system; **ValueSet membership + FHIRPath invariants reported `not_evaluated`** (need live NCTS). No new runtime dependency; offline.
+- `test/contract-fhir-conformance.js` (new) wired into `npm test` (14/14).
+- `CLAUDE.md <standards_pins>`, server-status, registers updated.
+
+### Version-target flag (regulatory)
+Per operator decision, the validator runs against the **current CI build (2.0.1-ci)** — this **diverges from the pinned AU Core 0.3.0**. The authoritative AU Core version is an unsettled org/regulatory conformance-target decision.
+
+### Register movement
+- `fhir-r4-aucdi-conformance-unbuilt`: Medium, UNBUILT → **PARTIAL** (structural done; ValueSet-binding + full invariant validation need live NCTS). **Resolved** `au-core-sd-snapshot` (vendored).
+
+### Verification
+- `npm test` 14/14; `trunk:stub:all` 9/9; conformant→conformant, missing-required→non_conformant, binding→not_evaluated.
+
+---
+
 ## Terminology multi-system grounding + Digital Tablet import (2026-06-30)
 
 **Status:** Mock complete. Branch `feat/terminology-r20`. Advances `terminology-contract-incomplete` / gap-register **R-20**; imports the Digital Tablet.

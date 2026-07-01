@@ -16,6 +16,7 @@ import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateResource, AU_CORE_MANIFEST } from "./conformance.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.HEYDOC_MODE_DEFAULT || "mock";
@@ -66,6 +67,16 @@ server.registerTool(
     inputSchema: z.object({ resource_type: z.string(), resource: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
   },
   async ({ resource_type }) => text({ status: "unavailable", reason: "no EHR write in mock (no live FHIR connection)", result: null, resource_type, receipt: receipt(MODE) })
+);
+
+server.registerTool(
+  "fhir_validate",
+  {
+    title: "FHIR Conformance Validate (AU Core, structural)",
+    description: `Validate a FHIR resource against the vendored AU Core StructureDefinition snapshot (${AU_CORE_MANIFEST.ig_version}). Deterministic structural checks (profile, required, cardinality, fixed system); ValueSet membership is 'not_evaluated' (needs live NCTS). Returns { conformance, receipt }.`,
+    inputSchema: z.object({ resource: z.record(z.unknown()), profile: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
+  },
+  async ({ resource, profile }) => text({ ...validateResource(resource, profile), ig_version: AU_CORE_MANIFEST.ig_version, receipt: receipt(MODE) })
 );
 
 const transport = new StdioServerTransport();
