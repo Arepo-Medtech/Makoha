@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Case transformation — bundled "kit" (single-file package) (2026-07-01)
+
+**Status:** Complete. New derived artifact + build script.
+
+### Change
+Adds a **single self-contained package** so a Claude Chat / Cowork session can run the SOAP→case-set transformation from **one attachment** instead of 16 (protocol + omnibus + 7 schemas + 7 reference-case files).
+
+- `scripts/build-case-transformation-kit.mjs` (new): assembles the kit from the repo's source files (Node ESM, no new dependency). Records a sha256 per embedded source in `_kit.contents` for version traceability, and parses the protocol version from the `.md` header.
+- `docs/case-authoring/breath-ezy-case-transformation-kit.json` (new, generated, ~497 KB): `{_kit, protocol_markdown, digital_tablet_omnibus, node_schemas (7), reference_case (7)}`. `_kit.runner_prompt` is the Cowork sequential-ledger prompt adapted to read from the embedded kit; `_kit.how_to_use` covers Chat and Cowork.
+- `package.json`: `npm run kit:build` to regenerate.
+
+### Staleness note
+The kit is **derived** — repo files are the source of truth. Re-run `npm run kit:build` after any change to the protocol, schemas, omnibus, or reference case. (Currently pinned to protocol `v1.2.0`.)
+
+### Verification
+Kit parses; 16 embedded sources (protocol + omnibus + 7 schemas + 7 reference files); protocol markdown includes §7.9; `npm test` unaffected.
+
+### Register impact
+None (docs/tooling). Supports the `case-set-underpopulated` intake path.
+
+---
+
 ## Case transformation protocol — hardening from first real-case validation (2026-07-01)
 
 **Status:** Complete. Docs-only. Protocol bumped to `case-transform-protocol:v1.2.0`. Triggered by hand-validating the first Chat-produced bundle (`AUC-021` cardiac arrest), which was clinically excellent but had **103 schema-conformance errors** + one firewall leak.
