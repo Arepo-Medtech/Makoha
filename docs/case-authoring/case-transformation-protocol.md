@@ -2,7 +2,7 @@
 
 **Augmented Digital Tablet — synthetic case ingestion instructions for Claude Chat**
 
-- Protocol version: `case-transform-protocol:v1.0.0:2026-07-01`
+- Protocol version: `case-transform-protocol:v1.1.0:2026-07-01`
 - Companion (attach alongside this file): `digital_tablet_omnibus.json` (`Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema` v1.0)
 - Target repo: `kenleefreo/breath-ezy` — case-set at `data/cases/<CASE_ID>/`
 - Target schema version: case-set node schemas `1.0.0` (`data/schemas/*.schema.json`)
@@ -29,7 +29,7 @@ Two more rules that keep the output honest:
 1. Start a new Claude chat. Attach **two** files: this `case-transformation-protocol.md` **and** `digital_tablet_omnibus.json`.
 2. Send: *"Load the Case Transformation Protocol and the Digital Tablet. Confirm you have both, then I will upload SOAP case files."*
 3. Upload your `.txt` SOAP case files (see §11 for batch sizing).
-4. For **each** case, Claude returns one complete case package: the 8 files of §4, in fenced code blocks, ready to save to `data/cases/<CASE_ID>/`.
+4. For **each** case, Claude returns one complete case package as a **single `<CASE_ID>.casebundle.json`** (the default — see §7.9), which the repo ingestion splits into the 8 files under `data/cases/<CASE_ID>/`.
 5. Run the case package through the repo's in-repo ingestion + validation (see §10) — that step computes the real hashes, runs the zod gate, and batch-checks the candidate codes against the terminology server. **Then** a clinician reviews it.
 
 ### Model recommendation
@@ -242,7 +242,7 @@ This is the "hashing + grounding" record. **You do not compute hashes and you do
   "case_id": "<CASE_ID>",
   "case_set_version": "case-set:vNEXT",
   "schema_version": "1.0.0",
-  "protocol_version": "case-transform-protocol:v1.0.0:2026-07-01",
+  "protocol_version": "case-transform-protocol:v1.1.0:2026-07-01",
   "generator": {
     "model": "<claude-sonnet-5 | claude-opus-4-8>",
     "generated_at_utc": "<YYYY-MM-DDThh:mm:ssZ>"
@@ -285,6 +285,61 @@ This is the "hashing + grounding" record. **You do not compute hashes and you do
 - `codes_manifest` = every SNOMED/ICD-10-AM/LOINC/AMT/PBS code you used anywhere, each `unverified_pending_terminology_receipt`. The repo batch-verifies them against the terminology MCP server, which produces the receipts.
 - `transform_flags` = anything you had to flag rather than guess (see §12).
 
+### 7.9 Bundle Output Mode — **the default single-file output**
+
+Emit each case as **one file**: `<CASE_ID>.casebundle.json` — a single JSON object whose top-level keys *are* the 8 files, plus a `_bundle` header telling the repo how to split it. One case = one fenced ```json block, nothing else. This is the default; producing the 8 files as separate blocks is still valid but harder to handle.
+
+Why one JSON envelope (not a delimited-text file with banner headers): the repo splits it with a single `JSON.parse` + write-each-key — no fragile banner-regex — and every sub-object is already canonical JSON ready to hash and zod-validate.
+
+**Firewall note:** the bundle is an **authoring/transport artifact only**. It is split *before* anything reaches the pipeline, so the AI Doctor never sees a bundle — it only ever sees the split `00/01/02`. The `_bundle.firewall_assertion` lets ingestion enforce which split files are sealed. (Recommend gitignoring `*.casebundle.json` so bundles never land in `data/cases/`.)
+
+```json
+{
+  "_bundle": {
+    "format": "breath-ezy-casebundle",
+    "bundle_version": "1.0.0",
+    "protocol_version": "case-transform-protocol:v1.1.0:2026-07-01",
+    "case_id": "<CASE_ID>",
+    "split_map": {
+      "00_case_envelope":         "00_case_envelope.json",
+      "01_presentation_layer":    "01_presentation_layer.json",
+      "02_conversational_policy": "02_conversational_policy.json",
+      "10_ground_truth_node":     "10_ground_truth_node.json",
+      "11_symptom_links_node":    "11_symptom_links_node.json",
+      "12_management_plan_node":  "12_management_plan_node.json",
+      "13_safety_netting_node":   "13_safety_netting_node.json",
+      "case_manifest":            "case_manifest.json"
+    },
+    "firewall_assertion": {
+      "ai_doctor_readable":   ["00_case_envelope", "01_presentation_layer", "02_conversational_policy"],
+      "scoring_store_sealed": ["10_ground_truth_node", "11_symptom_links_node", "12_management_plan_node", "13_safety_netting_node"]
+    }
+  },
+
+  "00_case_envelope":         { "...": "full node exactly per §7.1" },
+  "01_presentation_layer":    { "...": "§7.2" },
+  "02_conversational_policy": { "...": "§7.3" },
+  "10_ground_truth_node":     { "...": "§7.4" },
+  "11_symptom_links_node":    { "...": "§7.5" },
+  "12_management_plan_node":  { "...": "§7.6" },
+  "13_safety_netting_node":   { "...": "§7.7" },
+  "case_manifest":            { "...": "§7.8 — hashes still null" }
+}
+```
+
+**Bundle rules (in addition to every per-file rule above):**
+- Each sub-object is the **complete, unchanged** node from §7.1–§7.8 — bundling changes packaging only, never content. All §5 firewall, §6 telehealth, §8 code, and hashing rules still apply per sub-object.
+- Every node's own `case_id` **must equal** `_bundle.case_id`.
+- Do **not** duplicate the `_bundle` metadata inside the nodes, and do **not** add a top-level `case_id` outside `_bundle`.
+- Hashes stay `null` and codes stay `unverified` — same as §7.8. You still never compute a digest.
+- Run the §13 self-QA checklist against the **sub-objects** before emitting the bundle.
+
+**How the repo splits it (deterministic — for reference; you don't do this):**
+1. `JSON.parse` the bundle; assert `_bundle.format === "breath-ezy-casebundle"` and that every node's `case_id` equals `_bundle.case_id`.
+2. For each `split_map` key except `case_manifest`: serialize canonically (`JSON.stringify(node, null, 2) + "\n"`, UTF-8), write to `data/cases/<CASE_ID>/<target>`, compute SHA-256.
+3. Fill `case_manifest.files[].sha256` + `source.sha256`, run the zod gate per node, run the firewall leak-check on `00/01/02`, register `codes_manifest` for terminology verification.
+4. Write `case_manifest.json` last. (This split is part of the plan-gated `cases:ingest` tool — see §10.)
+
 ---
 
 ## 8. Code grounding — candidate, never verified
@@ -318,14 +373,14 @@ You produce candidate files. The authoritative gates run **in the repo** after y
 4. **Scoring-store firewall check** — ingestion confirms nothing in `00`/`01`/`02` leaks answer-key content.
 5. **Clinician review** — a human clinician reviews and, only then, flips `clinician_reviewed → true`, sets `source_type → llm_generated_reviewed` (or higher), and stamps `reviewer_id`/`review_date`. **Only reviewed cases count toward the evaluation gate** (case pass ≥0.70; ≥80% of set passing; zero critical under-triage; ≥90% verification compliance).
 
-> Recommended repo counterpart (not yet built — flagged for the engineering agent): an `npm run cases:ingest -- <dir>` tool that fills hashes, runs the zod + firewall + terminology checks, and reports. Until it exists, run the node schemas through the existing validators manually.
+> Recommended repo counterpart (not yet built — flagged for the engineering agent): an `npm run cases:ingest -- <bundle>` tool that **splits the `.casebundle.json` (§7.9)**, fills hashes, runs the zod + firewall + terminology checks, and reports. Until it exists, split the bundle and run the node schemas through the existing validators manually.
 
 ---
 
 ## 11. Batch sizing & context
 
-- **Input is cheap, output is the constraint.** Each `.txt` is ~2–4 KB; a full 8-file case package is ~15–25 K output tokens (the reference case is ~67 KB of JSON). Producing many complete cases in one response risks truncation and quality drop-off on the reasoning-heavy `10`/`11` nodes.
-- **Recommended:** attach up to **10–20 `.txt` files per chat session** (input side), but generate **one complete case per response**. After each case, say "next" and Claude produces the next one. This keeps each answer key fully reasoned and un-truncated.
+- **Input is cheap, output is the constraint.** Each `.txt` is ~2–4 KB; a full case bundle is ~15–25 K output tokens (the reference case is ~67 KB of JSON). Producing many complete cases in one response risks truncation and quality drop-off on the reasoning-heavy `10`/`11` nodes.
+- **Recommended:** attach up to **10–20 `.txt` files per chat session** (input side), but generate **one `.casebundle.json` per response**. After each case, say "next" and Claude produces the next one. This keeps each answer key fully reasoned and un-truncated.
 - Do **not** ask for all 20 cases in a single response.
 - If a response is getting long, Claude should finish the current case cleanly and stop, rather than compressing the sealed nodes.
 
@@ -345,7 +400,7 @@ Add a `transform_flags[]` entry (short string) — and never silently invent —
 
 ## 13. Self-QA checklist (run before emitting each case)
 
-- [ ] All 8 files present; each valid JSON; `case_id` identical across all 8.
+- [ ] Output is a single `<CASE_ID>.casebundle.json` (§7.9) with a `_bundle` header + all 8 keys; each sub-object valid JSON; every node's `case_id` equals `_bundle.case_id`.
 - [ ] `10`/`11`/`12`/`13` contain the answer; `00`/`01`/`02` do **not** — no diagnosis name, no tier, no "these are the red flags" in the green files.
 - [ ] `01` contains only patient-reportable/obtainable content; no clinician exam findings, no diagnosis, no urgency conclusions.
 - [ ] Telehealth reprojection applied: patient-obtainable vitals → `01.objective_data_offered` (tagged, `verified` almost always false); clinician-only exam/labs/ECG sealed into `10`/`11` + `telehealth_limits`.
