@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Case transformation protocol — Bundle Output Mode (2026-07-01)
+
+**Status:** Complete. Docs-only. Protocol bumped to `case-transform-protocol:v1.1.0`.
+
+### Change
+Adds **Bundle Output Mode** (§7.9) to `docs/case-authoring/case-transformation-protocol.md`: each case is emitted as **one `<CASE_ID>.casebundle.json`** — a single JSON envelope whose top-level keys are the 8 files, plus a `_bundle` header (`format`, `split_map`, `firewall_assertion`) telling repo ingestion how to split it. Now the default output (separate-block output still valid).
+- One `JSON.parse` + write-each-key split (no fragile banner-regex); every sub-object is canonical JSON ready to hash + zod-validate.
+- Firewall preserved: the bundle is an authoring/transport artifact, split *before* the pipeline; the AI Doctor never sees a bundle. Recommend gitignoring `*.casebundle.json`.
+- Hashes stay `null`, codes stay `unverified` — unchanged from §7.8.
+- Cross-refs updated (§1, §10, §11, §13); the planned `cases:ingest` tool now splits the bundle first.
+
+### Verification
+Bundle example parses as valid JSON (9 top keys: `_bundle` + 8); no lingering "8 blocks" references; `npm test` unaffected (docs-only).
+
+### Register impact
+None (docs). Supports the `case-set-underpopulated` intake path.
+
+---
+
 ## Presentation-layer patient-obtainable objective data (2026-07-01)
 
 **Status:** Complete. Branch `feat/presentation-objective-data`. Plan-gated schema change (approved).
