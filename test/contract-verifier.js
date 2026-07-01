@@ -34,6 +34,8 @@ check("codes: matching validated code binds (pass)", passed("SNOMED CT code: 222
 check("codes: receipt for a DIFFERENT code does not bind (fail)", failed("SNOMED CT code: 22298006 assigned.", term(["999999"]), "no_invented_codes"));
 check("codes: ICD-10-AM dotted binds when validated (pass)", passed("Diagnosis M54.5 documented.", term(["M54.5"]), "no_invented_codes"));
 check("codes: LOINC binds when validated (pass)", passed("Result for 2160-0 pending.", term(["2160-0"]), "no_invented_codes"));
+check("codes: PBS binds when validated (pass)", passed("PBS item 2622B supplied.", term(["2622B"]), "no_invented_codes"));
+check("codes: PBS unbound without receipt (fail)", failed("PBS item 2622B supplied.", {}, "no_invented_codes"));
 check("codes: ICD-11 coarse passes with a terminology receipt present", passed("ICD-11 code ME84.0 assigned.", { terminology_receipts: ["t1"] }, "no_invented_codes"));
 // per-system detection (each fails without a receipt)
 check("codes: bare SNOMED concept id fails", failed("Concept 22298006 noted.", {}, "no_invented_codes"));

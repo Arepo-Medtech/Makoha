@@ -157,18 +157,35 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: terminology-contract-incomplete
-  path: mcp/schemas/terminology-lookup.schema.json, mcp/servers/terminology/index.js
+  path: mcp/schemas/terminology-lookup.schema.json, mcp/servers/terminology/{index.js,terminology-servers.json}, verification/{verifier,retrieval-mcp}.js, data/digital_tablet_omnibus.json
   component_type: schema
   state: PARTIAL
-  evidence: OPENED 2026-06-30 — terminology `system` enum is ["SNOMED_CT","ICD_11"] only; the no-fabricated-codes invariant + standards_pins require SNOMED CT, ICD-10-AM, LOINC, PBS. So ICD-10-AM/LOINC/PBS codes cannot be grounded and are blocked by the hardened verifier (fail-safe). ICD-10-AM-vs-ICD_11 is also a pin divergence.
-  blocks: grounding (and therefore emission) of ICD-10-AM, LOINC, PBS codes
-  safety_class: degrades_safe (ungroundable codes blocked)
-  invariant_exposure: no-fabricated-codes (3 of 4 mandated systems ungroundable)
+  evidence: MOCK MULTI-SYSTEM BUILT 2026-06-30 — terminology `system` enum now SNOMED_CT/ICD_10_AM/ICD_11/LOINC/PBS/AMT (the Digital Tablet's systems); server grounds each (mock, echoes looked-up codes); terminology-servers.json records the live NCTS/Ontoserver endpoints (from the Digital Tablet) used ONLY in live mode. Verifier now binds SNOMED/AMT/ICD-10-AM/LOINC/PBS per-code (ICD-11 stays coarse). retrieveTerminology grounds multiple systems; end-to-end ICD-10-AM binding verified on the MCP path. Contract-tested.
+  blocks: (mock cleared) — live NCTS + AU Core value-set binding remain
+  safety_class: degrades_safe
+  invariant_exposure: no-fabricated-codes — all 4 mandated systems now groundable + bound (mock)
   risk: High
   blocks_patient_facing: true
-  build_action: extend terminology contract + server to ICD-10-AM (reconcile vs ICD_11), LOINC, PBS; then enable per-code binding for those systems. Feeds aucdi-r3-valueset-binding-unbuilt.
+  build_action: REMAINING (input-gated) — live NCTS/Ontoserver connection (NCTS licence) + AU Core value-set binding (fhir-r4-aucdi-conformance-unbuilt / aucdi-r3-valueset-binding-unbuilt); no live PBS API; AMT subset not validated.
   gap_register_link: R-20
-  status: open
+  status: in-progress
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: digital-tablet-omnibus
+  path: data/digital_tablet_omnibus.json
+  component_type: dataset
+  state: COMPLETE
+  evidence: IMPORTED 2026-06-30 — the "Digital Tablet" AU Core R4 schema capsule (previously referenced by evidence-node/context-packet schemas but ABSENT). Declares the code systems (SNOMED CT-AU 20240301, ICD-10-AM 12th, LOINC 2.77, PBS, AMT), AU Core conformance profiles, and terminology_servers (NCTS Ontoserver). No secrets (public reference URLs). Resolves the dangling fhir_path reference.
+  blocks: (was) terminology grounding design + fhir_path reference resolution
+  safety_class: none
+  invariant_exposure: none
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — imported. Its terminology_servers + AU Core structure feed the (input-gated) live-terminology + AU Core value-set-binding work.
+  gap_register_link: none
+  status: resolved
   last_scanned: 2026-06-30
 ```
 
