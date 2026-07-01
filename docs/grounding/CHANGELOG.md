@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Presentation-layer patient-obtainable objective data (2026-07-01)
+
+**Status:** Complete. Branch `feat/presentation-objective-data`. Plan-gated schema change (approved).
+
+### Change
+Amends the telehealth reprojection rule so **patient-obtainable objective data may enter the AI-Doctor-readable presentation layer** — bounded and provenance-tagged. Clinician-only findings stay sealed.
+
+- `data/schemas/01_presentation_layer.schema.json` (new optional `objective_data_offered[]`): home/wearable device readings, self-reported measurements, video-visible findings. Each item `{type, value (string+units), source (enum: patient_home_device|patient_wearable|patient_reported|video_observable|caregiver_reported), verified (default false), device_validated?, timing?, fhir_path?, reliability_caveat?}`. Top-level `additionalProperties:false` preserved; item objects closed. Enum **excludes** any clinician-measured source.
+- `docs/case-authoring/case-transformation-protocol.md`: §6 rewritten (patient-obtainable → `01` tagged; clinician-only → sealed `10`/`11`), §4 routing rows split, §7.2 contract + example, §13 checklist.
+- `CLAUDE.md <data_handling>`: added the telehealth carve-out note.
+
+### Invariant posture
+No hard limit weakened. `verified` = established encounter input, not gold-standard; clinician exam/labs/ECG remain sealed + receipt-gated; values stored as patient-stated strings (no structured raw-number bypass of the sanitiser). **Open follow-up flagged in CLAUDE.md:** confirm sanitiser policy for patient-reported vitals if the live pipeline injects `objective_data_offered` into trunk context.
+
+### Verification
+JSON Schema valid; reference case `SPEC-CARD-04-00001/01` still conforms; positive `objective_data_offered` example validates; unknown item field, missing `source`, and `clinician_measured` source all correctly rejected. `npm test` unaffected (case schemas not yet zod-wired in code).
+
+### Register impact
+No new `UNBUILT`/`DEAD_END`/`BLIND_STUB`. Refines the `01` contract in support of `case-set-underpopulated`.
+
+---
+
 ## Doc reconciliation: charter + derived docs vs register (2026-07-01)
 
 **Status:** Docs only — no code, schema, or contract touched; all three CI suites remain green (13/13 tests, verification pass, 9/9 trunk stubs). Closes two `Low`/`STALE` Completeness Register items. Operator-approved the CLAUDE.md edit before execution.

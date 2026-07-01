@@ -535,6 +535,52 @@
         "social_history_path": { "type": "string", "const": "SDOH_Observations.full_SDOH_field_map", "description": "SDOH observation fields." },
         "family_history_path": { "type": "string", "const": "FamilyMemberHistory._freetext_family_history_tags", "description": "FamilyMemberHistory free-text tags." }
       }
+    },
+
+    "objective_data_offered": {
+      "type": "array",
+      "description": "Optional. Patient-OBTAINABLE objective data offered during the encounter — home/wearable device readings, patient-reported measurements, or findings visible on video. This is the ONLY objective data an AI Doctor may see on the presentation (green) side of the scoring-store firewall, and it is patient-provided, never clinician gold-standard. Findings requiring a clinician's physical presence — auscultation, palpation, professional examination maneuvers, venepuncture/bloods, 12-lead ECG, or any device the patient does not operate — MUST NOT appear here; they belong in 10_ground_truth_node (sealed) and require a live-data receipt in the pipeline. Does NOT violate principle 1 (no diagnostic spoilers): raw observable values only, no diagnosis, no risk scores.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "value", "source"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "What was offered, e.g. blood_pressure | heart_rate | spo2 | temperature | weight | height | blood_glucose | respiratory_rate | wearable_single_lead_ecg | visible_finding."
+          },
+          "value": {
+            "type": "string",
+            "description": "As offered, with units, in the patient's own expression (e.g. \"150/95 mmHg\", \"96%\", \"a bit swollen around the ankle\"). Kept as a STRING deliberately: preserves patient voice and avoids injecting a structured raw number that would bypass the investigation-parser sanitiser boundary."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["patient_home_device", "patient_wearable", "patient_reported", "video_observable", "caregiver_reported"],
+            "description": "Provenance of the offered datum. All values denote patient-provided/observable channels — none imply clinician measurement."
+          },
+          "device_validated": {
+            "type": "boolean",
+            "description": "Optional. True only when a validated/calibrated home device is indicated. Default (absent) = unknown/unvalidated."
+          },
+          "verified": {
+            "type": "boolean",
+            "default": false,
+            "description": "Established input to THIS simulated encounter — NOT clinician-measured gold-standard. Almost always false for patient-provided data. Never set true to imply clinical verification the telehealth context cannot provide."
+          },
+          "timing": {
+            "type": "string",
+            "description": "Optional. When obtained, as offered (e.g. \"this morning\", \"about 10 minutes ago\")."
+          },
+          "fhir_path": {
+            "type": "string",
+            "description": "Optional. Observation anchor in the Digital Tablet, e.g. Observation.vital_signs.blood_pressure."
+          },
+          "reliability_caveat": {
+            "type": "string",
+            "description": "Optional. Why this datum may be unreliable (uncalibrated cuff, motion artifact, single reading). Supports cases that test whether the AI Doctor appropriately weights self-reported vs measured data."
+          }
+        }
+      }
     }
 
   },

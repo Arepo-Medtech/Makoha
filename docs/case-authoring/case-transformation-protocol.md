@@ -90,7 +90,8 @@ This is the core routing table. **Left = where the source content lives. Right =
 | SUBJECTIVE → HPI (patient-reportable parts) | `01` history_as_reported.symptom_narrative | 🟢 | Only what the patient/bystander would actually say. |
 | SUBJECTIVE → HPI (red-flag features) | `02` disclosure_items + `10` red_flags + `11` symptoms | 🟢+🔴 | See §5 gating rules. |
 | SUBJECTIVE → PMH / meds / allergies / FHx / social | `01` history_as_reported.* | 🟢 | As the patient reports them (lay wording, uncertainty preserved). |
-| OBJECTIVE → Vitals, Physical Exam, General | `10` + `11` (physical_sign / investigation_result) + `10` telehealth_limits | 🔴 | **NOT `01`.** See §6 telehealth reprojection. |
+| OBJECTIVE → patient-obtainable vitals/findings (home/wearable device, self-report, video-visible) | `01` objective_data_offered (tagged) | 🟢 | Patient could obtain/observe it. See §6. |
+| OBJECTIVE → clinician-only exam/labs (auscultation, palpation, bloods, 12-lead ECG, imaging) | `10` + `11` (physical_sign / investigation_result) + `10` telehealth_limits | 🔴 | **NOT `01`.** Requires clinician/equipment the patient doesn't operate. See §6. |
 | ASSESSMENT → Primary Diagnosis | `10` primary_diagnosis | 🔴 | + SNOMED/ICD-10-AM candidate codes. |
 | ASSESSMENT → Differentials (+ reasoning) | `10` differential_progression | 🔴 | Model the progression across stages (see §7). |
 | ASSESSMENT → Risk Level | `10` + `13` triage inputs | 🔴 | |
@@ -116,12 +117,17 @@ This is the core routing table. **Left = where the source content lives. Right =
 
 ## 6. Telehealth reprojection (critical — most SOAP notes are in-person)
 
-The source notes are frequently written from a **physically-present** clinician's point of view (they take vitals, palpate, auscultate, even perform CPR). **Breath-Ezy is telehealth** and by charter **cannot** examine, measure vitals without a connected device, or perform procedures. So:
+The source notes are frequently written from a **physically-present** clinician's point of view (they take vitals, palpate, auscultate, even perform CPR). **Breath-Ezy is telehealth** and by charter **cannot** perform a physical examination or measure vitals without a connected device — but it **can** receive data the patient offers from a home/wearable device or reports directly. So OBJECTIVE content splits by *who could obtain it*:
 
-1. **OBJECTIVE findings do not go into `01_presentation_layer`.** A telehealth AI Doctor cannot see them. They become:
-   - `10_ground_truth_node.telehealth_limits_for_this_case.cannot_determine_via_chat` — the list of things that are true but unobservable via chat (ECG, troponin, BP/HR, auscultation, SpO2, etc.), **and**
-   - `11_symptom_links_node.symptoms[]` entries with `symptom_type: "physical_sign"` or `"investigation_result"` and `elicitation_method: "requires_specific_investigation"` — the true findings, sealed as answer key.
-2. **Exception — patient/bystander-observable facts may surface (green side).** Things the patient or a bystander could *report* over chat ("I feel sweaty/clammy", "he's turned blue and isn't breathing normally") may appear in `01`/`02` as reported history — but the *clinical measurement* ("central cyanosis on exam", "SpO2 unrecordable") stays sealed.
+1. **Patient-OBTAINABLE objective data CAN go into `01_presentation_layer` — tagged.** Anything the patient can offer over chat — home BP cuff, pulse oximeter, smartwatch HR/single-lead ECG, thermometer, glucometer, weight, or a finding visible on video ("my ankle looks swollen") — enters `01_presentation_layer.objective_data_offered[]`, each item carrying `{type, value, source, verified}`:
+   - `value` is a **string** in the patient's own words with units ("150/95 mmHg", "96%") — never a bare structured number.
+   - `source` ∈ `patient_home_device` · `patient_wearable` · `patient_reported` · `video_observable` · `caregiver_reported`.
+   - `verified` is **almost always `false`** — it means "an established input to this encounter," **not** clinician-measured gold-standard. Add a `reliability_caveat` where the reading may be unreliable (uncalibrated cuff, single reading, motion artifact) — good cases test whether the AI Doctor weights self-reported data appropriately.
+2. **Clinician-only findings do NOT go into `01` — they stay sealed.** Anything requiring a clinician's hands or lab/equipment the patient does not operate — auscultation, palpation, professional examination maneuvers, venepuncture/bloods, troponin, 12-lead ECG, imaging — belongs on the sealed side:
+   - `10_ground_truth_node.telehealth_limits_for_this_case.cannot_determine_via_chat` — true but clinician-only findings, **and**
+   - `11_symptom_links_node.symptoms[]` entries with `symptom_type: "physical_sign"` or `"investigation_result"` and `elicitation_method: "requires_specific_investigation"` — sealed as answer key.
+   - Rule of thumb: *could this patient obtain or observe it themselves?* Yes → `01.objective_data_offered` (tagged). No → sealed in `10`/`11`.
+   - Narrative sensations a patient/bystander would *say* ("I feel sweaty/clammy", "he's turned blue and isn't breathing normally") remain reported history in `01`/`02`; the clinician's *measurement* of the same thing ("central cyanosis on exam", "SpO2 unrecordable on our monitor") stays sealed.
 3. **In-person interventions become recognition + escalation, not action.** If the source shows the clinician doing CPR/AED/defibrillation, the telehealth-correct behaviour in `12`/`13` is: **recognise the emergency, direct the bystander to call 000, and give dispatcher-style CPR/AED guidance** — the AI Doctor does not perform the procedure. Record the actual in-person interventions in `10` as "what the correct emergency pathway is", and make the `13` escalation the telehealth-appropriate action (T5 / call 000).
 4. **`encounter_setting`** in `00` is `telehealth_chat` unless the source explicitly indicates a video consult (`telehealth_video`) or a simulated in-person handoff (`in_person_simulated_handoff`).
 5. **`certainty_achievable_via_telehealth`** in `10.primary_diagnosis` must reflect telehealth reality: usually `presumptive_pending_workup` or `cannot_diagnose_remotely`, rarely `clinical_diagnosis_confirmed`, essentially never `confirmed_gold_standard` for anything needing bloods/imaging/ECG.
@@ -187,11 +193,19 @@ Required: `case_id*`, `schema_version*` (`"1.0.0"`), `case_metadata*`, `digital_
 > `last_reviewed_at_utc` and `reviewer_id`/`review_date` stay `null` until a real clinician reviews. Do not backfill them.
 
 ### 7.2 `01_presentation_layer.json` (🟢 answer-free)
-Required: `case_id*`, `demographics*`, `opening_complaint*`, `history_as_reported*`. Optional: `psychosocial_profile`, `paediatric_context` (populate when `age_band` is neonate/infant/child/adolescent), `digital_tablet_field_map`.
+Required: `case_id*`, `demographics*`, `opening_complaint*`, `history_as_reported*`. Optional: `psychosocial_profile`, `paediatric_context` (populate when `age_band` is neonate/infant/child/adolescent), `objective_data_offered`, `digital_tablet_field_map`.
 - `demographics`: age, sex_at_birth, occupation, living_situation, geographic_context (`RA1_major_city`…`RA5_very_remote` if inferable), language_and_literacy, contact_nok.
 - `opening_complaint.verbatim_patient_text`: the patient's own words. If the source's Chief Complaint is a bystander quote, keep it as such and note the reporter.
 - `history_as_reported`: symptom_narrative (onset/duration/character/severity/location/timing/better/worse/associated/previous/functional_impact), past_medical_history, current_medications_as_reported, allergies_as_reported, family_history_as_reported, social_history_volunteered — **all in lay/patient wording, with the patient's uncertainty preserved.**
-- **Do not** include exam findings, diagnosis, or urgency conclusions.
+- `objective_data_offered[]` (optional): patient-obtainable objective data per §6 rule 1 — each `{type, value (string, with units), source (enum: patient_home_device | patient_wearable | patient_reported | video_observable | caregiver_reported), verified (almost always false), device_validated?, timing?, fhir_path?, reliability_caveat?}`. Only put here what the patient could obtain/observe themselves; clinician-only exam/labs stay sealed in `10`/`11`.
+
+```json
+"objective_data_offered": [
+  { "type": "blood_pressure", "value": "150/95 mmHg", "source": "patient_home_device", "device_validated": false, "verified": false, "timing": "this morning", "reliability_caveat": "single reading on an uncalibrated home cuff" },
+  { "type": "spo2", "value": "96%", "source": "patient_wearable", "verified": false }
+]
+```
+- **Do not** include clinician exam findings, diagnosis, or urgency conclusions. Patient-obtainable vitals are the *only* objective data allowed on this side, and only when tagged.
 
 ### 7.3 `02_conversational_policy.json` (🟢 behaviour; scoring fields simulator-only)
 Required: `case_id*`, `disclosure_items*`. Optional: `patient_initiated_exchanges`, `deflection_behaviours`, `consultation_end_conditions`.
@@ -333,8 +347,8 @@ Add a `transform_flags[]` entry (short string) — and never silently invent —
 
 - [ ] All 8 files present; each valid JSON; `case_id` identical across all 8.
 - [ ] `10`/`11`/`12`/`13` contain the answer; `00`/`01`/`02` do **not** — no diagnosis name, no tier, no "these are the red flags" in the green files.
-- [ ] `01` contains only patient-reportable content; no exam/vitals/imaging findings.
-- [ ] Telehealth reprojection applied: OBJECTIVE findings sealed into `10`/`11` + `telehealth_limits`, not `01`.
+- [ ] `01` contains only patient-reportable/obtainable content; no clinician exam findings, no diagnosis, no urgency conclusions.
+- [ ] Telehealth reprojection applied: patient-obtainable vitals → `01.objective_data_offered` (tagged, `verified` almost always false); clinician-only exam/labs/ECG sealed into `10`/`11` + `telehealth_limits`.
 - [ ] `02` `clinical_fact`s are observational, not conclusory; scoring fields present but understood as simulator-only.
 - [ ] `clinician_reviewed: false`, `source_type: "llm_generated_unreviewed"`, review fields `null`.
 - [ ] Every code registered in `codes_manifest` as `unverified_pending_terminology_receipt`; no code claimed as verified.
