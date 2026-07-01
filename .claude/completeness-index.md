@@ -24,7 +24,7 @@ Last synced: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + 
 - case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
 - lab-reference-ranges-provisional · verification/data/lab-reference-ranges.json · PARTIAL (dev-only; clinical sign-off needed) · High · pf:true
-- fhir-r4-aucdi-conformance-unbuilt · mcp/servers/fhir-broker/ (FHIR R4 / AU Core / AUCDI R3) · UNBUILT · Medium · pf:false
+- fhir-r4-aucdi-conformance-unbuilt · mcp/servers/fhir-broker/ (structural validator built vs vendored AU Core 2.0.1-ci; binding/invariants + NCTS pending) · PARTIAL · Medium · pf:false
 - aucdi-r3-valueset-binding-unbuilt · AUCDI R3 binding tables + verifier · UNBUILT · Medium · pf:false
 
 ## Low

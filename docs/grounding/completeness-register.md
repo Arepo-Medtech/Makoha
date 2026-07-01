@@ -297,18 +297,35 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: fhir-r4-aucdi-conformance-unbuilt
-  path: mcp/servers/fhir-broker/ (conformance validator); standards: FHIR R4 4.0.1, AU Core 0.3.0, AUCDI R3
+  path: mcp/servers/fhir-broker/{conformance.js,index.js,au-core/}, test/contract-fhir-conformance.js
   component_type: mcp-server
-  state: UNBUILT
-  evidence: OPENED 2026-06-30 (operator request) — no deterministic FHIR R4 / AU Core / AUCDI R3 conformance validation exists; fhir-broker unbuilt. AUCDI R3 newly pinned (supplements AU Core 0.3.0).
-  blocks: structured-output conformance grounding (trust boundary 3); receipt-backed conformance claims
-  safety_class: degrades_safe (no conformance claim in absence)
-  invariant_exposure: none directly (resource structure); supports auditability/grounding
+  state: PARTIAL
+  evidence: STRUCTURAL VALIDATOR BUILT 2026-06-30 — fhir_validate tool validates a resource against VENDORED AU Core SD snapshots (au-core/, 2.0.1-ci-build, FHIR 4.0.1, checksummed manifest): profile/type match, required (min≥1), cardinality, fixed system; ValueSet MEMBERSHIP + full FHIRPath invariants reported not_evaluated (need live NCTS). Deterministic, offline, no new runtime dep. Contract-tested (5 SDs: Patient/Condition/MedicationRequest/AllergyIntolerance/DiagnosticResult). VERSION NOTE: vendored the CI build per operator decision — diverges from the AU Core 0.3.0 pin (an org/regulatory conformance-target decision).
+  blocks: (structural cleared) — ValueSet-binding validation (aucdi-r3-valueset-binding, needs live NCTS) + full StructureDefinition/invariant validation remain
+  safety_class: degrades_safe
+  invariant_exposure: none directly (resource structure)
   risk: Medium
   blocks_patient_facing: false
-  build_action: build deterministic FHIR R4 + AU Core 0.3.0 + AUCDI R3 conformance validator in fhir-broker, emitting conformance receipts. Scope AFTER verifier-weak-code-detection (item 2). Confirm AUCDI re-target-vs-supplement (org decision) before pinning a single conformance target.
+  build_action: REMAINING (input-gated) — live NCTS/Ontoserver ValueSet expansion for binding validation; full FHIRPath-invariant/slicing validation (heavier); confirm the AU Core version target (0.3.0 vs current) as an org decision; refresh the vendored snapshot deliberately.
   gap_register_link: none
-  status: open
+  status: in-progress
+  last_scanned: 2026-06-30
+```
+
+```md
+- id: au-core-sd-snapshot
+  path: mcp/servers/fhir-broker/au-core/ (5 vendored StructureDefinitions + manifest.json)
+  component_type: dataset
+  state: COMPLETE
+  evidence: VENDORED 2026-06-30 — pinned AU Core SD snapshot (2.0.1-ci-build) with a checksummed manifest (source URL, fetch date). CI build (not a stable release) — refresh deliberately.
+  blocks: (was) offline conformance validation
+  safety_class: none
+  invariant_exposure: none
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — vendored. Refresh on IG updates; reconcile version target (0.3.0 vs current) per org decision.
+  gap_register_link: none
+  status: resolved
   last_scanned: 2026-06-30
 ```
 
