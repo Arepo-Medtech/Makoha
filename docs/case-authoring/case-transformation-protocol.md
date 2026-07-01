@@ -2,7 +2,7 @@
 
 **Augmented Digital Tablet — synthetic case ingestion instructions for Claude Chat**
 
-- Protocol version: `case-transform-protocol:v1.1.0:2026-07-01`
+- Protocol version: `case-transform-protocol:v1.2.0:2026-07-01`
 - Companion (attach alongside this file): `digital_tablet_omnibus.json` (`Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema` v1.0)
 - Target repo: `kenleefreo/breath-ezy` — case-set at `data/cases/<CASE_ID>/`
 - Target schema version: case-set node schemas `1.0.0` (`data/schemas/*.schema.json`)
@@ -26,8 +26,8 @@ Two more rules that keep the output honest:
 
 ## 1. How to use this protocol
 
-1. Start a new Claude chat. Attach **two** files: this `case-transformation-protocol.md` **and** `digital_tablet_omnibus.json`.
-2. Send: *"Load the Case Transformation Protocol and the Digital Tablet. Confirm you have both, then I will upload SOAP case files."*
+1. Start a new Claude chat. Attach: this `case-transformation-protocol.md`, `digital_tablet_omnibus.json`, **the 7 node schema files** `data/schemas/{00_case_envelope,01_presentation_layer,02_conversational_policy,10_ground_truth_node,11_symptom_links_node,12_management_plan_node,13_safety_netting_node}.schema.json`, **and** the reference case folder `data/cases/SPEC-CARD-04-00001/`. The **schemas are the authoritative contract** — this protocol is guidance, and if the two ever disagree, the schema wins (§7.0).
+2. Send: *"Load the Case Transformation Protocol, the Digital Tablet, the 7 node schemas, and the reference case. Confirm you have all of them, then I will upload SOAP case files."*
 3. Upload your `.txt` SOAP case files (see §11 for batch sizing).
 4. For **each** case, Claude returns one complete case package as a **single `<CASE_ID>.casebundle.json`** (the default — see §7.9), which the repo ingestion splits into the 8 files under `data/cases/<CASE_ID>/`.
 5. Run the case package through the repo's in-repo ingestion + validation (see §10) — that step computes the real hashes, runs the zod gate, and batch-checks the candidate codes against the terminology server. **Then** a clinician reviews it.
@@ -138,12 +138,26 @@ The source notes are frequently written from a **physically-present** clinician'
 
 Emit each file as valid JSON conforming to `data/schemas/<file>.schema.json` (v1.0.0). Required (`*`) top-level keys are listed; populate optional keys whenever the source supports them. Use the worked reference case `data/cases/SPEC-CARD-04-00001/` as the gold-standard shape — match its depth and style.
 
+### 7.0 Hard conformance rules (read before authoring any node)
+
+The 7 node schemas are **strict**. Prose in this protocol is a summary; the schema file is the contract. These rules are where real-world output most often fails — obey them mechanically:
+
+1. **No unknown fields.** Every node object has `additionalProperties: false`. You may use **only** the keys defined in the schema / present in the reference case. Do **not** invent fields (real failures seen: `channel`, `reporter`, `bystander_state`, `source_note_reference`). If the source has data with no home in the schema, put it in a `transform_flag`, not a new field.
+2. **`null` is not allowed — omit instead.** The schemas type optional fields as `string`/`integer`/`object`/`array`, not nullable. If a value is unknown, **leave the key out entirely**. Never write `"age": null`, `"reviewer_id": null`, `"snomed_ref": null`, `"dose_route_frequency": null`. (The **only** place `null` is legal is `case_manifest` hash fields — the manifest is not schema-gated.)
+3. **An object field is always an object; an array field is always an array.** Never collapse one to a placeholder string. `"not obtainable in this acute moment"` is **wrong** for `past_medical_history` (it's an array → use `[]` or omit) and for `social_history_volunteered` (an object → omit or fill). `contact_nok` is an object `{relationship, available}`, never a string.
+4. **Enums verbatim.** Fields with an enum accept **only** the listed values (see the §Appendix and the schema). Do not invent `direct_question`, `volunteered`, or prose sentences where an enum (e.g. a `T0–T5` tier) is required.
+5. **Use the reference case's key names exactly.** Do not paraphrase keys. `symptom_narrative` uses `severity_patient_description`, `location_as_patient_describes`, `what_makes_it_better`, `what_makes_it_worse`, `associated_symptoms_volunteered`, `previous_episodes` — **not** `severity`/`location`/`better`/`worse`/`associated`/`previous`. `differential_progression[]` uses `differential` (singular), not `differentials`.
+6. **Refs are objects or single strings per the schema — check which.** `02.disclosure_items[].ground_truth_ref` is an **object** `{red_flag_ref?, symptom_item_ref?, escalation_edge_ref?}`. `13.escalation_edges[].red_flag_ref` / `disclosure_item_ref` are **single strings**, not arrays. `snomed_ref`/`loinc_ref` are **objects** `{system, code, display}`, never a bare code string.
+7. **Self-validate before emitting.** Mentally (or, if you have a tool, actually) validate each sub-object against its attached schema. If you cannot make a field conform, omit it and add a `transform_flag` — never force an invalid shape.
+
+> The single most common failure is treating this protocol's prose as the contract. It isn't. **The attached schema file is.** When unsure of a shape, copy the reference case.
+
 ### 7.1 `00_case_envelope.json`
 Required: `case_id*`, `schema_version*` (`"1.0.0"`), `case_metadata*`, `digital_tablet_anchoring*`, `node_refs*`. Optional: `coverage_matrix_tags`, `created_at_utc`, `last_reviewed_at_utc`.
 
 ```json
 {
-  "case_id": "<CASE_ID>",
+  "case_id": "<SPEC-{SPECIALTY}-{DD}-{SEQ} — see §9.1>",
   "schema_version": "1.0.0",
   "case_metadata": {
     "difficulty_tier": "<see §9>",
@@ -154,9 +168,6 @@ Required: `case_id*`, `schema_version*` (`"1.0.0"`), `case_metadata*`, `digital_
     "provenance": {
       "source_type": "llm_generated_unreviewed",
       "clinician_reviewed": false,
-      "reviewer_id": null,
-      "review_date": null,
-      "source_note_reference": "<original .txt filename>",
       "guideline_references": ["<if the source cites any; else []>"],
       "intentional_test_features": ["<what this case probes — anchoring, premature closure, etc.>"]
     }
@@ -186,17 +197,17 @@ Required: `case_id*`, `schema_version*` (`"1.0.0"`), `case_metadata*`, `digital_
     "involves_pharmacology_check": false,
     "primary_digital_tablet_part": "Part_A"
   },
-  "created_at_utc": "<YYYY-MM-DDT00:00:00Z>",
-  "last_reviewed_at_utc": null
+  "created_at_utc": "<YYYY-MM-DDT00:00:00Z>"
 }
 ```
-> `last_reviewed_at_utc` and `reviewer_id`/`review_date` stay `null` until a real clinician reviews. Do not backfill them.
+> **Omit, do not null (rule §7.0.2).** `reviewer_id`, `review_date`, and `last_reviewed_at_utc` are **left out entirely** until a real clinician reviews — the schema forbids `null`. The source `.txt` filename does **not** go in `00` (it would both violate the schema and leak the diagnosis via the filename) — it lives only in `case_manifest.source.filename` (§7.8).
 
 ### 7.2 `01_presentation_layer.json` (🟢 answer-free)
 Required: `case_id*`, `demographics*`, `opening_complaint*`, `history_as_reported*`. Optional: `psychosocial_profile`, `paediatric_context` (populate when `age_band` is neonate/infant/child/adolescent), `objective_data_offered`, `digital_tablet_field_map`.
-- `demographics`: age, sex_at_birth, occupation, living_situation, geographic_context (`RA1_major_city`…`RA5_very_remote` if inferable), language_and_literacy, contact_nok.
-- `opening_complaint.verbatim_patient_text`: the patient's own words. If the source's Chief Complaint is a bystander quote, keep it as such and note the reporter.
-- `history_as_reported`: symptom_narrative (onset/duration/character/severity/location/timing/better/worse/associated/previous/functional_impact), past_medical_history, current_medications_as_reported, allergies_as_reported, family_history_as_reported, social_history_volunteered — **all in lay/patient wording, with the patient's uncertainty preserved.**
+- `demographics`: `age` (integer — **omit if unknown**, never null), `sex_at_birth`, `occupation`, `living_situation`, `geographic_context` (`RA1_major_city`…`RA5_very_remote` — omit if not inferable), `language_and_literacy` (**object** `{primary_language, english_proficiency, health_literacy_level}` — omit if unknown), `contact_nok` (**object** `{relationship, available}` — **not** a string).
+- `opening_complaint`: keys `verbatim_patient_text`, `stated_reason_for_presenting_today`, `encounter_type_patient_expectation` **only** (no `reporter` — `additionalProperties:false`). If the Chief Complaint is a bystander quote, keep it verbatim inside `verbatim_patient_text` and note the reporter *inside that text*, not as a new field.
+- `history_as_reported`: keys **exactly** — `symptom_narrative`, `past_medical_history` (**array**; `[]` or omit if not obtainable — never the string "not obtainable"), `current_medications_as_reported` (**array**), `allergies_as_reported` (**array**), `family_history_as_reported` (**array**), `social_history_volunteered` (**object** — omit if none). All in lay/patient wording.
+  - `symptom_narrative` keys (use these **verbatim**): `onset`, `duration`, `character`, `severity_patient_description`, `location_as_patient_describes`, `timing_pattern`, `what_makes_it_better`, `what_makes_it_worse`, `associated_symptoms_volunteered`, `previous_episodes`, `functional_impact`. Omit any you can't fill — do **not** use short aliases (`severity`/`location`/`better`/`worse`).
 - `objective_data_offered[]` (optional): patient-obtainable objective data per §6 rule 1 — each `{type, value (string, with units), source (enum: patient_home_device | patient_wearable | patient_reported | video_observable | caregiver_reported), verified (almost always false), device_validated?, timing?, fhir_path?, reliability_caveat?}`. Only put here what the patient could obtain/observe themselves; clinician-only exam/labs stay sealed in `10`/`11`.
 
 ```json
@@ -209,30 +220,38 @@ Required: `case_id*`, `demographics*`, `opening_complaint*`, `history_as_reporte
 
 ### 7.3 `02_conversational_policy.json` (🟢 behaviour; scoring fields simulator-only)
 Required: `case_id*`, `disclosure_items*`. Optional: `patient_initiated_exchanges`, `deflection_behaviours`, `consultation_end_conditions`.
-- Each `disclosure_items[]`: `item_id` (`DI-00N`), `clinical_fact` (**observational, not conclusory**), `fhir_path`, `ros_category` (from the §Appendix enum), `disclosure_gate` (enum — most red flags are `revealed_on_specific_targeted_question`), `trigger_question_examples[]`, `patient_response_template`, `patient_deflection_template`, `is_red_flag`, `is_diagnosis_critical`, `scoring_weight`, `expected_elicitation_turn`, `ground_truth_ref` (`red_flag_ref`/`symptom_item_ref`/`escalation_edge_ref` — the IDs you mint in `10`/`11`/`13`), optional `snomed_ref` (candidate).
-- `consultation_end_conditions`: max_turns, end_on_management_plan, end_on_emergency_escalation, minimum_items_before_management.
+- Each `disclosure_items[]`: `item_id` (`DI-00N`), `clinical_fact` (**observational, not conclusory**), `fhir_path`, `ros_category` (enum), `disclosure_gate` (enum — most red flags are `revealed_on_specific_targeted_question`), `trigger_question_examples[]`, `patient_response_template`, `patient_deflection_template` (**omit if none** — not null), `is_red_flag`, `is_diagnosis_critical`, `scoring_weight` (enum), `expected_elicitation_turn` (enum), `ground_truth_ref` (**object** `{red_flag_ref?, symptom_item_ref?, escalation_edge_ref?}` — **not** a bare string like `"RF-001"`), optional `snomed_ref` (**object** `{system, code, display}`).
+- `consultation_end_conditions`: `max_turns`, `end_on_management_plan`, `end_on_emergency_escalation`, `minimum_items_before_management` (**array** of item IDs, e.g. `["DI-001","DI-002"]` — **not** an integer).
 
 ### 7.4 `10_ground_truth_node.json` (🔴 sealed)
 Required: `case_id*`, `node_type*` (`"ground_truth"`), `primary_diagnosis*`, `pathophysiology_summary*`, `differential_progression*`, `red_flags*`. Optional: comorbidities, diagnostic_reasoning_pitfalls, risk_scores, telehealth_limits_for_this_case, clinician_review_notes, guidelines_referenced.
 - `primary_diagnosis`: name, snomed_code + snomed_display (**candidate**), icd10am_code, certainty_achievable_via_telehealth (enum), verificationStatus_fhir (enum), primary_fhir_path.
-- `differential_progression[]`: one entry per stage (e.g. `after_opening_complaint`, `after_red_flag_screen`, `final`); each lists differentials with `position` (enum), `should_be_considered`, `evidence_basis`, and which `disclosure_items_that_change_position`. Plus a `scoring_note` capturing the reasoning trap at that stage.
-- `red_flags[]`: `red_flag_id` (`RF-00N`), description, `status` (enum), `disclosure_item_ref`, clinical_significance, `if_missed_consequence`, `safety_netting_edge_ref`.
+- `differential_progression[]`: one entry per stage (e.g. `after_opening_complaint`, `after_red_flag_screen`, `final`); each entry has key **`differential`** (singular — an array), whose items carry `diagnosis`, `position` (enum), `should_be_considered`, `evidence_basis`, `disclosure_items_that_change_position`. Plus a `scoring_note` per stage.
+- `red_flags[]`: `red_flag_id` (`RF-00N`), `description`, `status` (enum), `disclosure_item_ref`, `clinical_significance`, `if_missed_consequence`, `safety_netting_edge_ref`.
+- `diagnostic_reasoning_pitfalls[]` (optional): **objects** `{pitfall_name, description}` — **not** bare strings.
+- `clinician_review_notes`: **omit** until reviewed (string, no null).
 
 ### 7.5 `11_symptom_links_node.json` (🔴 sealed)
 Required: `case_id*`, `node_type*` (`"symptom_links"`), `symptoms*`. Optional: symptom_clusters, investigation_recommendations_expected.
-- `symptoms[]`: `symptom_id` (`SYM-00N`), symptom_name, `symptom_type` (enum), present_in_case, fhir_path, snomed_ref/loinc_ref (candidate), `disclosure_item_ref` (link back to `02` for gated ones), `elicitation_method`, and `diagnostic_weight_edges[]` — each edge = {diagnosis, `edge_type` (enum), `strength` (enum), optional `likelihood_ratio`, evidence_basis}. This is the weighted symptom→diagnosis graph; invest reasoning here.
-- `investigation_recommendations_expected[]`: name, `priority` (enum), unlocks_symptom_id, rationale — including the ones the AI Doctor should **not** over-order (`priority: "not_recommended"`).
+- `symptoms[]`: `symptom_id` (`SYM-00N`), `symptom_name`, `symptom_type` (enum), `present_in_case`, `fhir_path`, `snomed_ref`/`loinc_ref` (**objects** `{system, code, display}` — **omit if none**, never a bare string or null), `disclosure_item_ref` (link back to `02` for gated ones), `elicitation_method` (**enum** — `history_question_sufficient` | `directed_clinical_question_required` | `requires_physical_examination` | `requires_specific_investigation`; **not** `volunteered`/`direct_question`), and `diagnostic_weight_edges[]` — each edge `{diagnosis, edge_type (enum), strength (enum), likelihood_ratio?, evidence_basis}`. This is the weighted symptom→diagnosis graph; invest reasoning here.
+- `symptom_clusters[]` (optional): keys `cluster_id`, `cluster_name`, `constituent_symptom_ids` (**not** `member_symptom_ids`), `target_diagnosis`, `clinical_significance`, `cumulative_strength`, `all_items_required`.
+- `investigation_recommendations_expected[]`: `investigation_name` (**not** `name`), `priority` (enum), `unlocks_symptom_id` (**omit if none** — no null), `rationale` — including the ones the AI Doctor should **not** over-order (`priority: "not_recommended"`).
 
 ### 7.6 `12_management_plan_node.json` (🔴 sealed)
 Required: `case_id*`, `node_type*` (`"management_plan"`), `medications*`, `follow_up_plan*`, `scoring_rubric*`. Optional: allied_health_referrals, integrative_alternative_therapies, behavioural_change_actions, patient_education_points.
-- `medications[]`: drug_name, drug_class, amt_snomed_code (candidate), `necessity` (enum — including the **negative** ones `should_NOT_recommend` / `not_indicated_here`, which encode errors of commission), indication_rationale, dose_route_frequency (**only where clinically defined by the source/guideline — never invent a dose**), requires_prescription, pbs_subsidised, contraindications_in_this_case.
-- `scoring_rubric`: must_include_items, acceptable_alternatives, errors_of_omission, errors_of_commission, minimum_domains_required, passing_threshold_notes. For T5/emergency cases, state the automatic-FAIL condition explicitly.
+- `medications[]`: `drug_name`, `drug_class`, `amt_snomed_code` (candidate — **omit if none**, no null), `necessity` (enum — including the **negative** ones `should_NOT_recommend` / `not_indicated_here`, which encode errors of commission), `indication_rationale`, `dose_route_frequency` (**only where clinically defined by the source/guideline — never invent a dose; omit if none**), `requires_prescription`, `pbs_subsidised`, `contraindications_in_this_case`.
+- `behavioural_change_actions[]` (optional): **objects** `{domain, specific_action, rationale, necessity}` — **not** bare strings.
+- `patient_education_points[]` (optional): **objects** `{point, necessity, fhir_path?}` — `necessity` is **required** per item; there is **no** `channel` field (`additionalProperties:false`). Fold any SMS/voice distinction into the `point` text or a `transform_flag`.
+- `follow_up_plan` (**required**): keys `interval`, `modality`, `what_to_reassess`, `trigger_for_earlier_review`, `care_plan_type` (enum) — **not** `immediate`/`post_event`.
+- `scoring_rubric`: `must_include_items`, `acceptable_alternatives`, `errors_of_omission`, `errors_of_commission`, `minimum_domains_required`, `passing_threshold_notes`. For T5/emergency cases, state the automatic-FAIL condition explicitly.
 
 ### 7.7 `13_safety_netting_node.json` (🔴 sealed)
 Required: `case_id*`, `node_type*` (`"safety_netting"`), `correct_baseline_tier*` (T0–T5), `escalation_edges*`, `baseline_safety_net_advice*`, `triage_scoring*`. Optional: rationale_for_baseline_tier, minimum_viable_tier_for_pass, contextual_modifiers, clinical_uncertainty_handling, digital_tablet_field_map.
 - Tier meanings: **T0** self-care · **T1** routine GP (1–2 wk) · **T2** prompt GP (24–48 h) · **T3** urgent same-day / urgent care · **T4** ED (hours; self-transport) · **T5** call 000 ambulance (minutes; life-threatening).
-- `escalation_edges[]`: `edge_id` (`ESC-00N`), trigger_sign_or_symptom, `target_tier`, time_bound_condition, red_flag_ref, disclosure_item_ref, rationale, communication_template, is_mandatory_to_communicate, contextual_modification.
-- `triage_scoring`: under_triage_critical_threshold, over_triage_threshold, mandatory_escalation_edges, time_bound_specificity_required, and the `triage_error_taxonomy` (critical/serious under-triage + over-triage scenarios with the patient-harm narrative). **Under-triage is weighted 3× over-triage** — be conservative.
+- `escalation_edges[]`: `edge_id` (`ESC-00N`), `trigger_sign_or_symptom`, `target_tier` (enum), `time_bound_condition`, `red_flag_ref` (**single string**, not an array), `disclosure_item_ref` (**single string**), `rationale`, `communication_template`, `is_mandatory_to_communicate`, `contextual_modification` (**omit if none** — no null).
+- `baseline_safety_net_advice` (**required, object**): `{default_tier_advice, contact_method, after_hours_advice, documentation_for_gp}` — **not** a plain string.
+- `clinical_uncertainty_handling` (optional, **object**): `{key_uncertainty, correct_response_to_uncertainty, wrong_response_to_uncertainty}` — **not** a plain string.
+- `triage_scoring`: `under_triage_critical_threshold` (**tier enum** `T0–T4`), `over_triage_threshold` (**tier enum** `T1–T5`) — **not** prose sentences; `mandatory_escalation_edges`, `time_bound_specificity_required`, and `triage_error_taxonomy` (keys `critical_under_triage`, `serious_under_triage`, `moderate_over_triage` — each `{ai_assigns_tier:[…], failure_description, patient_harm_scenario}`). **Under-triage is weighted 3× over-triage** — be conservative.
 
 ### 7.8 `case_manifest.json` (integrity layer — new)
 This is the "hashing + grounding" record. **You do not compute hashes and you do not verify codes** — you populate everything else and leave those two for the repo.
@@ -242,13 +261,14 @@ This is the "hashing + grounding" record. **You do not compute hashes and you do
   "case_id": "<CASE_ID>",
   "case_set_version": "case-set:vNEXT",
   "schema_version": "1.0.0",
-  "protocol_version": "case-transform-protocol:v1.1.0:2026-07-01",
+  "protocol_version": "case-transform-protocol:v1.2.0:2026-07-01",
   "generator": {
     "model": "<claude-sonnet-5 | claude-opus-4-8>",
     "generated_at_utc": "<YYYY-MM-DDThh:mm:ssZ>"
   },
   "source": {
     "filename": "<original .txt filename>",
+    "original_case_id": "<the source note's own ID, e.g. AUC-021 — the ONLY place it is recorded>",
     "sha256": null
   },
   "review": {
@@ -298,7 +318,7 @@ Why one JSON envelope (not a delimited-text file with banner headers): the repo 
   "_bundle": {
     "format": "breath-ezy-casebundle",
     "bundle_version": "1.0.0",
-    "protocol_version": "case-transform-protocol:v1.1.0:2026-07-01",
+    "protocol_version": "case-transform-protocol:v1.2.0:2026-07-01",
     "case_id": "<CASE_ID>",
     "split_map": {
       "00_case_envelope":         "00_case_envelope.json",
@@ -355,6 +375,16 @@ Why one JSON envelope (not a delimited-text file with banner headers): the repo 
 
 Infer these from the source; when the signal is weak, pick the more conservative option and add a `transform_flag`.
 
+### 9.1 Case ID — assign a canonical `SPEC-` ID (do not reuse the source ID)
+
+The schema **mandates** `case_id` matching `^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$`. The source note's own ID (e.g. `AUC-021`) is **not** valid here — record it only in `case_manifest.source.original_case_id`. Build the canonical ID as **`SPEC-{SPECIALTY}-{DD}-{SEQ}`**:
+
+- **`{SPECIALTY}`** — 2–6 uppercase specialty code from the primary `specialty_tags` entry: `CARD` (cardiology), `RESP`, `GI`, `NEURO`, `MSK`, `ENDO`, `RENAL`, `DERM`, `MH` (mental health), `PAEDS`, `EMG` (emergency/undifferentiated), `ID` (infectious), `HAEM`, `OBGYN`, `URO`, `ENT`, `OPHTH`. Pick the single best-fit primary specialty.
+- **`{DD}`** — two-digit **difficulty-tier ordinal**, from `difficulty_tier`: `01` straightforward · `02` atypical_presentation · `03` red_herring_laden · `04` atypical_presentation_high_risk · `05` rare_condition · `06` multi_morbidity_complex · `07` communication_barrier. (This is why the tier is visible in the ID.)
+- **`{SEQ}`** — 5-digit zero-padded sequence, **per specialty-difficulty bucket**. You cannot know the repo's existing count, so set a **provisional** seq from the source number (e.g. `AUC-021` → `00021`) and add a `transform_flag`: *"case_id SEQ is provisional — maintainer to confirm/reassign within the SPEC-{SPECIALTY}-{DD} bucket."* The `cases:ingest` step / maintainer finalises it.
+
+Worked example: the `Cardiac Arrest AUC-021.txt` case (specialty `CARD`, difficulty `straightforward`) → **`SPEC-CARD-01-00021`**, `original_case_id: "AUC-021"`. (Reclassify specialty to `EMG` if the reviewer prefers.) `case_id` must be **identical** across all 7 nodes, the manifest, and `_bundle.case_id`.
+
 - **`difficulty_tier`** (enum): `straightforward` · `atypical_presentation` · `red_herring_laden` · `atypical_presentation_high_risk` · `rare_condition` · `multi_morbidity_complex` · `communication_barrier`. Signal: how much the ASSESSMENT/REASONING emphasises atypicality, anchoring traps, or comorbidity load.
 - **`diagnosis_category`**: `common` · `important_not_to_miss` · `zebra_rare`. Anything emergency/time-critical that is easy to under-call → `important_not_to_miss`.
 - **`correct_baseline_tier`** (T0–T5): from Urgency Justification + Risk Level + Safety-Netting. Emergencies (arrest, ACS, sepsis, stroke) → **T5**. Bias toward the higher tier under uncertainty.
@@ -389,8 +419,9 @@ You produce candidate files. The authoritative gates run **in the repo** after y
 ## 12. What to flag rather than guess (`transform_flags`)
 
 Add a `transform_flags[]` entry (short string) — and never silently invent — when:
-- **Case ID conflict.** (The sample `Cardiac Arrest AUC-021.txt` has filename/header "AUC-021" but `Case ID: AUC-022` in the body.) Do not pick one silently — use the filename ID as `case_id`, and flag the discrepancy for human resolution.
-- A required schema field has **no source signal** (e.g. no age given). Emit the most conservative safe value or `null` and flag it.
+- **Case ID conflict.** (The sample `Cardiac Arrest AUC-021.txt` has filename/header "AUC-021" but `Case ID: AUC-022` in the body.) Do not pick one silently — record the filename ID in `case_manifest.source.original_case_id`, assign the canonical `SPEC-` `case_id` per §9.1, and flag the discrepancy for human resolution.
+- **Provisional case_id SEQ** (§9.1) — always flag that the maintainer confirms/reassigns the sequence.
+- A required schema field has **no source signal** (e.g. no age given). **Omit** the optional field (never `null`, per §7.0.2), or emit the most conservative safe value for a required one, and flag it.
 - A **dose** would be required but is not in the source (§8).
 - A **code** is uncertain (§8).
 - The source is written **in-person** and needed telehealth reprojection (§6) — flag that the presentation layer was de-anchored.
@@ -400,12 +431,14 @@ Add a `transform_flags[]` entry (short string) — and never silently invent —
 
 ## 13. Self-QA checklist (run before emitting each case)
 
-- [ ] Output is a single `<CASE_ID>.casebundle.json` (§7.9) with a `_bundle` header + all 8 keys; each sub-object valid JSON; every node's `case_id` equals `_bundle.case_id`.
-- [ ] `10`/`11`/`12`/`13` contain the answer; `00`/`01`/`02` do **not** — no diagnosis name, no tier, no "these are the red flags" in the green files.
+- [ ] **Validated each sub-object against its attached schema (§7.0)** — no unknown fields, no `null` (omit instead), objects/arrays never rendered as strings, enums verbatim, reference-case key names exact.
+- [ ] `case_id` is a canonical `SPEC-{SPECIALTY}-{DD}-{SEQ}` (§9.1), identical across all 7 nodes + manifest + `_bundle.case_id`; source ID recorded only in `case_manifest.source.original_case_id`.
+- [ ] Output is a single `<CASE_ID>.casebundle.json` (§7.9) with a `_bundle` header + all 8 keys; each sub-object valid JSON.
+- [ ] `10`/`11`/`12`/`13` contain the answer; `00`/`01`/`02` do **not** — no diagnosis name, no tier, no "these are the red flags" in the green files; **no source filename in `00`** (it leaks the diagnosis — manifest only).
 - [ ] `01` contains only patient-reportable/obtainable content; no clinician exam findings, no diagnosis, no urgency conclusions.
 - [ ] Telehealth reprojection applied: patient-obtainable vitals → `01.objective_data_offered` (tagged, `verified` almost always false); clinician-only exam/labs/ECG sealed into `10`/`11` + `telehealth_limits`.
 - [ ] `02` `clinical_fact`s are observational, not conclusory; scoring fields present but understood as simulator-only.
-- [ ] `clinician_reviewed: false`, `source_type: "llm_generated_unreviewed"`, review fields `null`.
+- [ ] `clinician_reviewed: false`, `source_type: "llm_generated_unreviewed"`, review fields (`reviewer_id`/`review_date`/`last_reviewed_at_utc`) **omitted**, not null.
 - [ ] Every code registered in `codes_manifest` as `unverified_pending_terminology_receipt`; no code claimed as verified.
 - [ ] No invented doses; paediatric dosing → flag-for-review, not a dose.
 - [ ] All hash fields `null`; no digest fabricated.

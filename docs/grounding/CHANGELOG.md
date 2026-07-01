@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Case transformation protocol — hardening from first real-case validation (2026-07-01)
+
+**Status:** Complete. Docs-only. Protocol bumped to `case-transform-protocol:v1.2.0`. Triggered by hand-validating the first Chat-produced bundle (`AUC-021` cardiac arrest), which was clinically excellent but had **103 schema-conformance errors** + one firewall leak.
+
+### Root causes fixed
+- **Protocol defects (led Chat into invalid output):** skeletons used `null` for unknown optionals (schemas forbid null → omit); invented `source_note_reference` in `00` (both an invalid field **and** a firewall leak — the source filename contains the diagnosis); abbreviated `symptom_narrative` key names; §7 gave prose, not exact contracts.
+- **Chat drift the protocol should have prevented:** `differentials`→`differential`, `snomed_ref` string→object, non-enum values, prose where tier-enums/objects required, added fields (`channel`/`reporter`/`bystander_state`), arrays where single strings required.
+
+### Changes to `docs/case-authoring/case-transformation-protocol.md`
+- **New §7.0 Hard conformance rules:** `additionalProperties:false` (no invented fields); `null` forbidden → omit; objects/arrays never rendered as strings; enums verbatim; reference-case key names exact; self-validate before emitting.
+- **New §9.1 Case-ID mapping:** assign canonical `SPEC-{SPECIALTY}-{DD}-{SEQ}` (DD = difficulty-tier ordinal 01–07); source ID → `case_manifest.source.original_case_id`; provisional SEQ flagged for maintainer. Decoded from the schema's own documented convention (`AUC-021` → `SPEC-CARD-01-00021`).
+- Fixed §7.1 (removed `source_note_reference` + null review fields), §7.2 (exact `symptom_narrative` keys, object shapes), §7.3–§7.7 (exact object/enum/single-string shapes for every field Chat got wrong), §7.8 (`original_case_id`), §12/§13 (no-null flagging, conformance + case-id checklist items).
+- **§1 now mandates attaching the 7 node schema files + reference case** to the Chat session — the schema is the authoritative contract.
+
+### Verification
+All fenced JSON skeletons parse; version bumped consistently (3 spots); `differentials`/`null` references are all corrective. Case-ID convention verified against the schema's `case_id` pattern + description and the reference case (`SPEC-CARD-04` ↔ difficulty ordinal 4).
+
+### Register impact
+None (docs). User decision recorded: **map to canonical SPEC IDs** (schemas unchanged) rather than relax the pattern.
+
+---
+
 ## Case transformation protocol — Bundle Output Mode (2026-07-01)
 
 **Status:** Complete. Docs-only. Protocol bumped to `case-transform-protocol:v1.1.0`.
