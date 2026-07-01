@@ -185,6 +185,29 @@ The `no_invented_codes` check was weak: it matched ICD-11 only (not the pinned I
 
 ---
 
+## Terminology multi-system grounding + Digital Tablet import (2026-06-30)
+
+**Status:** Mock complete. Branch `feat/terminology-r20`. Advances `terminology-contract-incomplete` / gap-register **R-20**; imports the Digital Tablet.
+
+The terminology layer grounded only SNOMED + ICD-11, so the invariant's ICD-10-AM/LOINC/PBS codes were un-groundable and blocked by the hardened verifier.
+
+### Changes
+- `data/digital_tablet_omnibus.json` (new): the "Digital Tablet" AU Core R4 schema capsule (was referenced by the schemas but absent). Declares SNOMED CT-AU / ICD-10-AM 12th / LOINC 2.77 / PBS / AMT and the terminology_servers (NCTS Ontoserver). No secrets.
+- `mcp/schemas/terminology-lookup.schema.json`: `system` enum → SNOMED_CT/ICD_10_AM/ICD_11/LOINC/PBS/AMT.
+- `mcp/servers/terminology/index.js` + `terminology-servers.json` (new): all 3 tools accept the extended enum; per-system mock concepts (echo a looked-up code so any code validates); live NCTS/Ontoserver endpoints recorded from the Digital Tablet, **used only in live mode — mock never calls them**.
+- `verification/verifier.js`: per-code binding extended to PBS (context-gated) and AMT (SNOMED-form); ICD-11 stays coarse.
+- `verification/retrieval-mcp.js`: `retrieveTerminology` grounds multiple systems (SNOMED + ICD-10-AM + LOINC).
+- Tests: `contract-terminology.js` validates each system; `contract-verifier.js` adds PBS bind/unbind. `npm test` 13/13.
+
+### Register movement
+- `terminology-contract-incomplete` (R-20): High, PARTIAL → **advanced** (mock multi-system + per-code binding; live NCTS + AU Core value-set binding remain input-gated).
+- **Imported/resolved** `digital-tablet-omnibus` (resolves a dangling schema reference).
+
+### Verification
+- `npm test` 13/13; `trunk:stub:all` 9/9 stub + live MCP; end-to-end ICD-10-AM `M54.5` binds on the MCP terminology path.
+
+---
+
 ## Standards registration — FHIR R4 / AUCDI R3 grounding scoped (2026-06-30)
 
 **Status:** Registered (not built). Operator request to ground HL7 FHIR R4 + AUCDI Release 3.

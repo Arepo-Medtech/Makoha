@@ -86,6 +86,17 @@ async function run() {
       if (!payload.request || !payload.response) errors.push("response missing request/response (TerminologyLookup shape)");
       if (payload.response?.status !== "hit" && payload.response?.status !== "miss") errors.push("response.status should be hit or miss");
     }
+
+    // Extended systems (Digital Tablet): each grounds a code with the right system.
+    let idc = 10;
+    for (const [system, code] of [["ICD_10_AM", "M54.5"], ["LOINC", "2823-3"], ["PBS", "2622B"], ["AMT", "23628011000036104"], ["ICD_11", "ME84.0"]]) {
+      sendRequest(proc, { jsonrpc: "2.0", id: ++idc, method: "tools/call", params: { name: "terminology_lookup", arguments: { system, query: { kind: "code", value: code }, mode: "mock" } } });
+      const r = await readResponse(proc);
+      const p = r.result?.content?.[0]?.text ? JSON.parse(r.result.content[0].text) : null;
+      if (p?.response?.concept?.system !== system) errors.push(`${system} lookup did not return concept.system=${system}`);
+      if (p?.response?.concept?.code !== code) errors.push(`${system} lookup did not validate code ${code} (got ${p?.response?.concept?.code})`);
+      if (p?.receipt?.mode !== "mock") errors.push(`${system} receipt mode not mock`);
+    }
   } finally {
     proc.kill("SIGTERM");
   }

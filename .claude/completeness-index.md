@@ -12,7 +12,7 @@ Last synced: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + 
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
 
 ## High
-- terminology-contract-incomplete · terminology schema/server (SNOMED+ICD_11 only) · PARTIAL · High · pf:true
+- terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
 - knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
 - receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
 

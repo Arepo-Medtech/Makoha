@@ -2,7 +2,7 @@
 
 **Document ID:** `heydoc-grounding:gap-register:2026-06`  
 **Version:** 1.0.0  
-**Last reviewed:** 2026-06-30 (R-16/17/18/19 resolved; R-21 parser, R-22 pharmacology+firewall, R-13 knowledge — mock built; R-20 terminology contract — open)  
+**Last reviewed:** 2026-06-30 (R-16/17/18/19 resolved; R-13/R-20/R-21/R-22 mock built; Digital Tablet imported. Live vendors/EHR/NCTS + sign-off + Portal + persistence remain)  
 **Citation ID:** `gap-register:v1.0.0:2026-06`
 
 This register is the primary source of truth for what HeyDoc currently is and is not. It is retrieved by the docs MCP server when trunks need to ground their scope assertions, and it is the authoritative list for the verifier's `no_repo_invention` check. Every trunk agent that references an internal service name must confirm it appears in the Allowed Service Registry below before citing it.
@@ -90,10 +90,10 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 
 ### `terminology` — SNOMED CT / ICD-11
 
-- **Stub:** Returns mock SNOMED codes. `TERMINOLOGY_UPSTREAM_NAME=stub`.
-- **Live requires:** NCTS Ontoserver (`https://r4.ontoserver.csiro.au/fhir`) or equivalent. SNOMED CT Australian Edition 20240301 licence via NCTS.
-- **Tools:** `terminology_lookup`, `terminology_validate`
-- **Gap:** NCTS licence confirmation. All SNOMED codes in schema files must be re-validated against live Ontoserver before production use.
+- **Mock (2026-06-30):** grounds SNOMED_CT / ICD_10_AM / ICD_11 / LOINC / PBS / AMT (the Digital Tablet's systems); echoes looked-up codes for per-code binding. `terminology-servers.json` records the live NCTS/Ontoserver endpoints (from data/digital_tablet_omnibus.json), used only in live mode.
+- **Live requires:** NCTS Ontoserver (`https://r4.ontoserver.csiro.au/fhir`); SNOMED CT-AU 20240301 + ICD-10-AM/LOINC/PBS/AMT licences via NCTS; AU Core value-set bindings.
+- **Tools:** `terminology_lookup`, `terminology_validate`, `terminology_map`
+- **Gap:** NCTS licence + live connection; AU Core value-set binding; no live PBS API; AMT subset not validated. Mock codes must be re-validated against live Ontoserver before production.
 
 ### `fhir-broker` — FHIR Patient Record
 
@@ -185,7 +185,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-17 | No append-only, tamper-evident audit/receipt store | High | High | Promoted from `receipt-store-append-only-unbuilt`. Hash-chained medicolegal-audit-ledger (verification/audit-store.js) built; both writers append per run; receipt metadata + hash captured; verifyChain() + verify:rehash. Exact-output content store is synthetic-only (`content-store-production-gated`) until R-10/session-persistence + consent are green. Production WORM substrate + retention policy still to configure. | Mock-resolved 2026-06-30 (prod pending) |
 | R-18 | Deterministic verifier (5 hard checks) untested | High | High | Promoted from `verifier-untested`. test/contract-verifier.js covers all 5 checks (pass/fail/receipt-flip), hash return, overall-pass logic, and pipeline integration; wired into npm test + CI. | Resolved 2026-06-30 |
 | R-19 | Weak code detection — no per-code binding, ICD-10-AM/LOINC/PBS unmatched, mock not flagged | High | High | Promoted from `verifier-weak-code-detection`. Patterns span SNOMED/ICD-10-AM/ICD-11/LOINC/PBS w/ FP guards; true per-code↔receipt binding (SNOMED/ICD-10-AM/LOINC); mock-mode flag+block; MCP upstream bug fixed. Tested; trunk:stub:all 9/9 stub+MCP. | Resolved 2026-06-30 |
-| R-20 | Terminology contract grounds only SNOMED + ICD-11 vs invariant's SNOMED/ICD-10-AM/LOINC/PBS | High | High | Promoted from `terminology-contract-incomplete`. ICD-10-AM/LOINC/PBS ungroundable -> hardened verifier blocks them (fail-safe). Extend terminology contract+server; reconcile ICD-10-AM vs ICD_11. Feeds AUCDI R3 value-set binding. | Open |
+| R-20 | Terminology contract grounds only SNOMED + ICD-11 vs invariant's SNOMED/ICD-10-AM/LOINC/PBS | High | High | Promoted from `terminology-contract-incomplete`. MOCK multi-system built: enum now SNOMED_CT/ICD_10_AM/ICD_11/LOINC/PBS/AMT (per the Digital Tablet, imported); per-code binding for all except ICD-11 (coarse); retrieveTerminology grounds multiple systems; end-to-end ICD-10-AM binding verified. REMAINING (input-gated): live NCTS/Ontoserver (licence) + AU Core value-set binding. | Mock built 2026-06-30 (live NCTS + AU Core binding pending) |
 | R-21 | Deterministic investigation parser (sanitiser) not built — raw lab numbers could reach LLM | Medium (was) | Critical | Promoted from `investigation-parser-unbuilt` (named release blocker). Deterministic parser built (HL7 banding, no raw number, fail-safe), wired into contextInjection, enforced at the ContextPacket gate, tested. Reference ranges are DEV/SYNTHETIC-ONLY (`lab-reference-ranges-provisional`) — clinical + regulatory sign-off + a live fhir-broker source required before patient-facing. | Mock/dev built 2026-06-30 (ranges + live source pending) |
 | R-22 | Pharmacology server not built — HARD_FAIL/dose checks ran on nothing | High (#1 gap) | Critical | Promoted from `pharmacology-server-unbuilt`. Deterministic MOCK core built (5 checks, dose-only-here, paediatric flag/no-dose, S8 PDMP, BLOCKED_NO_PROOF) AND wired behind Trunk 8.0: firewall_status gates continuation, HARD_FAIL blocks with NO override (receipt-backed; check 5 distinguishes legitimate vs invented). Contract-tested (pharmacology + firewall). REMAINING: live vendor (MIMS-AU/SafeScript) in staging. **Must NOT be patient-facing until live vendor connected + validated.** | Mock core + firewall wired 2026-06-30 (live vendor pending) |
 

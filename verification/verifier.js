@@ -61,11 +61,11 @@ function detectCodeSystems(output) {
 }
 
 /**
- * Extract the actual code TOKENS we can bind exactly to a receipt — SNOMED CT
- * (numeric), ICD-10-AM (dotted), and LOINC (dash-check). These shapes are
- * unambiguous enough to compare against a receipt's validated codes. ICD-11 and
- * PBS are context-gated and fuzzy to extract, so they are gated coarsely
- * (receipt-presence) rather than bound token-by-token — see check 1.
+ * Extract the actual code TOKENS we can bind exactly to a receipt — SNOMED CT / AMT
+ * (numeric, code-context), ICD-10-AM (dotted), LOINC (dash-check), and PBS
+ * (context-gated item code). These shapes are unambiguous enough to compare against a
+ * receipt's validated codes. ICD-11 is alphanumeric and fuzzy to extract, so it is
+ * gated coarsely (receipt-presence) rather than bound token-by-token — see check 1.
  * @returns {Array<{ system: string, code: string }>} de-duplicated by code
  */
 function extractBindableCodes(output) {
@@ -75,10 +75,13 @@ function extractBindableCodes(output) {
     let m;
     while ((m = re.exec(output)) !== null) found.push({ system, code: m[1] });
   };
-  // SNOMED: only a code-context digit string (not a bare long integer) — see CODE_PATTERNS.
-  scan("SNOMED CT", /(?:SNOMED(?:[\s_-]?CT)?|\bcode|\bconcept)[^\d\n]{0,24}?\b(\d{6,18})\b/gi);
+  // SNOMED/AMT: a code-context digit string (AMT codes are SNOMED-form) — not a bare
+  // long integer (see CODE_PATTERNS).
+  scan("SNOMED CT", /(?:SNOMED(?:[\s_-]?CT)?|\bAMT|\bcode|\bconcept)[^\d\n]{0,24}?\b(\d{6,18})\b/gi);
   scan("ICD-10-AM", /\b([A-Z]\d{2}\.\d{1,4})\b/g);
   scan("LOINC", /\b(\d{4,5}-\d)\b/g);
+  // PBS: item codes are ambiguous bare, so context-gated ("PBS item 2622B").
+  scan("PBS", /\bPBS\b[^\d\n]{0,24}?\b(\d{1,5}[A-Z]?)\b/gi);
   const seen = new Set();
   return found.filter((c) => (seen.has(c.code) ? false : seen.add(c.code)));
 }
@@ -152,7 +155,8 @@ export function verify(output, evidence = {}) {
   const detectedSystems = detectCodeSystems(output);
   const bindable = extractBindableCodes(output);
   const unbound = bindable.filter((c) => !validatedCodes.has(c.code));
-  const coarseSystems = [...new Set(detectedSystems.filter((s) => s === "ICD-11" || s === "PBS"))];
+  // ICD-11 stays coarse (alphanumeric, fuzzy to extract). PBS is now bound per-code.
+  const coarseSystems = [...new Set(detectedSystems.filter((s) => s === "ICD-11"))];
   const coarseUnsatisfied = coarseSystems.length > 0 && effTerminologyReceipts.size === 0;
   const codePass = unbound.length === 0 && !coarseUnsatisfied;
   let codeReason;

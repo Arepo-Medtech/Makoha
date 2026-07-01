@@ -13,7 +13,7 @@ One line per schema: what it contracts · producer · consumer. Open the schema 
 | `context-packet.schema.json` | Bounded packet the trunk LLM sees: facts, evidence, constraints[], receipts[]; sanitised_by (zod-gated: pipeline-schemas.js) | Step 3 Context injection | Step 4 Generation (the ONLY thing the trunk LLM sees) |
 | `context-graph.schema.json` | Session-scoped ContextGraph (revision + receipts) | knowledge server / session state | Step 0 inputs · knowledge queries |
 | `patient-knowledge-graph.schema.json` | Patient baseline KG (revision + receipts) | knowledge server | Step 0 inputs |
-| `terminology-lookup.schema.json` | SNOMED CT / ICD-10-AM / LOINC lookup result + receipt | terminology server (Step 2) | Trunk 6.0 (LOINC), 7.0 (code lock), 9.0 (SNOMED keying) |
+| `terminology-lookup.schema.json` | Lookup result + receipt; system ∈ SNOMED_CT/ICD_10_AM/ICD_11/LOINC/PBS/AMT (Digital Tablet systems) | terminology server (Step 2) | Trunk 6.0 (LOINC), 7.0 (code lock), 9.0 (SNOMED keying); verifier per-code binding |
 | `pharm-intent.schema.json` | PharmIntent: drug identity, class, route (NO dose values) | Trunk 8.0 | pharmacology server pharm.check |
 | `pharm-check.schema.json` | PharmCheck result: PASS/WARN/HARD_FAIL, dose guidance, interactions, scheduling, PDMP | pharmacology server | Trunk 8.0 firewall gate |
 | `verification-report.schema.json` | Machine-readable pass/fail, reasons, missing receipts, candidate_output_hash (SHA-256, required) | Step 5 Verification (zod-gated: report-schema.js) | Audit/medicolegal record · release gate |

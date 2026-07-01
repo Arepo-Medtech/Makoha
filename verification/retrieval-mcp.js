@@ -112,23 +112,27 @@ async function retrieveTerminology(plan) {
   await client.connect(transport);
 
   try {
-    const result = await client.callTool({
-      name: "terminology_lookup",
-      arguments: { system: "SNOMED_CT", query: { kind: "text", value: "low back pain" }, mode: "mock" },
-    });
-    const content = result.content?.[0]?.text;
-    if (!content) return [];
-    const payload = JSON.parse(content);
-    const receipt = payload.receipt;
-    if (!receipt) return [];
-    // Capture the code(s) this lookup validated so the verifier can bind output
-    // codes to the receipt that actually returned them.
-    const concept = payload.response && payload.response.concept;
-    const candidates = (payload.response && payload.response.candidates) || [];
-    const validated_codes = [
-      ...(concept && concept.code ? [concept.code] : []),
-      ...candidates.map((c) => c.code).filter(Boolean),
+    // Ground a representative code across systems so multi-system output binds.
+    // (In a full pipeline, routing supplies the specific codes/systems to validate.)
+    const lookups = [
+      { system: "SNOMED_CT", query: { kind: "text", value: "low back pain" } },
+      { system: "ICD_10_AM", query: { kind: "code", value: "M54.5" } },
+      { system: "LOINC", query: { kind: "code", value: "2823-3" } },
     ];
+    const validated_codes = [];
+    let receipt;
+    for (const lu of lookups) {
+      const result = await client.callTool({ name: "terminology_lookup", arguments: { ...lu, mode: "mock" } });
+      const content = result.content?.[0]?.text;
+      if (!content) continue;
+      const payload = JSON.parse(content);
+      const concept = payload.response && payload.response.concept;
+      const candidates = (payload.response && payload.response.candidates) || [];
+      if (concept && concept.code) validated_codes.push(concept.code);
+      for (const c of candidates) if (c.code) validated_codes.push(c.code);
+      receipt = payload.receipt || receipt;
+    }
+    if (!receipt) return [];
     return [
       {
         kind: "live_data",
