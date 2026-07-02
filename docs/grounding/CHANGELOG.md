@@ -4,6 +4,32 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## `cases:ingest` — bundle → data/cases with field-scoped firewall (2026-07-01)
+
+**Status:** Complete (tool). Branch `feat/cases-ingest`. Plan-gated build (approved). New dependency `ajv` (approved).
+
+### Change
+Adds the deterministic ingestion tool that admits `*.casebundle.json` files into `data/cases/`.
+
+- `scripts/ingest-case-bundles.mjs` + `npm run cases:ingest`: per bundle → ajv-validate all 7 nodes (schemas are draft 2020-12) → `case_id` consistency → **field-scoped firewall check** → honesty gate (bundle hashes null, codes unverified) → split into `data/cases/<CASE_ID>/` → compute real **SHA-256** per file (fill manifest nulls) + `source.sha256` (if the `.txt` is alongside) + `ingest.bundle_sha256` → carry the clinician attestation through. Refuses (exit 1, writes nothing) on any gate failure; `--dry-run`, `--out`, `--force`.
+- `test/contract-case-ingest.js` (wired into `npm test`, now 15 suites): round-trips the reference case (8 files + real SHA-256), and asserts a diagnosis-name leak into `01` and a `case_id` mismatch are both refused.
+
+### Firewall allow-list (the finding, now enforced in code)
+The firewall is **finer than file-level**. Only sub-fields injected into the AI-Doctor/patient-simulator exchange are scanned: all of `01` **except** `psychosocial_profile` + `digital_tablet_field_map` (simulator-direction/mapping metadata), and in `02` only `disclosure_items[].{clinical_fact,patient_response_template,patient_deflection_template}`, `patient_initiated_exchanges[].patient_text`, `deflection_behaviours[].deflection_text_template`. `00` and `02` scoring fields are metadata and legitimately reference the diagnosis. Leak = the **full** `primary_diagnosis.name` (not generic SNOMED-display words) or a source `.txt` filename appearing in injectable text. Validated: 51/51 real bundles pass with 0 true leaks.
+
+### Reference-case fix
+`data/cases/SPEC-CARD-04-00001/11_symptom_links_node.json` had 3 × `unlocks_symptom_id: null` — a pre-existing non-conformance (predates the schema hardening; schema forbids null). Removed (omit = "unlocks nothing"). Gold standard is now schema-clean.
+
+### Register impact
+- **NEW `context-injection-allowlist`** (High): the sub-field firewall is enforced at ingest, but the *live* context-injection layer (unbuilt) must apply the same allow-list before injecting `00/01/02` into a trunk. Registered.
+- `case-set-underpopulated`: intake path now built (tool). Actual population (ingest the 51) is the next step.
+- Firewall status: JS now **writes** `data/cases` (ingest) — it does not route sealed `10–13` content into a trunk; re-affirmed.
+
+### Verification
+`npm test` 15/15; `npm run cases:ingest -- "<folder>" --dry-run` → 51/51 OK, 0 leaks.
+
+---
+
 ## Case transformation — bundled "kit" (single-file package) (2026-07-01)
 
 **Status:** Complete. New derived artifact + build script.
