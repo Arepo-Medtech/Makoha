@@ -244,18 +244,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: mode-leakage-enforcelive
-  path: verification/verifier.js (enforceLive, line ~132), verification/pipeline.js (context_mode derivation)
+  path: verification/mode.js (normaliser), verification/{verifier.js,pipeline.js,audit-store.js} (wired seams)
   component_type: verifier
-  state: PARTIAL
-  evidence: M0 scan 2026-07-03 — `const enforceLive = contextMode === "live"` fires only on the exact string "live". Env modes `staging`/`production` would NOT block mock receipts: mock proof is flagged (mock_receipt_flags) but accepted as valid evidence outside dev. ARCH_PLAN C16 / FMEA F4 (3×5=15 → 1×5 after fix).
-  blocks: safe staging/production promotion; env(mock/staging/production)↔receipt-MODE(live/dry_run/mock) taxonomy
-  safety_class: presents_mock_as_live (in a staging/production context, until normalised)
-  invariant_exposure: no-fabricated-operational-facts (a mock receipt could stand as proof on a non-dev path); mock-by-default discipline
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M1) — verification/mode.js built: env(mock/dry_run/staging/production/live)→enforcement(mock/dry_run/live); staging/production→live⇒mock proof BLOCKED; UNKNOWN mode default-denies to live; absence keeps the documented dev default (mock). Wired into all three consumers of the seam: pipeline.js context_mode derivation, verifier.js enforceLive, and audit-store.js recordRun (staging is no longer classified synthetic — content NOT persisted, content_persisted=false, ledger mode enum-valid; this second F4 site was found during M1 research and fixed in the same step). Tested end-to-end by test/contract-mode-normaliser.js (mapping, default-deny, verifier blocking/flagging, pipeline packet mode, ledger classification) — wired into npm test + CI. RESIDUAL (tracked, not a defect here): MCP servers stamp receipt.mode from their own HEYDOC_MODE_DEFAULT read and only ever run mock today; server-side mode stamping is normalised at live-connect (M9/M11).
+  blocks: (cleared)
+  safety_class: none — enforcement is now monotone-stricter (staging/production/unknown block; mock/dry_run unchanged)
+  invariant_exposure: closed — mock proof can no longer stand as grounding evidence on a non-dev path
   risk: High
   blocks_patient_facing: true
-  build_action: build verification/mode.js normalising env(mock/staging/production/dry_run)→enforcement — staging/production→live→block mock; default-deny unknown modes; wire into pipeline.js context_mode and verifier.js enforceLive; contract-mode-normaliser.js (ARCH_PLAN C16, milestone M1).
+  build_action: DONE — see evidence.
   gap_register_link: R-25
-  status: open
+  status: resolved
   last_scanned: 2026-07-03
 ```
 

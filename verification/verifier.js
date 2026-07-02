@@ -3,6 +3,7 @@
  * Ensures no invented codes, guidelines, operations, or repo/API names; checks hard-stop enforcement.
  */
 import { hashCandidateOutput } from "./hash.js";
+import { normaliseMode } from "./mode.js";
 
 /** Known MCP / allowed service names (from gap register and implemented servers). */
 const ALLOWED_SERVICE_NAMES = new Set([
@@ -125,11 +126,12 @@ export function verify(output, evidence = {}) {
   // the ids of every mock receipt for the report, and — only when the context is
   // not mock — treat mock proof as absent so anything grounded solely on mock
   // data fails. In mock/dev (the default) we flag but do not block.
-  const contextMode = evidence.context_mode || "mock";
-  // Only a genuine LIVE context blocks mock-grounded output. dry_run is a development
-  // mode (query validated, upstream not called) — treating it as production would
-  // fail every legitimately mock-grounded output during dev.
-  const enforceLive = contextMode === "live";
+  // Mode-normaliser (C16/F4): staging/production/live — and any UNRECOGNISED mode
+  // string (default-deny) — enforce; mock/dry_run are dev modes (query validated,
+  // upstream not called) and flag rather than block, since treating them as
+  // production would fail every legitimately mock-grounded output during dev.
+  // Absent context_mode keeps the documented dev default (mock).
+  const enforceLive = normaliseMode(evidence.context_mode).enforce_live;
   const receiptModes = evidence.receipt_modes || [];
   const mockIds = new Set(receiptModes.filter((m) => m.mode === "mock").map((m) => m.id));
   for (const e of terminologyEntries) if (e.mode === "mock" && e.request_id) mockIds.add(e.request_id);

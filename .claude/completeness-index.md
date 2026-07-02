@@ -15,7 +15,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 ## High
 - context-injection-allowlist · verification/pipeline.js (context-injection) · UNBUILT · High · pf:true — ingest enforces the sub-field firewall allow-list; the LIVE context-injection layer must apply the same before injecting 00/01/02 into a trunk (now recorded in the register + promoted → R-26; fix = ARCH_PLAN M3)
 - routing-plan-next-trunks-dead-end · trunk 1.0 routing_plan.next_trunks → no consumer · DEAD_END · High · pf:true — DEAD_END-1: no JS consumes next_trunks; HARD_FAIL/escalate cannot propagate across a trunk sequence (→ R-24; fix = M2 sequencer; do not build on this edge first)
-- mode-leakage-enforcelive · verification/verifier.js (enforceLive) · PARTIAL · High · pf:true — enforceLive fires only on the exact string "live"; staging/production would accept mock receipts (→ R-25; fix = M1 mode-normaliser)
+- ~~mode-leakage-enforcelive · verification/mode.js~~ · **resolved 2026-07-03 (M1)** — normaliser built + wired into verifier/pipeline/audit-store; staging/production/unknown block mock proof; contract-tested (R-25 resolved; server-side receipt stamping → M9/M11)
 - terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
 - knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
 - receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true

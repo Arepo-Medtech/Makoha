@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M1 — mode-normaliser (C16/F4 mode-flag leakage closed) (2026-07-03)
+
+**Status:** Complete. Branch `step-1-mode-normaliser`. npm test 16/16 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 349/349 zero drift.
+
+### Change
+- `verification/mode.js` (new): the single mapping between the env vocabulary (`HEYDOC_MODE_DEFAULT`: mock/staging/production/dry_run) and the receipt/packet/ledger enforcement enum (mock/dry_run/live). `staging`/`production` → `live` (mock proof **blocked**); `mock`/`dry_run` stay dev (mock proof flagged, not blocked); **unrecognised mode → default-deny to `live`**; absence keeps the documented dev default (mock).
+- `verification/verifier.js`: `enforceLive` now derives via `normaliseMode(evidence.context_mode).enforce_live` instead of `=== "live"` (the F4 hole). Monotone-stricter only; the five checks untouched; hash-first untouched.
+- `verification/pipeline.js`: `context_mode` derived via the normaliser — always enum-valid for the ContextPacket/verifier/ledger contracts (a raw `staging` string previously crashed packet validation).
+- `verification/audit-store.js` `recordRun`: **second F4 site found during M1 research and closed in the same step** — `synthetic = mode !== "live"` on the raw env meant a `staging` run would have persisted output content as synthetic AND handed the ledger an enum-invalid mode. Now normalised: staging/production runs are non-synthetic (content NOT persisted, `content_persisted=false`).
+- `test/contract-mode-normaliser.js` (new, wired into `npm test` → CI): mapping table, case/trim tolerance, absence default, default-deny; verifier blocks mock proof in staging/production/live/unknown and flags-not-blocks in mock/dry_run; live receipt still grounds in staging; pipeline end-to-end (packet mode enum-valid, mock-grounded code blocked in staging, binds in mock); ledger classification (staging → mode "live", no content persisted; mock → synthetic persisted). Throwaway `HEYDOC_DATA_DIR`.
+- `package.json`: new suite appended to the `test` chain (CI gate).
+
+### Invariants
+No check weakened; enforcement strictly strengthened (old: only `"live"` blocked; new: staging/production/unknown also block; mock/dry_run behaviour unchanged; absent context_mode unchanged). Hashing, HARD_FAIL handling, sanitiser, and the five-step spine untouched. Nothing patient-facing.
+
+### Register impact
+- `mode-leakage-enforcelive` → **COMPLETE / resolved** (completeness-register + index); gap-register **R-25 → Resolved 2026-07-03 (M1)**; `.claude/server-status.md` C16 caveat replaced with the resolved semantics.
+- Residual tracked, not a defect: MCP servers stamp `receipt.mode` from their own env read and only ever run mock today — server-side stamping is normalised at live-connect (M9/M11, noted in R-25 + register evidence).
+
+### Verification
+`npm test` (16 suites) green; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `npm run verify:rehash -- --integrity` 349 content checked, 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M0 — reconciliation & re-scan (docs only) (2026-07-03)
 
 **Status:** Complete. No code, no new tests. Baseline + post-change `npm test` both 15/15 green (identical).

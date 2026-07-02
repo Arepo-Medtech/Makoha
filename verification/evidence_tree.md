@@ -1,7 +1,7 @@
 # Evidence tree
 
-**Run ID:** run-1782801715752-dzqcwbu | **Trunk:** 9.0
-**Timestamp:** 2026-06-30T06:41:55.752Z
+**Run ID:** run-1783033190932-cjxz3nx | **Trunk:** 9.0
+**Timestamp:** 2026-07-02T22:59:50.932Z
 
 ## Claims → proofs
 
@@ -13,6 +13,9 @@
 
 - **Operational fact**
   - live_data_receipt: `term-mock-1`
+
+- **Curated dataset**
+  - structured_dataset: `redflags-bank:v0.1.0-dev`
 
 ## Verification
 

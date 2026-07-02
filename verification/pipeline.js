@@ -7,6 +7,7 @@ import { verify } from "./verifier.js";
 import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
+import { normaliseMode } from "./mode.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
 
 /**
@@ -112,8 +113,11 @@ export async function runPipeline(options = {}) {
 
   const run_id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const timestamp_utc = new Date().toISOString();
-  // Effective run mode (mock by default per HEYDOC_MODE_DEFAULT).
-  const context_mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  // Effective run mode, normalised from HEYDOC_MODE_DEFAULT (C16/F4): env names
+  // staging/production map to "live" so mock proof is BLOCKED outside dev, and an
+  // unrecognised mode default-denies to "live". Keeps context_mode enum-valid for
+  // the packet, verifier, and ledger contracts.
+  const context_mode = normaliseMode(process.env.HEYDOC_MODE_DEFAULT).context_mode;
 
   // Step 1 — Routing. Gate the GroundingPlan before retrieval acts on it.
   const plan = validateGroundingPlan(routing(user_input, trunk));

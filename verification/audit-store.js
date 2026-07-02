@@ -34,6 +34,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateLedgerEntry } from "./ledger-schema.js";
 import { sha256Prefixed } from "./hash.js";
+import { normaliseMode } from "./mode.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -229,7 +230,10 @@ function receiptMeta(packetReceipts) {
  * @returns {object} the appended ledger entry
  */
 export function recordRun(result, opts = {}) {
-  const mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  // Normalised (C16/F4): staging/production map to "live", so a non-dev run is
+  // never classified synthetic (content NOT persisted, content_persisted=false)
+  // and the ledger's mode enum (live|dry_run|mock) is never handed a raw env name.
+  const mode = normaliseMode(process.env.HEYDOC_MODE_DEFAULT).context_mode;
   const synthetic = mode !== "live";
   const hash = result.verification.candidate_output_hash;
 
