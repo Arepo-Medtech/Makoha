@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M3 — live context-injection allow-list (scoring-store firewall at the packet boundary) (2026-07-03)
+
+**Status:** Complete. Branch `step-3-context-allowlist`. npm test 18/18 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift, scoring-store firewall re-checked — NOT breached.
+
+### Change
+- `verification/context-allowlist.js` (new): DEFAULT-DENY mirror of the `cases:ingest` field-scoped firewall at the packet boundary (§3.5.5 `contextAllowList(caseFields) → { injectable_fields, rejected_fields }`). `01` allows only `demographics` / `opening_complaint` / `history_as_reported` (channel **packet**, category-mapped to the Fact enum); `02` allows only `disclosure_items[].{clinical_fact,patient_response_template,patient_deflection_template}`, `patient_initiated_exchanges[].patient_text`, `deflection_behaviours[].deflection_text_template` — classified channel **exchange** (simulator dialogue material) and **never converted to packet facts**. All of `00`, `psychosocial_profile`, `digital_tablet_field_map`, unknown nodes/fields, and `02` scoring/gate sub-fields reject. **A sealed scoring node (`10_`–`13_`) anywhere in the input THROWS** ("SCORING-STORE FIREWALL") and halts packet assembly — a breach attempt never degrades to a dropped field.
+- `verification/pipeline.js`: `contextInjection()` enforces the allow-list on the new `case_content` path; `runPipeline({ case_content })` threads it. No case content supplied → behaviour unchanged (regression-tested).
+- **Quarantine (surfaced, not silently resolved):** `objective_data_offered` is ingest-allow-listed, but CLAUDE.md `<data_handling>` requires the patient-reported-vitals sanitiser policy be confirmed **before** this path ships it. The field rejects with a reason naming the policy; tracked as new register item `objective-data-offered-sanitiser-policy` (Medium, pf:true, input-gated on operator/clinical confirmation). Flip is one line + a test once confirmed.
+- `test/contract-context-allowlist.js` (new, wired into `npm test` → CI): default-deny sweep (no SIM-ONLY/SCORER-ONLY marker injectable), all four sealed nodes throw (dummy keys, synthetic fixtures — **no case file read**), exchange material never becomes facts, quarantine reason asserted, end-to-end through the ContextPacket zod gate, pipeline halts on sealed content, no-case-content regression.
+- `package.json`: suite appended to the `test` chain (CI gate).
+
+### Invariants
+Scoring-store firewall strengthened from ingest-only to ingest + live packet boundary; sealed content is now a hard stop on the live path. Raw-lab invariant untouched (parser path unchanged; the one adjacent open question is quarantined, not shipped). Spine, hashing, verifier checks untouched. Nothing patient-facing.
+
+### Register impact
+- `context-injection-allowlist` → **COMPLETE / resolved**; gap-register **R-26 → Resolved 2026-07-03 (M3)**; index + firewall-status paragraph re-synced.
+- **NEW** `objective-data-offered-sanitiser-policy` (Medium, pf:true, input-gated) — the charter's open follow-up is now register-tracked with the decision options stated (pass as-is / band via parser / keep withheld).
+- FMEA F9 mitigation in place (residual 2×5 → 1×5 per plan).
+
+### Verification
+`npm test` (18 suites) green; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift; sealed-node reference grep = known engineering set only.
+
+---
+
 ## ARCH_PLAN Milestone M2 — cross-trunk sequencer (DEAD_END-1 fix; HARD_FAIL propagates across trunks) (2026-07-03)
 
 **Status:** Complete. Branch `step-2-trunk-sequencer`. npm test 17/17 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.

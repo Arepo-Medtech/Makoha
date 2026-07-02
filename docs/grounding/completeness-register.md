@@ -261,17 +261,34 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: context-injection-allowlist
-  path: verification/pipeline.js (contextInjection)
+  path: verification/context-allowlist.js (built), enforced in verification/pipeline.js contextInjection()
   component_type: sanitiser
-  state: UNBUILT
-  evidence: M0 scan 2026-07-03 — cases:ingest enforces the sub-field firewall allow-list (which parts of 00/01/02 are patient-facing vs sim/scorer metadata; contract-tested), but the LIVE injection path in contextInjection() applies no field-scoped allow-list before packet assembly. Finding previously existed only in .claude/completeness-index.md and docs/HANDOFF-STATE.md — recorded here because this register is the index's declared source of truth, and promoted (High/pf:true).
-  blocks: any future case→context injection path; scoring-store firewall defence-in-depth at the packet boundary
-  safety_class: firewall_breach (potential — no injection path reads data/cases today, so unreached)
-  invariant_exposure: scoring-store firewall (the live boundary lacks the mirror of the ingest guard)
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M3) — verification/context-allowlist.js mirrors the cases:ingest field-scoped firewall at the packet boundary, DEFAULT-DENY. 01 allows only demographics/opening_complaint/history_as_reported (→ packet facts, category-mapped); 02 allows only the dialogue text sub-fields (classified exchange-channel and NEVER converted to packet facts — simulator material is not packet material); 00, psychosocial_profile, digital_tablet_field_map, unknown nodes/fields, and 02 scoring/gate sub-fields all reject. A sealed scoring node (10_–13_) ANYWHERE in the input THROWS ("SCORING-STORE FIREWALL") and halts packet assembly — never a silent drop. Enforced in contextInjection() via the new case_content path; end-to-end tested through the ContextPacket zod gate (test/contract-context-allowlist.js, in npm test + CI; all fixtures synthetic, no case file read). Firewall re-check at M3 close: only the known engineering set references sealed nodes; NOT breached. QUARANTINE (see objective-data-offered-sanitiser-policy): objective_data_offered rejects with a named pending-policy reason until the operator confirms the patient-reported-vitals sanitiser policy.
+  blocks: (cleared)
+  safety_class: none — default-deny; sealed content is a hard stop
+  invariant_exposure: closed — the live boundary now mirrors the ingest guard
   risk: High
   blocks_patient_facing: true
-  build_action: build verification/context-allowlist.js mirroring the cases:ingest field-scoped firewall; default-deny; enforce in contextInjection(); contract test asserts no sim/scorer field is injectable (ARCH_PLAN C7, milestone M3).
+  build_action: DONE — see evidence.
   gap_register_link: R-26
+  status: resolved
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: objective-data-offered-sanitiser-policy
+  path: verification/context-allowlist.js (quarantine rule on 01.objective_data_offered)
+  component_type: sanitiser
+  state: PARTIAL
+  evidence: OPENED 2026-07-03 (M3) — CLAUDE.md <data_handling> flags an open follow-up: confirm the sanitiser policy for patient-reported vitals before the live pipeline injects objective_data_offered into trunk context. M3 built that injection path, so the field is QUARANTINED (rejected with a reason naming this item) rather than shipped unconfirmed. Values are schema-stored as strings (no structured raw number), but a leading-numeric patient-reported reading (e.g. "160 over 95") would enter LLM context under a non-lab category the packet gate does not guard — policy decision needed: pass as-is (telehealth carve-out), band via the investigation parser, or keep withheld.
+  blocks: patient-reported home/wearable observations reaching trunk context
+  safety_class: degrades_safe (withheld until confirmed)
+  invariant_exposure: none while quarantined; no-raw-lab-numbers adjacency is the question to settle
+  risk: Medium
+  blocks_patient_facing: true
+  build_action: operator + clinical confirmation of the sanitiser policy; then flip the quarantine rule (one line) + extend contract-context-allowlist.js for the chosen treatment. Input-gated — not schedulable as pure engineering.
+  gap_register_link: none (Medium — below promotion threshold; charter follow-up now register-tracked)
   status: open
   last_scanned: 2026-07-03
 ```

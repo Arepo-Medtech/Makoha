@@ -13,7 +13,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
 
 ## High
-- context-injection-allowlist · verification/pipeline.js (context-injection) · UNBUILT · High · pf:true — ingest enforces the sub-field firewall allow-list; the LIVE context-injection layer must apply the same before injecting 00/01/02 into a trunk (now recorded in the register + promoted → R-26; fix = ARCH_PLAN M3)
+- ~~context-injection-allowlist · verification/context-allowlist.js~~ · **resolved 2026-07-03 (M3)** — default-deny mirror of the ingest firewall enforced in contextInjection(); sealed nodes throw; contract-tested (R-26 resolved)
 - ~~routing-plan-next-trunks-dead-end · integration/trunk-sequencer.js~~ · **resolved 2026-07-03 (M2)** — sequencer built + contract-tested; HARD_FAIL/escalate/verify-fail halt the sequence unconditionally; behind HEYDOC_SEQUENCER (default off = rollback) (R-24 resolved)
 - ~~mode-leakage-enforcelive · verification/mode.js~~ · **resolved 2026-07-03 (M1)** — normaliser built + wired into verifier/pipeline/audit-store; staging/production/unknown block mock proof; contract-tested (R-25 resolved; server-side receipt stamping → M9/M11)
 - terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
@@ -27,6 +27,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
 - case-set-underpopulated · data/cases/ (**52 of ≥45 — minimum MET**, ingested 2026-07-02, bulk attestation KL; 47×diff-01 / 5×diff-04 vs 60/30/10 — distribution skew; codes pending terminology receipts) · PARTIAL · Medium · pf:false (→ R-23; remaining work = M6)
 - case-dir-duplicate-files · data/cases/*/ (236 untracked "* 2.json" Finder duplicates across 30 dirs, incl. sealed-node name duplicates — inventoried by filename only, never opened) · PARTIAL · Medium · pf:false (delete under a gated cleanup step)
+- objective-data-offered-sanitiser-policy · verification/context-allowlist.js (quarantine rule) · PARTIAL · Medium · pf:true — patient-reported vitals withheld from trunk context until the operator confirms the sanitiser policy (charter <data_handling> open follow-up; input-gated)
 - case-ingest-tool · scripts/ingest-case-bundles.mjs · COMPLETE (validate+split+hash+field-scoped firewall; contract-tested) · Low · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
 - lab-reference-ranges-provisional · verification/data/lab-reference-ranges.json · PARTIAL (dev-only; clinical sign-off needed) · High · pf:true
@@ -39,4 +40,4 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - ~~derived-docs-unverified · .claude/{schema-index,server-status}.md~~ · **resolved 2026-07-01** (schema-index verified; server-status pharmacology row fixed)
 
 ## Firewall status
-- Scoring-store (data/cases/*/10..13_*) NOT breached in code (re-checked M0 2026-07-03): JS now reads data/cases via scripts/ingest-case-bundles.mjs (field-scoped firewall, contract-tested), scripts/export-repo-digest.mjs (documented engineering carve-out — see repo-digest-sealed-node-carveout), scripts/build-case-transformation-kit.mjs (schemas only) and test/contract-case-ingest.js — none routes 10–13 content into any trunk/packet path. Re-check on any case-ingestion or context-injection change.
+- Scoring-store (data/cases/*/10..13_*) NOT breached in code (re-checked M3 2026-07-03): JS reads data/cases via scripts/ingest-case-bundles.mjs (field-scoped firewall, contract-tested), scripts/export-repo-digest.mjs (documented engineering carve-out — see repo-digest-sealed-node-carveout), scripts/build-case-transformation-kit.mjs (schemas only) and the case-ingest/context-allowlist tests (synthetic fixtures only) — none routes 10–13 content into any trunk/packet path. Since M3 the LIVE packet boundary enforces the same default-deny allow-list and THROWS on any sealed-node key (verification/context-allowlist.js). Re-check on any case-ingestion or context-injection change.
