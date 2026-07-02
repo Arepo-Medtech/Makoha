@@ -469,17 +469,34 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: case-set-underpopulated
-  path: data/cases/ (52 case directories)
+  path: data/cases/ (52 case directories; 51 manifest-conforming + reference)
   component_type: dataset
   state: PARTIAL
-  evidence: M0 re-scan 2026-07-03 — **52 cases present** (live count of data/cases/ directories; matches HANDOFF-STATE): 51 clinician-attested AUC bundles (bulk attestation reviewer KL, 2026-07-02) + reference SPEC-CARD-04-00001. ≥45 minimum MET. Distribution by envelope difficulty code in the case IDs: 47 × difficulty-01 / 5 × difficulty-04 (incl. reference) vs the 60/30/10 design — distribution skew remains. Candidate codes still carry unverified_pending_terminology_receipt. (Prior row said 1 case — stale, C18/F15; corrected this scan.)
-  blocks: synthetic-case evaluation release gate (as a *blocking* CI job with a representative difficulty mix)
+  evidence: M6 2026-07-03 — count + receipts + gate DONE; distribution remains. (1) **All 109 candidate codes across the 51 manifest-bearing cases batch-verified** against the mock terminology server via `cases:verify-codes` (scripts/verify-case-codes.mjs): per-code receipt (request_id/timestamp/upstream/mode:"mock"/validated_code/system_version) written into each codes_manifest entry; status flipped unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts** (honest: mock echoes bind, they do not clinically validate; live NCTS batch-REvalidation at M11 per F5; receipt mode:"mock" means the mode-normaliser blocks these as proof in any live context). Idempotent (re-run: 109 already done). (2) **Deterministic eval gate built and CI-BLOCKING** (`eval:cases`, scripts/eval-case-gate.mjs, .github/workflows/ci.yml): ≥45 attested conforming cases (51 ≥ 45 PASS); per-file sha256 integrity (transitively re-asserts ingest-time schema + firewall verdicts without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **True distribution from envelopes (attested set): 45 straightforward / 6 atypical / 0 complex = 88/12/0 vs 60/30/10** — warn-level in the gate, non-blocking until the top-up lands. Coverage: 2 of 3 difficulty tiers, 2 of 3 diagnosis categories, 17 specialties.
+  blocks: representative-difficulty clinical evaluation (the gate protects set integrity; the mix is skewed)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: author additional atypical/complex cases toward 60/30/10; batch-verify candidate codes against the mock terminology server (receipts); wire the eval as a blocking CI job (ARCH_PLAN milestone M6).
+  build_action: DIFFICULTY TOP-UP — INPUT-GATED: author ~17 atypical (tiers 02/03/04) + ~8 complex (05/06/07) cases via the case kit and ingest them; because the eval gate counts ONLY clinician-attested cases, machine-generated `llm_generated_unreviewed` cases cannot move the attested distribution — the top-up requires clinical source material (SOAP notes) and/or clinician attestation from the operator. Flip the gate's distribution warning to blocking once the mix reaches design.
   gap_register_link: R-23
+  status: open (receipts + gate resolved; distribution input-gated)
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: reference-case-manifest-missing
+  path: data/cases/SPEC-CARD-04-00001/ (7 node files, no case_manifest.json)
+  component_type: dataset
+  state: PARTIAL
+  evidence: FOUND M6 2026-07-03 — the hand-built reference/worked case predates the cases:ingest manifest discipline: no case_manifest.json, so no file hashes, no codes_manifest, no attestation record in manifest form. Named-exempt in both cases:verify-codes (skip) and the eval gate (excluded from the attested count — the gate passes at 51 without it).
+  blocks: nothing today (gate exempts it by name); reference-case parity with the ingest discipline
+  safety_class: none
+  invariant_exposure: none
+  risk: Low
+  blocks_patient_facing: false
+  build_action: retrofit under a gated step — round-trip the reference case through the casebundle → cases:ingest path (or hand-author its manifest to the same contract: file sha256s, codes_manifest, review/attestation, firewall_assertion), then remove the named exemption from scripts/eval-case-gate.mjs.
+  gap_register_link: none (Low)
   status: open
   last_scanned: 2026-07-03
 ```

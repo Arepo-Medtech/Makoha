@@ -25,7 +25,8 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · PARTIAL (mock read/search + Observation→parser wired; live EHR + conformance pending) · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · PARTIAL (mock; never-sends; live providers pending) · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
-- case-set-underpopulated · data/cases/ (**52 of ≥45 — minimum MET**, ingested 2026-07-02, bulk attestation KL; 47×diff-01 / 5×diff-04 vs 60/30/10 — distribution skew; codes pending terminology receipts) · PARTIAL · Medium · pf:false (→ R-23; remaining work = M6)
+- case-set-underpopulated · data/cases/ (51 attested ≥45; **109 codes receipted** mock_verified_pending_live_ncts; **eval gate CI-BLOCKING** `npm run eval:cases`; distribution 88/12/0 vs 60/30/10) · PARTIAL · Medium · pf:false (→ R-23; remaining = difficulty top-up, INPUT-GATED on clinical sourcing/attestation)
+- reference-case-manifest-missing · data/cases/SPEC-CARD-04-00001/ (pre-ingest, no manifest; named-exempt in verify-codes + eval gate) · PARTIAL · Low · pf:false (retrofit via ingest round-trip under a gated step)
 - case-dir-duplicate-files · data/cases/*/ (236 untracked "* 2.json" Finder duplicates across 30 dirs, incl. sealed-node name duplicates — inventoried by filename only, never opened) · PARTIAL · Medium · pf:false (delete under a gated cleanup step)
 - objective-data-offered-sanitiser-policy · verification/context-allowlist.js (quarantine rule) · PARTIAL · Medium · pf:true — patient-reported vitals withheld from trunk context until the operator confirms the sanitiser policy (charter <data_handling> open follow-up; input-gated)
 - case-ingest-tool · scripts/ingest-case-bundles.mjs · COMPLETE (validate+split+hash+field-scoped firewall; contract-tested) · Low · pf:false

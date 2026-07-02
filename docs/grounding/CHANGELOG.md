@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 — case-set terminology batch-verify + CI-blocking eval gate (2026-07-03)
+
+**Status:** Receipts + gate complete; difficulty top-up surfaced as INPUT-GATED. Branch `step-6-case-eval-gate`. npm test 20/20, `npm run verification` pass, trunk stubs 9/9, `eval:cases` PASS, `cases:verify-codes` idempotent (re-run: 109 already done).
+
+### Change
+- `scripts/verify-case-codes.mjs` + `npm run cases:verify-codes` (new): batch-verifies every codes_manifest entry against the terminology MCP server (terminology_lookup, query.kind="code"; one server spawn for the whole run). **All 109 candidate codes across the 51 manifest-bearing cases receipted**; per-code receipt (request_id/timestamp_utc/upstream/mode/validated_code/system_version) written into the entry; status flipped `unverified_pending_terminology_receipt` → **`mock_verified_pending_live_ncts`** — deliberately honest: the mock server echoes codes (binding, not clinical validation); live NCTS batch-REvalidation happens at M11 (FMEA F5), and receipt `mode:"mock"` means the M1 mode-normaliser blocks these as proof in any live-enforced context. Fail-safe: a lookup that does not echo the exact code leaves the entry unverified and exits non-zero.
+- `scripts/eval-case-gate.mjs` + `npm run eval:cases` (new) + `.github/workflows/ci.yml` step **"Case-set evaluation gate (blocking)"**: the deterministic release gate over the eval set. BLOCKS on: <45 attested conforming cases; any manifest-listed file whose on-disk sha256 differs (integrity transitively re-asserts ingest-time schema validity + the firewall leak verdict **without ever parsing a sealed node** — sealed files are only streamed through sha256, exactly as ingest does); a 00/01/02 file failing its schema; any code left unreceipted; unattested cases counting toward the minimum. WARNS (non-blocking until top-up): distribution vs 60/30/10 and the 3-tier/3-category/5-specialty coverage minimum. **Current: PASS — 51 attested ≥ 45; distribution 45/6/0 (88/12/0); coverage 2 tiers · 2 diagnosis categories · 17 specialties.**
+- Named exception, register-tracked: `SPEC-CARD-04-00001` (hand-built reference case, pre-ingest) has no case_manifest — skipped by name in verify-codes, excluded from the attested count in the gate; **NEW register item `reference-case-manifest-missing`** (Low) with a retrofit build_action.
+
+### Difficulty top-up — surfaced as INPUT-GATED (not silently skipped)
+The M6 authoring component ("author atypical/complex cases toward 60/30/10") cannot be completed by this agent alone: the eval gate counts **only clinician-attested** cases, so machine-generated `llm_generated_unreviewed` bundles cannot move the attested distribution by design. Reaching 60/30/10 while keeping the 45 straightforward cases needs ≈17 atypical (tiers 02/03/04) + ≈8 complex (05/06/07) **attested** cases — i.e. clinical source material (SOAP notes) for the kit pipeline and/or clinician attestation, which only the operator can supply. Register updated accordingly; the gate's distribution warning flips to blocking once the mix reaches design.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: receipts + CI gate → done; distribution top-up → input-gated (evidence updated with the true envelope-derived distribution).
+- **NEW** `reference-case-manifest-missing` (Low, pf:false).
+- Firewall unchanged: the new scripts parse only case_manifest + 00/01/02; sealed nodes are hashed (streamed), never parsed — same boundary as `cases:ingest`.
+
+### Verification
+`npm test` 20/20; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `npm run eval:cases` PASS (warnings as designed); `cases:verify-codes --dry-run` re-run shows 109 already done (idempotent); changed tracked files = exactly the 51 case manifests + package.json + ci.yml + registers.
+
+---
+
 ## ARCH_PLAN Milestone M5 — Clinician Verification Portal release gate (HITL checkpoint contract built) (2026-07-03)
 
 **Status:** Complete (gate + contract; portal UI/workflow out of engineering scope). Branch `step-5-portal-gate`. npm test 20/20 (new suite added; 3 consecutive full-suite greens), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.

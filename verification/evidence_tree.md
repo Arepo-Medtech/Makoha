@@ -1,7 +1,7 @@
 # Evidence tree
 
-**Run ID:** run-1783035050576-4cg75p4
-**Timestamp:** 2026-07-02T23:30:50.576Z
+**Run ID:** run-1783035679000-5chka90 | **Trunk:** 9.0
+**Timestamp:** 2026-07-02T23:41:19.000Z
 
 ## Claims → proofs
 
@@ -15,9 +15,9 @@
   - live_data_receipt: `term-mock-1`
 
 - **Curated dataset**
-  - structured_dataset: `axis-b-templates:v0.1.0-dev`
+  - structured_dataset: `redflags-bank:v0.1.0-dev`
 
-## Verification result
+## Verification
 
 **PASS**
 
