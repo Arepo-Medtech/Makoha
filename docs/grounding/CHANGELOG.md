@@ -4,6 +4,32 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M4 — session-bound persistence enforced (release blocker cleared at the enforcement layer) (2026-07-03)
+
+**Status:** Complete. Branch `step-4-session-store`. npm test 19/19 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change
+- `verification/session-store.js` (new): technical enforcement of "no persistence beyond session" (<data_handling>) and Trust Boundary 4. **Memory-only** — no disk path, no serialisation API (contract test asserts no persistence-shaped export and an untouched data dir). **Encounter-scoped lifetime** — `openEncounter` → working state → `closeEncounter` destroys everything; closed refs never reopen (no zombie sessions); reads/writes after close throw; writing to a never-opened encounter throws (no implicit/untracked state). **Mechanical demographic guard** — demographic-looking keys anywhere in a nested value (name/dob/address/medicare/ihi/phone/email/…) and IHI-shaped values (16 digits, 800360-prefixed) are REFUSED with a thrown error; conservative over-blocking by design. Medicolegal ledger explicitly documented as exempt (append-only, PHI-free by `.strict()` — it must survive the encounter).
+- **Adoption contract** (documented in-module + register): any future stateful session path (portal flows, patient conversations, cross-trunk working memory) MUST hold its working state in this store; holding it anywhere else reintroduces the gap. No production session flow exists today (trunk runs are stateless) — the store is the gate artifact.
+- `test/contract-session-store.js` (new, wired into `npm test` → CI): round-trip while open; close destroys (count-verified); no resurrection; no implicit creation; encounter isolation; demographic guard refusals (top-level, nested, array-buried, IHI-in-string) + legitimate clinical state passes; no persistence surface; filesystem untouched; destroy-all sweep.
+- `package.json`: suite appended to the `test` chain (CI gate).
+
+### Release blockers (restated per the M4 directive)
+1. **Pharmacology vendor live + validated** — open (M9, input-gated on contract/credentials).
+2. **Clinician Verification Portal** — open (M5, next engineering step).
+3. **Deterministic investigation parser** — built mock/dev; range sign-off + live source open (M10, input-gated).
+4. **Session-bound persistence** — **enforcement CLEARED this step** (adoption re-checked per future session flow; real-patient content persistence additionally consent-gated).
+No patient path opens until all four are green; nothing in this step is patient-facing.
+
+### Register impact
+- `session-persistence-unenforced` (Critical, pf:true) → **COMPLETE / resolved (enforcement)**; gap-register **R-10 → "Enforcement built 2026-07-03 (M4)"**; index re-synced. FMEA F12 residual 3×5 → 1×5 per plan.
+- `content-store-production-gated` unchanged (real-patient content persistence still consent-gated by design).
+
+### Verification
+`npm test` (19 suites) green; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M3 — live context-injection allow-list (scoring-store firewall at the packet boundary) (2026-07-03)
 
 **Status:** Complete. Branch `step-3-context-allowlist`. npm test 18/18 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift, scoring-store firewall re-checked — NOT breached.

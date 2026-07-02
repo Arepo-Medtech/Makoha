@@ -10,7 +10,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - pharmacology-server-unbuilt · mcp/servers/pharmacology/ · PARTIAL (mock core + Trunk 8.0 firewall wired; only live vendor pending) · Critical · pf:true
 - investigation-parser-unbuilt · verification/investigation-parser.js · PARTIAL (engine built mock/dev; provisional ranges + no live source) · Critical · pf:true
 - clinician-verification-portal-unbuilt · (no file) · UNBUILT · Critical · pf:true
-- session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
+- ~~session-persistence-unenforced · verification/session-store.js~~ · **resolved 2026-07-03 (M4, enforcement)** — memory-only encounter-scoped store, destroy-on-close, demographic guard; contract-tested (R-10 enforcement built; adoption mandatory for any future stateful session path)
 
 ## High
 - ~~context-injection-allowlist · verification/context-allowlist.js~~ · **resolved 2026-07-03 (M3)** — default-deny mirror of the ingest firewall enforced in contextInjection(); sealed nodes throw; contract-tested (R-26 resolved)

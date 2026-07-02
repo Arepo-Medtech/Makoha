@@ -104,19 +104,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: session-persistence-unenforced
-  path: (no file) — session-bound persistence enforcement
+  path: verification/session-store.js (enforcement built)
   component_type: repository-store
-  state: UNBUILT
-  evidence: no persistence-boundary code; gap-register R-10 "not yet technically enforced".
-  blocks: data-handling no-persistence-beyond-session; patient-facing readiness
-  safety_class: none
-  invariant_exposure: patient-data minimisation; no-persistence-without-consent
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M4, enforcement) — verification/session-store.js built: MEMORY-ONLY working-state store (no disk path, no serialisation API — contract test asserts no persistence-shaped export and an untouched data dir); encounter-scoped lifetime (openEncounter → putWorkingState/getWorkingState → closeEncounter DESTROYS all state; closed refs never reopen; reads/writes after close throw; no implicit state creation); mechanical demographic guard per Trust Boundary 4 (demographic-looking keys anywhere in a value, and IHI-shaped values, are REFUSED with a thrown error — conservative over-blocking; identity data stays inside identity-au). The medicolegal ledger is documented exempt (append-only, PHI-free by .strict()). Tested by test/contract-session-store.js (npm test + CI). ADOPTION CONTRACT documented in-module: any future stateful session path MUST hold working state here — holding it elsewhere reintroduces this gap (re-check at every session-flow change). No production session flow exists yet to wire (trunk runs are stateless); the store is the gate artifact, current consumer = contract test.
+  blocks: (cleared — enforcement) 
+  safety_class: degrades_safe (refuses demographics; destroys on close)
+  invariant_exposure: closed at the enforcement layer — no-persistence-beyond-session is now mechanical, not policy
   risk: Critical
   blocks_patient_facing: true
-  build_action: enforce session-bound persistence technically (encounter-scoped lifetime, no demographic persistence); plan separately.
-  gap_register_link: gap-persistence
-  status: open
-  last_scanned: 2026-06-30
+  build_action: DONE (enforcement). Remaining, tracked separately: real-patient content persistence stays gated on consent + content-store-production-gated; adoption re-checked whenever a stateful session flow is built (portal/M5 onward).
+  gap_register_link: gap-persistence (R-10)
+  status: resolved
+  last_scanned: 2026-07-03
 ```
 
 ---
