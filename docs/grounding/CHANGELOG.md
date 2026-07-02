@@ -4,6 +4,29 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M2 — cross-trunk sequencer (DEAD_END-1 fix; HARD_FAIL propagates across trunks) (2026-07-03)
+
+**Status:** Complete. Branch `step-2-trunk-sequencer`. npm test 17/17 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change
+- `integration/trunk-sequencer.js` (new): the missing outer loop. Consumes the PARSED Trunk 1.0 `routing_plan.next_trunks` (zod-gated — a malformed plan throws and never part-runs; unknown trunk ids rejected) and walks each routed trunk through the full five-step pipeline via `runTrunkWithGrounding` (no step bypassed). **Halts unconditionally, no override path**, on: Trunk 1.0 `safety_gate` escalate_now/T5 (before any routed trunk — routing never outruns the safety gate); `continuation_blocked` from any trunk (a pharmacology HARD_FAIL or BLOCKED_NO_PROOF now blocks the WHOLE sequence — FMEA F2 closed); escalate_now/T5 signalled in any trunk output (conservative over-halt: over-triage-safe); and verification `pass=false` (a rejected output is never upstream context for the next trunk). Emits the ordered execution record of ARCH_PLAN §3.5.5 (`executed[]`, `halted_at?`, `halt_reason?`), zod-validated.
+- Feature flag `HEYDOC_SEQUENCER` (**default OFF** = rollback): when off, `runTrunkSequence` runs nothing and returns a disabled record — the single-trunk status quo.
+- `integration/trunk-pipeline.js`: re-exports `runTrunkSequence`/`isSequencerEnabled` as the one integration surface; header documents that manual multi-trunk chaining must honour `continuation_blocked` until the flag is on.
+- `test/contract-sequencer.js` (new, wired into `npm test` → CI): default-off runs nothing; `next_trunks` consumed in order; HARD_FAIL halts (later trunks never run, blocking entry recorded); BLOCKED_NO_PROOF halts; Trunk 1.0 escalate gate halts before anything runs; mid-sequence escalate_now and structured T5 short-circuit; verification failure halts; malformed plan throws; empty plan is a valid no-op; re-export identity.
+- `package.json`: suite appended to the `test` chain (CI gate).
+
+### Invariants
+No-HARD_FAIL-override now holds **across the sequence**, not only within one trunk. Five-step spine untouched (the sequencer adds the outer loop only). Hashing, verifier checks, sanitiser untouched. Escalation detection over-halts on ambiguity (under-triage outranks over-triage). Nothing patient-facing; flag off by default.
+
+### Register impact
+- `routing-plan-next-trunks-dead-end` (DEAD_END-1) → **COMPLETE / resolved**; gap-register **R-24 → Resolved 2026-07-03 (M2)**; index re-synced. FMEA F2/F8/F10 mitigations in place (F2 residual 4×5→2×5 per plan).
+- Residual (by design, documented): sequencer engages only with `HEYDOC_SEQUENCER` on; callers chaining trunks manually must honour `continuation_blocked` themselves.
+
+### Verification
+`npm test` (17 suites) green; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `npm run verify:rehash -- --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M1 — mode-normaliser (C16/F4 mode-flag leakage closed) (2026-07-03)
 
 **Status:** Complete. Branch `step-1-mode-normaliser`. npm test 16/16 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 349/349 zero drift.

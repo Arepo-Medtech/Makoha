@@ -227,18 +227,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: routing-plan-next-trunks-dead-end
-  path: trunk/prompts/trunk-1.0-system.md (routing_plan.next_trunks) → no consumer
+  path: integration/trunk-sequencer.js (consumer built) ← trunk 1.0 routing_plan.next_trunks
   component_type: other (pipeline orchestration edge)
-  state: DEAD_END
-  evidence: M0 scan 2026-07-03 — grep over verification/, integration/, trunk/, test/, scripts/ finds zero JS references to next_trunks (or routing_plan); produced only by the Trunk 1.0 output contract, consumed by nothing. ARCH_PLAN DEAD_END-1 / FMEA F2+F10: continuation_blocked cannot propagate across trunks because no sequencer walks the plan.
-  blocks: cross-trunk orchestration (1.0→9.0); HARD_FAIL / escalate_now propagation across a trunk sequence
-  safety_class: none today (no multi-trunk caller exists; HARD_FAIL is terminal within a single runTrunkWithGrounding run, contract-tested)
-  invariant_exposure: no-HARD_FAIL-override — the cross-trunk propagation path is missing, not overridden; hand-rolled multi-trunk orchestration could run past a block
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M2) — integration/trunk-sequencer.js built: consumes the PARSED Trunk 1.0 routing_plan.next_trunks (zod-gated; a malformed plan throws and never part-runs) and walks each routed trunk through the full five-step pipeline via runTrunkWithGrounding. Halts UNCONDITIONALLY on: (1) Trunk 1.0 safety_gate escalate_now/T5 BEFORE any routed trunk runs; (2) continuation_blocked — HARD_FAIL/BLOCKED_NO_PROOF now propagate ACROSS trunks with no override path (F2 closed); (3) escalate_now/T5 in any trunk output (conservative over-halt detection — over-triage-safe); (4) verification pass=false (a rejected output never grounds the next trunk). Ordered execution record per ARCH_PLAN §3.5.5. Gated behind HEYDOC_SEQUENCER (DEFAULT OFF = rollback; off runs nothing); re-exported from trunk-pipeline.js as the single integration surface. Tested end-to-end by test/contract-sequencer.js (in npm test + CI). RESIDUAL (by design): flag defaults off until an operator turns it on; manual multi-trunk chaining outside the sequencer must still honour continuation_blocked (documented in trunk-pipeline.js).
+  blocks: (cleared)
+  safety_class: none — halt logic is unconditional; escalation detection over-halts on ambiguity
+  invariant_exposure: closed — no-HARD_FAIL-override now holds across the whole sequence, not just within one trunk
   risk: High
   blocks_patient_facing: true
-  build_action: build integration/trunk-sequencer.js consuming routing_plan.next_trunks, halting UNCONDITIONALLY on continuation_blocked or escalate_now/T5 (ARCH_PLAN C6, milestone M2). Per <completeness_audit>, a DEAD_END is a defect — do not build other work on top of this edge first.
+  build_action: DONE — see evidence.
   gap_register_link: R-24
-  status: open
+  status: resolved
   last_scanned: 2026-07-03
 ```
 
