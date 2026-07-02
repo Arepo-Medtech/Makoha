@@ -12,6 +12,7 @@ Last synced: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + 
 - session-persistence-unenforced · (no file) · UNBUILT · Critical · pf:true
 
 ## High
+- context-injection-allowlist · verification/pipeline.js (context-injection) · UNBUILT · High · pf:true — ingest enforces the sub-field firewall allow-list; the LIVE context-injection layer must apply the same before injecting 00/01/02 into a trunk
 - terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
 - knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
 - receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
@@ -21,7 +22,8 @@ Last synced: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + 
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · PARTIAL (mock read/search + Observation→parser wired; live EHR + conformance pending) · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · PARTIAL (mock; never-sends; live providers pending) · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
-- case-set-underpopulated · data/cases/ (1 of ≥45) · PARTIAL · Medium · pf:false
+- case-set-underpopulated · data/cases/ (1 of ≥45; ingest tool built, 51 clinician-attested bundles ready to ingest) · PARTIAL · Medium · pf:false
+- case-ingest-tool · scripts/ingest-case-bundles.mjs · COMPLETE (validate+split+hash+field-scoped firewall; contract-tested) · Low · pf:false
 - content-store-production-gated · verification/audit-store.js persistContent · PARTIAL (synthetic-only until persistence Critical) · Medium · pf:false
 - lab-reference-ranges-provisional · verification/data/lab-reference-ranges.json · PARTIAL (dev-only; clinical sign-off needed) · High · pf:true
 - fhir-r4-aucdi-conformance-unbuilt · mcp/servers/fhir-broker/ (structural validator built vs vendored AU Core 2.0.1-ci; binding/invariants + NCTS pending) · PARTIAL · Medium · pf:false
