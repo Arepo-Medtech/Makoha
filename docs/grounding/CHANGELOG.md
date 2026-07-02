@@ -4,6 +4,36 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M0 — reconciliation & re-scan (docs only) (2026-07-03)
+
+**Status:** Complete. No code, no new tests. Baseline + post-change `npm test` both 15/15 green (identical).
+
+**Operator override (recorded):** *Model routing amended by operator 2026-07-02 — Fable 5 for reasoning/hard-logic steps, Opus 4.8 for scaffolding; supersedes charter Opus-plan/Sonnet-execute split.* Applied to the `.planning/ARCH_PLAN.md` header.
+
+### Blueprint
+- `.planning/ARCH_PLAN.md` **created in-repo** (operator-approved copy of the Desktop blueprint), v1.0.0 → v1.0.1: (a) FMEA §3.6 Owner column renumbered to §3.7 milestones (F2/F8/F10→M2, F3→M8, F5/F6→M11, F7→M10, F9→M3, F11→M7, F12→M4, F13→M5, F14→M9, F15→M0; F1 annotated *unscheduled — verifier fuzz hardening, propose alongside M6*); (b) model-split header line per the operator override above.
+
+### Register moves (completeness-register ↔ gap-register, one-way promotion)
+- **C18/F15 closed** — `case-set-underpopulated`: row said 1 case; live count is **52 directories** in `data/cases/` (47 difficulty-01 / 5 difficulty-04 incl. reference; 51 clinician-attested, bulk attestation KL 2026-07-02). ≥45 minimum MET; distribution skew + terminology receipts remain (→ M6). Dangling `gap_register_link: gap-case-set` fixed → mirrored as **R-23** (Medium).
+- **C17 closed** — gap-register §1b prose reconciled to built reality: `deterministic-investigation-parser` (built, `verification/investigation-parser.js`, provisional ranges), `pharmacological-firewall` (mock core + Trunk 8.0 wired, contract-tested, live vendor pending), `medicolegal-audit-ledger` (built, `verification/audit-store.js`, prod WORM pending). C15 `severity=warning` wording deliberately **untouched** (M7, operator-gated).
+- **NEW `routing-plan-next-trunks-dead-end`** (DEAD_END-1, High, pf:true) → promoted **R-24**. Verified: zero JS references to `next_trunks`/`routing_plan`; fix = M2 sequencer; do not build on this edge.
+- **NEW `mode-leakage-enforcelive`** (C16/F4, High, pf:true) → promoted **R-25**. Verified: `enforceLive = contextMode === "live"` (exact string); staging/production would accept mock receipts; fix = M1 mode-normaliser. Caveat added to `.claude/server-status.md`.
+- **`context-injection-allowlist` recorded in-register** (was index/HANDOFF-only despite the register being the index's source of truth) → promoted **R-26** (High, pf:true); fix = M3.
+- **NEW `case-dir-duplicate-files`** (Medium) — 236 untracked `* 2.json` Finder duplicates across 30 case dirs, incl. sealed-node name duplicates (inventoried by filename only, never opened); delete under a gated cleanup step.
+- **NEW `repo-digest-sealed-node-carveout`** (Low) — digest deliberately embeds the reference case's sealed 10–13 for engineering; must never enter an AI-Doctor context path; M3 allow-list test to carry a digest-shaped default-deny fixture.
+- Milestone links added: `pipeline-routing-retrieval-stub` → C10, input-gated at live-connect under M11 (stale `pending-promotion` tag corrected — Medium, below threshold); `content-store-production-gated` → gated on C8/M4 + consent.
+- Promotion section updated: 2026-06-30 pending list marked done (R-16–R-19); M0 promotions listed.
+- Firewall re-check (M0): four scripts/tests read `data/cases`; **none routes 10–13 content into any trunk/packet path — NOT breached.** Index firewall paragraph updated.
+
+### Derived docs (same step, per <context_loading>)
+- `.claude/completeness-index.md` re-synced (case count, three new High rows, Medium + Low rows, firewall paragraph).
+- `.claude/server-status.md` — C16 mode-enforcement caveat section added.
+
+### Sequencing impact
+None found that alters M1–M5 order: DEAD_END-1 exposure is contained (no multi-trunk caller exists; HARD_FAIL is terminal within a single `runTrunkWithGrounding` run, contract-tested), so M1 (mode) before M2 (sequencer) remains safe.
+
+---
+
 ## `cases:ingest` — bundle → data/cases with field-scoped firewall (2026-07-01)
 
 **Status:** Complete (tool). Branch `feat/cases-ingest`. Plan-gated build (approved). New dependency `ajv` (approved).

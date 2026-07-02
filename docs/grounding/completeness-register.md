@@ -11,6 +11,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Scan summary:** _(updated 2026-06-30)_ — **all 7 MCP servers now have a mock implementation**: `docs`/`identity-au`/`terminology` (stubs), and `pharmacology` (+ Trunk 8.0 firewall), `knowledge` (+ datasets), `fhir-broker` (+ Observation→parser), `messaging-geo` (never-sends) as mock cores. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology contract (ICD-10-AM/LOINC/PBS). _(Original Phase-0 line: 3 built / 4 unbuilt.)_ 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
 
+**M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
+
 ---
 
 ## CRITICAL
@@ -217,10 +219,61 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: patient-data minimisation; no-persistence-beyond-session
   risk: Medium
   blocks_patient_facing: false
-  build_action: enable governed (consented, encrypted, retention-bound) content persistence ONLY after session-persistence-unenforced (Critical) + consent are green; keep the synthetic-only guard until then.
+  build_action: enable governed (consented, encrypted, retention-bound) content persistence ONLY after session-persistence-unenforced (Critical) + consent are green; keep the synthetic-only guard until then. Milestone link: gated on ARCH_PLAN C8/M4 (session-store enforcement) + consent — not independently schedulable.
   gap_register_link: none
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: routing-plan-next-trunks-dead-end
+  path: trunk/prompts/trunk-1.0-system.md (routing_plan.next_trunks) → no consumer
+  component_type: other (pipeline orchestration edge)
+  state: DEAD_END
+  evidence: M0 scan 2026-07-03 — grep over verification/, integration/, trunk/, test/, scripts/ finds zero JS references to next_trunks (or routing_plan); produced only by the Trunk 1.0 output contract, consumed by nothing. ARCH_PLAN DEAD_END-1 / FMEA F2+F10: continuation_blocked cannot propagate across trunks because no sequencer walks the plan.
+  blocks: cross-trunk orchestration (1.0→9.0); HARD_FAIL / escalate_now propagation across a trunk sequence
+  safety_class: none today (no multi-trunk caller exists; HARD_FAIL is terminal within a single runTrunkWithGrounding run, contract-tested)
+  invariant_exposure: no-HARD_FAIL-override — the cross-trunk propagation path is missing, not overridden; hand-rolled multi-trunk orchestration could run past a block
+  risk: High
+  blocks_patient_facing: true
+  build_action: build integration/trunk-sequencer.js consuming routing_plan.next_trunks, halting UNCONDITIONALLY on continuation_blocked or escalate_now/T5 (ARCH_PLAN C6, milestone M2). Per <completeness_audit>, a DEAD_END is a defect — do not build other work on top of this edge first.
+  gap_register_link: R-24
+  status: open
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: mode-leakage-enforcelive
+  path: verification/verifier.js (enforceLive, line ~132), verification/pipeline.js (context_mode derivation)
+  component_type: verifier
+  state: PARTIAL
+  evidence: M0 scan 2026-07-03 — `const enforceLive = contextMode === "live"` fires only on the exact string "live". Env modes `staging`/`production` would NOT block mock receipts: mock proof is flagged (mock_receipt_flags) but accepted as valid evidence outside dev. ARCH_PLAN C16 / FMEA F4 (3×5=15 → 1×5 after fix).
+  blocks: safe staging/production promotion; env(mock/staging/production)↔receipt-MODE(live/dry_run/mock) taxonomy
+  safety_class: presents_mock_as_live (in a staging/production context, until normalised)
+  invariant_exposure: no-fabricated-operational-facts (a mock receipt could stand as proof on a non-dev path); mock-by-default discipline
+  risk: High
+  blocks_patient_facing: true
+  build_action: build verification/mode.js normalising env(mock/staging/production/dry_run)→enforcement — staging/production→live→block mock; default-deny unknown modes; wire into pipeline.js context_mode and verifier.js enforceLive; contract-mode-normaliser.js (ARCH_PLAN C16, milestone M1).
+  gap_register_link: R-25
+  status: open
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: context-injection-allowlist
+  path: verification/pipeline.js (contextInjection)
+  component_type: sanitiser
+  state: UNBUILT
+  evidence: M0 scan 2026-07-03 — cases:ingest enforces the sub-field firewall allow-list (which parts of 00/01/02 are patient-facing vs sim/scorer metadata; contract-tested), but the LIVE injection path in contextInjection() applies no field-scoped allow-list before packet assembly. Finding previously existed only in .claude/completeness-index.md and docs/HANDOFF-STATE.md — recorded here because this register is the index's declared source of truth, and promoted (High/pf:true).
+  blocks: any future case→context injection path; scoring-store firewall defence-in-depth at the packet boundary
+  safety_class: firewall_breach (potential — no injection path reads data/cases today, so unreached)
+  invariant_exposure: scoring-store firewall (the live boundary lacks the mirror of the ingest guard)
+  risk: High
+  blocks_patient_facing: true
+  build_action: build verification/context-allowlist.js mirroring the cases:ingest field-scoped firewall; default-deny; enforce in contextInjection(); contract test asserts no sim/scorer field is injectable (ARCH_PLAN C7, milestone M3).
+  gap_register_link: R-26
+  status: open
+  last_scanned: 2026-07-03
 ```
 
 ---
@@ -391,27 +444,27 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none (no patient path wired)
   risk: Medium
   blocks_patient_facing: false
-  build_action: replace stubs with real routing + receipt-driven context assembly once servers/datasets exist; keep mock mode deterministic.
-  gap_register_link: pending-promotion
+  build_action: replace stubs with real routing + receipt-driven context assembly once servers/datasets exist; keep mock mode deterministic. Milestone link: ARCH_PLAN C10 — input-gated at live-connect under M11 (contracts/zod gates unchanged; stub remains the rollback).
+  gap_register_link: none (Medium — below promotion threshold; stale pending-promotion tag corrected M0 2026-07-03)
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
 ```
 
 ```md
 - id: case-set-underpopulated
-  path: data/cases/ (only SPEC-CARD-04-00001)
+  path: data/cases/ (52 case directories)
   component_type: dataset
   state: PARTIAL
-  evidence: 1 case present; evaluation framework requires ≥45 (60/30/10) before the eval gate can run as a blocking CI job.
-  blocks: synthetic-case evaluation release gate
+  evidence: M0 re-scan 2026-07-03 — **52 cases present** (live count of data/cases/ directories; matches HANDOFF-STATE): 51 clinician-attested AUC bundles (bulk attestation reviewer KL, 2026-07-02) + reference SPEC-CARD-04-00001. ≥45 minimum MET. Distribution by envelope difficulty code in the case IDs: 47 × difficulty-01 / 5 × difficulty-04 (incl. reference) vs the 60/30/10 design — distribution skew remains. Candidate codes still carry unverified_pending_terminology_receipt. (Prior row said 1 case — stale, C18/F15; corrected this scan.)
+  blocks: synthetic-case evaluation release gate (as a *blocking* CI job with a representative difficulty mix)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: expand toward 45-case minimum; then wire eval as blocking CI.
-  gap_register_link: gap-case-set
+  build_action: author additional atypical/complex cases toward 60/30/10; batch-verify candidate codes against the mock terminology server (receipts); wire the eval as a blocking CI job (ARCH_PLAN milestone M6).
+  gap_register_link: R-23
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
 ```
 
 ```md
@@ -451,6 +504,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ---
 
 ## LOW
+
+```md
+- id: case-dir-duplicate-files
+  path: data/cases/*/ (236 untracked "<name> 2.json" files across 30 case directories)
+  component_type: dataset
+  state: PARTIAL
+  evidence: M0 scan 2026-07-03 — 236 untracked Finder-style duplicate files ("00_case_envelope 2.json" … "13_safety_netting_node 2.json", "case_manifest 2.json") across 30 case directories, including name-level duplicates of the sealed scoring nodes. Inventoried by filename only; content never opened. They are outside git and outside the ingest tool's hash/field-firewall discipline.
+  blocks: clean case-store provenance; unambiguous ingest/eval inputs (a glob-based reader could pick up the duplicates)
+  safety_class: none (untracked; no code reads them today)
+  invariant_exposure: scoring-store hygiene — duplicate sealed-node files exist outside the ingest discipline
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: delete the 236 untracked "* 2.json" duplicates under a gated cleanup step (M0 is docs-only and may not retire files); afterwards re-verify case manifests/hashes and confirm any future case reader matches exact filenames, never globs.
+  gap_register_link: none (Medium — below promotion threshold)
+  status: open
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: repo-digest-sealed-node-carveout
+  path: scripts/export-repo-digest.mjs, breath-ezy-repo-digest.md (untracked at repo root; also distributed outside the repo)
+  component_type: other (derived engineering artifact)
+  state: PARTIAL
+  evidence: M0 scan 2026-07-03 — the digest exporter deliberately embeds the reference case's sealed 10–13 nodes for engineering use, with an in-file warning (export-repo-digest.mjs ~line 84: "Do not use this context to role-play the AI Doctor"). The digest is LLM-readable context handed to planning agents. No code routes the digest into any trunk/packet path.
+  blocks: nothing (documented carve-out); recorded for guard visibility
+  safety_class: none in code (would be firewall_breach only if the digest were ever injected into an AI-Doctor context path)
+  invariant_exposure: scoring-store firewall — carve-out is safe only while the digest stays out of every AI-Doctor context path
+  risk: Low
+  blocks_patient_facing: false
+  build_action: keep the carve-out documented; the digest MUST never be routed into an AI-Doctor context path; add a digest-shaped fixture to the M3 context-allowlist contract test (assert default-deny rejects it).
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-07-03
+```
 
 ```md
 - id: claudemd-behind-charter
@@ -503,7 +590,7 @@ Then the curated build order (gap-register Part D.11):
 6. `investigation-parser-unbuilt`. **Critical.**
 7. `knowledge-server-unbuilt` + `knowledge-datasets-empty`. **Medium.**
 8. `clinician-verification-portal-unbuilt`. **Critical (named release blocker).**
-9. `case-set-underpopulated` → 45 cases, wire eval as blocking CI. **Medium.**
+9. `case-set-underpopulated` → **52 cases ingested 2026-07-02 (≥45 minimum MET)**; remaining: 60/30/10 distribution top-up + terminology batch-verify + wire eval as blocking CI (ARCH_PLAN M6). **Medium.**
 10. `fhir-broker-unbuilt`, `messaging-geo-unbuilt`. **Medium.**
 
 Cross-cutting / decide under plan:
@@ -516,6 +603,8 @@ Cross-cutting / decide under plan:
 
 Already represented in `gap-register.md`: pharmacology, verification portal, investigation parser, persistence, knowledge datasets, fhir-broker, messaging-geo, case-set.
 
-**New High/Critical findings requiring promotion this cycle (pending):** `hashing-unimplemented` (Critical), `verifier-untested` (High), `verifier-weak-code-detection` (High), `receipt-store-append-only-unbuilt` (High). These are flagged `gap_register_link: pending-promotion` until mirrored, with the move noted in `CHANGELOG.md`.
+**Promoted 2026-06-30 cycle (done):** `hashing-unimplemented` → R-16, `verifier-untested` → R-18, `verifier-weak-code-detection` → R-19, `receipt-store-append-only-unbuilt` → R-17.
+
+**Promoted M0 2026-07-03 cycle (done):** `routing-plan-next-trunks-dead-end` → R-24 (High), `mode-leakage-enforcelive` → R-25 (High), `context-injection-allowlist` → R-26 (High). Also mirrored: `case-set-underpopulated` → R-23 (Medium — mirrored to fix the dangling `gap-case-set` link, not a threshold promotion). Moves noted in `CHANGELOG.md`.
 
 *Source of truth: this register + the live scan. Derived quick-reference: `.claude/completeness-index.md`.*
