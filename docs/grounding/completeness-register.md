@@ -87,19 +87,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: clinician-verification-portal-unbuilt
-  path: (no file) — clinician-verification-portal
+  path: portal/verification-gate.js + mcp/schemas/verification-portal-decision.schema.json (gate + contract built); UI/workflow absent
   component_type: other
-  state: UNBUILT
-  evidence: absent from tree; listed Critical "Not started" in gap-register §1b.
-  blocks: any output becoming patient-facing (required human-in-the-loop gate)
-  safety_class: none
-  invariant_exposure: prime_directive human-in-the-loop
+  state: PARTIAL
+  evidence: GATE BUILT 2026-07-03 (M5) — the server-side HITL release gate and its contract exist: VerificationGateRecord (JSON Schema + zod mirror, lockstep-tested) binds a clinician decision (approved/rejected/amended, clinician_id, decided_at_utc, signature_ref) to the EXACT candidate_output_hash; releaseToPatient() is fail-closed — refuses without a gate record, refuses 'rejected', releases ONLY text that re-hashes to the attested hash (approved→candidate hash; amended→amended_output_hash — the amendment is its own medicolegal artifact), and refuses ANY release in mock/dry_run (mode-normaliser guard). Latest decision wins (re-review); records append, never mutate. Contract-tested (test/contract-verification-gate.js, npm test + CI). messaging-geo remains UNWIRED (M13). REMAINING for COMPLETE: clinician review UI/workflow, authenticated clinician identity + signature capture, durable (WORM) gate-record storage (M8 substrate) — the portal is NOT done; the release-blocking checkpoint contract is.
+  blocks: patient-facing readiness (UI/workflow + durable storage still open; the mechanical gate now exists for every future patient path to call)
+  safety_class: degrades_safe (fail-closed; dev modes never release)
+  invariant_exposure: prime_directive human-in-the-loop — now mechanically enforceable at the release boundary
   risk: Critical
   blocks_patient_facing: true
-  build_action: build the verification portal as the mandatory checkpoint before any patient-facing path; out of current mock scope — plan separately.
+  build_action: build the clinician review UI/workflow + authenticated identity/signature capture on top of the gate contract; move gate records to the M8 WORM substrate. Every patient-facing path MUST call releaseToPatient() (adoption rule, portal/README.md).
   gap_register_link: gap-verification-portal
-  status: open
-  last_scanned: 2026-06-30
+  status: open (gate resolved; UI/workflow + durable storage remain)
+  last_scanned: 2026-07-03
 ```
 
 ```md

@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M5 — Clinician Verification Portal release gate (HITL checkpoint contract built) (2026-07-03)
+
+**Status:** Complete (gate + contract; portal UI/workflow out of engineering scope). Branch `step-5-portal-gate`. npm test 20/20 (new suite added; 3 consecutive full-suite greens), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change
+- `mcp/schemas/verification-portal-decision.schema.json` (new — the one plan-sanctioned schema addition, C9/§3.5.5): **VerificationGateRecord** `{ run_id, candidate_output_hash, clinician_id, decision: approved|rejected|amended, decided_at_utc, signature_ref, amended_output_hash?(required when amended), notes? }`, additionalProperties:false. An amendment is a NEW medicolegal artifact with its own hash; the original candidate_output_hash remains the record of what was generated.
+- `portal/verification-gate.js` (new): zod mirror (lockstep-tested against the JSON schema via ajv-2020) + the mechanical checkpoint. `recordGateDecision()` validates and APPENDS (records never mutate; latest decision is effective — re-review supported). `releaseToPatient({candidate_output_hash, output})` is **fail-closed**: refuses in mock/dry_run (mode-normaliser guard — dev contexts have no patients), refuses without a gate record, refuses `rejected`, and releases ONLY text that **re-hashes** to the attested hash (approved→candidate; amended→amended_output_hash) — the gate computes the hash itself, never trusts one it is handed. Refusals return named reasons (a patient path escalates to a clinician, never retries around the gate).
+- `portal/README.md` (new): scope (gate only, no UI), the adoption rule — **every future patient-facing path MUST call releaseToPatient()**; a path that does not is a Critical defect (F13) — and what remains before "portal built".
+- `test/contract-verification-gate.js` (new, wired into `npm test` → CI): zod↔JSON-schema lockstep (accept + reject fixtures), patient path closed without a record, exact-hash binding (altered text refused), rejected never releases, amended releases only the amended text, latest-decision-wins, mock/dry_run never release, malformed requests fail closed, contract violations throw at record time.
+- `package.json`: suite appended to the `test` chain (CI gate). `.claude/schema-index.md` updated (new schema row) in the same step per <context_loading>.
+- messaging-geo remains **UNWIRED** (M13, post-Portal-complete) per the M5 directive.
+
+### Invariants
+Human-in-the-loop is now mechanically enforceable at the release boundary (was policy-only). Hash discipline strengthened: release binds to recomputed SHA-256 of the exact bytes. Nothing patient-facing opened — the gate existing closes paths, it does not open them; the other release blockers stand.
+
+### Register impact
+- `clinician-verification-portal-unbuilt` (Critical, pf:true) → **PARTIAL** (gate contract built; clinician UI/workflow, authenticated identity/signature capture, and WORM gate-record storage (M8) remain); gap-register §1b portal row updated; index re-synced; schema-index gained the 13th pipeline contract. FMEA F13 residual 4×5 → 1×5 per plan.
+- Flake note (honest record): one unreproducible mid-chain `npm test` abort was observed once during the M5 gate run (suite stopped after 6 with no error captured by the grep filter); four consecutive full-suite runs pass 20/20 — if it recurs, investigate contract-pipeline spawn timing first.
+
+### Verification
+`npm test` (20 suites) green ×3 consecutive; `npm run verification` pass; `npm run trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M4 — session-bound persistence enforced (release blocker cleared at the enforcement layer) (2026-07-03)
 
 **Status:** Complete. Branch `step-4-session-store`. npm test 19/19 (new suite added), `npm run verification` pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.

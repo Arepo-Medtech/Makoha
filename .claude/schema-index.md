@@ -18,6 +18,7 @@ One line per schema: what it contracts · producer · consumer. Open the schema 
 | `pharm-check.schema.json` | PharmCheck result: PASS/WARN/HARD_FAIL, dose guidance, interactions, scheduling, PDMP | pharmacology server | Trunk 8.0 firewall gate |
 | `verification-report.schema.json` | Machine-readable pass/fail, reasons, missing receipts, candidate_output_hash (SHA-256, required) | Step 5 Verification (zod-gated: report-schema.js) | Audit/medicolegal record · release gate |
 | `audit-ledger-entry.schema.json` | Append-only hash-chained ledger record: anchor hash + run metadata + pass + check booleans + receipt metadata (NO PHI) | Step 5 writers via audit-store.js (medicolegal-audit-ledger) | verify:rehash · medicolegal audit retrieval |
+| `verification-portal-decision.schema.json` | VerificationGateRecord: clinician HITL decision (approved/rejected/amended) bound to the exact candidate_output_hash (+ amended_output_hash for amendments) (zod-gated: portal/verification-gate.js) | Clinician Verification Portal (clinician attestation) | portal/verification-gate.js releaseToPatient() — every patient-facing path (none open yet) |
 
 ## Case store — `data/schemas/`
 

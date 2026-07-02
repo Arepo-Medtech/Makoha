@@ -51,7 +51,7 @@ These are the only internal service and repository names that may appear in trun
 | `deep-library-agent` | Not yet created | Gap |
 | `discharge-monitoring-loop` | Not yet created | Gap |
 | `patient-client-app` | Not yet created | Gap |
-| `clinician-verification-portal` | Not yet created | Gap |
+| `clinician-verification-portal` | `portal/verification-gate.js` + `mcp/schemas/verification-portal-decision.schema.json` | Gate built (M5 2026-07-03) — server-side HITL release checkpoint: releaseToPatient() refuses without an attested VerificationGateRecord bound to the exact candidate_output_hash; fail-closed; dev modes never release. UI/workflow + durable gate-record storage still open — the portal is NOT complete and patient paths stay closed |
 | `clinical-evals-suite` | `data/schemas/` and `data/cases/` | Partially complete — schemas built, synthetic cases in progress |
 | `mlops-weights-registry` | Not yet created | Gap |
 | `infrastructure-iac` | Not yet created | Gap |
