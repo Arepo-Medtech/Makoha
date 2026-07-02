@@ -1,0 +1,151 @@
+{
+  "case_id": "SPEC-GI-01-00020",
+  "node_type": "symptom_links",
+  "symptoms": [
+    {
+      "symptom_id": "SYM-001",
+      "symptom_name": "Postprandial RUQ pain radiating to right shoulder blade after a high-fat meal",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "disclosure_item_ref": "DI-001",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Biliary colic",
+          "edge_type": "supports",
+          "strength": "strong",
+          "evidence_basis": "Classic pattern of gallbladder contraction against a transiently obstructed cystic duct after a fatty meal."
+        },
+        {
+          "diagnosis": "Acute coronary syndrome",
+          "edge_type": "argues_against",
+          "strength": "weak",
+          "evidence_basis": "Shoulder-blade (rather than jaw/arm) radiation and clear dietary trigger are more typical of biliary pain."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-002",
+      "symptom_name": "Absence of fever or chills",
+      "symptom_type": "pertinent_negative",
+      "present_in_case": true,
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "disclosure_item_ref": "DI-002",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Acute cholecystitis",
+          "edge_type": "argues_against",
+          "strength": "moderate",
+          "evidence_basis": "Fever is a hallmark of cholecystitis; its absence favours uncomplicated colic."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-003",
+      "symptom_name": "Absence of jaundice",
+      "symptom_type": "pertinent_negative",
+      "present_in_case": true,
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "disclosure_item_ref": "DI-003",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Acute cholecystitis",
+          "edge_type": "required_to_exclude",
+          "strength": "moderate",
+          "evidence_basis": "Jaundice with fever (Charcot's triad) would indicate ascending cholangitis; its absence is reassuring but does not fully exclude choledocholithiasis."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-004",
+      "symptom_name": "Pain beginning to ease after approximately 3 hours",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "Condition._freetext_HPC_tags.severity",
+      "disclosure_item_ref": "DI-004",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Biliary colic",
+          "edge_type": "supports",
+          "strength": "moderate",
+          "evidence_basis": "Self-limiting resolution within hours as the gallbladder relaxes is typical of uncomplicated colic, in contrast to the persistent pain of cholecystitis."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-005",
+      "symptom_name": "Negative Murphy's sign on examination",
+      "symptom_type": "physical_sign",
+      "present_in_case": true,
+      "fhir_path": "Observation.exam_findings",
+      "elicitation_method": "requires_physical_examination",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Acute cholecystitis",
+          "edge_type": "argues_against",
+          "strength": "strong",
+          "evidence_basis": "A negative Murphy's sign argues against active gallbladder wall inflammation; clinician-only finding sealed from telehealth chat."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-006",
+      "symptom_name": "Mobile echogenic gallstones without gallbladder wall thickening on ultrasound",
+      "symptom_type": "investigation_result",
+      "present_in_case": true,
+      "fhir_path": "Observation.imaging_map.abdo_US",
+      "elicitation_method": "requires_specific_investigation",
+      "investigation_details": {
+        "investigation_name": "Transabdominal ultrasound",
+        "expected_result": "Mobile echogenic gallstones with acoustic shadowing, no gallbladder wall thickening or pericholecystic fluid",
+        "is_appropriate_first_line": true,
+        "if_not_ordered_consequence": "Diagnosis remains presumptive; should be arranged as an outpatient/urgent study depending on clinical trajectory."
+      },
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Biliary colic",
+          "edge_type": "supports",
+          "strength": "strong",
+          "evidence_basis": "Confirms cholelithiasis as the cause without sonographic signs of cholecystitis."
+        }
+      ]
+    }
+  ],
+  "symptom_clusters": [
+    {
+      "cluster_id": "SC-001",
+      "cluster_name": "Uncomplicated_biliary_colic_constellation",
+      "constituent_symptom_ids": [
+        "SYM-001",
+        "SYM-002",
+        "SYM-003",
+        "SYM-004"
+      ],
+      "target_diagnosis": "Biliary colic",
+      "clinical_significance": "Classic postprandial RUQ pain radiating to the shoulder, without fever or jaundice, and beginning to resolve within hours, is consistent with uncomplicated biliary colic rather than cholecystitis or cholangitis — but the absence of an in-person exam means this remains a presumptive diagnosis requiring prompt follow-up.",
+      "cumulative_strength": "strong",
+      "all_items_required": false
+    }
+  ],
+  "investigation_recommendations_expected": [
+    {
+      "investigation_name": "Transabdominal ultrasound (upper abdomen)",
+      "priority": "urgent",
+      "rationale": "First-line investigation to confirm gallstones and exclude gallbladder wall thickening/pericholecystic fluid; should be arranged promptly given inability to examine Murphy's sign remotely."
+    },
+    {
+      "investigation_name": "Liver function tests, full blood count, CRP/lipase",
+      "priority": "urgent",
+      "rationale": "Screens for evolving cholecystitis, choledocholithiasis, or concurrent pancreatitis."
+    },
+    {
+      "investigation_name": "CT abdomen as first-line imaging",
+      "priority": "not_recommended",
+      "rationale": "Ultrasound is the appropriate first-line study for suspected gallstone disease; CT is not first-line and would add unnecessary radiation exposure and delay."
+    }
+  ]
+}

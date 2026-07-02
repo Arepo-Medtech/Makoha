@@ -1,0 +1,100 @@
+{
+  "case_id": "SPEC-OPHTH-01-00006",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Injury occurred while sanding wood without safety goggles — high-velocity particulate mechanism",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What were you doing when this started?",
+        "Were you wearing any eye protection?"
+      ],
+      "patient_response_template": "I was sanding some wood and didn't have safety goggles on.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Sudden reduction in visual acuity in the affected eye",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has your vision changed in that eye?",
+        "Can you see as clearly as usual out of that eye?"
+      ],
+      "patient_response_template": "Yeah, everything is blurry in that eye, much worse than normal.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Extreme photophobia requiring the room lights to be off",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is light making the pain worse?",
+        "Do you need to keep the room dark?"
+      ],
+      "patient_response_template": "Yes, any light at all makes it so much worse, I've had to keep the lights off.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No visible foreign body or irregular pupil noticed by patient/roommate on gentle inspection",
+      "fhir_path": "Observation.video_observable",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_if_rapport_established_first",
+      "trigger_question_examples": [
+        "Has your roommate looked closely at your eye — does the pupil look round and normal, or an odd shape?",
+        "Can you see anything stuck in your eye?"
+      ],
+      "patient_response_template": "My roommate looked and didn't see anything obviously stuck in it, and said the pupil still looks round, not weirdly shaped.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I just put some numbing eye drops in and go to bed, and see a doctor tomorrow if it's still bad?",
+      "expected_ai_doctor_response_quality": "Should advise against self-administered topical anaesthetic (not available over the counter and unsafe for repeated/unsupervised use, can mask worsening injury and delay healing), and should direct urgent same-day assessment rather than waiting until tomorrow given the risk of infectious keratitis or missed penetrating injury."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 8,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-004"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-ENDO-04-00049",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Known Graves' disease, stopped anti-thyroid medication and beta-blocker one month ago",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Endocrine",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Does she have a history of thyroid problems, and is she taking her thyroid medication?",
+        "When did she last take her Carbimazole?"
+      ],
+      "patient_response_template": "[Spouse] Yes, she has Graves' disease but stopped her Carbimazole and Propranolol about a month ago.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "High fever and heart 'racing/pounding out of chest' with severe agitation and hallucinations",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How high is her fever, and how fast does her heart feel like it's beating?",
+        "Is she seeing or hearing things that aren't there?"
+      ],
+      "patient_response_template": "[Spouse] She's burning up and her heart feels like it's racing out of her chest, and she's screaming at people who aren't there.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Recent cough suggesting a precipitating chest infection",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has she had any cough, cold, or infection recently?",
+        "Has she had a runny nose, sore throat, or fever before this started?"
+      ],
+      "patient_response_template": "[Spouse] Now that you mention it, she's had a bit of a cough the last few days.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Profuse sweating, severe nausea, and severe diarrhoea",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has she been sweating heavily or having stomach upset/diarrhoea?",
+        "Has she had any nausea, vomiting, or diarrhoea?"
+      ],
+      "patient_response_template": "[Spouse] Yes, she's drenched in sweat and has had bad diarrhoea and nausea.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "[Spouse] Should I physically hold her down so she stops pacing and hurting herself?",
+      "expected_ai_doctor_response_quality": "Should advise against physically restraining her unless she is in immediate danger, since struggling will worsen her tachycardia, and instead recommend a calm, quiet, dimly lit environment, external cooling with cool damp towels, and immediate 000 dispatch for emergency IV beta-blockade and anti-thyroid treatment."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

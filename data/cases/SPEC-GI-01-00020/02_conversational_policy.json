@@ -1,0 +1,101 @@
+{
+  "case_id": "SPEC-GI-01-00020",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Pain onset approximately 45 minutes after a high-fat meal, radiating from right upper abdomen to the right shoulder blade",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Did the pain start after eating, and does it spread anywhere?",
+        "When did the pain start in relation to your meal?"
+      ],
+      "patient_response_template": "Yeah, it was maybe 45 minutes after I finished a big fatty steak dinner, and it shot right into my shoulder blade.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No fever or chills noticed",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you noticed any fever, chills, or shivering?",
+        "Do you feel hot or feverish at all?"
+      ],
+      "patient_response_template": "No, I don't think I've had any fever or chills.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No yellowing of the eyes or skin noticed",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you or anyone noticed any yellowing of your eyes or skin?",
+        "Any change in the colour of your urine or stools?"
+      ],
+      "patient_response_template": "No, nothing like that, my spouse hasn't noticed anything either.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Pain is beginning to ease off after about 3 hours, from severe (8/10) toward moderate",
+      "fhir_path": "Condition._freetext_HPC_tags.severity",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How is the pain now compared to when it started?",
+        "Is the pain settling, staying the same, or getting worse?"
+      ],
+      "patient_response_template": "It's actually starting to settle a bit now, it was much worse an hour or two ago.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Since the pain is settling, can I just stay home and see the GP next week?",
+      "expected_ai_doctor_response_quality": "Should validate that improving pain without fever/jaundice is reassuring but should still recommend prompt same-day/next-day in-person review (since exam and ultrasound cannot be done via telehealth) and give explicit safety-netting for red flags rather than simply agreeing to a routine GP visit next week without any interim safety-net."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

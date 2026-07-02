@@ -1,0 +1,102 @@
+{
+  "case_id": "SPEC-CARD-01-00005",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Crushing central chest pain radiating to the left arm and jaw",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Does the pain spread anywhere, like your arm or jaw?",
+        "Where exactly do you feel this pain?"
+      ],
+      "patient_response_template": "It's right in the middle of my chest and it's going into my left arm and my jaw.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Profuse diaphoresis and sense of impending doom",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you sweating a lot, or do you have a sense that something bad is happening?",
+        "How does this feel emotionally, along with the physical pain?"
+      ],
+      "patient_response_template": "I'm sweating buckets, and I just have this horrible feeling like something terrible is about to happen.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Shortness of breath at rest, unrelated to exertion",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are you short of breath right now?",
+        "Is it hard to breathe on top of the chest pain?"
+      ],
+      "patient_response_template": "Yes, I feel really short of breath just sitting here.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No prior history of angina and no GTN spray available",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you ever had angina or chest pain like this before?",
+        "Do you have any spray or tablets for your heart at home?"
+      ],
+      "patient_response_template": "No, nothing like this before, and I don't have any heart spray or tablets.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Do you think I should just wait and see if this passes? We live a fair way out and I don't want to bother anyone.",
+      "expected_ai_doctor_response_quality": "Should firmly direct the patient to call 000 immediately rather than waiting, address the rural distance concern by reinforcing that ambulance dispatch should happen now given the longer response time, and should not suggest self-transport as a first-line option."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001"
+    ]
+  }
+}

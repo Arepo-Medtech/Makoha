@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-RESP-01-00034",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Severe blunt chest trauma 2 hours ago (kicked by a horse) with progressive respiratory distress",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you tell me exactly how the chest injury happened?",
+        "Has your breathing been getting worse since it happened?"
+      ],
+      "patient_response_template": "A horse kicked me hard in the chest 2 hours ago and it's been getting harder to breathe since.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Increasing pallor, cold skin, and lethargy over the last 30 minutes with near-fainting",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Have you noticed feeling colder, paler, or more washed out recently?",
+        "Did you nearly faint trying to sit up?"
+      ],
+      "patient_response_template": "[Roommate reports] Yeah, he's gotten really pale and cold, and nearly passed out sitting up.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Heavy, crushing chest pain worse with every breath",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you describe the chest pain, and does it get worse when you breathe in?",
+        "Is it hard to take a full deep breath because of the pain?"
+      ],
+      "patient_response_template": "It's a heavy, crushing pain and it's much worse every time I try to breathe in.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No neck swelling or bulging veins noticed, trachea/voice sounds normal",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has anyone noticed any swelling or bulging veins in your neck?",
+        "Does his voice sound normal, and is he able to talk in full sentences?"
+      ],
+      "patient_response_template": "[Roommate reports] No, his neck looks normal, no swelling.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "immediately_at_consultation_start",
+      "patient_text": "[Roommate] What do I do, he can barely breathe and looks like he's about to pass out?!",
+      "expected_ai_doctor_response_quality": "Should immediately instruct calling 000 if not already done, advise helping the patient into the most comfortable position for breathing (often sitting up or semi-recumbent as tolerated), giving oxygen/fresh air if available, keeping him as still as possible, and monitoring consciousness and breathing continuously — prioritising these immediate actions over extended history-taking given the severity of the presentation."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

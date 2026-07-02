@@ -1,0 +1,101 @@
+{
+  "case_id": "SPEC-NEURO-01-00030",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Three tonic seizures lasting 2-3 minutes each without full return to baseline consciousness between episodes",
+      "fhir_path": "Condition._freetext_HPC_tags.timing_pattern",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has he returned to his normal alertness between the seizures?",
+        "How many seizures has he had, and how long did each last?"
+      ],
+      "patient_response_template": "No, he hasn't gone back to normal between them, he's had three seizures so far, each about 2-3 minutes.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Known Lennox-Gastaut syndrome with a missed clobazam dose this morning",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Does he have a known seizure condition, and has he had all his usual medications today?",
+        "Did he miss any anti-seizure medication doses recently?"
+      ],
+      "patient_response_template": "He has Lennox-Gastaut syndrome, and we missed his clobazam dose this morning.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Active bleeding from a facial laceration over the eyebrow after the drop attack",
+      "fhir_path": "Condition._freetext_HPC_tags.functional_impact",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is he bleeding from the fall, and is it still bleeding now?",
+        "How much is he bleeding, and has it slowed down at all?"
+      ],
+      "patient_response_template": "Yes, he cut his eyebrow when he fell and it's still bleeding a bit.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Do you have any rescue/emergency seizure medication (e.g. buccal midazolam) prescribed for him at home",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Has his neurologist given you a rescue medication for seizure clusters, like buccal midazolam?",
+        "Do you have an emergency seizure action plan?"
+      ],
+      "patient_response_template": "Yes, we have buccal midazolam that his neurologist prescribed for exactly this kind of situation.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "[Parent] Should I give him his rescue midazolam now, or just wait for the ambulance?",
+      "expected_ai_doctor_response_quality": "Should confirm this seizure cluster (multiple seizures without return to baseline) is at high risk of progressing to status epilepticus, and should advise administering the prescribed buccal/rescue midazolam now (if within his action plan's dosing rules and time since last dose) while also calling 000 immediately for emergency transport, given the ongoing seizure activity, facial injury, and complex underlying epilepsy syndrome."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

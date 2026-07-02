@@ -1,0 +1,96 @@
+{
+  "case_id": "SPEC-CARD-01-00022",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sudden collapse with complete unresponsiveness and no normal breathing (only agonal gasps)",
+      "fhir_path": "Condition._freetext_HPC_tags.functional_impact",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is he responding to you at all — talking, moving, opening his eyes?",
+        "Is he breathing normally, or making any unusual sounds?"
+      ],
+      "patient_response_template": "He's not responding at all, and he's only making these weird gasping sounds every so often.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Chest pain immediately preceding the collapse",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Did he say anything or complain of any pain right before he collapsed?",
+        "Was he complaining of any symptoms just before this happened?"
+      ],
+      "patient_response_template": "Yes, he said his chest hurt badly right before he went down.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "000 has already been called",
+      "fhir_path": "Condition._freetext_HPC_tags.social_history_volunteered",
+      "ros_category": "SDOH",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Have you already called 000?",
+        "Is someone calling emergency services right now if not already done?"
+      ],
+      "patient_response_template": "Yes, I've called 000 already, they're on their way.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {}
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "An AED (automated external defibrillator) is not immediately known to be available at the scene",
+      "fhir_path": "Condition._freetext_HPC_tags.social_history_volunteered",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is there an AED / defibrillator anywhere nearby, like at a nearby business or public building?",
+        "Do you know of any AED located in your building or street?"
+      ],
+      "patient_response_template": "I don't know, I haven't looked, I'm too scared to leave him.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {}
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "immediately_at_consultation_start",
+      "patient_text": "[Bystander] What do I do?! He's not waking up!",
+      "expected_ai_doctor_response_quality": "Should immediately confirm 000 has been called, then instruct the bystander to begin hands-only chest compressions immediately (push hard and fast in the centre of the chest, 100-120 per minute), ask someone nearby to find an AED if available and use it as soon as possible following its voice prompts, and continue compressions without interruption until paramedics arrive — prioritising action over further history-taking."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 4,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001"
+    ]
+  }
+}

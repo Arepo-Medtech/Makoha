@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-MSK-01-00037",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sudden 'pop' with gross visible deformity of the shoulder and complete inability to move the joint",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you describe how the shoulder looks, and did you feel or hear a pop?",
+        "Can you move the shoulder at all, even a little?"
+      ],
+      "patient_response_template": "It looks completely out of place and I can't move it at all, I felt a horrible pop when I fell.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Numbness/tingling down the outer aspect of the upper arm",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do you have any numbness or tingling anywhere in your arm or hand?",
+        "Does the outside of your upper arm feel normal to touch?"
+      ],
+      "patient_response_template": "Yeah, there's some tingling and numbness down the outside of my upper arm.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Hand and fingers feel normal colour, warm, with normal sensation and movement",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "What colour is your hand, and can you feel and move your fingers normally?",
+        "Does your hand feel warm and can you wiggle your fingers?"
+      ],
+      "patient_response_template": "My hand looks normal colour and I can move and feel my fingers fine.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No prior shoulder dislocations or instability",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has your shoulder ever dislocated or felt unstable before?",
+        "Have you ever had shoulder problems on this side before?"
+      ],
+      "patient_response_template": "No, this has never happened before.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "My roommate says he's seen videos online of people popping shoulders back in — could he just try that?",
+      "expected_ai_doctor_response_quality": "Should firmly advise against anyone attempting to relocate the shoulder outside a hospital setting, explaining that an X-ray is needed first to rule out an associated fracture, and that attempting reduction without proper imaging, muscle relaxation, and technique risks worsening the nerve injury or causing a fracture; should recommend urgent transport to the Emergency Department for proper assessment and reduction, with the arm supported in a sling in the meantime."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

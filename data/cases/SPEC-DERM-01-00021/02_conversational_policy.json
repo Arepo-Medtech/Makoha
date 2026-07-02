@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-DERM-01-00021",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Thermal burn to face and chest with immediate blistering from a barbeque flash fire",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you tell me what happened and where you were burned?",
+        "Did blistering start straight away?"
+      ],
+      "patient_response_template": "There was a flash fire from the barbeque, and my face and chest started blistering almost immediately.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Hoarse voice and throat tightness since the incident",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has your voice changed, or does your throat feel tight?",
+        "Any trouble breathing or swallowing?"
+      ],
+      "patient_response_template": "Yes, my voice is hoarse and my throat feels tight and scratchy.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Coughed up dark, sooty material shortly after the incident (reported by spouse)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Did you cough up any dark or sooty material?",
+        "[To spouse] Did you notice anything unusual when he coughed?"
+      ],
+      "patient_response_template": "[Spouse reports] Yes, he coughed up dark, sooty-looking stuff right after it happened.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Currently still able to speak in full sentences",
+      "fhir_path": "Condition._freetext_HPC_tags.functional_impact",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you able to speak in full sentences right now?",
+        "Is your breathing comfortable enough to talk normally at the moment?"
+      ],
+      "patient_response_template": "Yes, I can still talk normally for now, but my throat feels off.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "I can still talk fine, do I really need an ambulance right now?",
+      "expected_ai_doctor_response_quality": "Should explain that being able to speak now does not exclude a developing inhalation injury — singed features, hoarseness, and carbonaceous sputum are strong warning signs that airway swelling can worsen over the next few hours, and that immediate 000 dispatch for emergency assessment (potentially including airway protection) is required despite currently normal speech."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}
