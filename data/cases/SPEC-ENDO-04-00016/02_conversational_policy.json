@@ -1,0 +1,104 @@
+{
+  "case_id": "SPEC-ENDO-04-00016",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Known Addison's disease, unable to keep oral hydrocortisone/fludrocortisone down due to vomiting",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Endocrine",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do you have any ongoing medical conditions such as Addison's disease?",
+        "Have you been able to keep your regular steroid medication down?"
+      ],
+      "patient_response_template": "I have Addison's disease and I haven't been able to keep my hydrocortisone or fludrocortisone down since yesterday.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Severe weakness, dizziness on standing, and near-syncope",
+      "fhir_path": "Condition._freetext_HPC_tags.severity_patient_description",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How severe is the weakness and dizziness?",
+        "Have you felt like you were going to faint?"
+      ],
+      "patient_response_template": "I feel like I'm about to pass out, especially when I stand up.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Spouse reports patient seems confused/slower to respond than usual",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has anyone noticed any confusion or change in her mental state?",
+        "Is she responding normally to questions?"
+      ],
+      "patient_response_template": "[Spouse reports] She seems out of it, slower to answer than usual, not quite herself.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "An emergency injectable hydrocortisone kit is available at home, previously supplied by her endocrinologist for sick-day crises",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have an emergency injection kit of hydrocortisone at home for sick days?",
+        "Has your endocrinologist ever given you an injectable steroid kit for emergencies?"
+      ],
+      "patient_response_template": "Yes, we do have an emergency injection kit at home that my endocrinologist gave us for exactly this kind of situation.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "[Spouse] Should I give her the emergency injection now while we wait for the ambulance?",
+      "expected_ai_doctor_response_quality": "Should confirm this is an adrenal (Addisonian) crisis requiring immediate 000/ambulance dispatch, and should affirm that administering the previously-prescribed emergency intramuscular hydrocortisone injection now, while awaiting the ambulance, is the correct bridging action in this specific situation — distinguishing this from other cases where lay injectable administration would not be appropriate."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

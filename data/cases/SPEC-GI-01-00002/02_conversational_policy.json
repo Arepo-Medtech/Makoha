@@ -1,0 +1,120 @@
+{
+  "case_id": "SPEC-GI-01-00002",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Pain began as a vague ache around the belly button and migrated over hours to a sharp, constant pain fixed in the right lower abdomen",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has the pain moved or changed location since it started?",
+        "Did the pain start somewhere else before settling in your right side?"
+      ],
+      "patient_response_template": "Yeah, it definitely moved — it started around my belly button and now it's stuck down on the right side.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Complete loss of appetite (anorexia) accompanying the pain",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you noticed any change in your appetite?",
+        "Do you feel like eating at all?"
+      ],
+      "patient_response_template": "I haven't wanted to eat anything at all today.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Pain markedly worsened by movement, coughing, and the car ride home",
+      "fhir_path": "Condition._freetext_HPC_tags.aggravating_factors",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does moving, coughing, or being in a car make the pain worse?",
+        "Is it worse when you cough, walk, or go over bumps in a car?"
+      ],
+      "patient_response_template": "Yes, actually — the car ride home was awful, every bump hurt, and coughing makes it much worse too.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Subjective low-grade fever since this morning, and one episode of vomiting this afternoon",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any fever or vomiting?",
+        "Have you felt hot, sweaty, or been sick at all?"
+      ],
+      "patient_response_template": "I felt warm since this morning, and I threw up once this afternoon.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No urinary symptoms (dysuria, frequency, urgency) and no known pregnancy risk applicable (male patient)",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any burning, frequency, or urgency when you urinate?",
+        "Any pain or stinging when you pass urine, or needing to go more often?"
+      ],
+      "patient_response_template": "No, that's all normal.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I just take some more paracetamol and see if it settles by tomorrow? I don't have a car.",
+      "expected_ai_doctor_response_quality": "Should not endorse waiting until tomorrow given the migratory pattern and worsening course; should acknowledge the transport barrier and help problem-solve (ambulance, taxi, escort) rather than deferring care. Should advise against further analgesia in a way that delays urgent surgical assessment or masks the exam findings that will be needed in person."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003"
+    ]
+  }
+}

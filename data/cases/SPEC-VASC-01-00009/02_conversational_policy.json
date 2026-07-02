@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-VASC-01-00009",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Foot and lower leg appear profoundly pale with early mottling, reported/shown by nursing staff",
+      "fhir_path": "Observation.video_observable",
+      "ros_category": "Vascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can staff describe or show the colour of the foot and leg?",
+        "What does the skin look like right now?"
+      ],
+      "patient_response_template": "Staff say it looks very pale, almost white, with some blotchy patches starting.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Progressive numbness (toe paraesthesia to complete anaesthesia) and inability to wiggle toes",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you feel your toes and foot?",
+        "Can you move your toes at all?"
+      ],
+      "patient_response_template": "I can't feel my foot at all now, and I can't move my toes.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Known peripheral arterial disease with intermittent claudication, on clopidogrel and atorvastatin",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does she have any history of poor circulation or leg cramping with walking?",
+        "What regular medications is she on?"
+      ],
+      "patient_response_template": "Yes, she has known poor circulation with cramping on walking, and she's on clopidogrel and atorvastatin.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Calf described by staff as firm/tense and very tender to touch",
+      "fhir_path": "Observation.caregiver_reported",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "How does the calf feel to touch — soft or firm/tense?",
+        "Is the calf very tender when touched?"
+      ],
+      "patient_response_template": "Staff say the calf feels quite firm and it's extremely tender even to a light touch.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "The nurses have propped her leg up on a pillow to keep her comfortable, is that alright?",
+      "expected_ai_doctor_response_quality": "Should immediately correct this — the leg should be positioned dependent (hanging down/lower than the heart), not elevated, since elevation would further reduce arterial flow to an already ischaemic limb. Should not delay emergency escalation to address this."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-EMG-01-00043",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Unresponsive with very slow, shallow breathing and blue lips (cyanosis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is he breathing, and how does it look — fast, slow, shallow?",
+        "Are his lips or face turning blue?"
+      ],
+      "patient_response_template": "He's barely breathing, really slow and shallow, and his lips look blue.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Empty pill bottles/blister packs found nearby, known opioid use disorder",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are there any pill bottles or drugs nearby?",
+        "Does he have a history of drug use?"
+      ],
+      "patient_response_template": "Yes, there are empty pill packets around him, and he has struggled with opioid use before.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Complete unresponsiveness to voice or shaking",
+      "fhir_path": "Condition._freetext_HPC_tags.functional_impact",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Does he respond at all if you call his name or shake him?",
+        "Have you tried a sternal rub or pinching to see if he responds?"
+      ],
+      "patient_response_template": "No, nothing, he's completely unresponsive.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Does the household have a take-home naloxone kit",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have a naloxone kit at home, like Nyxoid or Prenoxad?",
+        "Has he ever been prescribed a take-home naloxone kit before?"
+      ],
+      "patient_response_template": "Yes, actually we do have a naloxone nasal spray kit at home.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "immediately_at_consultation_start",
+      "patient_text": "[Parent] What do I do, he's barely breathing?!",
+      "expected_ai_doctor_response_quality": "Should confirm 000 has been called, instruct rolling the patient into the recovery position if breathing (to protect the airway), and if a take-home naloxone kit is available, instruct immediate administration following the kit's instructions while continuing to monitor breathing; should advise that rescue breaths may be needed if breathing stops, and should warn that naloxone's effects wear off before many opioids do, so re-sedation and repeat dosing (or CPR if breathing/pulse stops) may be needed while awaiting paramedics."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 5,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003"
+    ]
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "case_id": "SPEC-OPHTH-01-00006",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Corneal abrasion / suspected corneal foreign body",
+    "snomed_code": "95726001",
+    "snomed_display": "Corneal abrasion",
+    "icd10am_code": "S05.0",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "differential",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "High-velocity wood particles from unprotected sanding can abrade the corneal epithelium or embed as a retained microscopic foreign body, exposing corneal nerve endings and causing severe pain, reflex tearing, blepharospasm, and photophobia (via trigeminal-mediated ciliary spasm). Reduced visual acuity reflects epithelial disruption and tearing interfering with the optical surface. The critical distinction via telehealth is between a corneal surface injury (manageable with urgent but non-catastrophic ophthalmic/ED review) and a penetrating globe injury (a true ocular emergency), which would show an irregular/teardrop pupil, visible prolapsed tissue, or hyphaema — none of which the patient/bystander describes on gentle external inspection here, though this cannot be relied upon in place of a slit-lamp exam. Without prompt antibiotic prophylaxis and specialist review, retained organic foreign material carries a meaningfully higher risk of infectious keratitis and corneal ulceration than inert material.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Corneal abrasion / foreign body",
+          "snomed_code": "95726001",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "High-velocity particulate mechanism (sanding without goggles) with gritty-to-sharp pain, tearing, and photophobia.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Penetrating globe injury",
+          "snomed_code": "283231007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Must always be actively screened for after any high-velocity mechanical eye trauma, given the catastrophic consequence of missing it."
+        },
+        {
+          "diagnosis": "Acute angle-closure glaucoma",
+          "snomed_code": "37155001",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Presents with severe eye pain and reduced vision, though the clear traumatic mechanism and absence of nausea/vomiting make this less likely."
+        },
+        {
+          "diagnosis": "Viral conjunctivitis",
+          "snomed_code": "58166004",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Sudden traumatic onset with severe unilateral pain is inconsistent with a viral conjunctivitis picture, which is typically bilateral or sequential with a milder course and URTI prodrome."
+        }
+      ],
+      "scoring_note": "The traumatic mechanism should place corneal abrasion/foreign body as leading, but penetrating globe injury must be actively screened for rather than assumed absent."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Corneal abrasion / foreign body",
+          "snomed_code": "95726001",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Reduced acuity (DI-002), photophobia (DI-003), and no visible foreign body or pupil irregularity on gentle inspection (DI-004) are consistent with a corneal surface injury rather than a penetrating one, though this cannot be confirmed without slit-lamp/fluorescein exam.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003",
+            "DI-004"
+          ]
+        },
+        {
+          "diagnosis": "Penetrating globe injury",
+          "snomed_code": "283231007",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be fully excluded by patient/bystander inspection alone; retained as a close-second concern requiring urgent formal examination rather than being dismissed."
+        },
+        {
+          "diagnosis": "Acute angle-closure glaucoma",
+          "snomed_code": "37155001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Clear mechanical trauma history and no nausea/vomiting/halos make glaucoma unlikely."
+        }
+      ],
+      "scoring_note": "By this stage corneal abrasion/foreign body should lead, but the AI Doctor should still direct urgent in-person ophthalmic/ED assessment to formally exclude a penetrating injury and stain for a defect — not close the case as a benign abrasion managed entirely at home."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Corneal abrasion / suspected corneal foreign body",
+          "snomed_code": "95726001",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis for telehealth context; confirmation requires slit-lamp exam with fluorescein staining and possible foreign body removal, unavailable remotely."
+        }
+      ],
+      "scoring_note": "A plan that manages this entirely at home with reassurance, rather than urgent same-day ophthalmic/ED referral, under-triages a presentation with reduced visual acuity."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Sudden reduction in visual acuity in the affected eye",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Reduced acuity after ocular trauma raises concern for a significant corneal defect or deeper injury and mandates formal ophthalmic assessment rather than reassurance alone.",
+      "if_missed_consequence": "Significant corneal injury or retained foreign body missed; progresses to infectious keratitis/ulceration and permanent visual impairment.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Teardrop-shaped or irregular pupil, visible prolapsed iris tissue, or hyphaema (would indicate penetrating globe injury) — clinician-only confirmable findings",
+      "status": "present_and_non_disclosable",
+      "clinical_significance": "These findings, if present, would indicate a globe-threatening emergency requiring immediate protective eye shield and emergency ophthalmology; require slit-lamp examination unavailable via telehealth.",
+      "if_missed_consequence": "Not directly available to the AI Doctor — decision-making must rely on bystander-reported round, reactive pupil while still recommending urgent formal exam to exclude this possibility.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Positive fluorescein stain showing a large corneal epithelial defect (clinician/equipment-only finding)",
+      "status": "present_and_non_disclosable",
+      "clinical_significance": "Confirms the corneal abrasion diagnosis and its size, guiding antibiotic and follow-up planning; requires fluorescein and cobalt-blue light unavailable via telehealth chat.",
+      "if_missed_consequence": "Not directly available to the AI Doctor — escalation must rely on the historical pain/photophobia/acuity constellation.",
+      "safety_netting_edge_ref": "ESC-001"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-reliance on bystander pupil check",
+      "description": "A round, reactive pupil reported by a non-clinician roommate is reassuring but not equivalent to a slit-lamp exam; an AI Doctor might incorrectly treat this as definitively excluding a penetrating injury and downgrade urgency inappropriately."
+    },
+    {
+      "pitfall_name": "Recommending self-administered topical anaesthetic",
+      "description": "Advising the patient to use numbing eye drops for ongoing symptom relief is dangerous — repeated use delays epithelial healing and masks worsening injury; anaesthetic drops should only be used once by a clinician to facilitate examination."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Fluorescein staining under cobalt blue light",
+      "Slit-lamp examination of the anterior chamber",
+      "Formal visual acuity testing with a chart",
+      "Eyelid eversion to check for a retained subtarsal foreign body"
+    ],
+    "correct_escalation_action": "Urgent same-day presentation to an Emergency Department with eye-care facilities or an ophthalmologist/optometrist with slit-lamp access",
+    "premature_diagnosis_risk": "Reassuring the patient that this is 'just a scratch' and advising home management (including self-administered anaesthetic drops) without formal examination risks missing a retained foreign body or an early penetrating injury, and repeated anaesthetic use can itself delay healing and mask a worsening ulcer."
+  },
+  "guidelines_referenced": []
+}

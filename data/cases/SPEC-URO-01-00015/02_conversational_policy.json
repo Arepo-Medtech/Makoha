@@ -1,0 +1,100 @@
+{
+  "case_id": "SPEC-URO-01-00015",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Complete inability to pass urine for 14 hours with a constant urge",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How long has it been since you last passed urine?",
+        "Can you pass any urine at all right now?"
+      ],
+      "patient_response_template": "Nothing at all for 14 hours now, even though I feel like I desperately need to go.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Gradually worsening lower urinary tract symptoms (hesitancy, poor stream, nocturia) over 6 months",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any urinary problems building up over recent months?",
+        "Any trouble starting your stream or getting up at night to urinate?"
+      ],
+      "patient_response_template": "Yeah, actually, it's been getting harder to start and I've been getting up at night more over the last few months.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Recently started an over-the-counter cold/flu medication containing a decongestant",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you started any new medications recently, including cold or flu tablets?",
+        "Any decongestants or cold remedies in the last few days?"
+      ],
+      "patient_response_template": "Yeah, I started some cold tablets a couple of days ago for a bit of a cold.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No fever or systemic illness reported",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any fever or chills?",
+        "Do you feel generally unwell or feverish along with the urinary symptoms?"
+      ],
+      "patient_response_template": "No, I don't feel feverish, just this awful pain.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can you just tell me how to relieve this myself at home?",
+      "expected_ai_doctor_response_quality": "Should explain that bladder decompression requires a catheter, which cannot be done via telehealth, and should direct urgent same-day in-person review (urgent care/ED) rather than suggesting any home remedy, given the risk of kidney injury from prolonged retention."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 8,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001"
+    ]
+  }
+}

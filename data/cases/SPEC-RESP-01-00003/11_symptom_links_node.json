@@ -1,0 +1,161 @@
+{
+  "case_id": "SPEC-RESP-01-00003",
+  "node_type": "symptom_links",
+  "symptoms": [
+    {
+      "symptom_id": "SYM-001",
+      "symptom_name": "Inability to complete full sentences",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "Condition._freetext_HPC_tags.severity",
+      "disclosure_item_ref": "DI-001",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "red_flag_for",
+          "strength": "strong",
+          "evidence_basis": "Inability to complete sentences is a core criterion for severe asthma per national severity classification."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-002",
+      "symptom_name": "Reliever inhaler over-use (6 doses/3h) with diminishing effect",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "MedicationRequest",
+      "disclosure_item_ref": "DI-002",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "red_flag_for",
+          "strength": "strong",
+          "evidence_basis": "Refractoriness to repeated bronchodilator indicates severe, treatment-resistant bronchospasm requiring escalated therapy."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-003",
+      "symptom_name": "Visible accessory muscle use and tripod positioning",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "Observation.video_observable",
+      "disclosure_item_ref": "DI-003",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "supports",
+          "strength": "strong",
+          "evidence_basis": "Objective, video-observable marker of significantly increased work of breathing."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-004",
+      "symptom_name": "Poor preventer inhaler adherence over the preceding month",
+      "symptom_type": "risk_factor",
+      "present_in_case": true,
+      "fhir_path": "MedicationRequest",
+      "disclosure_item_ref": "DI-004",
+      "elicitation_method": "directed_clinical_question_required",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "supports",
+          "strength": "moderate",
+          "evidence_basis": "Under-treated background airway inflammation increases susceptibility to severe exacerbation with a viral trigger."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-005",
+      "symptom_name": "SpO2 93% on patient wearable device",
+      "symptom_type": "symptom",
+      "present_in_case": true,
+      "fhir_path": "Observation.vitals_map.spo2",
+      "elicitation_method": "history_question_sufficient",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "red_flag_for",
+          "strength": "strong",
+          "evidence_basis": "Hypoxaemia in the context of severe symptoms supports significant airflow obstruction and gas exchange impairment."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-006",
+      "symptom_name": "Widespread polyphonic expiratory wheeze on auscultation",
+      "symptom_type": "physical_sign",
+      "present_in_case": true,
+      "fhir_path": "Observation.exam_findings",
+      "elicitation_method": "requires_physical_examination",
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "supports",
+          "strength": "strong",
+          "evidence_basis": "Classic auscultatory finding of bronchospasm; clinician-only finding sealed from telehealth chat."
+        }
+      ]
+    },
+    {
+      "symptom_id": "SYM-007",
+      "symptom_name": "Reduced peak expiratory flow rate (PEFR) compared to personal best",
+      "symptom_type": "investigation_result",
+      "present_in_case": true,
+      "fhir_path": "Observation.pathology_map.PEFR",
+      "elicitation_method": "requires_specific_investigation",
+      "investigation_details": {
+        "investigation_name": "Peak expiratory flow rate",
+        "expected_result": "Significantly reduced compared to personal best/predicted, consistent with severe obstruction",
+        "is_appropriate_first_line": true,
+        "if_not_ordered_consequence": "Objective severity grading unavailable via telehealth; should be obtained as part of emergency assessment."
+      },
+      "diagnostic_weight_edges": [
+        {
+          "diagnosis": "Severe acute asthma exacerbation",
+          "edge_type": "supports",
+          "strength": "strong",
+          "evidence_basis": "PEFR <50% predicted/personal best is a defining feature of severe asthma exacerbation."
+        }
+      ]
+    }
+  ],
+  "symptom_clusters": [
+    {
+      "cluster_id": "SC-001",
+      "cluster_name": "Severe_asthma_exacerbation_constellation",
+      "constituent_symptom_ids": [
+        "SYM-001",
+        "SYM-002",
+        "SYM-003",
+        "SYM-005"
+      ],
+      "target_diagnosis": "Severe acute asthma exacerbation",
+      "clinical_significance": "Incomplete sentences, inhaler refractoriness, accessory muscle use, and SpO2 93% together meet criteria for a severe, potentially life-threatening exacerbation requiring emergency ambulance dispatch.",
+      "cumulative_strength": "very_strong",
+      "all_items_required": false
+    }
+  ],
+  "investigation_recommendations_expected": [
+    {
+      "investigation_name": "Peak expiratory flow rate and continuous SpO2 monitoring",
+      "priority": "immediate",
+      "rationale": "Objective severity grading required as part of emergency assessment; cannot be reliably done via telehealth."
+    },
+    {
+      "investigation_name": "Nebulised salbutamol and ipratropium, systemic corticosteroids, oxygen",
+      "priority": "immediate",
+      "rationale": "Definitive emergency treatment for severe exacerbation, deliverable only in person or by paramedics."
+    },
+    {
+      "investigation_name": "Chest X-ray",
+      "priority": "not_recommended",
+      "rationale": "Not required routinely for a typical severe asthma exacerbation without suspicion of pneumothorax or consolidation; should not delay bronchodilator therapy."
+    }
+  ]
+}
