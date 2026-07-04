@@ -1,0 +1,163 @@
+{
+  "case_id": "SPEC-OBS-01-00038",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Primary dysmenorrhoea",
+    "snomed_code": "44186003",
+    "snomed_display": "Primary dysmenorrhea",
+    "icd10am_code": "N94.4",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Primary dysmenorrhoea is painful menstruation without underlying pelvic pathology, driven by endometrial prostaglandin release causing intense uterine contractions/ischaemia; the prostaglandins also cause nausea, vomiting and diarrhoea. It characteristically begins 6–12 months after menarche, occurs cyclically with menses (often radiating to back/thighs) and responds to NSAIDs (which block prostaglandin synthesis). It is benign, but the presentation of acute lower abdominal pain with vomiting means the overriding ground-truth task is to exclude surgical/obstetric emergencies: ectopic pregnancy (a pregnancy test is MANDATORY in any reproductive-age female with acute lower abdominal pain — this cannot be done via chat), appendicitis, ovarian torsion and pelvic inflammatory disease, and to address dehydration from vomiting. Management (once emergencies are excluded and pregnancy is negative) is NSAIDs taken early/pre-emptively, an antiemetic, heat, and hormonal options for prevention.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Primary dysmenorrhoea",
+          "snomed_code": "44186003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Cyclical central cramping with the period, post-menarche onset, prostaglandin GI symptoms.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Ectopic pregnancy",
+          "snomed_code": "34801009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any reproductive-age female with acute lower abdominal pain must have pregnancy excluded — an ectopic can be catastrophic; a pregnancy test is mandatory.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Appendicitis / ovarian torsion / PID",
+          "snomed_code": "74400008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen migratory RLQ pain, sudden lateralised pain, fever/discharge.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Secondary dysmenorrhoea (endometriosis)",
+          "snomed_code": "129103003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Post-menarche onset and NSAID response favour primary; consider if refractory/non-cyclical/deep dyspareunia."
+        }
+      ],
+      "scoring_note": "Primary dysmenorrhoea may lead, but a pregnancy test (ectopic) is mandatory and appendicitis/torsion/PID must be screened before this benign label."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Primary dysmenorrhoea",
+          "snomed_code": "44186003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Cyclical central pain, post-menarche onset, no lateralising/peritoneal/PID features — primary dysmenorrhoea, PENDING a negative pregnancy test; dehydration from vomiting is the active issue.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Ectopic pregnancy",
+          "snomed_code": "34801009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be excluded remotely — retained as a mandatory safety-net until a pregnancy test is negative; positive test / lateralised pain / faintness → emergency."
+        },
+        {
+          "diagnosis": "Appendicitis / ovarian torsion / PID",
+          "snomed_code": "74400008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No lateralising/peritoneal/PID features; escalation target if they develop."
+        }
+      ],
+      "scoring_note": "After a negative surgical screen, primary dysmenorrhoea leads BUT a pregnancy test is mandatory; manage analgesia/antiemetic/rehydration with emergency and dehydration safety-nets."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Primary dysmenorrhoea",
+          "snomed_code": "44186003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis once pregnancy is negative and emergencies excluded; NSAID + antiemetic + heat; hormonal prevention; investigate if refractory."
+        }
+      ],
+      "scoring_note": "Final position is primary dysmenorrhoea contingent on a negative pregnancy test."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Possible ectopic pregnancy — reproductive-age female with acute lower abdominal pain and unconfirmed/positive pregnancy, especially with lateralised pain, shoulder-tip pain, faintness/collapse, or abnormal bleeding",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "A ruptured ectopic is life-threatening; a pregnancy test is mandatory and cannot be done via chat.",
+      "if_missed_consequence": "Ruptured ectopic / haemorrhagic shock / death.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Surgical/gynae emergency — migratory RLQ pain (appendicitis), sudden severe lateralised pelvic pain (ovarian torsion), fever/offensive discharge (PID), or peritonism",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "These need urgent surgical/gynae assessment.",
+      "if_missed_consequence": "Perforated appendix / lost ovary / pelvic sepsis.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Dehydration — unable to keep fluids down, reduced urine, faintness on standing (living alone)",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "May need ED for antiemetics/IV fluids.",
+      "if_missed_consequence": "Progressive dehydration.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Not excluding pregnancy/ectopic",
+      "description": "The single most dangerous omission — a pregnancy test is mandatory in any reproductive-age female with acute lower abdominal pain."
+    },
+    {
+      "pitfall_name": "Missing appendicitis/torsion",
+      "description": "Attributing all acute pelvic pain to period pain without screening lateralised/peritoneal features."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Urine/serum pregnancy test (beta-hCG)",
+      "Abdominal/pelvic examination",
+      "Pelvic ultrasound",
+      "Parenteral antiemetics/IV fluids"
+    ],
+    "correct_escalation_action": "Arrange an urgent pregnancy test and in-person assessment; antiemetic + NSAID + sip rehydration once ectopic is being excluded; ED for lateralised/peritoneal/faintness features or failed rehydration.",
+    "premature_diagnosis_risk": "Missing an ectopic pregnancy or other surgical emergency behind 'severe period pain'."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "RANZCOG: Acute pelvic pain",
+      "relevant_recommendation": "Exclude pregnancy (beta-hCG) in every reproductive-age woman with acute pelvic/lower-abdominal pain; consider ectopic, appendicitis, ovarian torsion and PID before attributing pain to dysmenorrhoea."
+    },
+    {
+      "reference": "Therapeutic Guidelines: Dysmenorrhoea",
+      "relevant_recommendation": "Primary dysmenorrhoea: NSAIDs started at or just before the onset of menses are first-line; hormonal contraception is effective for prevention. Investigate secondary causes if atypical/refractory."
+    }
+  ]
+}

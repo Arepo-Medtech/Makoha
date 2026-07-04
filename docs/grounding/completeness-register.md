@@ -472,15 +472,15 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: data/cases/ (52 case directories; 51 manifest-conforming + reference)
   component_type: dataset
   state: PARTIAL
-  evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session; bulk_clinician_attestation in each manifest review block — node files + sha256 untouched). (4) **CVD (Cardiovascular) batch ingested 2026-07-04** — 49 of 50 operator-supplied CVD bundles (1 skipped: id collision, see `case-id-cross-series-collision`): brings the first COMPLEX-tier cases (5 × rare_condition, tier 05) and the 3rd diagnosis category (`zebra_rare`). 373 codes receipted (store total 709). Distribution now **68 straightforward / 77 atypical / 5 complex = 45/51/3**; **coverage 5 tiers · 3 diagnosis categories · 19 specialties — the 3-category + 3-tier minimums CLEARED**. The 49 CVD were ATTESTED 2026-07-04 (operator KL, written in-session; scope guarded to the CVD ingest commit, not filenames). (5) **eval:cases: attested conforming 150 (≥45), 0 unreviewed, PASS.** Distribution 45/51/3; coverage 5 tiers · 3 diagnosis categories · 19 specialties. Source `.txt` never entered the repo.
-  blocks: full 60/30/10 mix (complex only 3% vs 10% target — the sole remaining distribution warning)
+  evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session; bulk_clinician_attestation in each manifest review block — node files + sha256 untouched). (4) **CVD (Cardiovascular) batch ingested 2026-07-04** — 49 of 50 operator-supplied CVD bundles (1 skipped: id collision, see `case-id-cross-series-collision`): brings the first COMPLEX-tier cases (5 × rare_condition, tier 05) and the 3rd diagnosis category (`zebra_rare`). 373 codes receipted (store total 709). Distribution now **68 straightforward / 77 atypical / 5 complex = 45/51/3**; **coverage 5 tiers · 3 diagnosis categories · 19 specialties — the 3-category + 3-tier minimums CLEARED**. The 49 CVD + the re-id'd AFib case (SPEC-CARD-01-00099) were ATTESTED 2026-07-04 (operator KL) → 151/151 attested. (5) **CIA (Common Infections & Afflictions) batch 2026-07-04** — 43 of 50 operator-supplied CIA bundles ingested (all straightforward/tier-01; 47 common + 3 important_not_to_miss categories); 190 codes receipted (store total **911**). 7 NOT ingested: **3 cross-series id collisions** (Burn/Laryngitis/Aphthous-Stomatitis vs existing AUC cases — see `case-id-cross-series-collision`) and **4 FIREWALL-REFUSED** (full diagnosis name leaked into AI-Doctor-readable text — see `cia-source-firewall-leaks`). Distribution **45/51/3 → 58/40/3** (194 cases; straightforward toward 60%, atypical over-weight pulled toward 30%; complex still 3%). The 43 CIA are `pending_clinician_review`. (6) **eval:cases: attested 151 (≥45), 0 failures, PASS** (43 CIA unreviewed, excluded). Source `.txt` never entered the repo.
+  blocks: full 60/30/10 mix (complex only 3% vs 10% — the binding distribution gap)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: SOLE REMAINING (input-gated): more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present = 3%, ~15 needed at this volume). Flip the gate's distribution warning to blocking once complex reaches ~10%. (Receipts, CI gate, atypical+complex-seed, coverage minimums, the id-collision instance, AND full attestation of all 151 cases: DONE — eval:cases 151 attested, 0 unreviewed, PASS.)
+  build_action: REMAINING (input-gated): (a) attest the 43 CIA cases; (b) more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present = 3%); (c) resolve the 3 CIA id collisions (re-id like AFib) and the 4 firewall-refused CIA bundles (source fix). Flip the distribution warning to blocking once complex reaches ~10%.
   gap_register_link: R-23
-  status: open (151/151 attested; ONLY complex-tier VOLUME input-gated remains)
+  status: open (151/194 attested; CIA attestation + complex-VOLUME + 3 collisions + 4 source leaks input-gated)
   last_scanned: 2026-07-04
 ```
 
@@ -490,14 +490,32 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   component_type: dataset
   state: PARTIAL
   evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series: CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both mapped to SPEC-CARD-01-00005. cases:ingest failed safe (COLLISION, no --force) and skipped the AFib case. INSTANCE RESOLVED 2026-07-04 (operator-authorised): the AFib bundle was re-id'd (blind literal id-string swap on a scratchpad COPY — source archive untouched, clinical content never read) to **SPEC-CARD-01-00099** (free globally; deliberately above the source-number-derived 1–51 range to mark it manually disambiguated) and ingested; 12 codes receipted; gate PASS. The existing SPEC-CARD-01-00005 (ACS) was never touched. SYSTEMIC gap remains: the id SCHEME is still not unique across series, so a future overlapping series would collide again.
-  blocks: nothing now (the AFib instance is ingested); future large multi-series ingest if the scheme is unchanged
+  evidence_addendum: 2026-07-04 — the CIA batch produced **3 MORE cross-series collisions** (still pending, not yet re-id'd): SPEC-DERM-01-00021 (CIA "Localised First-Degree Burn" vs AUC "Burns"), SPEC-RESP-01-00003 (CIA "Acute Viral Laryngitis" vs AUC "Acute Asthma Exacerbation"), SPEC-GI-01-00010 (CIA "Aphthous Stomatitis" vs AUC "Acute Pancreatitis"). All distinct clinical cases, all skipped safely (no --force). 4 collisions total across 3 series now (1 resolved via re-id, 3 pending) — the systemic scheme weakness is recurring, not one-off.
+  blocks: the 3 CIA collision cases (skipped, not ingested); every future overlapping series until the scheme is fixed
   safety_class: none (ingest fails safe — skips, never overwrites)
   invariant_exposure: auditability — case_id is the eval/medicolegal anchor; a non-unique scheme undermines it
-  risk: Low
+  risk: Medium
   blocks_patient_facing: false
-  build_action: SYSTEMIC (operator, before any large multi-series ingest): make seq unique across series (series tag, or globally-assigned seq). One-off tactical fix already applied to the AFib case (→ -00099). Never --force over an existing case_id.
-  gap_register_link: none (Low — systemic id-scheme decision for future series)
-  status: open (instance resolved; systemic scheme decision outstanding)
+  build_action: SYSTEMIC (operator): make seq unique across series (series tag, or globally-assigned seq) — recurring now (4 collisions/3 series). TACTICAL: re-id the 3 CIA collision cases (like AFib → free out-of-range seq) and ingest them, if they are keepers. Never --force over an existing case_id.
+  gap_register_link: none (Medium — recurring systemic id-scheme decision)
+  status: open (AFib instance resolved; 3 CIA collisions pending; systemic scheme decision outstanding)
+  last_scanned: 2026-07-04
+```
+
+```md
+- id: cia-source-firewall-leaks
+  path: source bundles (NOT in repo): SPEC-DERM-01-00036, SPEC-EMG-01-00037, SPEC-GI-01-00027, SPEC-MH-01-00044 (CIA Ingest Cases)
+  component_type: dataset
+  state: PARTIAL
+  evidence: FOUND 2026-07-04 — 4 CIA source bundles were REFUSED by the cases:ingest field-scoped firewall: the full primary_diagnosis name appears verbatim in AI-Doctor-readable (00/01/02 injectable) text — DERM-01-00036 "Pityriasis rosea", EMG-01-00037 "Post-viral fatigue", GI-01-00027 "Uncomplicated external haemorrhoid", MH-01-00044 "Transient (adjustment) insomnia". The firewall worked as designed (fail-safe REFUSE; nothing leaked into the repo). These 4 cannot be ingested until the source authoring is fixed. Not agent-fixable safely — editing injectable text to remove the diagnosis is a case-authoring/clinical judgment (kit regeneration), and the agent must not reason over answer-key content.
+  blocks: ingesting these 4 CIA cases; evidence the authoring pipeline can emit answer-key leaks that only the ingest firewall catches
+  safety_class: degrades_safe (firewall blocked at ingest; no leak reached the repo or any trunk)
+  invariant_exposure: scoring-store firewall — caught at the ingest boundary, not breached
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: OPERATOR/case-authoring — regenerate the 4 bundles via the kit with the diagnosis name removed from patient-facing (01/02 injectable) fields; re-run cases:ingest --dry-run until 0 leaks; then ingest + verify-codes + attest. Consider adding a leak pre-check to the authoring step so leaks are caught before ingest.
+  gap_register_link: none (Medium — source-authoring quality; firewall already enforces)
+  status: open
   last_scanned: 2026-07-04
 ```
 

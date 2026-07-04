@@ -1,0 +1,159 @@
+{
+  "case_id": "SPEC-RESP-01-00006",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute viral rhinosinusitis",
+    "snomed_code": "75498004",
+    "snomed_display": "Acute sinusitis",
+    "icd10am_code": "J01.90",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Acute rhinosinusitis is inflammation of the paranasal sinus mucosa, usually viral, following a URI; mucosal oedema obstructs the osteomeatal complex causing facial pain/pressure worse on bending, congestion, purulent discharge, hyposmia and maxillary dental ache. Most cases are viral and self-limiting over 10–14 days; purulent discharge alone does not indicate bacterial infection. Bacterial rhinosinusitis is suggested by symptoms >10 days without improvement, 'double-sickening', high fever with purulence, or severe unilateral pain. The ground-truth task is (1) viral vs bacterial discrimination to avoid unnecessary antibiotics, and (2) exclusion of orbital cellulitis (periorbital oedema, proptosis, diplopia, painful/limited eye movements, visual loss) and intracranial complications (severe headache, meningism, confusion).",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Acute viral rhinosinusitis",
+          "snomed_code": "75498004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Post-URI facial pressure worse on bending, purulent discharge, hyposmia at day 5 is typical viral sinusitis.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Acute bacterial rhinosinusitis",
+          "snomed_code": "75498004",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Must be monitored; not yet met (<10 days, no double-sickening).",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Orbital cellulitis",
+          "snomed_code": "194001000",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen for periorbital swelling, proptosis, diplopia, painful eye movements — sight-threatening complication.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Dental abscess",
+          "snomed_code": "109564008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Maxillary tooth ache overlaps; diffuse sinus pattern and absence of focal gingival swelling argue against."
+        }
+      ],
+      "scoring_note": "Viral sinusitis leads; orbital/intracranial complications must be actively excluded and antibiotics withheld unless bacterial criteria met."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Acute viral rhinosinusitis",
+          "snomed_code": "75498004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "No orbital or intracranial features, <10 days, no double-sickening — viral, self-limiting.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Orbital cellulitis",
+          "snomed_code": "194001000",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No periorbital/eye signs; remains escalation target if they develop."
+        },
+        {
+          "diagnosis": "Acute bacterial rhinosinusitis",
+          "snomed_code": "75498004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Reassess at day 10 or if double-sickening; then consider antibiotics."
+        }
+      ],
+      "scoring_note": "After a negative complication screen, viral sinusitis leads; symptomatic care with analgesia, saline and short decongestant, no antibiotics."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Acute viral rhinosinusitis",
+          "snomed_code": "75498004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; reassess for bacterial sinusitis at day 10 or with double-sickening."
+        }
+      ],
+      "scoring_note": "Final position is self-limiting viral sinusitis."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Orbital involvement — periorbital swelling/redness, proptosis, diplopia, painful/limited eye movements, visual change",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Orbital cellulitis is a sight- and life-threatening complication of sinusitis requiring emergency IV antibiotics/imaging.",
+      "if_missed_consequence": "Vision loss, cavernous sinus thrombosis, intracranial spread.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Intracranial involvement — severe unremitting headache, neck stiffness, confusion, focal deficit",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Suggests meningitis/abscess/venous sinus thrombosis.",
+      "if_missed_consequence": "Intracranial catastrophe.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Bacterial sinusitis features — >10 days, double-sickening, high fever with purulence",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Would justify considering antibiotics.",
+      "if_missed_consequence": "Untreated bacterial sinusitis / complication.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Antibiotics for purulent discharge",
+      "description": "Equating yellow-green discharge with bacterial infection and prescribing antibiotics before 10 days / double-sickening."
+    },
+    {
+      "pitfall_name": "Missing orbital cellulitis",
+      "description": "Not screening for periorbital/eye-movement signs in severe sinus pain."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Anterior rhinoscopy of the middle meatus",
+      "Sinus palpation/percussion tenderness",
+      "Eye examination for proptosis/eye-movement/visual acuity",
+      "Measured temperature and vitals"
+    ],
+    "correct_escalation_action": "Symptomatic self-care; ED/000 for orbital or intracranial features; GP review at day 10 or double-sickening.",
+    "premature_diagnosis_risk": "Prescribing antibiotics for viral sinusitis; missing early orbital cellulitis."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Acute rhinosinusitis (2024)",
+      "relevant_recommendation": "Most acute rhinosinusitis is viral; manage symptomatically (analgesia, saline irrigation, short-course topical decongestant). Antibiotics only if symptoms >10 days without improvement, double-sickening, or severe features. Refer urgently if orbital/intracranial complications."
+    }
+  ]
+}

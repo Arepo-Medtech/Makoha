@@ -1,0 +1,146 @@
+{
+  "case_id": "SPEC-ID-01-00028",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Pseudomembranous oral candidiasis (oral thrush)",
+    "snomed_code": "79740000",
+    "snomed_display": "Oral candidiasis",
+    "icd10am_code": "B37.0",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Oral candidiasis is overgrowth of commensal Candida (usually C. albicans) when the oral flora/immune balance is disturbed — here after broad-spectrum antibiotics. Pseudomembranous thrush produces adherent, wipeable white curd-like plaques that leave an erythematous, friable base, with burning, dysgeusia and often angular cheilitis. It is benign and responds to topical antifungals. The ground-truth tasks are (1) recognising it and distinguishing it from leukoplakia (non-scrapable, fixed) and aphthous ulcers (discrete ulcers), (2) screening for oesophageal extension (deep retrosternal odynophagia / food sticking — which needs systemic antifungal and suggests significant immunosuppression), (3) managing dehydration from pain-limited intake (patient living alone), and (4) considering an underlying predisposing condition (uncontrolled diabetes, HIV, immunosuppression, inhaled steroids) if there is no clear cause or it is recurrent/severe.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Oral candidiasis",
+          "snomed_code": "79740000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Scrapable white plaques with a red base after antibiotics, with angular cheilitis.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Oesophageal candidiasis",
+          "snomed_code": "266096002",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen for deep odynophagia/food sticking — needs systemic antifungal and suggests immunosuppression.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Leukoplakia",
+          "snomed_code": "63122001",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Leukoplakia is fixed/non-scrapable — argues against here."
+        },
+        {
+          "diagnosis": "Aphthous stomatitis",
+          "snomed_code": "426965005",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Discrete ulcers, not diffuse wipeable plaques — argues against."
+        }
+      ],
+      "scoring_note": "Oral thrush leads; oesophageal extension must be screened and underlying immunosuppression considered."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Pseudomembranous oral candidiasis",
+          "snomed_code": "79740000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Scrapable plaques/red base after antibiotics, no deep odynophagia, no obvious immunosuppression — post-antibiotic oral thrush; dehydration risk from pain.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Oesophageal candidiasis",
+          "snomed_code": "266096002",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No deep odynophagia/food sticking; escalation target if they develop."
+        },
+        {
+          "diagnosis": "Leukoplakia",
+          "snomed_code": "63122001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Plaques are scrapable."
+        }
+      ],
+      "scoring_note": "After a negative oesophageal screen, oral thrush leads; topical antifungal + analgesia-enabled hydration, with oesophageal/dehydration safety-nets and an immunosuppression consideration."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Pseudomembranous oral candidiasis",
+          "snomed_code": "79740000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; clears with topical antifungal; investigate for predisposing conditions if recurrent/unexplained."
+        }
+      ],
+      "scoring_note": "Final position is post-antibiotic oral thrush."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Oesophageal candidiasis — deep retrosternal odynophagia or dysphagia (food sticking), suggesting oesophageal extension ± significant immunosuppression",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Needs systemic antifungal and evaluation for immunosuppression (e.g. HIV).",
+      "if_missed_consequence": "Untreated oesophageal candidiasis / missed immunodeficiency.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Dehydration from pain-limited intake — unable to drink, reduced urine output, lightheadedness (living alone)",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "May need ED for analgesia/IV fluids.",
+      "if_missed_consequence": "Progressive dehydration.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Missing oesophageal candidiasis / immunosuppression",
+      "description": "Not screening deep odynophagia; unexplained thrush should prompt consideration of diabetes/HIV/immunosuppression."
+    },
+    {
+      "pitfall_name": "Ignoring dehydration",
+      "description": "Focusing on the mouth and missing pain-limited fluid intake in a patient living alone."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Direct mucosal scraping / KOH microscopy",
+      "Assessment of oesophageal involvement",
+      "Hydration examination"
+    ],
+    "correct_escalation_action": "Topical antifungal + analgesia-enabled hydration; ED for oesophageal features or failed rehydration; GP work-up if unexplained/recurrent (diabetes/HIV).",
+    "premature_diagnosis_risk": "Missing oesophageal candidiasis / underlying immunosuppression."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Oral candidiasis (2024)",
+      "relevant_recommendation": "Oral thrush: topical antifungal (nystatin suspension or miconazole gel) for 7–14 days; treat angular cheilitis; investigate predisposing factors if recurrent/unexplained. Oesophageal involvement requires systemic antifungal (e.g. fluconazole) and evaluation for immunosuppression."
+    }
+  ]
+}

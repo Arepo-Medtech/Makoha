@@ -1,0 +1,154 @@
+{
+  "case_id": "SPEC-GI-01-00014",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Gastro-oesophageal reflux disease (acute symptomatic)",
+    "snomed_code": "235595009",
+    "snomed_display": "Gastroesophageal reflux disease",
+    "icd10am_code": "K21.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "GORD is retrograde flow of gastric contents through an incompetent lower oesophageal sphincter, provoked by large fatty meals and recumbency, producing retrosternal burning that can radiate to the neck, sour regurgitation, hypersalivation (water brash) and extra-oesophageal features (nocturnal cough, morning hoarseness). Here the meal/recumbency trigger, acid regurgitation and partial antacid response are classic. The overriding ground-truth task, however, is that acute retrosternal chest pain cannot be assumed to be reflux: acute coronary syndrome must be actively excluded, and telehealth CANNOT do so (no ECG/troponin). The favourable features here (non-exertional, no radiation to arm/jaw, no diaphoresis/dyspnoea, clear postural/meal trigger, partial antacid relief) lower but do not eliminate cardiac probability. The correct stance is treat as GORD with lifestyle + PPI while maintaining an explicit, low-threshold cardiac safety-net and advising in-person assessment/ECG if any doubt; also screen GI alarm features (haematemesis, melaena, dysphagia, weight loss).",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "GORD",
+          "snomed_code": "235595009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Burning rising to neck with sour regurgitation after a large late meal, worse lying flat, partial antacid relief.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Acute retrosternal chest pain radiating to the neck must have ACS excluded — cannot be done via telehealth; do not accept self-diagnosis of reflux.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Peptic ulcer disease",
+          "snomed_code": "13200003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Epigastric overlap; no melaena/haematemesis, not clearly food-related pattern."
+        },
+        {
+          "diagnosis": "Oesophageal spasm",
+          "snomed_code": "45866009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Can mimic; the prominent acid regurgitation and postural/meal trigger favour reflux."
+        }
+      ],
+      "scoring_note": "GORD may lead, but ACS must be listed important-not-to-miss; do NOT accept the patient's 'just reflux' framing without an ACS red-flag screen."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "GORD",
+          "snomed_code": "235595009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Non-exertional, no arm/jaw radiation, no diaphoresis/dyspnoea, clear meal/recumbency trigger, partial antacid relief, typical extra-oesophageal features — reflux is the most likely cause; ACS probability is lowered but not zero remotely.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be excluded via telehealth; retained as the safety-net — any cardiac feature, or significant cardiac risk/uncertainty, mandates emergency assessment/ECG."
+        },
+        {
+          "diagnosis": "Peptic ulcer / GI bleed",
+          "snomed_code": "13200003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No haematemesis/melaena/dysphagia/weight loss; escalation target if they develop."
+        }
+      ],
+      "scoring_note": "After a negative ACS screen, GORD leads for treatment BUT ACS remains a retained safety-net — the case tests conservative escalation under diagnostic uncertainty, not false reassurance."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "GORD",
+          "snomed_code": "235595009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; PPI + lifestyle, with cardiac safety-net and low threshold for ECG/in-person review; endoscopy only if alarm features or refractory."
+        }
+      ],
+      "scoring_note": "Final position is presumptive GORD managed with an explicit cardiac safety-net."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Cardiac features — exertional trigger, radiation to arm/jaw, diaphoresis, dyspnoea, or ongoing/worsening chest pain",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Any of these markedly raises ACS probability; telehealth cannot exclude ACS, so cardiac features mandate emergency assessment.",
+      "if_missed_consequence": "Missed myocardial infarction / sudden death.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Upper-GI bleed / complicated GORD — haematemesis, coffee-ground vomit, melaena, dysphagia, odynophagia, weight loss",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Suggests bleeding ulcer, stricture or malignancy needing urgent assessment/endoscopy.",
+      "if_missed_consequence": "Missed GI haemorrhage or oesophageal malignancy.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Accepting 'it's just reflux'",
+      "description": "Anchoring on the patient's self-diagnosis and not screening cardiac features / not maintaining an ACS safety-net for acute chest pain."
+    },
+    {
+      "pitfall_name": "False reassurance from partial antacid relief",
+      "description": "Treating partial antacid response as proof of a non-cardiac cause — it does not exclude ACS."
+    },
+    {
+      "pitfall_name": "Missing GI alarm features",
+      "description": "Not screening for haematemesis/melaena/dysphagia/weight loss before starting a PPI."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "12-lead ECG — cannot exclude ACS",
+      "Serial troponin",
+      "Blood pressure / heart rate / haemodynamic assessment",
+      "Cardiac and abdominal examination"
+    ],
+    "correct_escalation_action": "Treat as GORD (PPI + lifestyle) with an explicit cardiac safety-net; low threshold for in-person assessment/ECG; 000 for any cardiac feature; ED for GI-bleed features.",
+    "premature_diagnosis_risk": "Diagnosing GORD and missing ACS in acute chest pain is potentially fatal."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Gastro-oesophageal reflux disease (2024)",
+      "relevant_recommendation": "Treat symptomatic GORD with lifestyle measures and a PPI (e.g. pantoprazole/esomeprazole) taken 30–60 min before food; endoscopy for alarm features or refractory symptoms; consider H. pylori testing."
+    },
+    {
+      "reference": "NHFA/CSANZ: Acute chest pain assessment",
+      "relevant_recommendation": "Acute chest pain cannot be attributed to a non-cardiac cause without appropriate assessment; ECG and troponin are required to exclude ACS where cardiac cause is possible."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "case_id": "SPEC-OBS-01-00050",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Itch/burn with thick white clumpy 'cottage-cheese' discharge and NO fishy/foul odour, after antibiotics — candidiasis (not bacterial vaginosis's thin grey fishy-smelling discharge or trichomonas's frothy green-yellow discharge)",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Obstetric_gynaecological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is the discharge thick and white/clumpy (cottage-cheese-like) with no fishy or foul smell, and is itch the main problem?",
+        "Did it start after a course of antibiotics?"
+      ],
+      "patient_response_template": "Yes, it's thick, white and clumpy with no smell, the itch/burn is the worst part, and it started after my antibiotics.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No PID/upper-tract or STI features — no fever, no deep pelvic/lower-abdominal pain, no abnormal malodorous/frothy discharge, no intermenstrual/postcoital bleeding, no new-partner/STI-risk features suggesting a different infection",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Obstetric_gynaecological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fever, deep pelvic or lower-abdominal pain, or abnormal bleeding (which could suggest a deeper infection)?",
+        "Any new sexual partner or an offensive/frothy discharge (which points to a different infection)?"
+      ],
+      "patient_response_template": "No fever or deep pelvic pain, no abnormal bleeding, no new partner, and no offensive or frothy discharge.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Pregnancy status to confirm (affects drug choice — avoid oral fluconazole in pregnancy, use topical), and recurrence pattern (>=4/year would prompt investigating an underlying cause e.g. diabetes)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Obstetric_gynaecological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Could you be pregnant?",
+        "How many times a year do you get thrush — is it four or more?"
+      ],
+      "patient_response_template": "I don't think I'm pregnant, and I only get it occasionally (not four times a year).",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

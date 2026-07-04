@@ -1,0 +1,72 @@
+{
+  "case_id": "SPEC-NEURO-01-00041",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No secondary-headache red flags — no sudden 'thunderclap'/worst-ever onset, no fever/neck stiffness/rash, no focal weakness/speech/vision change, no new headache with immunosuppression/cancer, no worse-on-waking/valsalva pattern, not age >50 with a new headache/jaw claudication/scalp tenderness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Did it come on instantly like a thunderclap (worst pain of your life), and any fever, stiff neck, weakness, slurred speech or vision change?",
+        "Any jaw pain on chewing, scalp tenderness, or headache worse lying down / on waking?"
+      ],
+      "patient_response_template": "No — it built up gradually, no thunderclap, no fever or stiff neck, no weakness/speech/vision change, no jaw or scalp pain, not worse on waking.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Bilateral, pressing/tightening, non-throbbing, not aggravated by routine activity, no nausea, no more than one of photophobia/phonophobia — meets tension-type (not migraine) features; pericranial muscle tenderness",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is it a pressing band on both sides (not a one-sided throb), and does routine activity make it worse?",
+        "Any nausea, or is it both light AND sound bothering you?"
+      ],
+      "patient_response_template": "It's a pressing band on both sides, not throbbing, activity doesn't worsen it, no nausea, and only sound bothers me a little.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Not overusing acute analgesia (screens medication-overuse headache) and no very high blood pressure symptoms",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How many days a week do you take painkillers for headache?",
+        "Any known very high blood pressure?"
+      ],
+      "patient_response_template": "Only occasionally, not most days, and no known high blood pressure.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

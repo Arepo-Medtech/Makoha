@@ -1,0 +1,74 @@
+{
+  "case_id": "SPEC-RESP-01-00004",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Cough, rhinorrhoea and conjunctivitis present alongside the sore throat",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you also have a cough, runny nose or red/sore eyes?",
+        "Can you tell me a bit more about that?"
+      ],
+      "patient_response_template": "Yes — I've had a cough, a runny nose and my eyes have been red and sore.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Can still open mouth fully, no muffled 'hot-potato' voice, no one-sided throat swelling, no drooling",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Can you open your mouth fully?",
+        "Is your voice muffled?",
+        "Any one-sided swelling in the throat or drooling?"
+      ],
+      "patient_response_template": "I can open my mouth okay, my voice is normal, no one-sided swelling and I'm not drooling.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Signs of dehydration risk — no oral intake all day, weakness; monitor urine output/dizziness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How much have you managed to drink and pass urine today?",
+        "Any dizziness on standing?"
+      ],
+      "patient_response_template": "I haven't drunk anything all day and I've barely passed urine; I feel a bit lightheaded standing up.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

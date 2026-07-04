@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — CIA batch: 43 ingested; 3 id collisions + 4 firewall-refused surfaced (2026-07-04)
+
+**Status:** CIA common-infections batch partially ingested; 2 new findings registered. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **43 of 50 operator-supplied CIA (Common Infections & Afflictions) casebundles ingested** from `…/Common Infections & Afflictions/… /CIA Ingest Cases` — all `straightforward`/tier-01 (47 common + 3 important_not_to_miss). 190 codes receipted (store total **911**). 194 cases now (151 attested + 43 CIA `pending_clinician_review`).
+- **`eval:cases` PASS** — attested 151 (CIA excluded, pending); distribution **45/51/3 → 58/40/3** (the straightforward batch pulls straightforward toward the 60% target and the over-weight atypical toward 30%; complex unchanged at 3%). Coverage 5 tiers · 3 categories · 19 specialties.
+- **7 bundles NOT ingested — both handled fail-safe:**
+  - **3 cross-series id collisions** (distinct cases, skipped, no `--force`): SPEC-DERM-01-00021 (CIA *Localised First-Degree Burn* vs AUC *Burns*), SPEC-RESP-01-00003 (CIA *Acute Viral Laryngitis* vs AUC *Acute Asthma Exacerbation*), SPEC-GI-01-00010 (CIA *Aphthous Stomatitis* vs AUC *Acute Pancreatitis*). Added to `case-id-cross-series-collision` (now 4 collisions/3 series → risk Low→Medium, recurring).
+  - **4 FIREWALL-REFUSED** — the full primary_diagnosis name leaked into AI-Doctor-readable (00/01/02 injectable) text: SPEC-DERM-01-00036 "Pityriasis rosea", SPEC-EMG-01-00037 "Post-viral fatigue", SPEC-GI-01-00027 "Uncomplicated external haemorrhoid", SPEC-MH-01-00044 "Transient (adjustment) insomnia". The ingest firewall REFUSED them (fail-safe; nothing leaked to the repo). **NEW register item `cia-source-firewall-leaks`** (Medium) — source authoring must be regenerated with the diagnosis removed from patient-facing fields; NOT agent-fixable (would require reasoning over answer-key content). Evidence the authoring pipeline can emit leaks that only the ingest firewall catches.
+
+### Safety
+- Only clean bundles ingested; sealed nodes split/hashed by the tool, never read into agent reasoning (metadata-only recon; firewall-leak diagnosis names are tool-reported, not agent-read). No `--force`; existing 151 untouched (git: 43 new dirs, 0 modified). Source SOAP `.txt` never entered the repo.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: 194 cases; remaining input-gated = attest 43 CIA, complex volume, 3 CIA collisions, 4 source leaks.
+- `case-id-cross-series-collision`: +3 instances (recurring, Medium).
+- **NEW** `cia-source-firewall-leaks` (Medium).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — AFib case attested → 151/151 attested, full case set clinician-reviewed (2026-07-04)
 
 **Status:** Whole 151-case set now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

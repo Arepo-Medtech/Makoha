@@ -1,0 +1,144 @@
+{
+  "case_id": "SPEC-RESP-01-00008",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Allergic rhinitis (acute exacerbation)",
+    "snomed_code": "61582004",
+    "snomed_display": "Allergic rhinitis",
+    "icd10am_code": "J30.9",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Allergic rhinitis is IgE-mediated nasal mucosal inflammation on aeroallergen exposure (here renovation dust), with mast-cell histamine release producing paroxysmal sneezing, watery rhinorrhoea, nasal itch and congestion, and frequently allergic conjunctivitis. Turbinates appear pale/boggy (versus erythematous in viral rhinitis). It is benign; the subjective 'suffocating' sensation reflects nasal obstruction, not lower-airway or laryngeal compromise. The ground-truth task is (1) allergic vs viral discrimination (itch, sudden allergen-triggered onset, no prodrome/fever, pale boggy turbinates), (2) exclusion of anaphylaxis/laryngeal oedema and asthma (no wheeze, patent airway), and (3) correct step-up management: intranasal corticosteroid as maintenance mainstay, oral antihistamine, allergen avoidance, and topical decongestant limited to <=3 days.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Allergic rhinitis",
+          "snomed_code": "61582004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden sneezing/rhinorrhoea/itch/congestion after dust exposure.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Anaphylaxis / laryngeal oedema",
+          "snomed_code": "39579001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "'Suffocating' framing mandates excluding airway/systemic involvement.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Acute viral rhinopharyngitis",
+          "snomed_code": "82272006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Overlaps but lacks itch, has prodrome/fever and erythematous (not pale) turbinates."
+        },
+        {
+          "diagnosis": "Asthma / bronchospasm",
+          "snomed_code": "195967001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen for wheeze/lower-airway involvement given breathing-distress framing.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        }
+      ],
+      "scoring_note": "Allergic rhinitis leads; anaphylaxis and asthma must be actively excluded before reassurance."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Allergic rhinitis",
+          "snomed_code": "61582004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Itch-predominant, allergen-triggered, no prodrome/fever, no wheeze/airway compromise — allergic cause confirmed; anaphylaxis and asthma excluded.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Anaphylaxis / laryngeal oedema",
+          "snomed_code": "39579001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No airway/systemic features; escalation target if they develop."
+        },
+        {
+          "diagnosis": "Acute viral rhinopharyngitis",
+          "snomed_code": "82272006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Itch and sudden allergen onset without prodrome favour allergic over viral."
+        }
+      ],
+      "scoring_note": "After negative anaphylaxis/asthma screen, allergic rhinitis leads; intranasal corticosteroid + antihistamine + avoidance."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Allergic rhinitis",
+          "snomed_code": "61582004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; benign, controlled with avoidance and step-up pharmacotherapy."
+        }
+      ],
+      "scoring_note": "Final position is benign allergic rhinitis."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Anaphylaxis / airway compromise — throat tightness/closing, lip/tongue swelling, stridor, wheeze, difficulty swallowing",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Distinguishes benign nasal obstruction from life-threatening laryngeal oedema/bronchospasm.",
+      "if_missed_consequence": "Airway obstruction / fatal anaphylaxis.",
+      "safety_netting_edge_ref": "ESC-001"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage on 'suffocating'",
+      "description": "Treating subjective nasal-obstruction panic as impending airway emergency without screening airway/lower-airway features."
+    },
+    {
+      "pitfall_name": "Antibiotics for allergic rhinitis",
+      "description": "Prescribing antibiotics for a non-infective allergic process."
+    },
+    {
+      "pitfall_name": "Unlimited topical decongestant",
+      "description": "Recommending oxymetazoline without a strict <=3-day cap (rebound congestion)."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Anterior rhinoscopy (pale boggy turbinates)",
+      "Chest auscultation for wheeze",
+      "Peak flow / spirometry"
+    ],
+    "correct_escalation_action": "Step-up allergic-rhinitis therapy + avoidance; call 000 for throat tightness/swelling/wheeze.",
+    "premature_diagnosis_risk": "Missing anaphylaxis/asthma behind nasal-obstruction panic; rebound congestion from prolonged decongestant."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "ARIA / Therapeutic Guidelines: Allergic rhinitis (2024)",
+      "relevant_recommendation": "Intranasal corticosteroids are the most effective maintenance therapy; add oral/intranasal antihistamine and allergen avoidance. Topical decongestants only short-term (<=3–5 days)."
+    }
+  ]
+}
