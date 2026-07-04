@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — id-collision resolved: AFib case re-id'd → SPEC-CARD-01-00099 and ingested (2026-07-04)
+
+**Status:** The skipped CVD Atrial Fibrillation case is re-id'd and ingested; id-collision instance closed. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Re-id (operator-authorised):** the CVD `SPEC-CARD-01-00005` bundle (*Atrial Fibrillation*, source `CDV-005.txt`) — which had collided with the existing attested AUC `SPEC-CARD-01-00005` (*Acute Coronary Syndrome*) — was re-assigned **`SPEC-CARD-01-00099`** (free globally; max prior seq was 00051; chosen above the source-number-derived 1–51 range to mark it a manual disambiguation). Done as a **blind literal id-string swap (9 occurrences) on a scratchpad COPY** — the operator's source archive under `PATIENT INFORMATION` was never modified, and no clinical (sealed-node) content was read. Specialty/difficulty/source preserved.
+- **Ingested** `SPEC-CARD-01-00099` (dry-run OK, then real; 151 case dirs now). **12 codes receipted** (`cases:verify-codes`; store total **721**). The existing `SPEC-CARD-01-00005` (ACS) verified untouched.
+- **`eval:cases` PASS** — attested 150 (the new AFib case is `pending_clinician_review`, unreviewed 1); distribution 45/51/3 → **46/51/3**; coverage 5 tiers · 3 categories · 19 specialties unchanged.
+- **Attestation NOT auto-applied:** the AFib case was the 50th CVD case, but the recorded CVD attestation is scoped `n=49` and did not include it — so it stays pending pending explicit operator confirmation that their CVD review covered it.
+
+### Register impact
+- `case-id-cross-series-collision`: **instance resolved** (AFib → -00099, ingested) → risk Medium→Low; the **systemic** id-scheme (seq not unique across series) decision remains open for future large multi-series ingest.
+- `case-set-underpopulated` / **R-23**: 151 cases (150 attested + 1 pending AFib); remaining input-gated = attest the AFib case, complex-tier volume to ~10%.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift; git scope = 1 new case dir added, existing untouched.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 49 CVD cases clinician-attested → 150 attested, gate PASS (2026-07-04)
 
 **Status:** CVD batch attested; entire 150-case set now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

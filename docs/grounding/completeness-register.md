@@ -478,9 +478,9 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING (input-gated): (a) more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present, ~15 needed at 150-case volume); (b) resolve the 1 id collision (`case-id-cross-series-collision`) and ingest that case. Flip the gate's distribution warning to blocking once complex reaches ~10%. (Receipts, CI gate, atypical+complex-seed, coverage minimums, and attestation of all 150: DONE.)
+  build_action: REMAINING (input-gated): (a) attest the re-id'd AFib case SPEC-CARD-01-00099 (ingested 2026-07-04, pending — was the CVD collision case, NOT covered by the recorded n=49 CVD attestation); (b) more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present, ~15 needed at this volume). Flip the gate's distribution warning to blocking once complex reaches ~10%. (Receipts, CI gate, atypical+complex-seed, coverage minimums, attestation of the 150, and the id-collision instance: DONE.)
   gap_register_link: R-23
-  status: open (150 attested; only complex-VOLUME + id-collision input-gated remain)
+  status: open (151 cases, 150 attested; AFib attestation + complex-VOLUME input-gated)
   last_scanned: 2026-07-04
 ```
 
@@ -489,15 +489,15 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: data/cases/ SPEC id scheme (SPEC-{specialty}-{difficulty}-{seq}); scripts/ingest-case-bundles.mjs
   component_type: dataset
   state: PARTIAL
-  evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series. CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both map to SPEC-CARD-01-00005 (same specialty+difficulty+seq, different clinical cases). cases:ingest correctly refused to overwrite (COLLISION, no --force) so the existing attested/receipted case was preserved and the CVD Atrial Fibrillation case was SKIPPED (not ingested). Left unaddressed, every future series with an overlapping seq silently drops a case at ingest.
-  blocks: ingesting the collided CVD case; id uniqueness as source series multiply
-  safety_class: none (ingest fails safe — skips, never overwrites; no data lost, the source bundle remains on disk)
+  evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series: CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both mapped to SPEC-CARD-01-00005. cases:ingest failed safe (COLLISION, no --force) and skipped the AFib case. INSTANCE RESOLVED 2026-07-04 (operator-authorised): the AFib bundle was re-id'd (blind literal id-string swap on a scratchpad COPY — source archive untouched, clinical content never read) to **SPEC-CARD-01-00099** (free globally; deliberately above the source-number-derived 1–51 range to mark it manually disambiguated) and ingested; 12 codes receipted; gate PASS. The existing SPEC-CARD-01-00005 (ACS) was never touched. SYSTEMIC gap remains: the id SCHEME is still not unique across series, so a future overlapping series would collide again.
+  blocks: nothing now (the AFib instance is ingested); future large multi-series ingest if the scheme is unchanged
+  safety_class: none (ingest fails safe — skips, never overwrites)
   invariant_exposure: auditability — case_id is the eval/medicolegal anchor; a non-unique scheme undermines it
-  risk: Medium
+  risk: Low
   blocks_patient_facing: false
-  build_action: OPERATOR DECISION on the id scheme — disambiguate seq across series (e.g. a series tag, or globally-assigned seq), then re-id the CVD Atrial Fibrillation case and ingest it. Do NOT --force over the existing SPEC-CARD-01-00005 (would wipe an attested, receipted case).
-  gap_register_link: none (Medium — surfaced for operator id-scheme decision)
-  status: open
+  build_action: SYSTEMIC (operator, before any large multi-series ingest): make seq unique across series (series tag, or globally-assigned seq). One-off tactical fix already applied to the AFib case (→ -00099). Never --force over an existing case_id.
+  gap_register_link: none (Low — systemic id-scheme decision for future series)
+  status: open (instance resolved; systemic scheme decision outstanding)
   last_scanned: 2026-07-04
 ```
 
