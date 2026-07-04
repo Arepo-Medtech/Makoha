@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 3 re-id'd CIA cases attested → 201/201 attested (2026-07-04)
+
+**Status:** All 201 ingested cases now clinician-attested; complex-tier volume is the sole remaining M6 item. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL written in-session attestation** of the 3 re-id'd CIA collision cases (`SPEC-DERM-01-00099`, `SPEC-GI-01-00099`, `SPEC-RESP-01-00099`). Recorded as `bulk_clinician_attestation` in each manifest `review` block; Python scope-guard asserted the pending set == exactly those 3 ids before writing. Review block only — node files + sha256 untouched; git diff = 3 manifests.
+- **`eval:cases`: attested conforming 198 → 201; unreviewed 3 → 0; PASS.** Distribution 59/38/2, coverage 5 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 2% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 201 cases attested**; SOLE remaining input-gated item is complex-tier volume.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (201 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 3 CIA id collisions re-id'd + ingested; all collision instances resolved (2026-07-04)
 
 **Status:** The 3 CIA cross-series id collisions re-id'd and ingested; all 4 known collision instances now resolved. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

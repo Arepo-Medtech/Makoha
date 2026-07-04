@@ -25,7 +25,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - fhir-broker-unbuilt · mcp/servers/fhir-broker/ · PARTIAL (mock read/search + Observation→parser wired; live EHR + conformance pending) · Medium · pf:false
 - messaging-geo-unbuilt · mcp/servers/messaging-geo/ · PARTIAL (mock; never-sends; live providers pending) · Medium · pf:false
 - pipeline-routing-retrieval-stub · verification/pipeline.js · PARTIAL · Medium · pf:false
-- case-set-underpopulated · data/cases/ (**201 cases**: 198 attested + 3 re-id'd-CIA pending; **940 codes receipted**; eval gate CI-BLOCKING PASS; distribution **59/38/2**, coverage 5 tiers · 3 categories) · PARTIAL · Medium · pf:false (→ R-23; remaining = attest 3 re-id'd CIA, complex-tier volume to ~10% — INPUT-GATED)
+- case-set-underpopulated · data/cases/ (**201 attested** cases, 0 unreviewed; **940 codes receipted**; eval gate CI-BLOCKING PASS; distribution **59/38/2**, coverage 5 tiers · 3 categories; whole set attested by KL 2026-07-04) · PARTIAL · Medium · pf:false (→ R-23; SOLE remaining = complex-tier volume to ~10% — INPUT-GATED)
 - case-id-cross-series-collision · data/cases/ SPEC id scheme · PARTIAL · Low · pf:false — ALL 4 INSTANCES RESOLVED via re-id (AFib + 3 CIA → per-bucket -00099); only the systemic seq-uniqueness decision remains for future series
 - ~~cia-source-firewall-leaks~~ · **resolved 2026-07-04** — operator remediated the 4 bundles (diagnosis removed from injectable fields); re-dry-run 0 leaks; ingested + receipted; firewall held throughout (never breached)
 - reference-case-manifest-missing · data/cases/SPEC-CARD-04-00001/ (pre-ingest, no manifest; named-exempt in verify-codes + eval gate) · PARTIAL · Low · pf:false (retrofit via ingest round-trip under a gated step)
