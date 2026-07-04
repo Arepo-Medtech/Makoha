@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 4 remediated CIA cases attested → 198/198 attested (2026-07-04)
+
+**Status:** All 198 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL written in-session attestation** of the 4 firewall-remediated CIA cases (DERM-01-00036, EMG-01-00037, GI-01-00027, MH-01-00044). Recorded as `bulk_clinician_attestation` in each manifest `review` block (scope: *CIA firewall-remediated batch (n=4)*); Python scope-guard asserted the pending set == exactly those 4 by id before writing. Review block only — node files + sha256 untouched; git diff = 4 manifests.
+- **`eval:cases`: attested conforming 194 → 198; unreviewed 4 → 0; PASS.** Distribution 59/39/3, coverage 5 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 3% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 198 cases attested**; remaining input-gated = complex-tier volume and the 3 CIA id collisions.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (198 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 4 firewall-remediated CIA bundles ingested; leak finding resolved (2026-07-04)
 
 **Status:** The 4 previously firewall-refused CIA bundles were remediated by the operator and ingested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
