@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 3 CIA id collisions re-id'd + ingested; all collision instances resolved (2026-07-04)
+
+**Status:** The 3 CIA cross-series id collisions re-id'd and ingested; all 4 known collision instances now resolved. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Re-id (operator-authorised), same method as the AFib case** — blind literal id-string swap (9 ids each) on scratchpad copies; source archive untouched; clinical content not reasoned from:
+  - `SPEC-DERM-01-00021` (CIA *Localised First-Degree Burn*) → **`SPEC-DERM-01-00099`**
+  - `SPEC-RESP-01-00003` (CIA *Acute Viral Laryngitis*) → **`SPEC-RESP-01-00099`**
+  - `SPEC-GI-01-00010` (CIA *Aphthous Stomatitis*) → **`SPEC-GI-01-00099`**
+  - Convention: seq `00099` in a specialty bucket = a manually disambiguated re-id (consistent with the AFib case → `SPEC-CARD-01-00099`).
+- **Ingested** (dry-run 3/3 OK, no collision, no firewall leak). The 3 existing colliding AUC cases (Burns / Acute Asthma / Acute Pancreatitis) verified **untouched** (still their AUC sources). 13 codes receipted (store total **940**). 201 cases now.
+- **`eval:cases` PASS** — attested 198 (the 3 re-id'd are `pending_clinician_review`, unreviewed 3); distribution 59/39/3 → **59/38/2** (3 more straightforward dilute complex); coverage 5 tiers · 3 categories · 19 specialties unchanged.
+
+### Register impact
+- `case-id-cross-series-collision`: **all 4 instances resolved** (AFib + these 3) → risk Medium→Low; only the systemic id-scheme decision remains for future series.
+- `case-set-underpopulated` / **R-23**: 201 cases; remaining input-gated = attest the 3 re-id'd CIA, complex-tier volume.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift; git scope = 3 new case dirs, existing untouched.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 4 remediated CIA cases attested → 198/198 attested (2026-07-04)
 
 **Status:** All 198 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
