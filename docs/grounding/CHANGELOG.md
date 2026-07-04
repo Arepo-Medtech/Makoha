@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 49 CVD cases clinician-attested → 150 attested, gate PASS (2026-07-04)
+
+**Status:** CVD batch attested; entire 150-case set now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL provided written in-session attestation** of the 49 CVD cases. Recorded as `bulk_clinician_attestation` in each of the 49 `case_manifest.json` `review` blocks (scope: *CVD Cardiovascular batch ingested 2026-07-04 (n=49)*, reviewer KL), mirroring the AMS/original batches.
+- **Attestation-scope safety:** the operator's message initially carried the previous "50 AMS cases" wording; since AMS was already attested and the 49 pending were the CVD batch, the mismatch was surfaced and the operator confirmed "attest the 49 CVD cases" before anything was written. The flip script's scope guard binds to the **CVD ingest commit `2baad80`** (not source filenames — one CVD case, a vasculitis/GCA case `SPEC-VASC-04-00046`, lacks a `CDV` filename tag; an earlier filename-based guard correctly ABORTED on it before the commit-based scoping was verified).
+- **Edit scope: the manifest `review` block ONLY** — no node file (00–13) or recorded `files[].sha256` touched; integrity intact. git diff = exactly 49 `case_manifest.json`.
+- **`eval:cases`: attested conforming 101 → 150 (≥45); unreviewed 49 → 0**; PASS. Distribution 45/51/3, coverage 5 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 3% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: full 150-case attestation DONE; remaining input-gated work narrows to **complex-tier VOLUME (~15 needed vs 5 present)** and the **id collision** (`case-id-cross-series-collision`).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (attested 150); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — CVD batch ingested (49 cases; complex tier + 3rd category seeded; coverage minimums cleared) (2026-07-04)
 
 **Status:** CVD cardiovascular batch ingested; complex tier + `zebra_rare` category now present. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
