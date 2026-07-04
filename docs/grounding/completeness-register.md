@@ -478,9 +478,9 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING (input-gated): (a) attest the re-id'd AFib case SPEC-CARD-01-00099 (ingested 2026-07-04, pending — was the CVD collision case, NOT covered by the recorded n=49 CVD attestation); (b) more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present, ~15 needed at this volume). Flip the gate's distribution warning to blocking once complex reaches ~10%. (Receipts, CI gate, atypical+complex-seed, coverage minimums, attestation of the 150, and the id-collision instance: DONE.)
+  build_action: SOLE REMAINING (input-gated): more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present = 3%, ~15 needed at this volume). Flip the gate's distribution warning to blocking once complex reaches ~10%. (Receipts, CI gate, atypical+complex-seed, coverage minimums, the id-collision instance, AND full attestation of all 151 cases: DONE — eval:cases 151 attested, 0 unreviewed, PASS.)
   gap_register_link: R-23
-  status: open (151 cases, 150 attested; AFib attestation + complex-VOLUME input-gated)
+  status: open (151/151 attested; ONLY complex-tier VOLUME input-gated remains)
   last_scanned: 2026-07-04
 ```
 

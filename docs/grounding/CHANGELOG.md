@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — AFib case attested → 151/151 attested, full case set clinician-reviewed (2026-07-04)
+
+**Status:** Whole 151-case set now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL provided written in-session attestation** of the re-id'd AFib case `SPEC-CARD-01-00099` (the only pending case; scope verified as exactly that CVD Atrial Fibrillation case before writing). Recorded as `single_case_clinician_attestation` in its manifest `review` block. Edit scope: review block only — node files + sha256 untouched; git diff = 1 manifest.
+- **`eval:cases`: attested conforming 150 → 151; unreviewed 1 → 0; PASS.** Distribution 46/51/3, coverage 5 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 3% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 151 cases attested**; SOLE remaining input-gated item is complex-tier VOLUME (~15 needed vs 5 present).
+- `case-id-cross-series-collision`: instance fully closed (re-id'd + ingested + attested); systemic id-scheme decision (Low) stands for future series.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (151 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — id-collision resolved: AFib case re-id'd → SPEC-CARD-01-00099 and ingested (2026-07-04)
 
 **Status:** The skipped CVD Atrial Fibrillation case is re-id'd and ingested; id-collision instance closed. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
