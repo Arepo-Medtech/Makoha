@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 50 AMS cases clinician-attested → 101 attested, gate PASS (2026-07-04)
+
+**Status:** Attestation recorded; 50 AMS cases now count toward the eval gate. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS (attested 101, 0 unreviewed).
+
+### Change
+- **Operator KL provided written in-session attestation** having clinically reviewed all 50 AMS answer keys. Recorded as `bulk_clinician_attestation` in each of the 50 `case_manifest.json` `review` blocks: `clinician_reviewed:true`, `review_status:"clinician_reviewed"`, `source_type:"llm_generated_reviewed"`, `reviewer_id:"KL"`, `attested_utc`, `recorded_by:"claude-opus-4-8 (agent, on clinician's explicit written confirmation in-session)"`, `scope:"AMS batch ingested 2026-07-03 (n=50)"` — mirroring the original 51-case batch attestation. Verbatim statement recorded: *"Clinician confirmed in writing having clinically reviewed all 50 AMS (Autoimmune Mild Severity) answer keys in this batch and attests them clinically correct."*
+- **Edit scope: the manifest `review` block ONLY.** No node file (00–13) and no recorded `files[].sha256` was touched, so the eval gate's per-file integrity check remains valid. git diff = exactly 50 `case_manifest.json`.
+- **`eval:cases` re-run: attested conforming 51 → 101 (≥45); unreviewed 50 → 0**; all 50 attestation warnings cleared; distribution unchanged 45/55/0 (computed over all envelopes). Remaining warnings (non-blocking): complex tier 0% and diagnosis-category coverage 2 of 3.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: attestation DONE; remaining input-gated work narrows to **complex-tier (05–07) cases (none exist yet) + a 3rd diagnosis_category**.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (attested 101); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — atypical top-up ingested (50 AMS cases; distribution 88/12/0 → 45/55/0) (2026-07-03)
 
 **Status:** Atypical top-up ingested from operator-supplied source; complex tier + attestation remain input-gated. Branch `step-6-case-eval-gate`. npm test 20/20, verification pass, stubs 9/9, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
