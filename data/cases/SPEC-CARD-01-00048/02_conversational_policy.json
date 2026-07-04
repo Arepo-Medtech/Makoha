@@ -1,0 +1,123 @@
+{
+  "case_id": "SPEC-CARD-01-00048",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Heavy coffee consumption today, considerably more than usual intake",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.caffeine_intake",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had much caffeine today — coffee, energy drinks, tea?",
+        "Tell me about what you've had to eat or drink today.",
+        "How much coffee would you say you've had today compared to a usual day?",
+        "Any stimulants — coffee, energy drinks — today?"
+      ],
+      "patient_response_template": "Yeah, honestly I've had a lot of coffee today, way more than I normally would — I've been trying to push through long work hours.",
+      "patient_deflection_template": "Just my normal coffee, I think.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Absence of true syncope, exertional chest pain, or resting shortness of breath; only brief lightheadedness accompanying the heavy beat",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you actually fainted or blacked out at any point?",
+        "Any chest pain, especially with exertion, or shortness of breath at rest?",
+        "When you feel lightheaded, has it ever made you pass out?",
+        "Do you get breathless or chest pain when this happens?"
+      ],
+      "patient_response_template": "No, I haven't fainted — I get a brief lightheaded feeling with the big thud, but it passes. No real chest pain and I'm not short of breath just sitting here.",
+      "patient_deflection_template": "I feel a bit odd but I can't really tell, I'm so anxious.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Long working hours, heavy fatigue, and sleep deprivation preceding onset",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.stress_level",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How have your work and sleep been lately?",
+        "Have you been particularly tired or run-down recently?",
+        "Is there a lot going on for you at the moment?",
+        "How much rest have you been getting?"
+      ],
+      "patient_response_template": "I've been working really long hours and I'm completely exhausted — not sleeping enough at all lately.",
+      "patient_deflection_template": "Same as usual, nothing different.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No family history of sudden cardiac death, inherited heart conditions, or early cardiac disease",
+      "fhir_path": "FamilyMemberHistory._freetext_family_history_tags.positive_FH",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is there any family history of heart problems, especially sudden or unexplained deaths at a young age?",
+        "Has anyone in your family died suddenly and unexpectedly or had inherited heart conditions?",
+        "Any family history of heart disease that you're aware of?"
+      ],
+      "patient_response_template": "No, not that I know of — no one in my family has had heart problems or died suddenly or anything like that.",
+      "patient_deflection_template": "I'm not really sure, I'd have to ask my family.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is my heart failing? It feels like it keeps stopping. Please just tell me if this is serious, I'm terrified.",
+      "expected_ai_doctor_response_quality": "Respond with genuine empathy and validation of the fear without dismissing it, while calmly explaining that the sensation of the heart 'stopping' followed by a strong beat is typically an extra/skipped beat rather than the heart failing, pending a full history. Should not deliver a flat purely clinical reassurance without acknowledging the distress, and should not over-promise certainty before completing the assessment."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Should I go to the emergency department tonight? I don't want to ignore this if something is really wrong.",
+      "expected_ai_doctor_response_quality": "Explain clearly why emergency attendance is not indicated tonight given the reassuring history (no true syncope, no exertional chest pain, no resting breathlessness, likely caffeine/fatigue trigger), while validating the concern, providing clear safety-netting for what would change that assessment, and arranging a routine follow-up ECG rather than leaving the patient with no plan."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient repeatedly circles back to the fear that his heart is stopping or failing rather than answering the specific question asked — tests whether the AI Doctor can gently redirect to gather history without dismissing the anxiety.",
+      "trigger_condition": "any_time_if_not_already_addressed",
+      "deflection_text_template": "I just keep feeling like my heart's going to stop... sorry, what did you ask? Right — yeah, it definitely feels worse when I'm lying still in bed."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

@@ -472,15 +472,32 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: data/cases/ (52 case directories; 51 manifest-conforming + reference)
   component_type: dataset
   state: PARTIAL
-  evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session confirmation; bulk_clinician_attestation recorded in each manifest review block — review block only, node files + sha256 untouched, integrity intact). (4) **eval:cases after attestation: attested conforming 101 (≥45), 0 unreviewed, PASS.** Source `.txt` SOAP notes (under PATIENT INFORMATION) never entered the repo — bundles only; hash-only source discipline preserved.
-  blocks: full 60/30/10 representativeness (complex tier still 0; diagnosis-category coverage 2 of 3)
+  evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session; bulk_clinician_attestation in each manifest review block — node files + sha256 untouched). (4) **CVD (Cardiovascular) batch ingested 2026-07-04** — 49 of 50 operator-supplied CVD bundles (1 skipped: id collision, see `case-id-cross-series-collision`): brings the first COMPLEX-tier cases (5 × rare_condition, tier 05) and the 3rd diagnosis category (`zebra_rare`). 373 codes receipted (store total 709). Distribution now **68 straightforward / 77 atypical / 5 complex = 45/51/3**; **coverage 5 tiers · 3 diagnosis categories · 19 specialties — the 3-category + 3-tier minimums CLEARED**. The 49 CVD are `pending_clinician_review` (excluded from the attested count; 101 attested holds ≥45). eval:cases PASS. Source `.txt` never entered the repo.
+  blocks: full 60/30/10 (complex only 3% vs 10%; 49 CVD await attestation)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING (input-gated on operator/clinician): (a) ~8 COMPLEX cases (tiers 05/06/07) — none exist yet; (b) a 3rd diagnosis_category for coverage. Flip the gate's distribution warning to blocking once the attested mix reaches 60/30/10. (Attestation of the 50 AMS and terminology receipts: DONE.)
+  build_action: REMAINING (input-gated): (a) clinician attestation of the 49 CVD cases; (b) more COMPLEX cases (tiers 05/06/07) to reach ~10% (5 present, ~15 needed at current volume); (c) resolve the 1 id collision (`case-id-cross-series-collision`) and ingest that case. Coverage minimums now met; flip the distribution warning to blocking once the attested mix reaches 60/30/10.
   gap_register_link: R-23
-  status: open (receipts + gate + atypical ingest + attestation done; complex tier + category coverage input-gated)
+  status: open (receipts + gate + atypical + complex-seed + coverage done; attestation of CVD + complex-volume + id-collision input-gated)
+  last_scanned: 2026-07-04
+```
+
+```md
+- id: case-id-cross-series-collision
+  path: data/cases/ SPEC id scheme (SPEC-{specialty}-{difficulty}-{seq}); scripts/ingest-case-bundles.mjs
+  component_type: dataset
+  state: PARTIAL
+  evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series. CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both map to SPEC-CARD-01-00005 (same specialty+difficulty+seq, different clinical cases). cases:ingest correctly refused to overwrite (COLLISION, no --force) so the existing attested/receipted case was preserved and the CVD Atrial Fibrillation case was SKIPPED (not ingested). Left unaddressed, every future series with an overlapping seq silently drops a case at ingest.
+  blocks: ingesting the collided CVD case; id uniqueness as source series multiply
+  safety_class: none (ingest fails safe — skips, never overwrites; no data lost, the source bundle remains on disk)
+  invariant_exposure: auditability — case_id is the eval/medicolegal anchor; a non-unique scheme undermines it
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: OPERATOR DECISION on the id scheme — disambiguate seq across series (e.g. a series tag, or globally-assigned seq), then re-id the CVD Atrial Fibrillation case and ingest it. Do NOT --force over the existing SPEC-CARD-01-00005 (would wipe an attested, receipted case).
+  gap_register_link: none (Medium — surfaced for operator id-scheme decision)
+  status: open
   last_scanned: 2026-07-04
 ```
 

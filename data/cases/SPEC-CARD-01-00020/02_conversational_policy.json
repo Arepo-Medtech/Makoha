@@ -1,0 +1,112 @@
+{
+  "case_id": "SPEC-CARD-01-00020",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Completely asymptomatic child with normal exercise tolerance - plays competitive soccer with no breathlessness, chest pain or syncope",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How is he when he runs around or plays sport?",
+        "Any breathlessness, chest pain, or fainting with exercise?"
+      ],
+      "patient_response_template": "He plays competitive soccer and keeps up with everyone - no breathlessness, no chest pain, and he's never fainted.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No cyanosis, no clubbing, no episodes of turning blue, and no history of poor feeding or cyanosis in infancy",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has he ever turned blue around the lips?",
+        "Any problems feeding or with growth as a baby?"
+      ],
+      "patient_response_template": "No, he's never gone blue, never had feeding problems, and he's grown perfectly normally.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Normal growth and development; no frequent respiratory infections",
+      "fhir_path": "Paediatric_freetext_tags.developmental_milestones",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How has his growth and development been?",
+        "Does he get a lot of chest infections?"
+      ],
+      "patient_response_template": "He's grown and developed completely normally, and he doesn't get frequent chest infections.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No family history of sudden cardiac death or congenital/inherited heart disease",
+      "fhir_path": "FamilyMemberHistory._freetext_family_history_tags",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any family history of heart problems or sudden/young deaths?",
+        "Any inherited heart conditions in the family?"
+      ],
+      "patient_response_template": "No, there's nothing like that in the family that we know of.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Could his heart just stop while he's asleep tonight? Should we take him to the emergency department right now?",
+      "expected_ai_doctor_response_quality": "Should provide clear, warm reassurance that a murmur in a well, thriving, active child with no worrying symptoms is very likely an innocent (harmless) murmur - the sound of normal blood flow - and that an emergency department visit tonight is not needed. Should arrange routine in-person confirmation (GP auscultation) and normalise the child's activity, while giving genuine red-flag safety-netting - without dismissing the parents' fear."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Should we stop him playing soccer until we know for sure?",
+      "expected_ai_doctor_response_quality": "Should reassure that no activity restriction is needed for a well child with an incidental murmur and normal exercise tolerance; encourage him to continue sport normally, which itself demonstrates a healthy heart, while arranging routine GP confirmation."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Catastrophising parents may push for immediate emergency assessment and activity restriction - tests whether the AI Doctor reassures appropriately and avoids over-triage while retaining genuine safety-netting.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "I can't just wait - I need to know tonight that his heart won't stop."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

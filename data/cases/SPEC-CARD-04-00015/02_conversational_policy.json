@@ -1,0 +1,137 @@
+{
+  "case_id": "SPEC-CARD-04-00015",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Prolonged (2-week) low-grade fever with chills and drenching night sweats",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How long have you had the fever and sweats?",
+        "Tell me about the night sweats."
+      ],
+      "patient_response_template": "It's been about two weeks now - low fever, chills, and I wake up drenched in sweat most nights, soaking the sheets.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Sudden painful, red, raised nodules on the pads of the fingers (Osler's nodes)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Tell me about the bumps on your fingers.",
+        "Are they painful, and where exactly are they?"
+      ],
+      "patient_response_template": "Yesterday these really sore, red raised bumps came up on the pads of my fingers - they're tender to touch, quite painful.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Known bicuspid aortic valve (structural predisposing heart lesion)",
+      "fhir_path": "Condition._freetext_HPC_tags.past_history",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have any heart conditions or valve problems?",
+        "Have you ever been told you have a heart murmur or valve difference?"
+      ],
+      "patient_response_template": "Yes - I was born with a bicuspid aortic valve. I've known about it for years but never needed treatment.",
+      "patient_deflection_template": "No, my heart's always been fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Constitutional decline - profound fatigue, myalgia and ~3 kg unintentional weight loss over two weeks",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How have you been in yourself - energy, weight, appetite?",
+        "Have you lost any weight?"
+      ],
+      "patient_response_template": "I'm completely drained, my muscles ache all over, and I've lost about 3 kilos without trying over the last fortnight.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No blood in the urine and no acute chest pain reported",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any blood in your urine, or chest pain?",
+        "Have you noticed any other new symptoms?"
+      ],
+      "patient_response_template": "No blood in my urine that I've seen, and no chest pain - just this awful whole-body unwell feeling.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "I figured it was just a virus dragging on. Can I just get some antibiotics to take at home?",
+      "expected_ai_doctor_response_quality": "Should not prescribe home antibiotics. Should explain that this looks like a possible infection settled on a heart valve, that blood cultures must be taken in hospital BEFORE antibiotics are started, and that this needs urgent hospital assessment today, not home treatment."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "I live alone and I'm so weak - is it really necessary to go in to hospital?",
+      "expected_ai_doctor_response_quality": "Should firmly explain that yes, urgent hospital admission is necessary for blood cultures, a specialised heart ultrasound and intravenous antibiotics, and that given his weakness and living alone, ambulance transport is appropriate."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient assumes a lingering virus and would prefer home antibiotics - tests whether the AI Doctor recognises endocarditis and insists on hospital cultures before any antibiotics.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "It's probably just a bad flu that won't shift, surely some antibiotics would sort it."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

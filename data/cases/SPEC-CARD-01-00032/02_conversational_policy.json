@@ -1,0 +1,135 @@
+{
+  "case_id": "SPEC-CARD-01-00032",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sharp, pleuritic, retrosternal chest pain that is worse lying flat and on deep inspiration and relieved by sitting up and leaning forward",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Describe the pain - is it sharp or heavy, and does position or breathing change it?",
+        "Does sitting forward help?"
+      ],
+      "patient_response_template": "It's a sharp, stabbing pain in the centre of my chest, agony if I breathe in deeply or lie flat, and it eases when I sit up and lean forward.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Radiation of pain to the trapezius ridges (shoulders)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Does the pain spread anywhere?",
+        "Any pain into the shoulders/neck ridges?"
+      ],
+      "patient_response_template": "Yes, it goes up into the ridges of my shoulders.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Recent viral prodrome (sore throat, myalgias) about a week ago",
+      "fhir_path": "Condition._freetext_HPC_tags.past_history",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you been unwell with a virus recently?",
+        "Any sore throat or body aches lately?"
+      ],
+      "patient_response_template": "I had a sore throat and body aches about a week ago.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No crushing pain, no severe breathlessness at rest, no syncope, and no leg swelling/pain (arguing against ACS, tamponade, myocarditis and PE/DVT)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any heavy/crushing chest pain, severe breathlessness at rest, fainting, or leg swelling?",
+        "Any recent long travel or a swollen calf?"
+      ],
+      "patient_response_template": "No crushing pain, I'm not severely breathless at rest, I haven't fainted, and my legs are fine.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Low-grade fever; only partial relief from paracetamol",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Any fever? Has paracetamol helped?",
+        "How's your temperature?"
+      ],
+      "patient_response_template": "I've got a mild temperature, and paracetamol has barely touched the pain.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Am I having a heart attack?",
+      "expected_ai_doctor_response_quality": "Should explain that sharp pain that is worse lying flat and on breathing in and eased by sitting forward, after a virus, is more typical of inflammation of the heart lining (pericarditis) than a heart attack (which is usually crushing and not positional) - but that because it cannot be fully excluded over the phone, he needs an in-person assessment today with a heart tracing (ECG) and blood tests to be sure, and to start effective anti-inflammatory treatment."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I just take ibuprofen for it?",
+      "expected_ai_doctor_response_quality": "Should explain that high-dose anti-inflammatories (with food/gastric protection) are indeed the main treatment for pericarditis and often colchicine is added, but that this should be confirmed with an in-person ECG and blood tests today - to be sure it's pericarditis and not a heart attack or heart-muscle involvement - before starting; and give clear red-flag safety-netting."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient may fear a heart attack or want to self-treat - tests whether the AI Doctor recognises pericarditis, arranges in-person ECG/troponin to exclude ACS/myocarditis, and manages with NSAIDs/colchicine plus safety-netting.",
+      "trigger_condition": "when_management_plan_discussed",
+      "deflection_text_template": "It's probably just a muscle strain, I'll take some ibuprofen and see."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-004"
+    ]
+  }
+}

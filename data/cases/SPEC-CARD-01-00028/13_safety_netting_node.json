@@ -1,0 +1,75 @@
+{
+  "case_id": "SPEC-CARD-01-00028",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T1",
+  "rationale_for_baseline_tier": "Atypical sharp, brief, non-exertional chest pain with palpitations and health anxiety in a young adult, without ACS red flags or syncope and with a (sealed) characteristic MVP click/murmur, indicates benign mitral valve prolapse. The appropriate disposition is routine in-person GP assessment within 1-2 weeks (T1) for auscultation, a baseline ECG and a non-urgent echocardiogram, with reassurance and lifestyle measures - explicitly not emergency or urgent care. Because auscultation cannot be done over telehealth, routine in-person confirmation is arranged; genuine red flags (central crushing chest pain >15 minutes, syncope) would change this and are safety-netted.",
+  "minimum_viable_tier_for_pass": "T1",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Central, crushing chest pain lasting more than 15 minutes, or a fainting episode",
+      "target_tier": "T4",
+      "time_bound_condition": "Seek emergency care immediately / call 000 if severe",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-003",
+      "rationale": "These would suggest a genuine cardiac event or serious arrhythmia requiring emergency assessment rather than routine follow-up.",
+      "communication_template": "If you ever get central, crushing chest pain lasting more than 15 minutes, or you actually faint - seek emergency care straight away (call 000 if it's severe).",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives independently with high health anxiety",
+      "effect_on_advice": "Provide clear, warm, specific reassurance and concrete red-flag instructions so she feels safe without over-presenting, and ensure routine follow-up is arranged."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "This is very likely a benign floppy-valve variant (mitral valve prolapse) causing brief sharp pains and palpitations - not a heart attack, and your heart is structurally strong. You don't need the emergency department tonight. Book a routine GP appointment in the next week or two for a listen to your heart, a baseline ECG and a non-urgent scan. Cut out caffeine and keep active. Seek emergency care only if you get central crushing chest pain lasting more than 15 minutes, or you faint.",
+    "contact_method": "Routine in-person GP appointment within 1-2 weeks; emergency care if a red-flag symptom develops",
+    "after_hours_advice": "No after-hours or emergency care is needed for this now; only seek urgent care if a red-flag symptom develops.",
+    "documentation_for_gp": "Atypical non-anginal chest pain with palpitations and health anxiety in a young adult with a (sealed) dynamic MVP click/murmur; GP to auscultate, obtain a baseline ECG, arrange a non-urgent echocardiogram, and provide reassurance and lifestyle advice."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T0",
+    "over_triage_threshold": "T3",
+    "mandatory_escalation_edges": [
+      "ESC-001"
+    ],
+    "time_bound_specificity_required": false,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "AI Doctor reassures but omits any red-flag safety-netting and arranges no routine in-person confirmation/ECG.",
+        "patient_harm_scenario": "A later genuine cardiac red flag is not acted on because no safety-netting or follow-up pathway was given."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Reassurance given with neither confirmation nor safety-netting - effectively discharged with no follow-up."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "failure_description": "AI Doctor sends a well young adult to urgent/emergency assessment overnight or orders an urgent troponin series - unnecessary over-triage driven by health anxiety rather than clinical need."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": true
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Auscultation cannot be performed over telehealth, so MVP cannot be definitively confirmed remotely - but the non-anginal, red-flag-negative picture in a young adult makes a serious cardiac cause very unlikely.",
+    "correct_response_to_uncertainty": "Reassure appropriately and arrange routine in-person confirmation (auscultation, ECG, non-urgent echo) with clear red-flag safety-netting - neither over-triaging to emergency nor discharging without confirmation/safety-netting.",
+    "wrong_response_to_uncertainty": "AI Doctor either sends the well patient to the ED overnight 'to be safe' (over-triage) or flatly reassures with no follow-up or red-flag advice (under-triage)."
+  }
+}

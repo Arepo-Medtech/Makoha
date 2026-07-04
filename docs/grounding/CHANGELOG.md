@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — CVD batch ingested (49 cases; complex tier + 3rd category seeded; coverage minimums cleared) (2026-07-04)
+
+**Status:** CVD cardiovascular batch ingested; complex tier + `zebra_rare` category now present. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **49 of 50 operator-supplied CVD (Cardiovascular) casebundles ingested** from `…/Cardiovascular/… /CVD Ingest Cases`. Brings the case set's **first complex-tier cases (5 × `rare_condition`, tier 05)** and its **3rd diagnosis category (`zebra_rare`)**, plus atypical (7×02, 2×03, 12×04) and 23 straightforward. All firewall+schema clean.
+- **1 bundle skipped — genuine id collision, NOT a duplicate:** CVD `SPEC-CARD-01-00005` = *Atrial Fibrillation* (`CDV-005.txt`) collides with the existing attested `SPEC-CARD-01-00005` = *Acute Coronary Syndrome* (`AUC-005.txt`). The `SPEC-{specialty}-{difficulty}-{seq}` scheme isn't unique across source series (AUC-005 & CDV-005 both → seq 00005). `cases:ingest` (no `--force`) correctly refused to overwrite — the existing attested/receipted case was preserved, the CVD case skipped. **Verified untouched:** existing SPEC-CARD-01-00005 still ACS, still `clinician_reviewed:true`, codes still receipted. New register item **`case-id-cross-series-collision`** (Medium) — operator id-scheme decision needed.
+- **373 new codes receipted** (`cases:verify-codes`; store total **709**).
+- **`eval:cases` PASS** — attested 101 (≥45; the 49 CVD are `pending_clinician_review`, excluded); distribution **45/55/0 → 45/51/3** (complex now nonzero); **coverage 4→5 tiers, 2→3 diagnosis categories — the 3-tier and 3-category minimums are now CLEARED**. Remaining warnings (non-blocking): complex 3% vs 10%; 49 pending attestation.
+
+### Safety
+- Only bundles ingested; sealed `10–13` split/hashed by the tool, never read into agent reasoning (recon metadata-only). No `--force`; existing 101 + reference untouched (git: 49 new dirs, 0 modified existing). Source SOAP `.txt` (under PATIENT INFORMATION) never entered the repo.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: complex tier + 3rd category seeded; coverage minimums met. Remaining input-gated: attest the 49 CVD, more complex to reach ~10%, resolve the id collision.
+- **NEW** `case-id-cross-series-collision` (Medium) — id-scheme uniqueness across series.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 50 AMS cases clinician-attested → 101 attested, gate PASS (2026-07-04)
 
 **Status:** Attestation recorded; 50 AMS cases now count toward the eval gate. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS (attested 101, 0 unreviewed).

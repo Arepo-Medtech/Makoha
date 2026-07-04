@@ -1,0 +1,131 @@
+{
+  "case_id": "SPEC-VASC-01-00001",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Patient reports a distinct pulsatile/throbbing sensation in the mid-abdomen, new onset",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Can you tell me more about what the pain and any other feelings in your belly are like?",
+        "Do you notice anything unusual when you touch or feel your stomach, like a throbbing or pulsing?",
+        "Is there anything else going on with your abdomen besides the pain?"
+      ],
+      "patient_response_template": "Yes, actually — I can feel a strong pulse beating hard in my belly. It feels different to my normal heartbeat, like something is throbbing right there.",
+      "patient_deflection_template": "Just the pain really, nothing else I've noticed.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "162073007",
+        "display": "Pulsating sensation"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Pain radiates from the abdomen through to the lower back",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Does the pain move anywhere else, like your back?",
+        "Where exactly do you feel the pain — does it spread anywhere?",
+        "Is the pain only in your stomach or does it go somewhere else too?"
+      ],
+      "patient_response_template": "It's mainly in the middle of my stomach but it does go right through to my lower back as well.",
+      "patient_deflection_template": "Just in my stomach, nowhere else.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "279039007",
+        "display": "Low back pain"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Transient presyncope (lightheadedness) on standing, no frank loss of consciousness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you felt dizzy, lightheaded, or like you might faint at all?",
+        "Any episodes where you nearly blacked out or felt faint?",
+        "Did you feel unsteady or dizzy when you stood up?",
+        "Have you had any fainting or near-fainting spells with this?"
+      ],
+      "patient_response_template": "Actually yes — I felt quite lightheaded when I stood up earlier, like I might go dizzy and pass out, but I didn't actually faint. I sat back down straight away.",
+      "patient_deflection_template": "No, I haven't felt faint or dizzy.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-002"
+      },
+      "snomed_ref": {
+        "system": "SNOMED_CT",
+        "code": "266276002",
+        "display": "Presyncope"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Pain has been steadily worsening over the hours since onset, not fluctuating or improving",
+      "fhir_path": "Condition._freetext_HPC_tags.timing_pattern",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has the pain been getting better, worse, or staying the same since it started?",
+        "How has the pain changed over the last several hours?",
+        "Is it constant or does it come and go?"
+      ],
+      "patient_response_template": "It's been steadily getting worse since yesterday evening. It hasn't let up at all, if anything it's more intense now than when it started.",
+      "patient_deflection_template": "It's about the same as when it started, I think.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-004",
+        "symptom_item_ref": "SYM-005",
+        "escalation_edge_ref": "ESC-001"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Do you think this could just be a pulled muscle or bad indigestion? My wife thinks I should just wait until morning and see the GP.",
+      "expected_ai_doctor_response_quality": "Acknowledge the concern but do not endorse waiting until morning. Explain that a new pulsatile abdominal sensation with worsening pain and lightheadedness needs assessment right now, not reassurance that it is likely benign. Should not agree that waiting until morning is reasonable."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

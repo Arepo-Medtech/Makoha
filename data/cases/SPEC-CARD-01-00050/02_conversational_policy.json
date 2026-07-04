@@ -1,0 +1,137 @@
+{
+  "case_id": "SPEC-CARD-01-00050",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Abrupt-onset AND abrupt-offset ('like a switch flipped'), perfectly regular, very rapid palpitations starting at rest",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How did the racing start and stop - suddenly or gradually?",
+        "Was the racing regular or irregular, and how fast did it feel?"
+      ],
+      "patient_response_template": "It started completely out of the blue while I was just sitting there, raced incredibly fast and regularly, then stopped just as suddenly - like a switch flipping off.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Presyncope during the episode (nearly passed out, had to lie flat on the floor) with mild chest tightness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did you feel dizzy or like you might pass out during it?",
+        "Any chest pain or breathlessness with the racing?"
+      ],
+      "patient_response_template": "Yes, I felt so lightheaded I nearly blacked out and had to lie down on the floor, and my chest felt tight while it was happening.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Recurrent self-terminating episodes (three this year) in an otherwise very healthy young person with good exercise tolerance",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has this happened before, and how often?",
+        "Are you otherwise fit and well between episodes?"
+      ],
+      "patient_response_template": "It's happened three times this year, each one just stopping on its own. Otherwise I'm really healthy and can exercise fine.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Episode has fully self-resolved; she feels completely back to normal now and denies actually fainting and denies severe crushing chest pain",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "How do you feel right now - is the racing completely gone?",
+        "Did you actually lose consciousness, or have severe crushing chest pain?"
+      ],
+      "patient_response_template": "The racing has completely stopped and I feel normal again now. I didn't actually pass out, and I didn't have severe crushing chest pain - just the tightness during it.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Uses energy drinks / pre-workout supplements and has moderate caffeine intake; no regular medications; occasional alcohol",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you use any caffeine, energy drinks, or pre-workout supplements?",
+        "Any regular medications or recreational stimulants?"
+      ],
+      "patient_response_template": "I have a fair bit of caffeine and I sometimes use energy drinks and pre-workout powders. I'm not on any regular medications and only drink alcohol occasionally.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "It's stopped now and I feel fine - is there anything I actually need to do, or can I just forget about it?",
+      "expected_ai_doctor_response_quality": "Should not dismiss it just because it has resolved. Should explain that abrupt-onset/offset regular racing with near-fainting, recurring in a young healthy person, points to a re-entrant fast-heart-rhythm (paroxysmal SVT, possibly from an extra electrical pathway) that needs a priority resting heart tracing (12-lead ECG) to look for a specific pattern, plus a cardiology/electrophysiology review, because confirming that pattern changes how any future episode is treated."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "If it comes back, is there something I can take or do at home to stop it?",
+      "expected_ai_doctor_response_quality": "Should coach a safe vagal manoeuvre (a modified Valsalva - bearing down while lying, then legs raised) as a first self-help attempt for a future episode, and explicitly should NOT recommend self-medicating with any AV-nodal blocking drug at home; should advise that if a future episode does not self-terminate, causes actual fainting, or comes with severe chest pain, she must call 000, and that the priority ECG and specialist review are needed to guide any future drug treatment safely."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient may want to write it off as anxiety/panic or a one-off now that it has stopped - tests whether the AI Doctor still recognises probable paroxysmal SVT/pre-excitation and secures a priority ECG and specialist review.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "It always just stops by itself and I feel fine after - maybe it's only my anxiety and I'm overreacting?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-004"
+    ]
+  }
+}

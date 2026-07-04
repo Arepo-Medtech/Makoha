@@ -1,0 +1,127 @@
+{
+  "case_id": "SPEC-CARD-04-00007",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Patient takes a twice-daily heart rate medication (metoprolol) and a once-daily heart rhythm medication (digoxin), and has been fully adherent to both",
+      "fhir_path": "MedicationRequest._freetext_medication_tags",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Can you or the nurse tell me exactly what heart medications she's on and how she's been taking them?",
+        "Has she had any changes to her heart medications recently, or any missed or extra doses?",
+        "What regular medications is she currently taking, especially anything for her heart?",
+        "Nurse, can you check her medication chart and confirm what she's on and the doses?"
+      ],
+      "patient_response_template": "Nurse: She's on metoprolol 50mg twice a day and digoxin 125 micrograms once a day, she's been taking them as prescribed, no recent changes or missed doses that I can see on the chart.",
+      "patient_deflection_template": "I'm not sure of the exact names, just my usual heart tablets.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Caregiver-observed brief confusion and sluggish mentation this afternoon, a change from the patient's usual baseline alertness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has she seemed confused or different in herself today compared to usual?",
+        "Nurse, have you noticed any change in her alertness or thinking today?",
+        "Is she normally this slow to respond, or is this new for her?",
+        "Any change in her mental state or confusion today?"
+      ],
+      "patient_response_template": "Nurse: Yes, actually — she seemed a bit confused and out of it this afternoon, which isn't like her, she's usually quite sharp. She's come back to herself a little since but is still slower than usual to respond.",
+      "patient_deflection_template": "She seems her normal self to me, nurse hasn't mentioned anything.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-005",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Absence of acute severe chest pain, profound diaphoresis, or nausea accompanying the chest heaviness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the chest heaviness associated with any sharp pain, sweating, or nausea?",
+        "Has she had any severe chest pain, sweating, or feeling sick with this?",
+        "Nurse, has she described the chest feeling as painful, or more like heaviness/pressure?",
+        "Any sweating or nausea along with the chest heaviness?"
+      ],
+      "patient_response_template": "Nurse: No severe pain that she's described, no sweating that I've noticed, and she hasn't mentioned feeling sick — she describes it more as a heavy, tired feeling in her chest rather than sharp pain.",
+      "patient_deflection_template": "I'm not sure, she hasn't said much about it.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Gradual decline in exercise tolerance and mobility over several weeks preceding today's acute worsening",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has she been managing her usual activities and mobility okay over the past few weeks, or has this been building up?",
+        "Has her energy or mobility been declining gradually before today, or did this come on suddenly?",
+        "How has she been doing generally over the last few weeks compared to today?"
+      ],
+      "patient_response_template": "Nurse: Looking back, she has seemed more tired and slower with her frame over the last few weeks, but today is clearly much worse than that — this acute decline today is new.",
+      "patient_deflection_template": "She's been about the same as usual until today, as far as I know.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-007"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Nurse: Should I just let her rest and see how she goes overnight, or do we need to do something now?",
+      "expected_ai_doctor_response_quality": "Clearly and firmly explain that a heart rate this slow combined with low blood pressure, chest heaviness, and new confusion in an older patient on nodal-blocking medications is a medical emergency that cannot wait until morning — should not agree to a 'watch and wait overnight' plan."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Nurse: Should we give her the next dose of her heart tablets as scheduled, or hold them?",
+      "expected_ai_doctor_response_quality": "Advise withholding further doses of the nodal-blocking medications (the heart rate/rhythm tablets) pending urgent medical assessment, since they are the most likely contributor to the current symptomatic bradycardia, while being clear this is advice pending the assessing clinician's/ED's confirmation, not a new prescription."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The patient herself gives brief, minimising answers ('I'm alright, just tired') due to sluggish mentation, requiring the AI Doctor to rely on and actively prompt the nurse for corroborating detail rather than accepting the patient's own minimisation at face value.",
+      "trigger_condition": "when_patient_answers_directly",
+      "deflection_text_template": "Patient: I'm alright... just a bit tired, that's all."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}
