@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Hydralazine started ~8 weeks ago; symmetrical myalgia/arthralgia and low-grade fever without a rash",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Have you started any new medications in the last couple of months?",
+        "What is the new blood-pressure tablet and when did it start?"
+      ],
+      "patient_response_template": "I started hydralazine about 8 weeks ago for my blood pressure.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No focal infective source (no cough, dysuria, sore throat, diarrhoea, skin infection)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any cough, burning urine, sore throat, diarrhoea, or skin infection?",
+        "Any obvious source of infection anywhere?"
+      ],
+      "patient_response_template": "No cough, no burning urine, no sore throat, no diarrhoea, no skin sores.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No confusion, no severe rigors, no breathlessness, no chest pain; temperature only mildly elevated",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any confusion, drenching rigors, breathlessness or chest pain?",
+        "Do you feel your mind is clear?"
+      ],
+      "patient_response_template": "My mind is clear, no drenching rigors, no breathlessness or chest pain.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Should I just stop the tablet and take some paracetamol and see how I go?",
+      "expected_ai_doctor_response_quality": "Advise stopping hydralazine (likely culprit) and confirm this with the prescriber, but because she is febrile, weak and lives alone and infection cannot be excluded remotely, arrange same-day in-person assessment rather than home self-management alone; avoid casually starting NSAIDs in an older patient with fever and unknown renal/BP status."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-04-00013"
+}

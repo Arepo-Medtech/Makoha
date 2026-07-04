@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Inflammation strictly involves the cartilaginous ear and SPARES the (non-cartilaginous) earlobe",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is the soft fleshy earlobe at the bottom involved, or only the firm upper cartilage part?",
+        "Where exactly is the redness/swelling — the whole ear or just the cartilage?"
+      ],
+      "patient_response_template": "Only the firm upper cartilage part is red and swollen; the fleshy earlobe is completely normal.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No fever, no ear-canal discharge, no pain/swelling behind the ear over the mastoid, no ear protrusion, no recent piercing/trauma (against mastoiditis/bacterial perichondritis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fever, discharge from the ear canal, or pain/swelling behind the ear over the bone with the ear pushed forward?",
+        "Any recent ear piercing or injury?"
+      ],
+      "patient_response_template": "No fever, no discharge, nothing swollen behind the ear or pushing it forward, and no recent piercing or injury.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No hoarseness, throat/airway pain, breathing difficulty, or red eyes (other-cartilage/systemic a cartilage-inflammation condition involvement)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any hoarseness, pain over your windpipe, breathing difficulty, or red painful eyes?",
+        "Any nasal bridge pain?"
+      ],
+      "patient_response_template": "No hoarseness, no windpipe pain, my breathing is fine, and no red eyes or nose pain.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Is this a spreading brain infection? Do I need antibiotics or hospital?",
+      "expected_ai_doctor_response_quality": "Explain that earlobe sparing points to cartilage inflammation (a cartilage-inflammation condition) rather than a bacterial infection/mastoiditis, but because cartilage infection (perichondritis) threatens the cartilage and cannot be fully excluded remotely, arrange urgent same/next-day in-person assessment alongside NSAIDs/cold compress, with a firm mastoiditis/airway safety-net."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-04-00040"
+}

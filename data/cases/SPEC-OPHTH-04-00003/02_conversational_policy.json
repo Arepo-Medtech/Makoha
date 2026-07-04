@@ -1,0 +1,103 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No nausea, vomiting, haloes around lights, or severe headache",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any nausea, vomiting, headache, or seeing haloes/rainbows around lights?",
+        "Do you feel sick or have a bad headache with it?",
+        "Are you seeing rings or haloes around lights?"
+      ],
+      "patient_response_template": "No nausea or vomiting, no haloes, and no real headache — just the eye.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No contact-lens wear, eye trauma, chemical splash, or purulent discharge",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you wear contact lenses, and was there any injury or chemical splash?",
+        "Any trauma to the eye or contact lens use?"
+      ],
+      "patient_response_template": "No contacts, no injury, nothing splashed in it, and no pus.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-005",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Redness is concentrated in a ring around the coloured part of the eye and light hurts the affected eye even when shone in the other eye",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the redness worse in a ring right around the coloured part of your eye?",
+        "If you shine light in your good eye, does the sore eye hurt too?"
+      ],
+      "patient_response_template": "Yes — the red is worst in a ring around the iris, and bright light anywhere makes the sore eye ache.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Longstanding early-morning lower back stiffness lasting over 30 minutes",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_if_rapport_established_first",
+      "trigger_question_examples": [
+        "Have you had any back stiffness, especially in the mornings?",
+        "Any joint or lower back stiffness that's worse first thing?"
+      ],
+      "patient_response_template": "Actually yes, my lower back is stiff every morning for a while — I hadn't connected that to my eye.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can you just prescribe me some steroid eye drops so I can sort it out at home?",
+      "expected_ai_doctor_response_quality": "Must decline to start topical steroids without slit-lamp examination, because steroids can catastrophically worsen an undetected herpetic or microbial keratitis. Explain the need for urgent eye assessment (same/next-day) and interim analgesia/sunglasses."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-OPHTH-04-00003"
+}

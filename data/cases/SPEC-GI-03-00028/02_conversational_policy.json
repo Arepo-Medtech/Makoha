@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Passing abundant liquid stool and flatus; no vomiting; abdomen not visibly distended (against complete obstruction)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are you still passing wind and stool, or has everything stopped?",
+        "Have you vomited, and is your tummy visibly swollen?"
+      ],
+      "patient_response_template": "I'm passing lots of watery stool and wind, no vomiting, and my tummy isn't swollen.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Colicky (not constant) pain that eases after passing stool/wind; no fever, no RLQ localisation, no bloody stool",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the pain constant, or does it come in waves and ease after you go?",
+        "Any fever, blood in the stool, or pain in your lower right side?"
+      ],
+      "patient_response_template": "It comes in waves and eases after I go; no fever, no blood, and not in my lower right.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Onset after a rich meal on a background of biopsy-proven a microscopic bowel-inflammation condition with a normal colonoscopy",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Did this start after a particular meal?",
+        "Do you have a diagnosed bowel condition?"
+      ],
+      "patient_response_template": "It started after a heavy meal; I have a microscopic bowel-inflammation condition with a normal colonoscopy.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Do I need a CT scan and hospital tonight for a blockage?",
+      "expected_ai_doctor_response_quality": "Screen obstruction/appendicitis/perforation red flags; because she is passing abundant stool/flatus without vomiting or distension, obstruction is unlikely, so offer an antispasmodic and simple measures with a strict surgical-abdomen safety-net and a low threshold for in-person review (abdomen not examinable remotely) — rather than a reflex midnight CT or unscreened reassurance."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-GI-03-00028"
+}

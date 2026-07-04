@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — atypical top-up ingested (50 AMS cases; distribution 88/12/0 → 45/55/0) (2026-07-03)
+
+**Status:** Atypical top-up ingested from operator-supplied source; complex tier + attestation remain input-gated. Branch `step-6-case-eval-gate`. npm test 20/20, verification pass, stubs 9/9, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **50 new AMS (Autoimmune Mild Severity) casebundles ingested** via `cases:ingest` from operator-supplied source `…/PATIENT INFORMATION/…/Autoimmune Mild Severity/… /AMS Ingest Cases`: 1 tier-02 (atypical_presentation) + 37 tier-03 (red_herring_laden) + 12 tier-04 (atypical_presentation_high_risk); new specialties RHEUM + HAEMAT. All 50 NEW (0 collisions), firewall + schema clean (dry-run OK_DRY_RUN 50/50). 400 files written (50 × 7 nodes + manifest).
+- **227 new candidate codes receipted** via `cases:verify-codes` (→ mock_verified_pending_live_ncts); total receipted across the store now **336** (109 + 227); idempotent for the prior 109.
+- **`eval:cases` re-run: PASS** — attested conforming 51 (≥45); distribution **88/12/0 → 45/55/0**; difficulty-tier coverage **2 → 4 tiers** (3-tier minimum cleared); specialties 17 → 19. The 50 are `llm_generated_unreviewed` / `pending_clinician_review`: they shift the reported distribution but are **excluded from the attested count** by design (50 attestation warnings, non-blocking).
+
+### Safety / privacy
+- **Scoring-store firewall intact.** Only bundles were ingested; the ingest tool split/hashed/firewall-scanned all 7 nodes per case (its job). No agent reasoning read sealed `10–13` content — recon was metadata-only (difficulty/category/id/review/code-counts). Post-ingest grep confirms no runtime JS in verification/integration/mcp/portal references sealed nodes.
+- **Source SOAP `.txt` never entered the repo.** The source notes live under `PATIENT INFORMATION`; the "AMS Ingest Cases" subfolder holds only the de-identified `.casebundle.json` outputs. Hash-only source discipline preserved (manifests carry `source.sha256`, not content). No `.txt` read into context.
+- **No `--force`, no overwrite.** All 50 new; the prior 51 manifests (and their M6 receipts) untouched.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: atypical top-up ingested; distribution + tier coverage advanced; **REMAINING (input-gated): clinician attestation of the 50, ~8 COMPLEX cases (tiers 05–07, none exist yet), a 3rd diagnosis_category.** Index + gap-register updated.
+
+### Verification
+`npm test` 20/20; `npm run verification` pass; `trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift; `eval:cases` PASS (warnings as designed).
+
+---
+
 ## ARCH_PLAN Milestone M6 — case-set terminology batch-verify + CI-blocking eval gate (2026-07-03)
 
 **Status:** Receipts + gate complete; difficulty top-up surfaced as INPUT-GATED. Branch `step-6-case-eval-gate`. npm test 20/20, `npm run verification` pass, trunk stubs 9/9, `eval:cases` PASS, `cases:verify-codes` idempotent (re-run: 109 already done).

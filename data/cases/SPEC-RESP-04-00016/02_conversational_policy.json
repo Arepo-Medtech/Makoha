@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Reliever inhaler is not relieving symptoms despite repeated use",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How many puffs of your reliever have you taken, and is it helping at all?",
+        "Is the reliever wearing off quickly or not working?"
+      ],
+      "patient_response_template": "I've taken several puffs and it's barely touching it.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Able to speak in full sentences; no blue lips, drowsiness, or exhaustion (severity markers)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Can you speak in full sentences, or only a few words at a time?",
+        "Are your lips or fingertips turning blue, or are you feeling drowsy/exhausted?"
+      ],
+      "patient_response_template": "I can still get full sentences out, my lips aren't blue, and I'm not drowsy — just working hard to breathe.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Background adult-onset asthma with nasal polyps and eosinophilia (adult-onset asthma/allergy background context)",
+      "fhir_path": "Condition.code",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_if_rapport_established_first",
+      "trigger_question_examples": [
+        "Have you been told your asthma started as an adult, and do you have nasal polyps?",
+        "Any recent blood tests showing high eosinophils?"
+      ],
+      "patient_response_template": "Yes, my asthma started as an adult and I get nasal polyps; a recent test showed high eosinophils.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can you just prescribe me some steroids and I'll manage at home tonight?",
+      "expected_ai_doctor_response_quality": "Explain that a reliever-refractory asthma attack at night in someone alone needs urgent in-person assessment (to auscultate, measure peak flow/oximetry and give nebulised treatment) rather than home management; give interim spacer technique and reliever dosing while arranging transport, and clear 000 criteria."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RESP-04-00016"
+}

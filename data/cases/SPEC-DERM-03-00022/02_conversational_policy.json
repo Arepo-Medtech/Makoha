@@ -1,0 +1,81 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Violaceous flat-topped papules with fine white (Wickham) striae on flexor wrists/ankles; no finger web-space burrows; no itchy contacts",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are the bumps flat-topped and purple with fine white lines on top?",
+        "Do you see any thin lines/burrows between your fingers, and is anyone else itchy?"
+      ],
+      "patient_response_template": "Yes, flat-topped, purple, with fine white lines; no lines between my fingers, and no one else is itchy.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Scratched areas becoming hot, spreading red, or draining pus (secondary infection)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are any scratched areas hot, spreading red, or oozing pus?",
+        "Any fever with the skin?"
+      ],
+      "patient_response_template": "No pus or spreading redness, and no fever — just raw from scratching.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No new drugs, soaps or exposures; no oral or genital lesions",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Any new medications, soaps or detergents recently?",
+        "Any sores in the mouth or genital area?"
+      ],
+      "patient_response_template": "No new products or medications, and nothing in the mouth or genitals.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is this scabies? Do I need to treat my whole house?",
+      "expected_ai_doctor_response_quality": "Explain that the violaceous flat-topped papules with Wickham striae and no burrows/contacts indicate an autoimmune skin condition, a non-contagious autoimmune rash, so household scabies treatment is not needed; arrange in-person confirmation and give itch relief with a secondary-infection safety-net."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-DERM-03-00022"
+}

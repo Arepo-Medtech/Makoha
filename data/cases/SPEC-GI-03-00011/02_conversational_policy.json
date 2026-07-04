@@ -1,0 +1,84 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No constant severe pain, no high fever, no anorexia or persistent vomiting",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the pain constant and severe, or does it come and go?",
+        "Any high fever, loss of appetite, or repeated vomiting?",
+        "Does the pain make you not want to eat at all?"
+      ],
+      "patient_response_template": "It comes and goes rather than constant, no high fever, my appetite is okay and I haven't vomited.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Pain markedly worse with movement/coughing or a rigid abdomen (peritonism)",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does it hurt much more when you move, cough or press and let go?",
+        "Is your tummy hard/rigid, or soft?"
+      ],
+      "patient_response_template": "It's a bit worse moving but my tummy feels soft, not rigid, and coughing isn't agony.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Central-to-RLQ migrating colicky pain with loose stools and a history of episodic ileocaecal symptoms",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Where did the pain start and how has it moved?",
+        "Have you had similar right-sided gut symptoms before, and any change in your bowels?"
+      ],
+      "patient_response_template": "It started centrally then moved to the lower right, I've had milder versions before, and I've had a couple of loose motions.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Is it my appendix? Do I need surgery tonight?",
+      "expected_ai_doctor_response_quality": "Screen the appendicitis/peritonism red flags; because RLQ pain cannot be examined remotely, arrange urgent same-day in-person assessment rather than confidently reassuring, while explaining a an inflammatory bowel condition flare is plausible. Avoid both dismissing it and asserting it is definitely appendicitis."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-GI-03-00011"
+}

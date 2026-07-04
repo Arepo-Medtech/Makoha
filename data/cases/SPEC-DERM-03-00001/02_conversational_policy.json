@@ -1,0 +1,82 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "The bald patch is smooth with no scaling, redness, flaking or crusting of the scalp skin",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the skin in the bald patch red, flaky or scaly at all?",
+        "Can you see any crusting, scaling or broken skin in the patch?",
+        "Does the scalp look inflamed or is the skin smooth?"
+      ],
+      "patient_response_template": "No, the skin looks completely smooth and normal — no flaking or redness, it's just bald.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No fever, no rash elsewhere, no joint pain and no mouth ulcers",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fevers, rashes elsewhere, joint pains or mouth ulcers?",
+        "Have you felt unwell in yourself, or noticed any rash or joint aches?",
+        "Any other symptoms anywhere in your body?"
+      ],
+      "patient_response_template": "No, I feel completely well otherwise — no fever, no rash, no joint pain.",
+      "patient_deflection_template": "I don't think so, I've just been focused on my hair.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Short broken hairs tapered at the scalp are visible at the edge of the patch",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_only_on_examination_or_test_request",
+      "trigger_question_examples": [
+        "At the edge of the patch, can you see any short stubbly hairs that look narrower at the bottom?",
+        "Are there tiny broken hairs around the border of the bald area?"
+      ],
+      "patient_response_template": "Now that I look closely, there are a few little short hairs around the edge that look thinner at the bottom.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Please just tell me this isn't cancer or some infection that's going to spread.",
+      "expected_ai_doctor_response_quality": "Acknowledge and validate the fear without dismissing it, explain that a few targeted questions are needed before reassurance, and avoid both premature reassurance and unnecessary alarm. Do not escalate to emergency care for a painless localised patch with a well patient."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-DERM-03-00001"
+}

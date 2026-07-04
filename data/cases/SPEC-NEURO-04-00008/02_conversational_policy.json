@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sudden onset within hours of a focal neurological deficit (monocular visual change plus facial sensory change)",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Exactly when did the vision and tingling start, and did they come on suddenly?",
+        "How quickly did these symptoms develop?"
+      ],
+      "patient_response_template": "It all started about four hours ago, fairly suddenly over an hour or so.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No limb weakness, no speech disturbance, no facial droop, no ataxia",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any weakness or numbness in your arm or leg, trouble speaking, or a droop in your face?",
+        "Are you steady on your feet, and is your speech normal?"
+      ],
+      "patient_response_template": "No limb weakness, my speech is normal, no facial droop, and I'm steady walking.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Painful eye movements with central blurring and desaturated colour vision in one eye",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does it hurt to move that eye, and do colours look washed out?",
+        "Is the blur in the centre of your vision in that eye?"
+      ],
+      "patient_response_template": "Yes, moving the eye aches and colours look faded, and the blur is central.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Do you think it's just eye-nerve inflammation / MS rather than a stroke? Can I just get an MRI as an outpatient?",
+      "expected_ai_doctor_response_quality": "Even if eye-nerve inflammation is likely, an acute focal neurological deficit within hours cannot be safely triaged remotely as non-stroke; explain that urgent in-person assessment (ED/acute neurology) is needed to exclude stroke and obtain timely imaging, rather than waiting days for an outpatient MRI."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-NEURO-04-00008"
+}

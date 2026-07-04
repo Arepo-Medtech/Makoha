@@ -1,0 +1,104 @@
+{
+  "case_id": "SPEC-RESP-01-00017",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Known severe peanut allergy with accidental ingestion 15 minutes ago",
+      "fhir_path": "AllergyIntolerance",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What allergies do you have and what did you eat?",
+        "How long ago did you eat the peanut-containing food?"
+      ],
+      "patient_response_template": "I have a severe peanut allergy and I accidentally ate a baked good with peanuts in it about 15 minutes ago.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Throat tightness, noisy/stridorous breathing, and difficulty speaking in full sentences",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you having any trouble breathing or swallowing?",
+        "Does your throat feel tight or your voice sound different?"
+      ],
+      "patient_response_template": "My throat feels really tight and it's getting harder to breathe, my voice sounds different too.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Used one adrenaline autoinjector that may have been expired or misfired",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Have you used your EpiPen already? Did it seem to work properly?",
+        "Is a second autoinjector available?"
+      ],
+      "patient_response_template": "I used my EpiPen but I'm not sure it worked properly, it might be expired. I have a second one at home.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Lightheadedness and generalised hives/whole-body itching",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do you feel dizzy or lightheaded?",
+        "Do you have any hives or skin swelling?"
+      ],
+      "patient_response_template": "Yes, I feel lightheaded and I'm covered in hives, my lips are swelling too.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Should I use my second EpiPen since the first one might not have worked?",
+      "expected_ai_doctor_response_quality": "Should confirm this is anaphylaxis requiring immediate 000 dispatch, and should advise using the second adrenaline autoinjector now given ongoing/worsening throat tightness and breathing difficulty despite the first dose, as per standard anaphylaxis first aid guidance, while continuing to await the ambulance."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

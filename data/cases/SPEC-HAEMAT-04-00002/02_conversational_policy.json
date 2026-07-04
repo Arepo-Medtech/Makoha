@@ -1,0 +1,86 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No breathlessness, pleuritic chest pain, or coughing up blood",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any shortness of breath, chest pain when breathing, or coughing up blood?",
+        "How is your breathing — any chest tightness or breathlessness?",
+        "Any sudden breathlessness or sharp chest pain?"
+      ],
+      "patient_response_template": "No, my breathing is fine and no chest pain or coughing up blood.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No visible unilateral calf swelling, warmth or redness reported by the patient",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is the sore calf more swollen, warm or red than the other side?",
+        "Does one calf look bigger or feel hotter than the other?"
+      ],
+      "patient_response_template": "They look about the same to me, no obvious swelling or redness.",
+      "patient_deflection_template": "I'm not really sure, I keep looking but I can't tell.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Known persistently positive clotting antibodies and early pregnancy",
+      "fhir_path": "Condition.code",
+      "ros_category": "Haematological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you tell me about the clotting antibody problem you mentioned?",
+        "What did the doctors find after your miscarriage?"
+      ],
+      "patient_response_template": "They found clotting antibodies after my miscarriage — that's why I'm on aspirin now that I'm pregnant.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "It's probably just a cramp though, isn't it? Please say it's just a cramp.",
+      "expected_ai_doctor_response_quality": "Must NOT provide false reassurance. Explain that although a cramp is possible, a clot cannot be safely ruled out over the phone in someone with clotting antibodies who is pregnant, and that an objective scan today is the safe course. Avoid both dismissal and panic."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  },
+  "case_id": "SPEC-HAEMAT-04-00002"
+}

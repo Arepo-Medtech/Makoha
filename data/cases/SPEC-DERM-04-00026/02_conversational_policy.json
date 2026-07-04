@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No mucosal involvement (mouth, eyes, genitals), no skin peeling in sheets, no systemic prodrome/high fever (against SJS/TEN)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any sores or blisters in your mouth, eyes, or genital area?",
+        "Does the skin peel away in sheets when rubbed, and do you have a high fever or feel very unwell?"
+      ],
+      "patient_response_template": "No sores in my mouth, eyes or genitals, the skin doesn't peel in sheets, no fever, and I feel well otherwise.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No lip/tongue swelling, wheeze or breathlessness (no anaphylaxis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any swelling of your lips or tongue, wheeze, or trouble breathing?",
+        "Any throat tightness or hives?"
+      ],
+      "patient_response_template": "No swelling, no wheeze, my breathing is fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Tense clear vesicles in annular 'string-of-pearls' clusters starting ~48 h after a new antibiotic",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "What do the blisters look like — tense and clear, and arranged in rings?",
+        "When did they start relative to the new antibiotic?"
+      ],
+      "patient_response_template": "Tense and clear, some in little rings, and they started a day or so after the antibiotic.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is this Stevens-Johnson syndrome? Should I go to ED right now?",
+      "expected_ai_doctor_response_quality": "Screen SJS features (mucosal involvement, skin sloughing, systemic prodrome) and anaphylaxis; if absent, explain this looks like a localised drug-induced blistering reaction (e.g. linear IgA dermatosis), advise stopping the antibiotic immediately, arrange urgent in-person dermatology/GP review, and give strong SJS/anaphylaxis safety-nets — reserving ED for those red flags."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-DERM-04-00026"
+}

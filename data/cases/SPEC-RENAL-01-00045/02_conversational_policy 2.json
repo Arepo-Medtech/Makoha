@@ -1,0 +1,120 @@
+{
+  "case_id": "SPEC-RENAL-01-00045",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sudden severe unilateral flank pain radiating to the groin/testicle",
+      "fhir_path": "Condition._freetext_HPC_tags.site_radiation",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Where exactly is the pain, and does it spread anywhere?",
+        "Does the pain go down into your groin?"
+      ],
+      "patient_response_template": "It's in my right side and back, and it shoots straight down into my groin and testicle.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Extreme restlessness — constantly pacing and unable to find any comfortable position",
+      "fhir_path": "Condition._freetext_HPC_tags.functional_impact",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you able to lie still, or do you need to keep moving?",
+        "Does any position help at all?"
+      ],
+      "patient_response_template": "I can't stay still at all, I just keep pacing and shifting, nothing helps.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Pink-tinged (macroscopic) haematuria noticed on last void",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you noticed any blood in your urine?",
+        "What colour was your urine last time you went?"
+      ],
+      "patient_response_template": "Yeah, actually — it looked pink-tinged last time I went.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No fever or chills noticed",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any fever or chills/shivering?",
+        "Do you feel hot or feverish?"
+      ],
+      "patient_response_template": "No, I don't think I've had any fever or chills.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Ibuprofen taken about an hour ago with zero relief",
+      "fhir_path": "MedicationRequest",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you taken any pain relief, and did it help at all?",
+        "What have you tried for the pain so far?"
+      ],
+      "patient_response_template": "I took some ibuprofen about an hour ago and it's done absolutely nothing.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "This pain is unbearable — can you just call an ambulance? I can't take it anymore.",
+      "expected_ai_doctor_response_quality": "Should validate the severity of the pain and acknowledge simple oral analgesia hasn't worked, while explaining that in the absence of fever or other red flags, urgent same-day in-person review (for stronger analgesia and to confirm the diagnosis) rather than an ambulance is generally the appropriate next step — though calling 000 remains reasonable if the patient/partner feels this is the only way to access timely pain relief, particularly given oral analgesia has already failed."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 8,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003",
+      "DI-004"
+    ]
+  }
+}
