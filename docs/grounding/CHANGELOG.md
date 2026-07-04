@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 43 CIA cases attested → 194/194 attested (2026-07-04)
+
+**Status:** CIA batch attested; all 194 ingested cases now clinician-reviewed. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL provided written in-session attestation** of the 43 CIA cases. Recorded as `bulk_clinician_attestation` in each manifest `review` block (scope: *CIA Common Infections & Afflictions batch ingested 2026-07-04 (n=43)*, reviewer KL); scope guarded to the CIA ingest commit `488d83c` (verified: all 43 pending == that commit set). Edit scope: review block only — node files + sha256 untouched; git diff = 43 manifests.
+- **`eval:cases`: attested conforming 151 → 194; unreviewed 43 → 0; PASS.** Distribution 58/40/3, coverage 5 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 3% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: all 194 ingested cases attested; remaining input-gated = complex-tier volume, the 3 CIA id collisions (re-id), the 4 firewall-refused source bundles (regenerate).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (194 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — CIA batch: 43 ingested; 3 id collisions + 4 firewall-refused surfaced (2026-07-04)
 
 **Status:** CIA common-infections batch partially ingested; 2 new findings registered. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
