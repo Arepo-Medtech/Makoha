@@ -110,6 +110,9 @@ in patient context — technical gate now = mode-normaliser), R-09 (S8 without P
   interaction, renal dosing, and AU scheduling data.
 - **SafeScript WA** access for S8 PDMP checks.
 - **Vendor credentials via the secrets manager** (the agent never enters them).
+- *AMT reference (for drug identity):* the Australian Medicines Terminology is on the NCTS SNOMED CT-AU
+  release; `AuDigitalHealth/sctau-sample-scripts` (`AMTv3-/AMTv4-sample-scripts`) is useful **reference only**
+  for AMT's structure. AMT is served via the terminology server (M11), not a repo-vendored SQL DB.
 
 **Topology.** `mcp/servers/pharmacology/` (+ new `vendor-adapter.js`), Trunk 8.0 firewall in
 `verification/pipeline.js`, verifier check 5 (HARD_FAIL enforcement). Blast radius: any run reaching Trunk 8.0.
@@ -225,8 +228,15 @@ are frozen; live endpoints are additive behind config.
 2. **NCTS live API** — `https://api.healthterminologies.gov.au/integration/R4/fhir` (ADHA; SMART-on-FHIR
    OAuth2; SNOMED CT-AU + AMT + PBS + AU Core value sets). Needs an NCTS account + issued OAuth credentials.
    `/integration/` is staging; production is a separate endpoint.
-3. **Self-hosted** — the operator's own Ontoserver loaded with the **NCTS SNOMED CT-AU RF2 distribution**
-   (production-grade; operator controls availability/SLA; licence-clean if hosted per NCTS terms).
+3. **Self-hosted** — deploy your own **Ontoserver** (or equivalent FHIR terminology server) and **load the
+   SNOMED CT-AU RF2 into IT** (Ontoserver ingests RF2 natively), then point the adapter's `self_hosted`
+   endpoint at that server's FHIR base URL. This reuses the M11 P1 FHIR `$validate-code` adapter with **zero
+   changes** and preserves AU Core value-set binding (inherently FHIR). Production-grade; operator controls
+   availability/SLA; licence-clean if hosted per NCTS terms.
+   **NOT this:** loading the RF2 into a plain SQL database (e.g. ADHA's `AuDigitalHealth/sctau-sample-scripts`,
+   which loads RF2 → MySQL for *illustration* — ADHA's own README recommends a FHIR terminology server
+   instead). A SQL store exposes no `$validate-code` and would require a different, non-FHIR adapter — an
+   architecture change, not this path. Those SQL scripts are useful **reference only** (RF2 structure, AMT).
    **INPUT ON HAND (2026-07-05):** the SNOMED CT-AU RF2 distribution (module 32506021000036107, release
    2026-06-30) is available to the operator — its possession evidences the NCTS account + affiliate licence.
    It is **licensed material: NEVER committed** (gitignored); loaded into infrastructure at deploy. This
