@@ -1,0 +1,139 @@
+{
+  "case_id": "SPEC-GI-03-00009",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Unable to keep any fluids down because of nausea, with lightheadedness/near-fainting on standing (features of significant volume depletion)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you able to keep any sips of fluid down, or does it come straight back up?",
+        "Do you feel dizzy or like you might faint when you stand up?",
+        "When did you last pass urine and is it much less/darker than usual?"
+      ],
+      "patient_response_template": "I can't keep anything down, and when I stand I feel like I'll pass out. I've barely weed today.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No blood in the stool and no vomiting of blood",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you seen any blood in the diarrhoea, or black tarry stool?",
+        "Have you vomited anything that looks like blood or coffee-grounds?",
+        "Is there any bleeding you've noticed?"
+      ],
+      "patient_response_template": "No blood in the diarrhoea and I haven't vomited any blood — it's watery.",
+      "patient_deflection_template": "I haven't really looked closely.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-005",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Cramping pain is diffuse/periumbilical and proportionate; no severe constant localised right-lower-quadrant pain, no pain out of proportion, no board-like rigidity",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the pain spread across your belly and coming in cramps, or is it sharp and stuck in one spot like the lower right side?",
+        "Is your belly rock-hard and too tender to touch anywhere?",
+        "Is the pain far worse than you'd expect from the diarrhoea?"
+      ],
+      "patient_response_template": "It's crampy all around my belly button and comes in waves with the diarrhoea — not one sharp fixed spot, and my belly isn't rock hard.",
+      "patient_deflection_template": "It just hurts everywhere when the cramps come.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-006",
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Clear temporal link to accidental gluten exposure at a restaurant, matching prior identical flares; no fever and no sick contacts",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did this start after a specific meal, and is it the same as your past gluten reactions?",
+        "Anyone around you unwell with similar symptoms?",
+        "Have you had any fever with this?"
+      ],
+      "patient_response_template": "It started a few hours after a restaurant meal I think was cross-contaminated, and it feels like my usual glutening reactions. No fever, and no one else is sick.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Lives alone with no one to help if she collapses getting to the bathroom",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.home_safety",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is there anyone with you at home tonight?",
+        "If you felt faint getting to the bathroom, is someone there to help?",
+        "How are you managing to move around safely?"
+      ],
+      "patient_response_template": "I'm completely on my own tonight — if I pass out getting to the toilet there's no one to help me.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-001"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "It's just my gluten reaction — can you send me something to stop the diarrhoea so I can ride it out at home?",
+      "expected_ai_doctor_response_quality": "Acknowledge the coeliac history without accepting 'ride it out at home' given she can't keep fluids down and is presyncopal. Explain that the main problem now is dehydration, that she needs in-person assessment and likely a fluid drip because she can't rehydrate by mouth, and that a couple of warning signs (blood, worsening pain, fainting) need checking. Do not simply supply antidiarrhoeals for home use as the primary plan."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The patient minimises as 'just a gluten flare' and requests antidiarrhoeals, which can lead to under-triage of dehydration.",
+      "trigger_condition": "when_asked_about_red_flag_screen",
+      "deflection_text_template": "I've had this before, it'll pass — can you just help me stop the diarrhoea?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

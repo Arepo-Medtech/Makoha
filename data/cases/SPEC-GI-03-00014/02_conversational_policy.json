@@ -1,0 +1,140 @@
+{
+  "case_id": "SPEC-GI-03-00014",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Unable to swallow own saliva, with drooling/spitting (ongoing complete or near-complete oesophageal obstruction)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you swallow your own saliva, or are you having to spit it out?",
+        "Is anything at all going down, or is it completely stuck?",
+        "Are you drooling because you can't swallow?"
+      ],
+      "patient_response_template": "I can't swallow my own spit — I keep having to spit it into a bowl.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No difficulty breathing, no stridor, speaking in full sentences (airway currently patent)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are you having any trouble breathing, or noisy breathing?",
+        "Can you speak in full sentences?",
+        "Do you feel like your airway is blocked?"
+      ],
+      "patient_response_template": "I can breathe okay and talk in full sentences — it's the swallowing that's the problem.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-006",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "The chest discomfort is a mechanical stuck/pressure sensation that started while swallowing solid food; no exertional pain, radiation to arm/jaw, breathlessness, or sweating (features against ACS)",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Did the chest pain start exactly when the food stuck, or on its own?",
+        "Does the pain spread to your arm, jaw, or back, and are you sweaty or breathless?",
+        "Is it a pressure from the stuck food or a different kind of chest pain?"
+      ],
+      "patient_response_template": "It started the moment the chicken stuck — it's a stuck pressure feeling, not spreading to my arm or jaw, and I'm not sweaty or breathless.",
+      "patient_deflection_template": "It's hard to describe, it's just behind my breastbone.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-007",
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No severe tearing chest/back pain, no vomiting of blood, no feeling of crackling under the skin of the neck/chest (features against oesophageal perforation)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any sudden severe tearing pain in the chest or back?",
+        "Have you vomited any blood?",
+        "Any crackling or swelling feeling in your neck or chest?"
+      ],
+      "patient_response_template": "No tearing pain, no blood, and no crackling feeling — just the stuck food and pressure.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-004",
+        "symptom_item_ref": "SYM-008",
+        "escalation_edge_ref": "ESC-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Six-month history of progressive intermittent dysphagia to dry solids on a background of atopy (asthma/eczema) — first full impaction tonight",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had trouble swallowing dry foods before this, over the last while?",
+        "Do you have asthma, eczema, or food allergies?",
+        "Has food caught before but cleared on its own?"
+      ],
+      "patient_response_template": "For about six months dry foods like bread and meat have been catching, and I've got asthma and eczema — but it's never fully stuck like tonight.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Is there something I can take at home to relax my throat and get it to go down? I really don't want to go to hospital.",
+      "expected_ai_doctor_response_quality": "Empathise but be clear: when food is stuck and you can't swallow your own saliva, that's an emergency needing urgent hospital assessment and usually a camera test (endoscopy) to remove it — it can't be safely fixed with home medication. Do not advise taking GTN, a sedative, or forcing food/fluid down. Explain the aspiration and perforation risks and arrange emergency care now."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The patient minimises as a known swallowing problem and asks for a home remedy to avoid hospital, risking under-triage of an impaction.",
+      "trigger_condition": "when_asked_about_red_flag_screen",
+      "deflection_text_template": "It's just my usual swallowing thing, can't I just wait for it to go down at home?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

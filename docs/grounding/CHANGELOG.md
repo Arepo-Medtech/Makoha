@@ -4,6 +4,29 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — CFE batch (operator-re-tiered) ingested; complex band 2% → 8% (2026-07-04)
+
+**Status:** 49 re-tiered CFE cases ingested; complex band near target. 2 findings handed back to operator. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **CFE (Complex Fatigue Entities) batch.** Initial recon flagged that the batch was under-tiered (genuinely complex entities — MCAS, autoimmune dysautonomia — labelled tier-03/atypical); **operator re-tiered at source**. Re-recon of the well-formed set: 36 atypical + 14 complex (rare_condition/05 + multi_morbidity_complex/06). **49 well-formed bundles ingested**; 345 codes receipted (store total **1285**); 250 cases.
+- **Distribution 59/38/2 → 48/45/8 — complex band jumped 2% → 8% (near the 10% target); coverage 5 → 6 difficulty tiers.** The 49 are `pending_clinician_review`. `eval:cases` PASS.
+- **Handed back to operator (not ingested), both fail-safe:**
+  - **1 well-formed collision** `SPEC-DERM-03-00041` (CFE Psoriasis-with-fatigue vs AMS Scalp Psoriasis) → `case-id-cross-series-collision` 5th instance (Low→Medium; recurs every overlapping series); re-id pending.
+  - **13 malformed bundles** REFUSED for `missing/invalid _bundle.format` — the casebundle wrapper is structurally broken (NOT a firewall issue), likely corrupted during the source re-tier/save. 12 new case_ids + 1 (SPEC-GI-03-00028) also colliding. **NEW register item `cfe-malformed-bundles`** (Medium) — operator must repair the bundle format at source; not agent-fixable (reconstructing bundle internals is case-authoring over sealed content). Stray `__t.txt` in the folder is harmless (tool globs only `*.casebundle.json`).
+
+### Safety
+- Only well-formed, non-colliding bundles ingested; sealed nodes split/hashed by the tool, never reasoned from. No `--force`; existing 201 untouched (git: 49 new dirs, 0 modified). Source `.txt` never entered the repo.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: 250 cases; complex band 8%; remaining input-gated = attest 49 CFE, fix 13 malformed bundles, optional rebalance.
+- `case-id-cross-series-collision`: 5th instance (Medium). **NEW** `cfe-malformed-bundles` (Medium).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 3 re-id'd CIA cases attested → 201/201 attested (2026-07-04)
 
 **Status:** All 201 ingested cases now clinician-attested; complex-tier volume is the sole remaining M6 item. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

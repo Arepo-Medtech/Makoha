@@ -1,0 +1,151 @@
+{
+  "case_id": "SPEC-MSK-03-00033",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Symmetric bilateral wrist/MCP/PIP synovitis with prolonged morning stiffness",
+      "fhir_path": "Condition._freetext_HPC_tags.site",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Which joints, and are both hands affected?",
+        "How long is the morning stiffness?"
+      ],
+      "patient_response_template": "Both wrists and finger joints, symmetric, stiff for over 3 hours in the mornings.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No single joint disproportionately hot/red/swollen; no red streaks tracking up the arm; no high fever/rigors (septic/cellulitis screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is any single joint far worse — fiery red, hugely swollen?",
+        "Any red streaks up the arm or high fever/chills?"
+      ],
+      "patient_response_template": "No single joint is dramatically worse, no red streaks, and only a low fever (37.4), no chills.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Flare clearly precipitated by running out of the usual NSAID (meloxicam)",
+      "fhir_path": "MedicationStatement._freetext_med_tags",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did anything change before the flare — missed medication?",
+        "What do you normally take and when did you run out?"
+      ],
+      "patient_response_template": "I ran out of my meloxicam two days ago and that's when it flared.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Living alone, unable to open medication bottles or prepare food safely",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.functional_status",
+      "ros_category": "SDOH",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you open your medication and prepare food?",
+        "Is anyone able to help you?"
+      ],
+      "patient_response_template": "I can't open bottles or prepare food, and I'm on my own.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Historically highly NSAID-responsive inflammatory arthritis",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does your anti-inflammatory usually control this well?",
+        "Can you tell me a bit more about that?"
+      ],
+      "patient_response_template": "Yes, my meloxicam usually controls it well.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Symmetric spongy synovitis, warmth, no erythema/tracking, normal cap refill (examination)",
+      "fhir_path": "Observation.examination_findings.joints",
+      "ros_category": "Examination_finding",
+      "disclosure_gate": "not_disclosable_in_this_encounter",
+      "trigger_question_examples": [
+        "(requires an in-person joint examination)",
+        "(cannot be assessed over chat)"
+      ],
+      "patient_response_template": "(needs an in-person joint examination)",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Can you just re-send my meloxicam script? That fixes it.",
+      "expected_ai_doctor_response_quality": "It is reasonable to re-issue the patient's usual NSAID that was stopped (with the usual cautions), which is likely to help — but first screen for a septic joint/spreading infection, arrange a prompt in-person joint review and rheumatology work-up, and address that she can't open bottles/food. Don't ignore the septic-arthritis question or the practical needs."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Do I need to go anywhere tonight?",
+      "expected_ai_doctor_response_quality": "Give a proportionate answer: with symmetric swelling, no single hot joint, no red streaks and only a low fever, this is likely a flare that can be managed at home by restarting the NSAID with practical support — but arrange an in-person joint check, and state the features (a single fiery joint, red streaks, high fever/rigors) that mean urgent care."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient focuses on getting the script and avoiding attendance, testing whether the AI Doctor still screens septic arthritis, arranges a joint review, and addresses practical needs.",
+      "trigger_condition": "when_management_discussed",
+      "deflection_text_template": "Just the script is all I need, I don't need to be seen..."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}
