@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — re-id'd CFE case attested → 251/251 attested (2026-07-05)
+
+**Status:** All 251 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL written in-session attestation** of the re-id'd CFE case `SPEC-DERM-03-00099` (the sole pending case; scope-guarded to that one id before writing). Recorded as `single_case_clinician_attestation` in the manifest `review` block — node files + sha256 untouched; git diff = 1 manifest.
+- **`eval:cases`: attested conforming 250 → 251; unreviewed 1 → 0; PASS.** Distribution 47/45/8, coverage 6 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 8% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 251 ingested cases attested**; remaining input-gated = the 13 malformed CFE bundles (operator repair → complex past 10%) and optional rebalance.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (251 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — CFE collision re-id'd → SPEC-DERM-03-00099 and ingested (2026-07-05)
 
 **Status:** The CFE id collision resolved; all 5 well-formed collision instances now resolved. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
