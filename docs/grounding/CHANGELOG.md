@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 13 retired CFE bundles deleted; cfe-malformed-bundles resolved (2026-07-05)
+
+**Status:** The 13 operator-retired CFE source bundles deleted; finding closed. Docs-only commit (nothing was in the repo). Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Correction of an earlier diagnosis:** the 13 CFE bundles that ingest REFUSED for "missing/invalid _bundle.format" were **not corrupted** — the operator had deliberately retired them by tagging `_bundle.format` = `"breath-ezy-casebundle-RETIRED"`. The refusal was that retirement working as intended.
+- **Per operator instruction ("RETIRE or DELETE"), the 13 source bundles were DELETED** from the CFE Ingest Cases folder, with a safety guard that removed a file only after confirming its `_bundle.format` was NOT `"breath-ezy-casebundle"` — so no well-formed bundle could be deleted. All 13 confirmed `-RETIRED` and removed; 50 well-formed bundles remain in the folder. **Nothing malformed was ever in the repo** (ingest fail-safe), so there is no repo case-file change — only register/docs updates.
+- One of the 13 (`SPEC-GI-03-00028`, CFE MCAS) had also been a 6th collision (vs AMS Microscopic Colitis); retired, so that collision is moot.
+
+### Register impact
+- **`cfe-malformed-bundles` → resolved** (retired + deleted; earlier "corrupted" evidence corrected).
+- `case-id-cross-series-collision`: the MCAS collision noted moot (retired).
+- `case-set-underpopulated` / **R-23**: no blocking work remains — only optional distribution polish (47/45/8 → 60/30/10).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (251 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift. No repo case files changed (source-folder deletion only).
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — re-id'd CFE case attested → 251/251 attested (2026-07-05)
 
 **Status:** All 251 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

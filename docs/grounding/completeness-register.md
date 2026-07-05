@@ -478,9 +478,9 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING (input-gated): (a) operator fix the 13 malformed CFE bundles then ingest (would push complex past 10%); (b) optionally more straightforward to rebalance 47/45/8 toward 60/30/10. Complex band near target (8%). (Receipts, CI gate, coverage, firewall-remediation, all 5 collision instances, AND full attestation of all 251 cases: DONE.)
+  build_action: REMAINING (input-gated, optional/polish only): more straightforward cases to rebalance 47/45/8 toward 60/30/10, and/or more complex to lift 8%→10%. The 13 retired CFE bundles were deleted by operator decision (`cfe-malformed-bundles` resolved). Everything required for a usable, gated, fully-attested eval set is DONE.
   gap_register_link: R-23
-  status: open (251/251 attested; malformed-bundle fix + optional rebalance input-gated)
+  status: open (251/251 attested; ONLY optional distribution polish remains — no blocking work)
   last_scanned: 2026-07-05
 ```
 
@@ -491,7 +491,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   state: PARTIAL
   evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series: CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both mapped to SPEC-CARD-01-00005. cases:ingest failed safe (COLLISION, no --force) and skipped the AFib case. INSTANCE RESOLVED 2026-07-04 (operator-authorised): the AFib bundle was re-id'd (blind literal id-string swap on a scratchpad COPY — source archive untouched, clinical content never read) to **SPEC-CARD-01-00099** (free globally; deliberately above the source-number-derived 1–51 range to mark it manually disambiguated) and ingested; 12 codes receipted; gate PASS. The existing SPEC-CARD-01-00005 (ACS) was never touched. SYSTEMIC gap remains: the id SCHEME is still not unique across series, so a future overlapping series would collide again.
   evidence_addendum: 2026-07-04 — the CIA batch produced 3 MORE cross-series collisions (all distinct cases, all skipped safely). ALL 3 NOW RESOLVED 2026-07-04 (operator-authorised, same re-id method → free per-specialty seq 00099): SPEC-DERM-01-00021 (CIA "Localised First-Degree Burn") → SPEC-DERM-01-00099; SPEC-RESP-01-00003 (CIA "Acute Viral Laryngitis") → SPEC-RESP-01-00099; SPEC-GI-01-00010 (CIA "Aphthous Stomatitis") → SPEC-GI-01-00099. Re-id on scratchpad copies (source archive + the 3 existing AUC cases verified untouched); dry-run 3/3 OK; ingested; 13 codes receipted; gate PASS. **All 4 known collision INSTANCES across 3 series are now resolved (AFib + these 3).** The 3 re-id'd cases are pending_clinician_review. Convention emerged: seq 00099 in a specialty bucket = a manually disambiguated re-id.
-  evidence_addendum_2: 2026-07-04/05 — CFE batch produced a 5th collision, SPEC-DERM-03-00041 (CFE "Psoriasis Severe Plaque with Systemic Fatigue" vs AMS "Scalp Psoriasis (Mild)"); RESOLVED 2026-07-05 via re-id → SPEC-DERM-03-00099 (per-bucket convention; scratchpad copy; existing AMS case verified untouched; ingested; 6 codes receipted; gate PASS). Also SPEC-GI-03-00028 (CFE MCAS vs AMS Microscopic Colitis) collides but is malformed (tracked under `cfe-malformed-bundles` — will need a fresh id when repaired). **All 5 well-formed collision INSTANCES across 4 series now resolved via re-id.** Systemic scheme weakness still recurs with every overlapping series.
+  evidence_addendum_2: 2026-07-04/05 — CFE batch produced a 5th collision, SPEC-DERM-03-00041 (CFE "Psoriasis Severe Plaque with Systemic Fatigue" vs AMS "Scalp Psoriasis (Mild)"); RESOLVED 2026-07-05 via re-id → SPEC-DERM-03-00099 (per-bucket convention; scratchpad copy; existing AMS case verified untouched; ingested; 6 codes receipted; gate PASS). SPEC-GI-03-00028 (CFE MCAS vs AMS Microscopic Colitis) was a 6th collision but the CFE bundle was operator-RETIRED and deleted 2026-07-05 (`cfe-malformed-bundles`), so that collision is moot. **All 5 well-formed collision INSTANCES across 4 series now resolved via re-id.** Systemic scheme weakness still recurs with every overlapping series.
   blocks: nothing now (all well-formed instances resolved); future overlapping series until the SCHEME is fixed
   safety_class: none (ingest fails safe — skips, never overwrites)
   invariant_exposure: auditability — case_id is the eval/medicolegal anchor; a non-unique scheme undermines it
@@ -505,19 +505,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: cfe-malformed-bundles
-  path: source bundles (NOT ingested): 13 CFE bundles with missing/invalid _bundle.format (SPEC-DERM-03-00027/00047, SPEC-GI-03-00019/00028/00036, SPEC-MSK-03-00015/00020/00049, SPEC-NEURO-03-00029/00039/00044/00046, SPEC-RHEUM-03-00050)
+  path: source bundles (deleted 2026-07-05): 13 CFE bundles tagged `_bundle.format:"breath-ezy-casebundle-RETIRED"` (SPEC-DERM-03-00027/00047, SPEC-GI-03-00019/00028/00036, SPEC-MSK-03-00015/00020/00049, SPEC-NEURO-03-00029/00039/00044/00046, SPEC-RHEUM-03-00050)
   component_type: dataset
-  state: PARTIAL
-  evidence: FOUND 2026-07-04 — during the CFE ingest, 13 of 63 bundles were REFUSED for "missing/invalid _bundle.format" — the casebundle WRAPPER is structurally broken (NOT a firewall issue; distinct from the 49 well-formed CFE cases that ingested cleanly). Likely corrupted during the operator's source re-tiering/save. 12 carry genuinely-new case_ids; 1 (SPEC-GI-03-00028) also collides with an existing AMS case. cases:ingest failed safe (REFUSE, no write). A stray non-bundle `__t.txt` in the folder is harmless (the tool globs only *.casebundle.json). Not agent-fixable — reconstructing a valid bundle wrapper is case-authoring; the agent must not hand-author bundle internals over sealed content.
-  blocks: ingesting these 13 (further atypical/complex CFE cases)
-  safety_class: degrades_safe (ingest refused; nothing malformed entered the repo)
-  invariant_exposure: none (blocked at the ingest contract boundary)
+  state: COMPLETE
+  evidence: FOUND 2026-07-04 — 13 of 63 CFE bundles REFUSED at ingest for "missing/invalid _bundle.format". CORRECTION 2026-07-05 (earlier "corrupted during save" diagnosis was WRONG): the operator had DELIBERATELY retired these 13 by tagging `_bundle.format` = "breath-ezy-casebundle-RETIRED" — which is exactly why the ingest tool (expecting "breath-ezy-casebundle") refused them. The refusal was the retirement working as intended, not a defect. RESOLVED 2026-07-05 (operator instruction "RETIRE or DELETE"): the 13 source bundles were DELETED with a safety guard that removed a file only after confirming its format was NOT "breath-ezy-casebundle" (so no well-formed bundle could be deleted) — all 13 confirmed "-RETIRED" and removed; 50 well-formed bundles remain in the folder. NOTHING malformed was ever in the repo (ingest fail-safe). One of the 13 (SPEC-GI-03-00028, CFE MCAS) also collided with an AMS case — retired, so that collision is moot. Stray `__t.txt` left in place (harmless; tool globs only *.casebundle.json).
+  blocks: (cleared — the 13 are retired + deleted by operator decision)
+  safety_class: degrades_safe (ingest refused throughout; nothing malformed entered the repo; deletion guarded to non-well-formed only)
+  invariant_exposure: none
   risk: Medium
   blocks_patient_facing: false
-  build_action: OPERATOR — regenerate/repair the 13 bundles' _bundle wrapper (format "breath-ezy-casebundle" + required fields) at source; re-run cases:ingest --dry-run until 0 REFUSED; then ingest + verify-codes + attest. Remove the stray __t.txt.
-  gap_register_link: none (Medium — source-authoring integrity)
-  status: open
-  last_scanned: 2026-07-04
+  build_action: DONE — 13 retired source bundles deleted per operator instruction. No repo artifact existed. If any are wanted back later, re-author fresh with a valid `_bundle.format`.
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-05
 ```
 
 ```md
