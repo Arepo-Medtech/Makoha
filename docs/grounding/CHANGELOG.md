@@ -4,6 +4,29 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — DST batch (operator-re-tiered) ingested; 7th difficulty tier added (2026-07-05)
+
+**Status:** 40 re-tiered DST cases ingested; distribution rebalance (modest) + a 7th difficulty tier. 2 findings handed back. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **DST (Dermatology & Soft Tissue) batch.** Initial recon flagged the batch was 82% atypical despite being requested for a *straightforward* rebalance (folder theme vs difficulty_tier mismatch — same as CFE); **operator re-tiered at source** (straightforward 8 → 27 among well-formed). **40 well-formed new bundles ingested** (20 straightforward + 19 atypical + 1 communication_barrier); 233 codes receipted (store total **1524**); 291 cases.
+- **Distribution 47/45/8 → 48/45/7; coverage 6 → 7 difficulty tiers** (communication_barrier/07 now present — all 7 tiers represented). The 40 are `pending_clinician_review`. `eval:cases` PASS.
+- **Handed back (not ingested), all fail-safe:**
+  - **10 DERM collisions** (SPEC-DERM-01-00016/00021/00031/00036/00042/00043/00046, SPEC-DERM-03-00012/00024/00039) → `case-id-cross-series-collision` (now 15 collisions/5 series; the per-bucket -00099 convention is exhausted in DERM buckets — a systemic seq scheme is overdue).
+  - **9 malformed stub bundles** (empty `_bundle`, format+case_id null) + stray `_probe.tmp` → **NEW register item `dst-malformed-bundles`** (Medium). Recurring pattern: the re-tier workflow leaves malformed/temp leftovers each run (CFE: 13 "-RETIRED"; DST: 9 empty stubs) — recommended a leftover-cleanup step in the re-tier workflow.
+
+### Safety
+- Only well-formed, non-colliding bundles ingested; sealed nodes split/hashed, never reasoned from. No `--force`; existing 251 untouched (git: 40 new dirs, 0 modified). Source `.txt` never entered the repo.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: 291 cases; 7 tiers; remaining input-gated = attest 40 DST, 10 collisions, 9 malformed stubs, optional rebalance.
+- `case-id-cross-series-collision`: +10 (15/5 series; systemic fix overdue). **NEW** `dst-malformed-bundles` (Medium).
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 13 retired CFE bundles deleted; cfe-malformed-bundles resolved (2026-07-05)
 
 **Status:** The 13 operator-retired CFE source bundles deleted; finding closed. Docs-only commit (nothing was in the repo). Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

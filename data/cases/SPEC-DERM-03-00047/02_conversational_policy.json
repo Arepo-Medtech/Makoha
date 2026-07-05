@@ -1,0 +1,82 @@
+{
+  "case_id": "SPEC-DERM-03-00047",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Chronic shallow ankle (medial) ulcer with brown staining and hardened lower-leg skin, pain RELIEVED by elevation",
+      "fhir_path": "Condition._freetext_exam_tags.venous_pattern",
+      "ros_category": "Vascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is the ulcer over the inner ankle with brown staining/hardened skin, and is the pain relieved by putting the leg up?",
+        "Does elevating the leg help the pain?"
+      ],
+      "patient_response_template": "Yes, it's over the inner ankle with brown staining and hardened skin, and the pain eases when I put the leg up.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "A NEW rim of tender, warm, spreading redness around the ulcer with increased smelly exudate and throbbing pain (secondary skin infection)",
+      "fhir_path": "Condition._freetext_exam_tags.periwound_erythema",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is there a new area of tender, warm, spreading redness around the ulcer, with more smelly discharge and throbbing pain?",
+        "Has the wound suddenly changed?"
+      ],
+      "patient_response_template": "Yes, a new rim of tender warm redness around the ulcer, much more smelly discharge, and new throbbing pain.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No rapidly ascending calf redness, no high fever/rigors, no leg-wide severe swelling (sepsis/deep-infection screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.sepsis_screen",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the redness rapidly climbing up the calf toward the knee, any high fever/shakes, or the whole leg swollen and severely painful?",
+        "Are you systemically unwell?"
+      ],
+      "patient_response_template": "No, the redness isn't racing up the calf, no high fever or shakes, and the whole leg isn't hugely swollen.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Should I put my tight compression stockings back on to help it heal?",
+      "expected_ai_doctor_response_quality": "Advise elevation now, but do NOT resume tight compression during the acute infection/severe pain — compression is resumed once the acute cellulitis settles and only after arterial disease is excluded (ABPI). Explain elevation is correct for a venous (not arterial) ulcer."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}
