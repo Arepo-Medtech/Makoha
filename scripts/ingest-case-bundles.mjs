@@ -11,10 +11,14 @@
  * NEVER re-flips review status. A bundle that fails any gate is refused (not written).
  *
  * Usage:
- *   node scripts/ingest-case-bundles.mjs <folder-or-bundle> [--out data/cases] [--dry-run] [--force]
+ *   node scripts/ingest-case-bundles.mjs <folder-or-bundle> [--out data/cases] [--dry-run] [--force] [--reseq]
  *
  * --dry-run : validate + report only, write nothing.
  * --force   : overwrite an existing data/cases/<CASE_ID>/ (default: refuse, report collision).
+ * --reseq   : on a case_id collision, assign the next free GLOBALLY-UNIQUE seq (same
+ *             specialty+difficulty) instead of refusing — the id-scheme decision of
+ *             2026-07-05 that ends cross-series collisions. NEVER overwrites; the
+ *             original→assigned mapping is recorded in the manifest (ingest.reseq).
  */
 
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, statSync } from "node:fs";
@@ -116,7 +120,34 @@ function checkBundle(bundle) {
   return { case_id: bcid, problems, leaks, ok: problems.length === 0 && leaks.length === 0 };
 }
 
-function ingestOne(path, outDir, { dryRun, force }, nowIso) {
+/**
+ * Assign the next free GLOBALLY-UNIQUE case_id in the same specialty+difficulty
+ * bucket (id-scheme decision 2026-07-05: globally-assigned seq). The seq is set
+ * ABOVE the maximum 5-digit seq used by ANY existing case dir, so the full
+ * case_id cannot collide with anything already ingested — this replaces the
+ * source-derived seq that caused cross-series collisions (AUC-005 & CDV-005 both
+ * → SPEC-CARD-01-00005). Specialty+difficulty are preserved from the original id.
+ */
+function nextFreeGlobalId(outDir, specialty, difficulty) {
+  let maxSeq = 0;
+  for (const name of readdirSync(outDir)) {
+    const m = /^SPEC-[A-Z]{2,6}-0[1-7]-(\d{5})$/.exec(name);
+    if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+  }
+  let seq = maxSeq + 1, id;
+  do { id = `SPEC-${specialty}-${difficulty}-${String(seq).padStart(5, "0")}`; seq++; }
+  while (existsSync(join(outDir, id)));
+  return id;
+}
+
+/** Rewrite every case_id field in the bundle (all nodes + _bundle + manifest) to newId. */
+function reseqBundle(bundle, newId) {
+  bundle._bundle.case_id = newId;
+  for (const k of NODE_KEYS) if (bundle[k]) bundle[k].case_id = newId;
+  if (bundle.case_manifest) bundle.case_manifest.case_id = newId;
+}
+
+function ingestOne(path, outDir, { dryRun, force, reseq }, nowIso) {
   const raw = readFileSync(path);
   let bundle;
   try { bundle = JSON.parse(raw); }
@@ -127,11 +158,24 @@ function ingestOne(path, outDir, { dryRun, force }, nowIso) {
     return { file: basename(path), case_id: chk.case_id,
       status: chk.leaks.length ? "FIREWALL_LEAK" : "REFUSED", leaks: chk.leaks, problems: chk.problems.slice(0, 8) };
   }
-  const caseDir = join(outDir, chk.case_id);
-  if (existsSync(caseDir) && !force) {
-    return { file: basename(path), case_id: chk.case_id, status: "COLLISION", detail: `${caseDir} exists (use --force)` };
+
+  // Collision handling. Default: refuse (never overwrite). With --reseq: assign the
+  // next free globally-unique id in the same specialty+difficulty bucket, rewrite the
+  // bundle's case_id everywhere, and record the original→assigned mapping for the
+  // medicolegal audit trail (case_id is the anchor). --force still overwrites (unchanged).
+  let effectiveId = chk.case_id;
+  let reseqInfo = null;
+  if (existsSync(join(outDir, effectiveId)) && !force) {
+    if (!reseq) {
+      return { file: basename(path), case_id: chk.case_id, status: "COLLISION", detail: `${join(outDir, effectiveId)} exists (use --reseq to auto-assign a new id, or --force)` };
+    }
+    const m = /^SPEC-([A-Z]{2,6})-(0[1-7])-\d{5}$/.exec(chk.case_id);
+    effectiveId = nextFreeGlobalId(outDir, m[1], m[2]);
+    reseqInfo = { original_case_id: chk.case_id, assigned_case_id: effectiveId, reason: "globally-assigned seq — original collided" };
+    reseqBundle(bundle, effectiveId);
   }
-  if (dryRun) return { file: basename(path), case_id: chk.case_id, status: "OK_DRY_RUN" };
+  const caseDir = join(outDir, effectiveId);
+  if (dryRun) return { file: basename(path), case_id: effectiveId, status: "OK_DRY_RUN", reseq: reseqInfo };
 
   // split + hash
   mkdirSync(caseDir, { recursive: true });
@@ -152,9 +196,10 @@ function ingestOne(path, outDir, { dryRun, force }, nowIso) {
   }
   cm.ingest = { ingested_utc: nowIso, ingested_by: "cases:ingest", bundle_sha256: sha256(raw),
     hashing: "SHA-256 over canonical (JSON 2-space + trailing newline) bytes of each split node" };
+  if (reseqInfo) cm.ingest.reseq = reseqInfo; // audit trail: original source id → assigned id
   writeFileSync(join(caseDir, "case_manifest.json"), canonical(cm));
 
-  return { file: basename(path), case_id: chk.case_id, status: "INGESTED",
+  return { file: basename(path), case_id: effectiveId, status: "INGESTED", reseq: reseqInfo,
     reviewed: (cm.review || {}).clinician_reviewed === true, files: NODE_KEYS.length + 1 };
 }
 
@@ -165,8 +210,8 @@ function main() {
   const outIdx = args.indexOf("--out");
   const input = pos[0];
   const outDir = outIdx >= 0 ? args[outIdx + 1] : join(ROOT, "data/cases");
-  if (!input) { console.error("usage: ingest-case-bundles.mjs <folder-or-bundle> [--out dir] [--dry-run] [--force]"); process.exit(1); }
-  const opts = { dryRun: flags.has("--dry-run"), force: flags.has("--force") };
+  if (!input) { console.error("usage: ingest-case-bundles.mjs <folder-or-bundle> [--out dir] [--dry-run] [--force] [--reseq]"); process.exit(1); }
+  const opts = { dryRun: flags.has("--dry-run"), force: flags.has("--force"), reseq: flags.has("--reseq") };
   const nowIso = new Date().toISOString();
 
   const abs = input.startsWith("/") ? input : join(ROOT, input);
@@ -186,6 +231,8 @@ function main() {
     if (r.detail) console.log(`     - ${r.detail}`);
   }
   const ingested = results.filter((r) => r.status === "INGESTED");
+  const reseqd = results.filter((r) => r.reseq);
+  for (const r of reseqd) console.log(`  [reseq] ${r.reseq.original_case_id} -> ${r.reseq.assigned_case_id} (${opts.dryRun ? "would assign" : "assigned"}; original collided)`);
   if (ingested.length) console.log(`\n${ingested.length} case(s) written; ${ingested.filter((r) => r.reviewed).length} carry a clinician attestation.`);
   // non-zero exit if anything failed (so CI/callers notice)
   process.exit(bad.length ? 1 : 0);

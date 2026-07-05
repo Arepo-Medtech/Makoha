@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — id-scheme: globally-assigned seq (`--reseq`); 10 DST collisions auto-resolved (2026-07-05)
+
+**Status:** Cross-series id collisions resolved systemically at the tooling level. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change (operator id-scheme decision: globally-assigned seq)
+- **`scripts/ingest-case-bundles.mjs` — new `--reseq` flag.** On a case_id collision, instead of refusing, it assigns the next free **globally-unique** seq (above the max 5-digit seq of any existing case dir, same specialty+difficulty), rewrites the case_id across all 7 nodes + `_bundle` + manifest, and records the **original→assigned mapping** in `case_manifest.ingest.reseq` (the case_id is the medicolegal anchor — provenance preserved). **Never overwrites** (the default still refuses on collision; `--force` unchanged). Ends the cross-series collision problem (AUC-005 & CDV-005 → same id) for all future overlapping batches.
+- **`test/contract-case-ingest.js`** — new case: collision refused by default; `--reseq` assigns a new global id, records the mapping, rewrites the sealed-node case_id, and **never overwrites the original** case dir.
+- **The 10 DST collisions ingested via `--reseq`** → `SPEC-DERM-01-00100..00106` + `SPEC-DERM-03-00107..00109` (distinct global seqs). The 3 pre-existing cases they collided with (CIA Herpes Labialis, AUC Burns, AMS Dermatitis Herpetiformis) verified untouched (still attested). 56 codes receipted (store total **1580**); 301 cases; distribution 48/45/7 → **49/45/7**. The 10 pending attestation (50 DST total pending).
+
+### Register impact
+- **`case-id-cross-series-collision` → resolved** (Medium→Low→resolved): the global-seq scheme is implemented, tested, and used; future collisions auto-resolve with the mapping recorded. The 5 earlier manual `-00099` re-ids stand.
+- `case-set-underpopulated` / **R-23**: 301 cases; remaining input-gated = attest the 50 DST cases, retire the 9 DST malformed stubs, optional rebalance.
+
+### Note (batch caveat)
+`--reseq` on a whole folder re-seqs EVERY colliding bundle — including already-ingested ones — so it was applied only to the 10 genuinely-uningested collision bundles (targeted by filename), not the folder. Within a real run, sequential writes give distinct seqs; dry-run shows all as the same next-seq (writes nothing) — cosmetic.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — DST batch (operator-re-tiered) ingested; 7th difficulty tier added (2026-07-05)
 
 **Status:** 40 re-tiered DST cases ingested; distribution rebalance (modest) + a 7th difficulty tier. 2 findings handed back. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
