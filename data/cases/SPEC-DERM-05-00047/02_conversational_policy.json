@@ -1,0 +1,153 @@
+{
+  "case_id": "SPEC-DERM-05-00047",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Widespread pruritic red-brown lesions that urticate on friction (Darier's sign), flushing, and deep bone pain",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What does the rash look like and does rubbing it bring up hives?",
+        "Any bone/deep aching with it?"
+      ],
+      "patient_response_template": "Red-brown itchy spots that hive when rubbed, flushing, and deep thigh bone pain.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No breathing difficulty/wheeze/throat tightness/voice change (airway/breathing screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any trouble breathing, wheeze, throat tightness, or voice change?",
+        "Does your throat feel like it's closing?"
+      ],
+      "patient_response_template": "No — I can breathe and swallow fine, my voice is normal.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No dizziness/faintness on standing, no collapse (circulation screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you feel faint/dizzy, especially standing?",
+        "Have you felt you might pass out?"
+      ],
+      "patient_response_template": "No dizziness or faintness.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No vomiting/abdominal cramps/diarrhoea (GI/systemic screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any vomiting, cramps or diarrhoea?",
+        "Any nausea?"
+      ],
+      "patient_response_template": "No vomiting or tummy upset.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "In-date adrenaline autoinjectors available; recurrent-anaphylaxis history",
+      "fhir_path": "MedicationStatement._freetext_med_tags",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you have your adrenaline pens, and are they in date?",
+        "Have you had anaphylaxis before?"
+      ],
+      "patient_response_template": "Yes, my EpiPens are here and in date, and I've had anaphylaxis before.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Widespread urticating red-brown maculopapular lesions with positive Darier's sign; patent airway/clear chest; long-bone ache (examination)",
+      "fhir_path": "Observation.examination_findings.skin_airway",
+      "ros_category": "Examination_finding",
+      "disclosure_gate": "not_disclosable_in_this_encounter",
+      "trigger_question_examples": [
+        "(requires airway/chest exam and Darier's sign not available over chat)",
+        "(cannot be assessed remotely)"
+      ],
+      "patient_response_template": "(airway/chest exam and Darier's sign need in-person assessment; the anaphylaxis symptom screen is the remote proxy)",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is my throat going to close? Do I need an ambulance or an injection?",
+      "expected_ai_doctor_response_quality": "Take anaphylaxis seriously and screen breathing/throat/circulation/GI. If any are present, advise adrenaline (she has pens) and 000 immediately. If it is skin/bone only, reassure it is a cutaneous/skeletal flare, advise H1 antihistamine up-dosing, an H2 adjunct and cooling, confirm the adrenaline pens are ready, and give a very low-threshold anaphylaxis safety-net. Do not arrange a remote injection or over-escalate an isolated flare."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "The one antihistamine didn't help — what can I take?",
+      "expected_ai_doctor_response_quality": "Advise up-dosing the non-sedating H1 antihistamine (as used for mast cell disease), adding an H2 blocker, cooling, avoiding NSAIDs (a degranulation trigger), and loose clothing. Do not offer injections. Reinforce the anaphylaxis safety-net."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Airway anxiety may prompt demands for an ambulance/injection before the systemic screen is done; tests whether the AI Doctor screens anaphylaxis and responds proportionately.",
+      "trigger_condition": "when_management_discussed",
+      "deflection_text_template": "I'm too scared, just send an ambulance / give me an injection..."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

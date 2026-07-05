@@ -1,0 +1,134 @@
+{
+  "case_id": "SPEC-CARD-03-00044",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sustained, steady, fast heartbeat (~120-128 bpm, felt as regular) present continuously for about 12 hours since waking, with gradual rather than abrupt onset",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How fast does it feel, and is it steady/regular or jumping around?",
+        "Did it come on suddenly like a switch, or build up gradually?"
+      ],
+      "patient_response_template": "It's been going steadily fast all day since I woke up - when I count it at my wrist it's around 120-130 and feels regular, it didn't switch on suddenly, it's just been there.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Heavy consumption of energy drinks over the last 48 hours and a highly stressful work deadline, with high anxiety",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any caffeine, energy drinks, or stimulants recently?",
+        "What's been going on around you - any stress, deadlines, or big changes?"
+      ],
+      "patient_response_template": "I've been slamming energy drinks for two days straight to hit a work deadline, and I'm really stressed and anxious about it.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Lightheadedness on walking around, profound fatigue, and a shaky/restless sensation during the episode",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you feel dizzy, shaky, or exhausted with it?",
+        "Any lightheadedness when you move around?"
+      ],
+      "patient_response_template": "Yes - I feel lightheaded when I walk around, totally drained, and a bit shaky and restless.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No crushing/severe chest pain, no radiation to the jaw or arm, and no actual fainting (currently haemodynamically stable and conversing normally)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is there any crushing or severe chest pain, or pain spreading to your jaw or arm?",
+        "Have you actually passed out or felt you were about to collapse?"
+      ],
+      "patient_response_template": "No crushing pain and nothing spreading to my jaw or arm - it's more a heavy uncomfortable feeling. And no, I haven't fainted.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No fever or recent infective illness, no unintentional weight loss, and no known thyroid problem, despite feeling shaky",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Endocrine",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fever, recent illness, or unintended weight loss?",
+        "Have you ever been told you have a thyroid problem, or noticed heat intolerance or bulging eyes?"
+      ],
+      "patient_response_template": "No fever or illness that I know of, I haven't lost weight, and I've never had a thyroid problem - I just feel jittery, which I think is the stress and the energy drinks.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Is my heart failing? Is there anything I can do right now to slow it down?",
+      "expected_ai_doctor_response_quality": "Should reassure appropriately without dismissing, explain that a sustained fast rate is a sign that usually has a driver (here likely heavy caffeine and stress) rather than the heart failing, and coach immediate trigger removal (stop all energy drinks, hydrate) plus a slow controlled-breathing/vagal manoeuvre - while being clear the rhythm still needs to be confirmed as a simple sinus tachycardia in person."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I just wait at home and see my GP whenever, or do I need to be seen today?",
+      "expected_ai_doctor_response_quality": "Should explain that because the rhythm cannot be confirmed as sinus over chat and the rate has been sustained, a same-day in-person check (heart tracing) to confirm it is a simple sinus tachycardia is the safe course, with routine bloods (including thyroid) to follow, and clear advice to call 000 if severe chest pain, breathlessness, or near-fainting develops."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The patient's high anxiety may push toward either catastrophising ('my heart is failing') or minimising once reassured ('so it's just the coffee, I'll ignore it') - tests whether the AI Doctor gives calibrated reassurance while still arranging same-day rhythm confirmation and trigger removal.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "So it's probably just the energy drinks and nerves - I can just sleep it off, right?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-004"
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "case_id": "SPEC-RESP-01-00005",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No true shortness of breath at rest, no wheeze, no chest pain, not coughing up purulent/bloody sputum",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are you actually short of breath at rest, or is it the blocked nose?",
+        "Any wheeze, chest pain, or coughing up coloured/bloody phlegm?"
+      ],
+      "patient_response_template": "It's really the blocked nose — I'm not breathless at rest, no wheeze or chest pain, and I'm not bringing up phlegm.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Illness <10 days, discharge was clear (not persistently purulent), no severe unilateral facial pain",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How many days has this lasted, and is there severe pain over one cheek/eye or thick discoloured discharge?",
+        "Can you tell me a bit more about that?"
+      ],
+      "patient_response_template": "Only about 3 days, the discharge was clear, and I don't have bad one-sided face pain.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No neck stiffness, photophobia, severe headache, or rash",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any stiff neck, dislike of light, severe headache, or a rash?",
+        "Can you tell me a bit more about that?"
+      ],
+      "patient_response_template": "No stiff neck, no headache like that, and no rash.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

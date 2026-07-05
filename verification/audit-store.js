@@ -19,9 +19,17 @@
  * to write unless the caller asserts the data is synthetic. The non-PHI ledger is
  * always safe to persist; the PHI-bearing content store is gated.
  *
- * NOTE: this mock-scope store reads/appends a local JSONL file and is NOT
- * multi-process safe. A production ledger needs atomic append + durable, WORM
- * storage + an org-defined retention policy (a <regulatory_posture> decision).
+ * SUBSTRATE SEAM (M8/C5): the hash-chain logic sits ON a small storage
+ * "substrate" interface (appendLedgerLine / readLedgerLines / writeContentOnce /
+ * readContentByHex) — it never touches the filesystem directly. The built-in
+ * `local` substrate is the dev JSONL/filesystem backend (NOT WORM, NOT
+ * multi-process safe). Production registers a WORM adapter (e.g. S3 Object Lock,
+ * immudb) implementing the SAME interface via registerAuditSubstrate() at
+ * deploy; the chain algorithm is frozen and unchanged. Fail-safe: selecting a
+ * non-local substrate (HEYDOC_AUDIT_SUBSTRATE) with no adapter registered
+ * REFUSES — the medicolegal ledger is never silently written to a non-WORM
+ * backend. Retention is a MINIMUM-KEEP <regulatory_posture> decision surfaced by
+ * auditRetentionPolicy(); the ledger is NEVER auto-deleted here.
  */
 import {
   existsSync,
@@ -34,6 +42,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateLedgerEntry } from "./ledger-schema.js";
 import { sha256Prefixed } from "./hash.js";
+import { normaliseMode } from "./mode.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -50,6 +59,88 @@ function ledgerPath() {
 }
 function contentDir() {
   return join(dataDir(), "content");
+}
+
+// --- Audit substrate seam (M8/C5) ------------------------------------------
+// The chain algorithm calls these four I/O ops; it never touches `fs` directly.
+// A production WORM adapter implements the same interface. Default: `local`.
+
+const REQUIRED_SUBSTRATE_OPS = ["appendLedgerLine", "readLedgerLines", "writeContentOnce", "readContentByHex"];
+const substrateRegistry = new Map();
+
+/**
+ * Register a production audit substrate (e.g. a WORM adapter) at deploy time.
+ * The adapter MUST implement all four ops; it MUST be append-only / write-once
+ * (the chain's tamper-evidence assumes the backend never rewrites or reorders).
+ * @param {string} name - value that HEYDOC_AUDIT_SUBSTRATE selects
+ * @param {{appendLedgerLine:Function, readLedgerLines:Function, writeContentOnce:Function, readContentByHex:Function}} adapter
+ */
+export function registerAuditSubstrate(name, adapter) {
+  for (const op of REQUIRED_SUBSTRATE_OPS) {
+    if (typeof (adapter || {})[op] !== "function") throw new Error(`audit substrate "${name}" missing required op: ${op}()`);
+  }
+  substrateRegistry.set(name, adapter);
+}
+
+/** Built-in `local` substrate: dev JSONL/filesystem (NOT WORM). Resolves paths
+ *  per call so the HEYDOC_DATA_DIR override keeps working. */
+const localSubstrate = {
+  appendLedgerLine(line) {
+    const dir = dataDir();
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    appendFileSync(ledgerPath(), line + "\n");
+  },
+  readLedgerLines() {
+    const p = ledgerPath();
+    if (!existsSync(p)) return [];
+    return readFileSync(p, "utf8").split("\n").filter((l) => l.trim().length > 0);
+  },
+  writeContentOnce(hex, text) {
+    const dir = contentDir();
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const p = join(contentDir(), `${hex}.txt`);
+    if (!existsSync(p)) writeFileSync(p, text, "utf8"); // content-addressed → write once
+    return p;
+  },
+  readContentByHex(hex) {
+    const p = join(contentDir(), `${hex}.txt`);
+    return existsSync(p) ? readFileSync(p, "utf8") : null;
+  },
+};
+substrateRegistry.set("local", localSubstrate);
+
+/** Resolve the active substrate. FAIL-SAFE: a non-local name with no registered
+ *  adapter REFUSES — never silently write the medicolegal ledger to a non-WORM
+ *  backend. */
+function substrate() {
+  const name = (process.env.HEYDOC_AUDIT_SUBSTRATE || "local").trim() || "local";
+  const s = substrateRegistry.get(name);
+  if (!s) {
+    throw new Error(
+      `audit substrate "${name}" is not configured — a non-local (WORM) substrate ` +
+      `must be registered via registerAuditSubstrate() at deploy. Refusing to write ` +
+      `the medicolegal ledger to an unconfigured/non-WORM backend.`
+    );
+  }
+  return s;
+}
+
+/**
+ * Retention policy surface (M8/C5) — SURFACE, do not decide. Append-only/WORM
+ * medicolegal records are NEVER auto-deleted here; retention is a MINIMUM-KEEP
+ * org/regulatory (<regulatory_posture>) decision, and the WORM substrate forbids
+ * early deletion. Reads HEYDOC_AUDIT_RETENTION and reports it; unset ⇒ not
+ * configured, with a note. No period is encoded in code.
+ * @returns {{ configured: boolean, retention: string|null, auto_delete: false, note: string }}
+ */
+export function auditRetentionPolicy() {
+  const v = (process.env.HEYDOC_AUDIT_RETENTION || "").trim();
+  if (!v) {
+    return { configured: false, retention: null, auto_delete: false,
+      note: "retention unset — a regulatory_posture (minimum-keep) decision required before production; the ledger is never auto-deleted" };
+  }
+  return { configured: true, retention: v, auto_delete: false,
+    note: "minimum-keep retention; the append-only/WORM substrate forbids early deletion" };
 }
 
 /** Deterministic JSON: object keys sorted recursively, so hashing is stable. */
@@ -80,12 +171,7 @@ function randomId() {
 
 /** Read and parse every ledger entry (in order). Returns [] if no ledger yet. */
 export function readLedger() {
-  const p = ledgerPath();
-  if (!existsSync(p)) return [];
-  return readFileSync(p, "utf8")
-    .split("\n")
-    .filter((l) => l.trim().length > 0)
-    .map((l) => JSON.parse(l));
+  return substrate().readLedgerLines().map((l) => JSON.parse(l));
 }
 
 /**
@@ -130,9 +216,10 @@ export function appendEntry(core) {
   // or PHI-bearing entry (throws on failure).
   validateLedgerEntry(entry);
 
-  const dir = dataDir();
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  appendFileSync(ledgerPath(), JSON.stringify(entry) + "\n");
+  // Append via the active substrate (local JSONL by default; a WORM adapter in
+  // production). substrate() refuses if a non-local backend is selected but not
+  // registered, so a misconfigured production run never writes to a non-WORM file.
+  substrate().appendLedgerLine(JSON.stringify(entry));
   return entry;
 }
 
@@ -159,9 +246,6 @@ export function verifyChain() {
 function hexOf(candidateHash) {
   return String(candidateHash).replace(/^sha256:/, "");
 }
-function contentPath(candidateHash) {
-  return join(contentDir(), `${hexOf(candidateHash)}.txt`);
-}
 
 /**
  * Persist the exact output text to the synthetic-only, content-addressed store.
@@ -181,17 +265,13 @@ export function persistContent(candidateHash, output, opts = {}) {
     throw new Error("persistContent refused: content store is synthetic-only (opts.synthetic must be true)");
   }
   if (typeof output !== "string") throw new TypeError("persistContent requires a string output");
-  const dir = contentDir();
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const p = contentPath(candidateHash);
-  if (!existsSync(p)) writeFileSync(p, output, "utf8"); // content-addressed → write once
-  return p;
+  // Write-once via the active substrate (content-addressed by the output hash).
+  return substrate().writeContentOnce(hexOf(candidateHash), output);
 }
 
 /** Read stored output by its hash, or null if not persisted. */
 export function readContent(candidateHash) {
-  const p = contentPath(candidateHash);
-  return existsSync(p) ? readFileSync(p, "utf8") : null;
+  return substrate().readContentByHex(hexOf(candidateHash));
 }
 
 /**
@@ -229,7 +309,10 @@ function receiptMeta(packetReceipts) {
  * @returns {object} the appended ledger entry
  */
 export function recordRun(result, opts = {}) {
-  const mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  // Normalised (C16/F4): staging/production map to "live", so a non-dev run is
+  // never classified synthetic (content NOT persisted, content_persisted=false)
+  // and the ledger's mode enum (live|dry_run|mock) is never handed a raw env name.
+  const mode = normaliseMode(process.env.HEYDOC_MODE_DEFAULT).context_mode;
   const synthetic = mode !== "live";
   const hash = result.verification.candidate_output_hash;
 

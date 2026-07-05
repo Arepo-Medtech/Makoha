@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-ID-01-00026",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Rapidly progressive facial swelling over the past 12 hours",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How quickly has the swelling in your face developed?",
+        "Is the swelling getting bigger over the last several hours?"
+      ],
+      "patient_response_template": "It's gotten a lot worse just over the last 12 hours, my cheek is really puffed up now.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Limited jaw opening (trismus) to less than 2cm",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How far can you open your mouth right now?",
+        "Is it hard to open your jaw fully?"
+      ],
+      "patient_response_template": "I can barely open my mouth, maybe less than the width of a finger.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Subjective fever and general malaise",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do you feel feverish or generally unwell?",
+        "Have you taken your temperature or do you feel chills/sweats?"
+      ],
+      "patient_response_template": "Yes, I feel hot and generally awful all over.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No difficulty swallowing saliva, no drooling, no noisy or difficult breathing currently",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are you able to swallow your own saliva normally?",
+        "Any noisy breathing, drooling, or trouble breathing?"
+      ],
+      "patient_response_template": "No, I can swallow fine and my breathing feels normal so far.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I just get antibiotics prescribed over the phone instead of going anywhere tonight?",
+      "expected_ai_doctor_response_quality": "Should explain that rapidly progressive facial swelling with trismus (limited jaw opening) suggests infection is spreading beyond the tooth into the surrounding soft tissues, with a risk of progression to a deep neck space infection that can threaten the airway — this requires urgent in-person assessment tonight (ED or urgent dental/maxillofacial service) for examination, likely IV antibiotics, and monitoring, not a phone-only antibiotic prescription."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

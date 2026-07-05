@@ -38,9 +38,9 @@ function buildBundle() {
   return bundle;
 }
 
-function run(inDir, outDir) {
+function run(inDir, outDir, ...extra) {
   try {
-    const out = execFileSync("node", [SCRIPT, inDir, "--out", outDir], { encoding: "utf8" });
+    const out = execFileSync("node", [SCRIPT, inDir, "--out", outDir, ...extra], { encoding: "utf8" });
     return { code: 0, out };
   } catch (e) { return { code: e.status ?? 1, out: (e.stdout || "") + (e.stderr || "") }; }
 }
@@ -85,6 +85,34 @@ try {
   assert.strictEqual(mr.code, 1, "case_id mismatch should be refused (exit 1)");
   assert.ok(/!= _bundle/.test(mr.out), "reports case_id inconsistency");
   console.log("  [pass] case_id mismatch across nodes is refused");
+
+  // --- collision: default refuses; --reseq assigns a new global id, never overwrites ---
+  const collDir = join(work, "coll_in"), collOut = join(work, "coll_out"); mkdirSync(collDir, { recursive: true });
+  writeFileSync(join(collDir, "c.casebundle.json"), JSON.stringify(buildBundle(), null, 2));
+  // first ingest lands at the source id
+  assert.strictEqual(run(collDir, collOut).code, 0, "first ingest ok");
+  const origDir = join(collOut, "SPEC-CARD-04-00001");
+  const origHash = sha256(readFileSync(join(origDir, "10_ground_truth_node.json")));
+  // second ingest WITHOUT --reseq collides (refused, exit 1), original untouched
+  const c2 = run(collDir, collOut);
+  assert.strictEqual(c2.code, 1, "collision without --reseq is refused");
+  assert.ok(/COLLISION/.test(c2.out), "reports COLLISION");
+  // second ingest WITH --reseq assigns a NEW globally-unique id and ingests
+  const c3 = run(collDir, collOut, "--reseq");
+  assert.strictEqual(c3.code, 0, "collision with --reseq ingests (exit 0)\n" + c3.out);
+  assert.ok(/\[reseq\] SPEC-CARD-04-00001 -> SPEC-CARD-04-\d{5}/.test(c3.out), "reports the reseq mapping");
+  const assigned = /-> (SPEC-CARD-04-\d{5})/.exec(c3.out)[1];
+  assert.notStrictEqual(assigned, "SPEC-CARD-04-00001", "assigned a different id");
+  const newDir = join(collOut, assigned);
+  assert.ok(existsSync(join(newDir, "case_manifest.json")), "re-seq'd case written to the new id dir");
+  const nm = JSON.parse(readFileSync(join(newDir, "case_manifest.json")));
+  assert.strictEqual(nm.case_id, assigned, "manifest carries the assigned id");
+  assert.strictEqual(nm.ingest.reseq.original_case_id, "SPEC-CARD-04-00001", "reseq mapping recorded (original)");
+  assert.strictEqual(nm.ingest.reseq.assigned_case_id, assigned, "reseq mapping recorded (assigned)");
+  assert.strictEqual(JSON.parse(readFileSync(join(newDir, "10_ground_truth_node.json"))).case_id, assigned, "sealed node case_id rewritten");
+  // the ORIGINAL case dir is untouched by the reseq (never overwritten)
+  assert.strictEqual(sha256(readFileSync(join(origDir, "10_ground_truth_node.json"))), origHash, "original case never overwritten by --reseq");
+  console.log("  [pass] collision refused by default; --reseq assigns a new global id, never overwrites");
 
   console.log("contract-case-ingest: OK");
 } finally {

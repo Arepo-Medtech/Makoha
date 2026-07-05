@@ -1,0 +1,81 @@
+{
+  "case_id": "SPEC-DERM-01-00106",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Migratory, blanching, pale-centred red-flare wheals that individually fade within hours",
+      "fhir_path": "Condition._freetext_exam_tags.wheals",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do the welts move around and each one fade within a day, with a pale centre and red flare?",
+        "Do they blanch (go white) with pressure?"
+      ],
+      "patient_response_template": "Yes, they move around, each fades within hours, they have a pale centre with a red flare, and they go white when pressed.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No lip/tongue/throat swelling, no breathlessness/wheeze, no faintness/dizziness or vomiting (airway/allergic-emergency screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.allergic_emergency_screen",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any swelling of your lips/tongue/throat, trouble breathing or wheezing, feeling faint/dizzy, or vomiting?",
+        "Is your throat tight or your voice changed?"
+      ],
+      "patient_response_template": "No lip/tongue/throat swelling, my breathing is fine, and I'm not faint or vomiting — it's just the itchy welts.",
+      "patient_deflection_template": "I feel like my throat might close but I can breathe fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "A new NSAID (ibuprofen) was taken ~12 hours before onset (likely trigger)",
+      "fhir_path": "Condition._freetext_HPC_tags.trigger",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Any new medicines, foods or exposures before the rash?",
+        "Did you start any painkillers recently?"
+      ],
+      "patient_response_template": "I took a new brand of ibuprofen about 12 hours before it started.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "early",
+      "patient_text": "Is my throat about to close? Should I use an EpiPen?",
+      "expected_ai_doctor_response_quality": "Take the concern seriously: screen for airway/angioedema and circulatory features. If truly absent, reassure this is (currently) skin-only urticaria and give high-dose antihistamines, cease NSAIDs, and a strong anaphylaxis safety-net (adrenaline/000 for any airway/breathing/faintness). Should not dismiss the airway concern."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 9,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

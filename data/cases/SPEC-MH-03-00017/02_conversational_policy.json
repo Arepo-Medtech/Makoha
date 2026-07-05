@@ -1,0 +1,84 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No stridor (noisy/whistling breathing), able to speak in full sentences and swallow water; normal oxygenation",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is your breathing noisy or whistling when you breathe in (stridor)?",
+        "Can you speak in full sentences and drink a sip of water?",
+        "Are your lips a normal colour?"
+      ],
+      "patient_response_template": "No whistling, I can speak in full sentences and drink water fine, and my lips are normal.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No sudden voice change/hoarseness, no rapidly enlarging or acutely painful neck swelling",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Has your voice suddenly become very hoarse?",
+        "Is the neck lump suddenly bigger, hot, or very painful?"
+      ],
+      "patient_response_template": "My voice is normal and the lump isn't suddenly bigger or painful.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Sensation began with neck-focused hypervigilance and hyperventilation; goitre is longstanding and stable",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "When did the tightness start relative to worrying/pressing on your neck?",
+        "Is the goitre something you've had stably for a while?"
+      ],
+      "patient_response_template": "It started as I worried and kept pressing on my neck; the lump has been there stably for a long time.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is my airway closing? Should I call an ambulance?",
+      "expected_ai_doctor_response_quality": "Reassure based on the objective airway signs the patient can demonstrate (normal voice, full sentences, swallowing water, no stridor), explain throat-tightness is muscle tension from anxiety over a stable goitre, coach breathing and to stop palpating, and give a clear stridor/voice-change safety-net — without dispatching an ambulance for a patent airway."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-MH-03-00017"
+}

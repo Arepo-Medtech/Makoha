@@ -1,0 +1,83 @@
+{
+  "case_id": "SPEC-NEURO-01-00047",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Continuous convulsions for over 10 minutes without waking",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How long has he been shaking for?",
+        "Has he woken up or opened his eyes at all during this?"
+      ],
+      "patient_response_template": "[Spouse] It's been over 10 minutes now and he hasn't stopped or opened his eyes once.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Blue lips and noisy/irregular breathing during the seizure",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Does his breathing sound normal, or is he struggling?",
+        "Do his lips or face look a bluish colour?"
+      ],
+      "patient_response_template": "[Spouse] Yes, his lips look blue and his breathing sounds really rough and noisy.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Ran out of Levetiracetam (anti-seizure medication) 3 days ago",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has he been taking his epilepsy medication as normal?",
+        "When did he last take his seizure tablets?"
+      ],
+      "patient_response_template": "[Spouse] Actually, he ran out of his Levetiracetam three days ago and hadn't gotten more yet.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "[Spouse] Should I try to hold him still or put something in his mouth so he doesn't bite his tongue?",
+      "expected_ai_doctor_response_quality": "Should clearly instruct NOT to restrain the patient or put anything in his mouth, to protect the airway by positioning him on his side (lateral recovery position) if possible, clear the area of hazards, and time the seizure while awaiting the ambulance, which should already be called given seizure duration over 5 minutes."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 5,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001"
+    ]
+  }
+}

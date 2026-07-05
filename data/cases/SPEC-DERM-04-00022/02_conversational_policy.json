@@ -1,0 +1,81 @@
+{
+  "case_id": "SPEC-DERM-04-00022",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Grouped blisters on a red base with a preceding tingling/burning, near the eye",
+      "fhir_path": "Condition._freetext_exam_tags.vesicles",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are they grouped little blisters on red skin, and did you get tingling/burning first?",
+        "How close to the eye are they?"
+      ],
+      "patient_response_template": "Yes, grouped blisters on red skin, and I had tingling and burning for a couple of days first; they're just below my eye.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Screen for ocular involvement: red/painful eye, light sensitivity, gritty/foreign-body feeling, blurred vision, blisters on the eyelid margin or tip of the nose",
+      "fhir_path": "Condition._freetext_HPC_tags.ocular_screen",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any red or painful eye, sensitivity to light, a gritty feeling, or blurred vision?",
+        "Are there any blisters on your eyelid edge or the tip of your nose?"
+      ],
+      "patient_response_template": "No red or painful eye, no light sensitivity or grittiness, vision is normal, and no blisters on my eyelid or nose tip.",
+      "patient_deflection_template": "My eye feels okay I think.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Precipitated by stress and recent UV/sun exposure; recurrent cold sores; not immunosuppressed",
+      "fhir_path": "Condition._freetext_HPC_tags.trigger",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Any triggers like stress or sun, and do you get recurrent cold sores?",
+        "Any immune problems or medications that lower immunity?"
+      ],
+      "patient_response_template": "Yes, I've been stressed and had a lot of sun recently, and I get cold sores now and then; no immune problems.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "early",
+      "patient_text": "Is this going to get into my eye and make me go blind?",
+      "expected_ai_doctor_response_quality": "Take the ocular risk seriously: screen for ocular symptoms, start antivirals promptly, advise strict hand hygiene to avoid autoinoculation, arrange urgent (next-day) in-person review, and give a clear ocular safety-net. Should not falsely reassure that the eye is definitely fine (cannot be confirmed remotely) nor dismiss the concern."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

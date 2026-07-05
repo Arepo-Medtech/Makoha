@@ -1,0 +1,102 @@
+{
+  "case_id": "SPEC-DERM-01-00001",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Long-standing background of blackheads/whiteheads and oily skin on face and upper trunk",
+      "fhir_path": "Condition._freetext_HPC_tags.background",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had skin problems like spots or oily skin before this flare?",
+        "Do you get blackheads or whiteheads normally?",
+        "Is this on a background of ongoing spots and oily skin?"
+      ],
+      "patient_response_template": "Yeah, I've always had oily skin and spots on my face and upper back — this is just way worse than usual.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Only a mildly raised temperature; no high fever or shaking chills",
+      "fhir_path": "Observation.vital_signs.temperature",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you had a fever or shaking chills?",
+        "Did you check your temperature?",
+        "Any feeling hot and cold or rigors?"
+      ],
+      "patient_response_template": "I checked and it was 37.6. I feel a bit run down but no shaking chills or high fever.",
+      "patient_deflection_template": "I don't know, I feel hot in the face but that's the spots.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Redness is confined around the cysts; not spreading toward the eyes and no visual change",
+      "fhir_path": "Condition._freetext_HPC_tags.spread",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the redness spreading up toward your eyes or eyelids?",
+        "Any change in your vision or eye pain?",
+        "Is the red area getting bigger and moving across your face?"
+      ],
+      "patient_response_template": "No, the redness is just around the lumps on my cheeks. My eyes are fine and my vision is normal.",
+      "patient_deflection_template": "It's all red, I can't really tell.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Recent high stress with increased oily skin preceded the flare",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.stress",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has anything changed recently — stress, products, routine?",
+        "Was there anything before the flare started?"
+      ],
+      "patient_response_template": "I've been really stressed lately and my skin got much oilier just before this started.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid"
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "early",
+      "patient_text": "Is this a serious skin infection? The nurse on the phone said it might be spreading.",
+      "expected_ai_doctor_response_quality": "Acknowledge the concern and screen for true cellulitis/periorbital spread (fever, spreading erythema, visual change) rather than either dismissing or assuming infection. Should not commit to 'cellulitis' without the screening negatives, nor dismiss the pain."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 14,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

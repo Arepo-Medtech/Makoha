@@ -1,0 +1,81 @@
+{
+  "case_id": "SPEC-DERM-03-00040",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Patchy hair loss with scaling and 'black-dot' broken hairs preceding a boggy suppurative scalp mass, with a nearby new puppy",
+      "fhir_path": "Condition._freetext_exam_tags.scalp_triad",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Did bald scaly patches with broken-off hairs ('black dots') come first, then a boggy oozing lump? Any new pets?",
+        "Is the lump spongy all over rather than one soft pus pocket?"
+      ],
+      "patient_response_template": "Yes, bald scaly patches with black-dot broken hairs came first over weeks, then a big spongy oozing lump; we got a new puppy recently.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "The mass is spongy/boggy throughout (not a single fluctuant pus pocket) — a fungal hypersensitivity reaction",
+      "fhir_path": "Condition._freetext_exam_tags.boggy",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the lump spongy all over, or does it feel like one soft fluid-filled pocket?",
+        "Are there many little pustules around the hairs rather than one big head?"
+      ],
+      "patient_response_template": "It's spongy all over with lots of little pustules around the hairs, not one big soft pocket.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No high fever, spreading redness down the face/neck, or lethargy/confusion (systemic-infection screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.systemic_screen",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any high fever, redness spreading down the forehead/neck, or the child very sleepy/confused?",
+        "Is the redness moving beyond the scalp or is he unusually drowsy?"
+      ],
+      "patient_response_template": "No high fever, the redness isn't spreading down, and he's alert (just in pain).",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "early",
+      "patient_text": "Does this pus-filled lump need to be cut open and drained?",
+      "expected_ai_doctor_response_quality": "Explain that a kerion is a fungal hypersensitivity reaction (a solid sponge of inflammation), NOT a bacterial abscess — it should NOT be incised/drained, which causes pain and scarring without helping. The treatment is oral antifungal (mandatory) plus a short oral steroid to reduce swelling. Should not advise/perform I&D."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

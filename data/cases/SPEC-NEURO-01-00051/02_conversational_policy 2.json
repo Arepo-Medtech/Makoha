@@ -1,0 +1,105 @@
+{
+  "case_id": "SPEC-NEURO-01-00051",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Fall with head impact and loss of consciousness for about 2 minutes",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How did the fall happen, and did he lose consciousness at any point?",
+        "About how long was he knocked out for?"
+      ],
+      "patient_response_template": "[Roommate] He fell backward off a wall and hit the back of his head on concrete, and he was out cold for about 2 minutes.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Repeated forceful vomiting (3 episodes) since the injury",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has he vomited since the injury, and if so, how many times?",
+        "Is the vomiting forceful or repeated?"
+      ],
+      "patient_response_template": "[Roommate] Yes, he's thrown up three times in the last 15 minutes.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Post-traumatic amnesia — repeatedly asking the same questions",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is he confused or repeating the same questions over and over?",
+        "Does he seem to remember what happened before or after the fall?"
+      ],
+      "patient_response_template": "[Roommate] Yes, he keeps asking what happened, over and over.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Severe, progressively worsening headache at the back of the head",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Does he have a headache, and is it getting worse?",
+        "Where exactly is the headache, and how severe is it?"
+      ],
+      "patient_response_template": "[Roommate] Yes, he says the back of his head is hurting more and more.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "[Roommate] Should I help him walk to the car so we can drive him to the hospital ourselves?",
+      "expected_ai_doctor_response_quality": "Should clearly advise against moving or mobilising the patient given the risk of an expanding intracranial bleed and possible spinal injury, recommend keeping him still with the head slightly elevated, and call 000 immediately for emergency paramedic transport with proper spinal precautions and airway monitoring, rather than driving him privately."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 6,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

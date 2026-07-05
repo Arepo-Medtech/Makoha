@@ -1,0 +1,75 @@
+{
+  "case_id": "SPEC-NEURO-01-00020",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T2",
+  "rationale_for_baseline_tier": "With a clear kinetic trigger, habitual susceptibility and no central features on history, this is most likely benign kinetosis manageable with an antiemetic and sip rehydration — but acute vertigo/vomiting cannot be fully central-cleared via telehealth, and the patient (living alone) cannot keep fluids down, so prompt (24–48h, same-day if not improving) review with a low threshold is appropriate (T2). Central features carry a hard T5 safety-net; failed rehydration routes to ED (T4).",
+  "minimum_viable_tier_for_pass": "T2",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Sudden severe headache, weakness or numbness on one side, slurred speech, double vision, new deafness, or inability to walk/stand out of proportion to the nausea",
+      "target_tier": "T5",
+      "time_bound_condition": "Call 000 immediately",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-001",
+      "rationale": "Possible posterior-circulation/cerebellar stroke — cannot be excluded remotely; time-critical.",
+      "communication_template": "If you get a sudden severe headache, weakness or numbness on one side, slurred speech, double vision, new deafness, or you can't stand/walk beyond the dizziness — call 000 immediately.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Still unable to keep any fluids down after the antiemetic, not passing urine, or marked persistent lightheadedness",
+      "target_tier": "T4",
+      "time_bound_condition": "Attend ED for antiemetics/IV fluids",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-003",
+      "rationale": "Dehydration from intractable vomiting may need parenteral treatment.",
+      "communication_template": "If you still can't keep fluids down after the anti-nausea medicine, stop passing urine, or feel very lightheaded — go to the Emergency Department.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone with active fluid loss",
+      "effect_on_advice": "Lower threshold for ED if rehydration fails; ensure a plan to get help and monitor for central features."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Take the anti-nausea medicine, lie still with your head as steady as possible in a cool room, and rehydrate with a tiny sip of electrolyte drink every few minutes. It should settle over the next several hours, with a wobbly feeling for up to a day.",
+    "contact_method": "Antiemetic + sip rehydration + review within 24–48h; 000 for central features; ED if you can't rehydrate",
+    "after_hours_advice": "000 immediately for any stroke-type features; ED if unable to keep fluids down.",
+    "documentation_for_gp": "Kinetosis after a rough boat trip; central (stroke) features screened negative on history but not examinable remotely; antiemetic + sip rehydration; dehydration and central safety-nets given."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T1",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1"
+        ],
+        "failure_description": "Attributing to motion sickness with no central (stroke) screen or safety-net.",
+        "patient_harm_scenario": "A cerebellar stroke is mislabelled as seasickness; the reperfusion window is missed."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T1"
+        ],
+        "failure_description": "No dehydration safety-net in a patient living alone who can't keep fluids down."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T5"
+        ],
+        "failure_description": "Calling an ambulance for classic settling seasickness with a fully negative central screen — though a low threshold is reasonable given the limits of remote assessment."
+      }
+    }
+  }
+}

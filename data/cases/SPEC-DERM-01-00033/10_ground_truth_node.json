@@ -1,0 +1,141 @@
+{
+  "case_id": "SPEC-DERM-01-00033",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Contaminated superficial abrasion, right knee",
+    "snomed_code": "399963005",
+    "snomed_display": "Abrasion",
+    "icd10am_code": "S80.21",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "A superficial abrasion ('graze'/road rash) is friction/shear removal of the epidermis (± superficial dermis) leaving a raw, weeping, often contaminated wound bed with pinpoint bleeding; the subcutaneous fat is intact (partial-thickness). It is benign but two things drive management beyond simple dressing: contamination with embedded grit (risk of traumatic tattooing and infection — needs thorough irrigation ± debridement) and tetanus-prone status (a contaminated wound with uncertain/>10-year tetanus immunisation needs a booster). The ground-truth task is to (1) confirm it is superficial (not a deep laceration needing closure or an underlying fracture), (2) recognise it requires in-person wound care — high-pressure saline irrigation, removal of embedded debris and a tetanus booster (which cannot be done via chat) — and (3) apply a non-adherent moist dressing and screen for secondary infection (cellulitis/lymphangitis).",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Superficial (partial-thickness) abrasion",
+          "snomed_code": "399963005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Raw weeping graze with pinpoint bleeding and intact subcutaneous tissue after a friction fall.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Deep laceration / open joint injury",
+          "snomed_code": "312608009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Deep gaping wound / exposed structures / joint involvement would need ED closure/assessment.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Tetanus-prone contaminated wound",
+          "snomed_code": "76795007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Embedded grit + uncertain/>10y tetanus status → needs irrigation/debridement + tetanus booster.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Cellulitis",
+          "snomed_code": "385627004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Fresh margins only; watch for later spreading infection."
+        }
+      ],
+      "scoring_note": "Superficial abrasion leads; a deep/joint injury must be excluded and the tetanus-prone contaminated wound recognised as needing in-person care."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Contaminated superficial abrasion",
+          "snomed_code": "399963005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Superficial partial-thickness graze, full joint movement, normal neurovascular status, but contaminated with embedded grit and tetanus-prone — needs in-person irrigation/debridement + tetanus booster + moist dressing.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Deep laceration / open joint injury",
+          "snomed_code": "312608009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No deep gaping/exposed structures; escalation target if deeper injury is found."
+        }
+      ],
+      "scoring_note": "After a depth screen, a contaminated superficial abrasion leads; arrange in-person wound care and tetanus, dress moist, with a cellulitis safety-net."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Contaminated superficial abrasion",
+          "snomed_code": "399963005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; heals in 7–14 days with proper cleaning/dressing; needs tetanus cover."
+        }
+      ],
+      "scoring_note": "Final position is a contaminated superficial abrasion requiring in-person wound care/tetanus."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Deep laceration / open joint / fracture — deep gaping wound, exposed fat/muscle/tendon/bone, joint involvement, restricted movement or neurovascular deficit",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Needs ED for closure/exploration/imaging.",
+      "if_missed_consequence": "Missed deep injury / open joint.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Tetanus-prone contaminated wound — embedded grit that cannot be cleaned + uncertain/>10-year tetanus immunisation",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Requires thorough irrigation/debridement and a tetanus booster (± immunoglobulin) to prevent tetanus and infection/tattooing.",
+      "if_missed_consequence": "Tetanus, wound infection, traumatic tattooing.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Dressing a contaminated wound without decontamination/tetanus",
+      "description": "Applying a dressing over embedded grit without irrigation/debridement and without addressing tetanus risks infection, tattooing and tetanus."
+    },
+    {
+      "pitfall_name": "Dry gauze on a raw wound",
+      "description": "Dry gauze adheres and tears new epithelium — use a non-adherent moist dressing."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "High-pressure saline irrigation and debridement of embedded debris",
+      "Tetanus booster administration",
+      "Assessment of depth/joint involvement by palpation"
+    ],
+    "correct_escalation_action": "Initial gentle cleaning + arrange in-person wound care (irrigation/debridement) and tetanus booster promptly; non-adherent moist dressing; ED for deep/joint injury or infection.",
+    "premature_diagnosis_risk": "Missing a deep injury or leaving a contaminated tetanus-prone wound untreated."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Wound management / tetanus",
+      "relevant_recommendation": "Clean contaminated wounds by thorough irrigation and remove embedded debris; dress with a non-adherent moist dressing. Give a tetanus booster for tetanus-prone wounds if immunisation is uncertain or >5–10 years; consider tetanus immunoglobulin for high-risk wounds in inadequately immunised patients. Watch for wound infection."
+    }
+  ]
+}

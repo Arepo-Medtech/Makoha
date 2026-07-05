@@ -1,6 +1,15 @@
 /**
  * Integration: run a Trunk agent through the grounding pipeline and verification layer.
  * Trunk agents call this so all outputs are routed, context-injected, and verified.
+ *
+ * CROSS-TRUNK SEQUENCING (C6/DEAD_END-1 fix): runTrunkWithGrounding runs ONE
+ * trunk. To walk Trunk 1.0's routing_plan.next_trunks across trunks, use
+ * runTrunkSequence (re-exported below; gated behind HEYDOC_SEQUENCER, default
+ * off). The sequencer halts UNCONDITIONALLY on continuation_blocked (HARD_FAIL /
+ * BLOCKED_NO_PROOF propagate across the sequence — no override), on
+ * escalate_now / T5, and on a failed verification. Until a caller opts into the
+ * sequencer, anyone chaining trunks manually MUST honour continuation_blocked
+ * themselves.
  */
 import { runPipeline } from "../verification/pipeline.js";
 import { verify } from "../verification/verifier.js";
@@ -118,6 +127,10 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
 export function verifyTrunkOutput(output, evidence) {
   return verify(output, evidence);
 }
+
+// Cross-trunk sequencer (C6) — the one integration surface trunk agents import.
+// Behind HEYDOC_SEQUENCER (default off → rollback is the single-trunk status quo).
+export { runTrunkSequence, isSequencerEnabled } from "./trunk-sequencer.js";
 
 /**
  * Load the system prompt for a trunk. Used when building LLM context (e.g. system message).

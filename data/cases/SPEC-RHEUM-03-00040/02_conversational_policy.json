@@ -1,0 +1,153 @@
+{
+  "case_id": "SPEC-RHEUM-03-00040",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Severe bilateral ocular burning/foreign-body sensation and xerostomia with diffuse arthralgia",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "HEENT",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What are your eyes and mouth like?",
+        "Any joint aches with it?"
+      ],
+      "patient_response_template": "Both eyes burn like broken glass, my mouth is bone dry, and my hands and knees ache.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No sudden vision loss; both eyes equally affected (not a single severe painful photophobic eye) (keratitis/ulcer screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any sudden drop or loss of vision?",
+        "Is one eye far worse — intensely painful and light-sensitive — or a spot on the cornea?"
+      ],
+      "patient_response_template": "No sudden vision loss, and both eyes are equally affected — not one worse than the other.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No high fever or unilateral hot tender cheek swelling / pus from the duct (bacterial parotitis screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any high fever, or one cheek becoming fiery red, hot and very painful?",
+        "Any pus in the mouth from the salivary gland?"
+      ],
+      "patient_response_template": "No high fever, no single hot painful cheek, and no pus — both glands are mildly swollen but not sore.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Can still swallow liquids (dryness-related dysphagia, not fixed obstruction)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Can you swallow liquids, or is anything stuck?",
+        "Does food physically get stuck, or is it just too dry to swallow?"
+      ],
+      "patient_response_template": "I can sip and swallow water; solids just won't go down without saliva — nothing feels physically stuck.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Living alone with poor caloric intake and corneal-integrity risk during a severe flare",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.nutrition",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are you managing to eat/drink, and is anyone helping?",
+        "How are your eyes overnight?"
+      ],
+      "patient_response_template": "I can't eat solids, I'm on my own, and my eyes are raw especially overnight.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Bilateral conjunctival injection with poor tear pooling; parched lobulated tongue; mild non-tender parotid enlargement; boggy MCP synovitis (examination)",
+      "fhir_path": "Observation.examination_findings.ocular_oral_joints",
+      "ros_category": "Examination_finding",
+      "disclosure_gate": "not_disclosable_in_this_encounter",
+      "trigger_question_examples": [
+        "(requires ocular/oral/joint examination, ideally slit-lamp)",
+        "(cannot be assessed over chat)"
+      ],
+      "patient_response_template": "(needs an in-person examination, including a slit-lamp eye check)",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Could I have damaged my eyes? Do I need the eye hospital?",
+      "expected_ai_doctor_response_quality": "Explain that severe dry-eye flares can threaten the corneal surface and the eyes can't be examined over a chat, so an urgent optometry/ophthalmology (slit-lamp) review is needed — sooner if any red flag. Screen for a single severely painful photophobic eye or sudden vision loss (which means the eye emergency service now). Advise intensive preservative-free lubrication. Do not simply reassure without an eye-exam pathway."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "What can I do tonight for my eyes and to eat?",
+      "expected_ai_doctor_response_quality": "Advise intensive preservative-free lubricating ointment overnight, a humidifier, saliva substitutes, sipping fluids, and soft/blended/liquid meals to maintain intake, while arranging the eye review and continuing usual medications. Do not present unproven agents as therapy."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient seeks only reassurance/remedies, testing whether the AI Doctor arranges an urgent eye (slit-lamp) review and screens ocular/parotid red flags.",
+      "trigger_condition": "when_management_discussed",
+      "deflection_text_template": "It's just my usual dryness, can't I just use more drops?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

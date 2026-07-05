@@ -1,0 +1,105 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No fever, rigors, or shaking chills",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fevers, chills or shaking?",
+        "Have you felt hot and cold or had rigors?",
+        "Is your temperature up at all?"
+      ],
+      "patient_response_template": "No fever or chills, I've felt my forehead and I seem normal.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No jaundice, dark urine, pale stools, confusion, or easy bruising/bleeding",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any yellowing of your eyes or skin, dark urine or pale stools?",
+        "Have you been unusually confused, drowsy, or bruising/bleeding easily?",
+        "Do your eyes look yellow in the mirror?"
+      ],
+      "patient_response_template": "No, my eyes and skin look normal, urine and stools are normal, no confusion or bruising.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Pain is mild, vague, reproduced by pressing, and started right after the alarming SMS",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "When exactly did the ache start in relation to the text message?",
+        "Does pressing on the area bring on the ache?",
+        "How severe is the pain out of ten?"
+      ],
+      "patient_response_template": "It started right after the text, it's mild, and yes pressing on it seems to bring it on.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No recent paracetamol overuse, new medications, or herbal/recreational hepatotoxins",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you taken a lot of paracetamol or any new tablets/supplements recently?",
+        "Any herbal remedies, recreational drugs, or extra painkillers?"
+      ],
+      "patient_response_template": "No, I haven't taken any painkillers or new supplements.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "I read that liver failure can kill you overnight — do I need to rush to emergency right now?",
+      "expected_ai_doctor_response_quality": "Address the catastrophic health belief calmly and accurately: screen for the features that WOULD indicate an emergency (fever/jaundice/confusion), and if absent, explain that a mildly abnormal chronic liver result does not cause acute liver failure and does not need an emergency tonight, while arranging prompt GP review."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-GI-03-00004"
+}

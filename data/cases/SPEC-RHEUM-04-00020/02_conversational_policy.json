@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Afebrile, well, not toxic; rash confined to the legs and not rapidly spreading to the trunk (against meningococcaemia)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have a fever, rigors, or feel very unwell?",
+        "Is the rash spreading quickly onto your trunk, or staying on the legs?"
+      ],
+      "patient_response_template": "No fever or rigors, I feel okay in myself, and it's staying on my shins.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No abdominal pain, no blood in urine/cola-coloured urine, no joint pain (no HSP organ involvement so far)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any tummy pain, blood in your urine, or dark/cola-coloured urine?",
+        "Any joint pain or swelling?"
+      ],
+      "patient_response_template": "No tummy pain, my urine looks normal, and no joint pain.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Symmetric palpable purpura on dependent (lower-leg) areas following a recent upper respiratory infection; no anticoagulant use",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are the spots slightly raised/palpable and symmetric on both legs?",
+        "Did anything precede this, like a cold, and are you on any blood thinners?"
+      ],
+      "patient_response_template": "They're slightly raised and on both shins evenly; I had a cold two weeks ago and I'm not on any blood thinners.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "It's not the meningitis rash then — can I just stay home and rest?",
+      "expected_ai_doctor_response_quality": "Reassure that the well, afebrile, leg-confined picture is against meningococcaemia, but explain that a non-blanching (purpuric) rash still needs same-day in-person assessment to check platelets and kidneys (urine/BP), because those cannot be done over video — while giving a clear meningococcal and abdominal/renal safety-net."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-04-00020"
+}

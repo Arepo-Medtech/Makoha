@@ -18,5 +18,8 @@ All seven servers default to `HEYDOC_MODE_DEFAULT=mock`. Status drives what you 
 - **fhir-broker mock built + parser wired** → Trunk 6.0 receives sanitised lab facts from mock fhir Observations (raw values never reach the LLM); a LIVE EHR source + conformance validation remain before patient-ready.
 - **All 7 MCP servers now have a mock implementation** (docs, identity-au, terminology stubs; knowledge, pharmacology, fhir-broker, messaging-geo mock cores). Remaining work is live connections + the non-server blockers (Clinician Portal, persistence).
 
+## Mode enforcement (C16 — RESOLVED 2026-07-03, M1)
+`verification/mode.js` normalises `HEYDOC_MODE_DEFAULT` at every consumer seam (pipeline `context_mode`, verifier `enforceLive`, audit-store `recordRun`): `mock`/`dry_run` are dev modes (mock proof flagged, not blocked); `staging`/`production`/`live` **block mock receipts** as grounding proof; an **unrecognised mode default-denies to live**; staging/production runs are never classified synthetic (no content persistence). Contract-tested: `test/contract-mode-normaliser.js`. Residual for live-connect (M9/M11): the MCP servers stamp `receipt.mode` from their own env read and only ever run mock today — normalise server-side stamping when a live vendor connects.
+
 ## Allowed Service Registry
-Only these seven server names may appear in trunk output. Any other internal name triggers a `no_repo_invention` verifier failure (severity: warning). Register any new service in the gap register before it may be referenced.
+Only these seven server names may appear in trunk output. Any other internal name **fails** the `no_repo_invention` verifier check (rejects the output), tagged `severity: warning` in the report (surfaced-but-gating — low severity but still blocking; C15/M7). Register any new service in the gap register before it may be referenced.

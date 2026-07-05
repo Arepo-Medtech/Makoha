@@ -1,0 +1,142 @@
+{
+  "case_id": "SPEC-GI-01-00049",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute viral gastroenteritis",
+    "snomed_code": "235913009",
+    "snomed_display": "Viral gastroenteritis",
+    "icd10am_code": "A08.4",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Viral gastroenteritis (norovirus/rotavirus) is a self-limiting infection causing sudden watery, non-bloody diarrhoea, nausea/vomiting, crampy abdominal pain and malaise, resolving over a few days; the main risk is dehydration/electrolyte loss. It is benign. The ground-truth task is to (1) exclude a surgical abdomen (appendicitis — migratory/localised RLQ pain, peritonism; bowel obstruction — colicky pain with vomiting, no flatus/stool, distension) and invasive/bacterial enterocolitis (blood/mucus in stool, high sustained fever, toxicity, travel), (2) assess and manage dehydration with oral rehydration solution given as small, frequent sips (± an antiemetic to break the vomiting cycle), and (3) AVOID routine antidiarrhoeals (loperamide can worsen invasive infection) and antibiotics (not indicated for viral gastroenteritis), with hygiene to prevent spread.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Viral gastroenteritis",
+          "snomed_code": "235913009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden watery non-bloody diarrhoea + vomiting + crampy pain + malaise.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Appendicitis / bowel obstruction",
+          "snomed_code": "74400008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen severe/localised RLQ or constant pain, peritonism, no flatus/stool with distension.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Bacterial enterocolitis",
+          "snomed_code": "111839008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen blood/mucus, high sustained fever/toxicity, travel — may need stool tests/antibiotics.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        }
+      ],
+      "scoring_note": "Viral gastroenteritis may lead, but a surgical abdomen and invasive/bacterial diarrhoea must be screened before conservative rehydration."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Viral gastroenteritis",
+          "snomed_code": "235913009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Crampy (eases after stool) non-localised pain, still passing diarrhoea, no blood/mucus/high fever/travel — viral gastroenteritis; dehydration risk from vomiting.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Appendicitis / bowel obstruction",
+          "snomed_code": "74400008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No localised/constant peritonitic pain or obstruction features; escalation target if they develop."
+        },
+        {
+          "diagnosis": "Bacterial enterocolitis",
+          "snomed_code": "111839008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No blood/mucus/high sustained fever/travel; escalation target if they develop."
+        }
+      ],
+      "scoring_note": "After a negative surgical/invasive screen, viral gastroenteritis leads; oral rehydration ± antiemetic, avoiding antidiarrhoeals/antibiotics, with dehydration and surgical safety-nets."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Viral gastroenteritis",
+          "snomed_code": "235913009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; vomiting settles in ~24h, diarrhoea over a few days; supportive care."
+        }
+      ],
+      "scoring_note": "Final position is benign viral gastroenteritis with a dehydration focus."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Surgical abdomen — severe constant or localised (e.g. right lower quadrant) pain, a rigid/guarded/rebound-tender abdomen, or obstruction (colicky pain, vomiting, no flatus/stool, distension)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Appendicitis/obstruction are surgical emergencies.",
+      "if_missed_consequence": "Perforated appendix / strangulated bowel.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Invasive/bacterial diarrhoea or dehydration — blood/mucus in stool, high sustained fever/toxicity, recent travel; or unable to keep fluids down, reduced urine output, marked lightheadedness",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "May need stool tests/antibiotics; dehydration may need ED/IV fluids.",
+      "if_missed_consequence": "Untreated invasive infection / significant dehydration.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Missing appendicitis",
+      "description": "Attributing all pain/vomiting to gastroenteritis without screening for a localising/constant surgical abdomen."
+    },
+    {
+      "pitfall_name": "Routine antidiarrhoeals/antibiotics",
+      "description": "Loperamide can worsen invasive infection; antibiotics are not indicated for viral gastroenteritis."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Abdominal examination for peritonism/localisation",
+      "Hydration examination / bloods (electrolytes)",
+      "Stool tests",
+      "Parenteral antiemetics/IV fluids"
+    ],
+    "correct_escalation_action": "Oral rehydration (small frequent sips) ± antiemetic; ED for a surgical abdomen or failed rehydration; GP/stool tests for blood/high fever/travel features.",
+    "premature_diagnosis_risk": "Missing appendicitis/obstruction or significant dehydration."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Gastroenteritis",
+      "relevant_recommendation": "Manage acute gastroenteritis with oral rehydration solution (small, frequent amounts); an antiemetic (e.g. ondansetron) can help vomiting. Avoid routine antidiarrhoeals and antibiotics. Investigate/escalate for blood in stool, high fever, dehydration, or features of a surgical abdomen."
+    }
+  ]
+}

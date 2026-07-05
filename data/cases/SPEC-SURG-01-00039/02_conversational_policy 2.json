@@ -1,0 +1,101 @@
+{
+  "case_id": "SPEC-SURG-01-00039",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Unconscious with breathing changing from snoring to shallow and irregular",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Is he breathing normally, or does it sound noisy or irregular?",
+        "Is he responding to you at all?"
+      ],
+      "patient_response_template": "He was snoring at first but now his breathing is shallow and irregular, and he's not responding at all.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Severe visible scalp bleeding and obvious thigh deformity",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms_volunteered",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Where is he bleeding from, and how much?",
+        "Do you see any obvious deformity or bleeding elsewhere?"
+      ],
+      "patient_response_template": "There's a lot of blood from his head, and his thigh looks really bent and wrong.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "High-speed mechanism (approx 100km/h into a tree), unrestrained driver, vehicle deformed",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Vascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How fast was he going, and was he wearing a seatbelt?",
+        "How badly damaged is the car?"
+      ],
+      "patient_response_template": "He was going really fast, maybe 100km/h, and I don't think he had his seatbelt on. The car is smashed up badly.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "000 has already been called",
+      "fhir_path": "Condition._freetext_HPC_tags.social_history_volunteered",
+      "ros_category": "SDOH",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Has someone already called 000?",
+        "Is anyone on the phone with emergency services right now?"
+      ],
+      "patient_response_template": "Yes, someone's already called them, they're on their way.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {}
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "immediately_at_consultation_start",
+      "patient_text": "[Bystander] What do I do, he's not waking up and there's so much blood?!",
+      "expected_ai_doctor_response_quality": "Should immediately confirm 000 has been called and request that the response be upgraded to include a trauma/aeromedical team given the mechanism and severity, then instruct: do not move the patient or attempt extrication unless there is immediate danger (e.g. fire); apply firm, continuous direct pressure to the scalp wound; if trained/possible, gently open the airway without moving the neck (jaw thrust) if breathing sounds obstructed, keeping the head and neck as still as possible given likely spinal injury risk; and to stay with the patient, keeping the area clear for emergency services. This should be prioritised over extended history-taking given the severity of the presentation."
+    }
+  ],
+  "deflection_behaviours": [],
+  "consultation_end_conditions": {
+    "max_turns": 5,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

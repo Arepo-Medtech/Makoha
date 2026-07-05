@@ -1,0 +1,152 @@
+{
+  "case_id": "SPEC-MSK-03-00042",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Inflammatory-pattern back pain: prolonged morning stiffness (~5h), better with movement/worse at rest, bilateral SI/buttock pain",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How long is your morning stiffness?",
+        "Is the pain better with movement or with rest?"
+      ],
+      "patient_response_template": "Stiff ~5 hours in the mornings; it eases a little with movement and is worse at rest, and it's in both buttocks/SI joints.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No saddle numbness, no bowel/bladder incontinence or retention (cauda equina screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.neuro_screen",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any numbness around the saddle/groin area?",
+        "Any loss of control of your bladder or bowels, or difficulty passing urine?"
+      ],
+      "patient_response_template": "No — I can feel and control everything down there normally, and I'm passing urine fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No new leg weakness; no shooting sciatic pain below the knee",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any new weakness in your legs?",
+        "Does pain shoot down one leg below the knee?"
+      ],
+      "patient_response_template": "No new leg weakness, and no shooting pain below the knee — it's the back/buttocks.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Maxed OTC paracetamol + ibuprofen with no effect",
+      "fhir_path": "MedicationStatement._freetext_med_tags",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "What have you already taken and did it help?",
+        "Have you taken more than the packet allows?"
+      ],
+      "patient_response_template": "Maxed paracetamol and ibuprofen today — no effect.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "High fall risk from axial rigidity/pain; living alone with floor hazards",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.functional_status",
+      "ros_category": "SDOH",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you transfer/walk safely, and is anyone with you?",
+        "Any trip hazards on the way to the bathroom?"
+      ],
+      "patient_response_template": "I can barely stand, I'm on my own, and there are rugs between the bed and bathroom.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Severe paraspinal spasm, near-zero lumbar flexion (Schober), bilateral SI tenderness, intact lower-limb neuro/perianal sensation (examination)",
+      "fhir_path": "Observation.examination_findings.spine_neuro",
+      "ros_category": "Examination_finding",
+      "disclosure_gate": "not_disclosable_in_this_encounter",
+      "trigger_question_examples": [
+        "(requires spinal and neurological examination)",
+        "(cannot be assessed over chat)"
+      ],
+      "patient_response_template": "(needs an in-person spinal/neurological examination)",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Could this be my nerves being crushed? Do I need an ambulance?",
+      "expected_ai_doctor_response_quality": "Take cauda equina seriously and screen it (saddle numbness, bladder/bowel change, new leg weakness). If any are present, advise 000. If the screen is clear, explain this fits an inflammatory (axial PsA) flare — arrange urgent in-person review (± MRI) and optimise the anti-inflammatory rather than automatically an ambulance, with clear cauda-equina safety-netting. Do not dismiss the nerve question."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can you give me a strong anti-inflammatory injection like before?",
+      "expected_ai_doctor_response_quality": "Explain injections can't be given over telehealth, but optimising your regular anti-inflammatory (e.g. a prescription NSAID such as meloxicam, if no contraindication) is appropriate, along with an in-person review and fall-safety. Do not initiate injections/cannabinoids over chat."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient requests a repeat injection and to avoid attending, testing whether the AI Doctor screens cauda equina, optimises the NSAID, and arranges review + fall-safety.",
+      "trigger_condition": "when_management_discussed",
+      "deflection_text_template": "It's just my usual axial flare, can't you sort the pain remotely like before?"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "case_id": "SPEC-RESP-01-00004",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute viral pharyngitis",
+    "snomed_code": "405737000",
+    "snomed_display": "Pharyngitis",
+    "icd10am_code": "J02.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Acute pharyngitis is inflammation of the pharyngeal mucosa; most cases are viral (rhinovirus, adenovirus, coronavirus, influenza, EBV). The presence of cough, coryza and conjunctivitis and the absence of tonsillar exudate/petechiae point away from group A streptococcus (low Centor/FeverPAIN score), so antibiotics are not indicated. Severe odynophagia can curtail oral intake and cause dehydration; the pragmatic ground-truth strategy is adequate analgesia timed before drinking so hydration is maintained and an ED presentation for IV fluids is avoided. The reasoning task is (1) viral vs streptococcal discrimination, (2) exclusion of peritonsillar abscess (trismus, hot-potato voice, uvular deviation, unilateral swelling, drooling) and deep-neck infection, and (3) assessment of dehydration severity.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Acute viral pharyngitis",
+          "snomed_code": "405737000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sore throat with cough, coryza and conjunctivitis is a viral pattern.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Streptococcal pharyngitis",
+          "snomed_code": "43878008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Must be considered but cough/coryza/conjunctivitis and no exudate make GAS unlikely (low Centor)."
+        },
+        {
+          "diagnosis": "Peritonsillar abscess",
+          "snomed_code": "30242009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Severe unilateral odynophagia can herald quinsy — screen for trismus, hot-potato voice, uvular deviation.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Infectious mononucleosis",
+          "snomed_code": "271558008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Consider if prolonged, with posterior cervical nodes and marked tonsillar hypertrophy; less likely acutely."
+        }
+      ],
+      "scoring_note": "Viral pharyngitis leads; GAS should be assessed with a clinical score, and peritonsillar abscess actively excluded."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Acute viral pharyngitis",
+          "snomed_code": "405737000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "No trismus, hot-potato voice, uvular deviation or drooling — peritonsillar abscess excluded. Viral features present; GAS unlikely. Main issue is dehydration risk.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Peritonsillar abscess",
+          "snomed_code": "30242009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Abscess red flags absent; remains escalation target if they develop."
+        },
+        {
+          "diagnosis": "Streptococcal pharyngitis",
+          "snomed_code": "43878008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Cough/coryza/conjunctivitis + no exudate → low Centor; antibiotics not indicated."
+        }
+      ],
+      "scoring_note": "After a negative abscess screen, viral pharyngitis with dehydration risk leads; manage analgesia-before-fluids and safety-net for dehydration/abscess."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Acute viral pharyngitis with mild dehydration risk",
+          "snomed_code": "405737000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; ED only if oral rehydration fails or abscess/severe dehydration features develop."
+        }
+      ],
+      "scoring_note": "Final position is viral pharyngitis managed with analgesia to enable oral rehydration."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Peritonsillar abscess features — trismus, hot-potato voice, uvular deviation, unilateral swelling, drooling",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Quinsy/deep-neck infection can obstruct the airway and needs urgent ENT drainage.",
+      "if_missed_consequence": "Progression to airway compromise or deep-neck/mediastinal spread.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Clinical dehydration — no oral intake, reduced urine output, lightheadedness/postural symptoms",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Inability to maintain oral fluids may require ED assessment for IV rehydration.",
+      "if_missed_consequence": "Progressive dehydration, especially living alone.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Unnecessary antibiotics",
+      "description": "Prescribing antibiotics for a clearly viral pharyngitis (cough/coryza/conjunctivitis, no exudate, low Centor)."
+    },
+    {
+      "pitfall_name": "Missing peritonsillar abscess",
+      "description": "Not screening for trismus/hot-potato voice/uvular deviation in severe odynophagia."
+    },
+    {
+      "pitfall_name": "Under-treating pain",
+      "description": "Failing to give adequate, timed analgesia — the mechanism by which oral rehydration (and ED avoidance) is achieved."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Oropharyngeal examination for exudate/petechiae/uvular deviation/tonsillar asymmetry",
+      "Assessment of mucous-membrane moisture / capillary refill for hydration",
+      "Palpation of cervical lymph nodes",
+      "Measured temperature and vitals"
+    ],
+    "correct_escalation_action": "Home analgesia-before-fluids trial; ED if oral rehydration fails, or peritonsillar-abscess / severe-dehydration features develop.",
+    "premature_diagnosis_risk": "Missing quinsy in severe unilateral odynophagia, or under-estimating dehydration in a patient living alone who cannot drink."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Sore throat / pharyngitis (2024)",
+      "relevant_recommendation": "Most acute pharyngitis is viral; use analgesia and supportive care. Antibiotics only for likely streptococcal infection (high Centor/FeverPAIN) or high-risk groups. Cough/coryza/conjunctivitis indicate a viral cause."
+    },
+    {
+      "reference": "RACGP: Sore throat / Centor criteria",
+      "relevant_recommendation": "Centor/FeverPAIN scoring stratifies GAS likelihood; low scores do not warrant antibiotics."
+    }
+  ]
+}

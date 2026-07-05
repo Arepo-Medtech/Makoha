@@ -66,7 +66,13 @@ ok("packet: non-lab fact without sanitised_by still accepted", () => validateCon
   check("integration: one sanitised lab fact in packet", labFacts.length === 1 && labFacts[0].interpretation === "HH");
   check("integration: lab fact carries sanitised_by", typeof labFacts[0].sanitised_by === "string");
   ok("integration: produced packet validates", () => validateContextPacket(r.packet));
-  check("integration: raw number 6.8 absent from entire packet", !JSON.stringify(r.packet).includes("6.8"));
+  // The raw lab number must never appear in the packet's CONTENT. Strip ISO
+  // timestamps first: assembled_at_utc / receipt timestamp_utc legitimately
+  // contain "<ss>.<ms>" and a value like "…:26.897Z" coincidentally contains the
+  // substring "6.8" (~1% of runs → CI flake). Timestamps are metadata, not a
+  // leaked lab value; the invariant is that no raw number reaches trunk-facing content.
+  const packetSansTimestamps = JSON.stringify(r.packet).replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, "<ts>");
+  check("integration: raw number 6.8 absent from packet content (excl. timestamps)", !packetSansTimestamps.includes("6.8"));
 }
 
 if (errors.length) {

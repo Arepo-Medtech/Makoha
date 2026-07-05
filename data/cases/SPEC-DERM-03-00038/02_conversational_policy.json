@@ -1,0 +1,80 @@
+{
+  "case_id": "SPEC-DERM-03-00038",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "A well-demarcated dark warty 'stuck-on'-looking lesion, one of several similar lesions increasing with age, stable until today's mechanical trauma",
+      "fhir_path": "Condition._freetext_exam_tags.stuck_on",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Does it look 'stuck-on' and warty, and do you have several similar spots that increased with age?",
+        "Had it been stable/unchanged before it caught today?"
+      ],
+      "patient_response_template": "Yes, it looks stuck-on and warty, I have several similar spots that have increased with age, and it was stable until it caught on the towel today.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "It had NOT been changing/growing/darkening or bleeding spontaneously before today's snag (evolution screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.evolution_screen",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Before it caught today, had it been changing, growing, darkening or bleeding on its own?",
+        "Is this the odd one out compared to your other spots?"
+      ],
+      "patient_response_template": "No, it hadn't been changing or bleeding on its own before — it only bled because I caught it with the towel; it looks like my other similar spots.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "On low-dose aspirin (antiplatelet), explaining easier bleeding",
+      "fhir_path": "MedicationStatement.antiplatelet",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are you on aspirin or any blood thinners?",
+        "Do you take anything to thin your blood or for your heart?"
+      ],
+      "patient_response_template": "Yes, I take a low-dose aspirin daily.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-001"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "early",
+      "patient_text": "Please just tell me it's not a melanoma that burst.",
+      "expected_ai_doctor_response_quality": "Reassure appropriately but honestly: the described features favour a benign 'age spot' (seborrhoeic keratosis), and the bleeding is mechanical — but because a proper dermoscopic exam can't be done over video, recommend a routine in-person skin check to confirm (and biopsy anything atypical). Provide haemostasis advice. Should neither over-escalate to ED nor give absolute remote reassurance."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 9,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

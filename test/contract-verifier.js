@@ -100,6 +100,24 @@ check("hard_stop: hard_stop receipt flips to pass", passed("Pharmacology returne
 // A single failing check drives overall pass=false.
 check("one failure => overall fail", verify("Choosing Wisely recommends no imaging.", {}).pass === false);
 
+// C15/M7: every check result carries a severity label; the gate is unchanged
+// (a failed check of ANY severity still fails pass — surfaced-but-gating).
+{
+  const sev = (out, ev, name) => (verify(out, ev).results.find((r) => r.check === name) || {}).severity;
+  check("severity: no_invented_codes critical", sev("Triage only.", {}, "no_invented_codes") === "critical");
+  check("severity: no_invented_operations critical", sev("Triage only.", {}, "no_invented_operations") === "critical");
+  check("severity: hard_stop_enforcement critical", sev("Triage only.", {}, "hard_stop_enforcement") === "critical");
+  check("severity: no_invented_guidelines fail", sev("Triage only.", {}, "no_invented_guidelines") === "fail");
+  check("severity: no_repo_invention warning", sev("Triage only.", {}, "no_repo_invention") === "warning");
+  // the C15 reconciliation: no_repo_invention is tagged warning BUT still gates.
+  const inv = verify("Routed via `totally-made-up-service`.", {});
+  const repo = inv.results.find((r) => r.check === "no_repo_invention");
+  check("no_repo_invention: severity warning AND fails (surfaced-but-gating)", repo.severity === "warning" && repo.passed === false);
+  check("no_repo_invention failure still drives overall pass=false", inv.pass === false);
+  // every result carries a valid severity.
+  check("all 5 results carry a severity", verify("Clean output.", {}).results.every((r) => ["critical", "fail", "warning"].includes(r.severity)));
+}
+
 // Integration: the pipeline runs all 5 checks and computes pass.
 const result = await runPipeline({ candidate_output: "Based on the provided context, no diagnosis or dosages are given." });
 check("pipeline returns 5 results", result.verification.results.length === 5);

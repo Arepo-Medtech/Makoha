@@ -1,0 +1,137 @@
+{
+  "case_id": "SPEC-CARD-02-00010",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Two episodes today of near-fainting (presyncope) brought on by mild exertion/walking, each easing with rest but recurring on standing",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you tell me more about these dizzy spells today?",
+        "Did you feel like you were going to actually pass out?"
+      ],
+      "patient_response_template": "Yeah, twice today I felt like the room was spinning and I thought I might go down, both times when I was walking. Sitting down helped, but then it happened again when I tried to get up.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Mild, non-radiating chest heaviness accompanying the dizzy spells and general fatigue",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had any chest discomfort or heaviness with this?",
+        "Any chest pain or pressure?"
+      ],
+      "patient_response_template": "Yeah, my chest has felt a bit heavy, kind of a dull pressure in the middle. It's not spreading anywhere and it's not too bad, but it's there.",
+      "patient_deflection_template": "No chest pain, just the dizziness.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Background of generalised fatigue over the past month, culminating today in the first episodes of presyncope",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How long has this been building up?",
+        "Have you been feeling more tired than usual recently?"
+      ],
+      "patient_response_template": "I've just been feeling washed out for about a month now, gradually got more tired, but today is the first time I've actually felt dizzy like that.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Exertional shortness of breath accompanying the dizzy spells and chest heaviness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you noticed any shortness of breath with this?",
+        "Any breathlessness when you're walking or feeling dizzy?"
+      ],
+      "patient_response_template": "Yes, actually — I have felt a bit puffed when this is happening, more than I'd expect from just walking to the kitchen.",
+      "patient_deflection_template": "No, breathing's been fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No palpitations or sensation of racing/fluttering heart, and no actual loss of consciousness (only near-fainting)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you noticed your heart racing, pounding, or skipping beats?",
+        "Did you actually lose consciousness at any point, or just feel like you might?"
+      ],
+      "patient_response_template": "No, I haven't felt my heart doing anything unusual like racing, and I didn't actually black out, just felt like I might.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "My wife thinks I should just rest today and see how I feel tomorrow. Do you think that's okay, or should we do something now?",
+      "expected_ai_doctor_response_quality": "Should not agree that resting and waiting until tomorrow is appropriate. Should clearly explain that new presyncope with chest heaviness and exertional breathlessness in an older adult needs urgent same-day assessment, given the risk of an underlying conduction or cardiac problem that could suddenly worsen."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "I really don't want to make a fuss and call an ambulance over some dizziness. Can't I just get a routine GP appointment this week?",
+      "expected_ai_doctor_response_quality": "Should firmly but kindly explain that this combination of symptoms needs same-day/urgent assessment rather than a routine appointment later in the week, given the risk of a worsening heart rhythm or conduction problem, and should not be talked down to a routine booking by the patient's reluctance to 'make a fuss'."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient tends to minimise symptoms as just tiredness or getting older, and is reluctant to seek urgent care to avoid being a burden — tests whether the AI Doctor persists with appropriate urgency despite this minimisation.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "I'm probably just getting old and tired, I don't want to bother anyone unnecessarily."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

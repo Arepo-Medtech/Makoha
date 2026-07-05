@@ -1,0 +1,73 @@
+{
+  "case_id": "SPEC-DERM-01-00016",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Prodromal tingling/burning then grouped vesicles on an erythematous base at the vermilion border; recurrent pattern",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did it start with tingling or burning before the blisters, and is it on the lip edge?",
+        "Have you had cold sores in the same spot before?"
+      ],
+      "patient_response_template": "Yes, it tingled and burned first, then blistered on the lip edge — I've had cold sores before.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No eye redness, eye pain or light sensitivity (herpetic keratitis screen)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is either eye red, painful or sensitive to light?",
+        "Any blistering near the eye?"
+      ],
+      "patient_response_template": "No, my eyes are completely fine.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No widespread punched-out lesions on eczematous skin (eczema herpeticum), no rapidly spreading hot red facial swelling (erysipelas/cellulitis), no mucosal sloughing/target lesions (SJS), no systemic toxicity",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any widespread rash, spreading hot red facial swelling, or blistering/peeling inside the mouth or elsewhere?",
+        "Do you feel systemically unwell or feverish?"
+      ],
+      "patient_response_template": "No, it's just the lip cluster; no spreading redness, no mouth or body rash, and I feel well otherwise.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

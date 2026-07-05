@@ -1,0 +1,130 @@
+{
+  "case_id": "SPEC-CARD-04-00004",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Progressive worsening of exertional palpitations over the preceding two months, culminating in today's near-syncope",
+      "fhir_path": "Condition._freetext_HPC_tags.timing_pattern",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you noticed your heart racing during exercise before today, and has it been getting worse?",
+        "Has this happened before, even in a milder way, over the past weeks or months?",
+        "Have you had any episodes like this building up recently?",
+        "When did you first start noticing your heart racing during exercise?"
+      ],
+      "patient_response_template": "Yeah, actually now that you ask — I've noticed my heart racing during hard runs for the last couple of months. It felt like it was happening more the last few weeks. I didn't think much of it until today.",
+      "patient_deflection_template": "Nah, today was the first time anything like this happened.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No prodromal warmth, nausea, tunnel vision, or vasovagal trigger (heat, prolonged standing, pain, emotional stress) preceding the loss of near-consciousness — the palpitations came first",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Right before you felt like you were going to faint, did you notice any warning signs like feeling hot, sick, or your vision going tunnel-like?",
+        "Did the racing heart come before the dizziness, or the other way around?",
+        "Was there anything that led up to it, like standing still for a long time or feeling unwell first?",
+        "Can you describe exactly what happened in order — what came first?"
+      ],
+      "patient_response_template": "No warning like that — the racing heart came first, then almost straight away the dark/woozy feeling. It wasn't like I felt sick or hot beforehand, it just hit me.",
+      "patient_deflection_template": "It's all a bit of a blur, I just remember feeling dizzy.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Family history detail: maternal uncle died suddenly and unexpectedly at age 30, cause never explained, no known prior heart diagnosis in him",
+      "fhir_path": "FamilyMemberHistory._freetext_family_history_tags.positive_FH",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is there any family history of heart problems or sudden deaths at a young age?",
+        "Has anyone in your family died suddenly or unexpectedly, especially at a younger age?",
+        "Tell me about your family's health history, particularly anything heart-related.",
+        "Do you know if your uncle had any heart problems before he passed away?"
+      ],
+      "patient_response_template": "Yeah — my mum's brother died suddenly when he was about 30. We were told his heart just stopped. Nobody ever really explained why, he seemed healthy before that as far as we know.",
+      "patient_deflection_template": "Not that I know of, no.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Patient has continued high-intensity training over recent months despite the escalating exertional palpitations, with no prior cardiac work-up",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you kept training at the same intensity despite noticing your heart racing?",
+        "Has anyone ever checked your heart with a scan or ECG before?",
+        "Did you cut back on training when you started noticing the racing, or keep going as normal?",
+        "Have you had any heart tests done in the past, like an ECG?"
+      ],
+      "patient_response_template": "No, I've never had my heart checked before. I just kept training as normal, I didn't think the racing was a big deal, I figured it was just from pushing myself hard.",
+      "patient_deflection_template": "I cut back a bit but nothing major.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Do you think I just fainted from running too hard? I've heard that can happen to athletes sometimes.",
+      "expected_ai_doctor_response_quality": "Acknowledge that exertional presyncope can occur in fit athletes, but explain that palpitations preceding the episode plus the family history need to be properly assessed before assuming a benign cause. Should not reassure the patient that this is 'probably normal for an athlete' without further screening — this is the anchoring/availability trap."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "I have a big race coming up in a few weeks — is it okay if I just take it easy but keep training a bit so I don't lose fitness?",
+      "expected_ai_doctor_response_quality": "Firmly but empathetically advise complete cessation of strenuous exercise and competitive sport until cardiology assessment is complete — do not agree to 'reduced intensity' training as a compromise, since exertion is the trigger for the concerning symptoms and the family history raises sudden cardiac death risk."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "When asked about his family history, patient briefly expresses distress about how upsetting his uncle's death was for the family before answering — tests whether the AI Doctor stays supportive while still extracting the clinically relevant detail (age, suddenness, cause unknown).",
+      "trigger_condition": "when_asked_about_family_history",
+      "deflection_text_template": "It was really hard on my mum when it happened, she still doesn't like talking about it much... but yeah, he was about 30, and it was totally out of nowhere."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003"
+    ]
+  }
+}

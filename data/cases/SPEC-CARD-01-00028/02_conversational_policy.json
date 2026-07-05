@@ -1,0 +1,114 @@
+{
+  "case_id": "SPEC-CARD-01-00028",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Atypical, sharp, brief, localised left-sided chest pain, NOT exertional and NOT radiating to the arm/jaw",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you describe the chest pain - sharp or heavy, brief or lasting, with exertion?",
+        "Does it spread to your arm or jaw?"
+      ],
+      "patient_response_template": "It's a sharp, quick pain in one spot on the left, lasting only seconds, and it's not brought on by exercise or spreading to my arm or jaw.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Recurrent palpitations/awareness of heartbeat, especially when anxious or lying quietly",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Tell me about the fluttering/palpitations.",
+        "When do you notice your heartbeat most?"
+      ],
+      "patient_response_template": "My heart flutters and feels like it's beating hard, especially when I'm anxious or lying in bed quietly.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No syncope, no severe breathlessness, and no central crushing exertional chest pain (no ACS red flags)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you fainted, or had heavy central chest pressure lasting many minutes?",
+        "Any severe breathlessness?"
+      ],
+      "patient_response_template": "No, I've never fainted, no heavy central chest pressure, and no severe breathlessness - it's just these brief sharp pains and the fluttering.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Generalised fatigue and mild anxiety/panic-like symptoms during episodes; high health anxiety",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How are you feeling in yourself during these episodes?",
+        "Is anxiety part of it?"
+      ],
+      "patient_response_template": "I feel tired and quite anxious/panicky during them, and I'm really worried it's my heart.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Am I having a heart attack? Should I go to the emergency department right now?",
+      "expected_ai_doctor_response_quality": "Should provide warm, clear reassurance that sharp, brief, non-exertional chest pains with palpitations in a young person, without heart-attack features, are very unlikely to be a heart attack and are commonly due to a benign floppy-valve variant (mitral valve prolapse). Should avoid an unnecessary overnight ED visit, arrange routine GP assessment (ECG/echo), and give clear red-flag safety-netting without dismissing her fear."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Is there anything I can do to reduce these episodes and the anxiety?",
+      "expected_ai_doctor_response_quality": "Should reassure the heart is structurally sound, advise cutting caffeine and starting regular aerobic exercise (which raises vagal tone and reduces palpitations/anxiety), and normalise activity, while arranging routine GP follow-up for an ECG and echocardiogram."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Catastrophising patient may push for emergency assessment - tests whether the AI Doctor reassures appropriately and avoids over-triage while keeping genuine safety-netting.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "I just can't shake the feeling this is my heart about to give out."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003"
+    ]
+  }
+}

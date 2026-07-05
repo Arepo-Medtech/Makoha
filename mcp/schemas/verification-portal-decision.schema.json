@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "heydoc:verification-portal-decision:1.0.0",
+  "title": "VerificationGateRecord",
+  "description": "A clinician's attested decision on one generated output — the mandatory human-in-the-loop checkpoint (Clinician Verification Portal, ARCH_PLAN C9/§3.5.5). No patient path opens without a valid record whose decision releases the EXACT candidate_output_hash (or, for 'amended', the exact amended_output_hash). The hash binding is the medicolegal link between what was generated, what the clinician saw, and what the patient receives.",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "The verification run that produced the output under review."
+    },
+    "candidate_output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the exact generated output the clinician reviewed (the medicolegal anchor from the VerificationReport)."
+    },
+    "clinician_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Professional identifier of the reviewing clinician (e.g. AHPRA registration reference). Not patient data."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["approved", "rejected", "amended"],
+      "description": "approved: the generated output may be released verbatim. rejected: nothing is released. amended: only the clinician's amended text (amended_output_hash) may be released."
+    },
+    "decided_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the clinician attested the decision (UTC ISO-8601)."
+    },
+    "signature_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the clinician's attestation artefact (signature record / audit token). Never the credential itself."
+    },
+    "amended_output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "REQUIRED when decision='amended': SHA-256 of the exact amended text. The amendment is a new medicolegal artifact with its own hash; the original candidate_output_hash remains the record of what was generated."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional clinician notes on the decision."
+    }
+  },
+  "required": ["run_id", "candidate_output_hash", "clinician_id", "decision", "decided_at_utc", "signature_ref"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "amended" } } },
+      "then": { "required": ["amended_output_hash"] }
+    }
+  ]
+}

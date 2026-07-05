@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Home capillary glucose moderately elevated (~12 mmol/L) and blood ketones low/negative",
+      "fhir_path": "Observation.pathology_map",
+      "ros_category": "Endocrine",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Do you have a home glucose meter — what does it read?",
+        "Do you have ketone strips, and what's the reading?"
+      ],
+      "patient_response_template": "My glucose meter says 12.4 and my ketone strip says 0.1.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No vomiting, abdominal pain, deep rapid (Kussmaul) breathing, drowsiness/confusion, or fruity breath (no DKA)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Endocrine",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any vomiting, tummy pain, or deep fast breathing?",
+        "Are you drowsy or confused, or is your breath unusually fruity-smelling?"
+      ],
+      "patient_response_template": "No vomiting or tummy pain, my breathing is normal, I'm not drowsy, and no fruity breath.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Polyuria is largely driven by drinking ~3 L of water out of fear ('to flush the sugar')",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How much water have you been drinking, and why?",
+        "Did the frequent urination follow a big increase in how much you drank?"
+      ],
+      "patient_response_template": "I drank about 3 litres to try to flush the sugar out, then couldn't stop weeing.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Am I going into a diabetic coma tonight? Should I go to hospital?",
+      "expected_ai_doctor_response_quality": "Use the home glucose/ketone readings and DKA symptom screen to risk-stratify: a moderate glucose with negative ketones and no DKA symptoms is not a diabetic emergency, so reassure and reduce fear-driven overdrinking, while giving a clear DKA safety-net (recheck ketones, ED if ketones rise or vomiting/drowsiness) — without either dismissing or over-escalating."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-ENDO-03-00021"
+}

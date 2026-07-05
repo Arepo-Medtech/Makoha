@@ -1,0 +1,134 @@
+{
+  "case_id": "SPEC-RESP-01-00011",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Cerumen impaction (right)",
+    "snomed_code": "44057004",
+    "snomed_display": "Impacted cerumen",
+    "icd10am_code": "H61.2",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Cerumen impaction is occlusion of the external auditory canal by wax; here chronic wax hydrated and swelled after shower water, producing sudden conductive hearing loss, fullness, tinnitus and otalgia. It is benign and reversible with cerumenolytics then irrigation/micro-suction. The critical ground-truth task is that sudden unilateral hearing loss must not be assumed to be wax: sudden sensorineural hearing loss (SSNHL) is an otological emergency (needs high-dose steroids within days) and the two are only reliably distinguished by otoscopy (is the canal actually occluded?) and tuning-fork testing (Weber lateralises to the affected ear in conductive loss, to the good ear in sensorineural). Neither can be done reliably via chat, so the telehealth-correct action is prompt in-person otoscopy; ototopical drops/irrigation should not proceed without confirming an intact tympanic membrane, and cotton-bud use worsens impaction.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Cerumen impaction",
+          "snomed_code": "44057004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Chronic wax fullness + water exposure + sudden blockage and muffled (plugged) hearing suggests hygroscopic wax expansion.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Sudden sensorineural hearing loss (SSNHL)",
+          "snomed_code": "15188001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any sudden unilateral hearing loss must exclude SSNHL — a time-critical emergency; cannot be excluded without otoscopy/tuning-fork.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Tympanic membrane perforation / acute otitis media",
+          "snomed_code": "3110003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Post-water pain/hearing change; no discharge or URI prodrome argues against, but TM not visualised."
+        }
+      ],
+      "scoring_note": "Wax may lead, but SSNHL must be actively excluded — sudden hearing loss is never assumed to be wax without examination."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Cerumen impaction",
+          "snomed_code": "44057004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Plugged/muffled conductive-type loss with wax history and water trigger, no vertigo/facial weakness/discharge — mechanical impaction most likely, pending otoscopy.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Sudden sensorineural hearing loss",
+          "snomed_code": "15188001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be fully excluded remotely — requires same-day otoscopy ± audiometry; escalation target if canal is clear on examination."
+        }
+      ],
+      "scoring_note": "Even after history, SSNHL remains until otoscopy confirms an occluded canal; arrange prompt in-person assessment."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Cerumen impaction (presumptive)",
+          "snomed_code": "44057004",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; confirm and treat with in-person otoscopy + cerumenolytics then removal; exclude SSNHL if canal clear."
+        }
+      ],
+      "scoring_note": "Final telehealth position is presumptive wax requiring prompt in-person otoscopy to confirm and exclude SSNHL."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Sudden sensorineural hearing loss masquerading as wax",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "SSNHL requires high-dose corticosteroids within days for best recovery; assuming wax delays sight-... hearing-saving treatment.",
+      "if_missed_consequence": "Permanent hearing loss from untreated SSNHL.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Severe vertigo, facial weakness, ear discharge/bleeding, or spreading peri-auricular pain",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Suggests labyrinthitis, TM perforation with infection, facial-nerve involvement or necrotising OE.",
+      "if_missed_consequence": "Missed otological/neurological emergency.",
+      "safety_netting_edge_ref": "ESC-001"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Assuming sudden hearing loss is wax",
+      "description": "Reassuring and prescribing wax drops without arranging otoscopy risks missing SSNHL, which is treatment-time-sensitive."
+    },
+    {
+      "pitfall_name": "Remote irrigation/drops without TM confirmation",
+      "description": "Irrigation or drops before confirming an intact TM (no perforation) can cause harm; cotton-bud use worsens impaction."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Otoscopy to confirm canal occlusion by wax and visualise/exclude TM perforation",
+      "Weber/Rinne tuning-fork tests to classify the hearing loss",
+      "Audiometry to detect SSNHL",
+      "Ear irrigation / micro-suction"
+    ],
+    "correct_escalation_action": "Prompt (same-day/next-day) in-person otoscopy; start cerumenolytic softening; urgent ENT/audiology if canal is clear (possible SSNHL) or red flags develop.",
+    "premature_diagnosis_risk": "Treating SSNHL as wax and losing the treatment window."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines / RACGP: Cerumen impaction",
+      "relevant_recommendation": "Soften impacted cerumen with a cerumenolytic (e.g. docusate, olive oil, sodium bicarbonate drops) for several days, then remove by irrigation or micro-suction if the TM is intact. Sudden hearing loss requires examination to exclude sensorineural causes; avoid cotton-bud use."
+    }
+  ]
+}

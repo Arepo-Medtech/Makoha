@@ -1,0 +1,151 @@
+{
+  "case_id": "SPEC-URO-01-00045",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Uncomplicated cystitis (lower UTI)",
+    "snomed_code": "38822007",
+    "snomed_display": "Cystitis",
+    "icd10am_code": "N30.0",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Acute uncomplicated cystitis is a lower urinary-tract infection (usually E. coli) in a non-pregnant, non-catheterised woman with a normal urinary tract, presenting with dysuria, urinary frequency/urgency, suprapubic discomfort and cloudy/malodorous urine, WITHOUT fever, loin pain or systemic features. In a woman with typical symptoms and no complicating features, it is a clinical diagnosis and empirical short-course antibiotics are appropriate — this can be managed via telehealth. The ground-truth task is to (1) exclude pyelonephritis/upper-tract or systemic infection (fever, rigors, loin/costovertebral pain, nausea/vomiting, systemic illness), (2) identify complicating/atypical factors — pregnancy (which mandates a pregnancy test and a pregnancy-safe antibiotic, avoiding nitrofurantoin near term/at term), male sex, children, catheters, recurrent/relapsing infection, immunosuppression, or vaginal discharge suggesting an STI/vaginitis — and (3) prescribe a guideline short-course antibiotic (e.g. nitrofurantoin or trimethoprim) with fluids and symptomatic advice.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Uncomplicated cystitis",
+          "snomed_code": "38822007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Dysuria, frequency/urgency, suprapubic discomfort, cloudy urine in a woman.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Pyelonephritis",
+          "snomed_code": "45816000",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Screen fever/rigors/loin pain/vomiting — needs different (often longer/broader) treatment ± admission.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "STI / vaginitis (dysuria)",
+          "snomed_code": "53529004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Vaginal discharge/irritation or new-partner risk would point here — absent.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Complicated UTI / pregnancy",
+          "snomed_code": "197927001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Pregnancy, male sex, catheter, recurrence or immunosuppression change management (e.g. pregnancy test + safe antibiotic).",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        }
+      ],
+      "scoring_note": "Uncomplicated cystitis may lead, but pyelonephritis and complicating factors (especially pregnancy) must be screened before empirical antibiotics."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Uncomplicated cystitis",
+          "snomed_code": "38822007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Typical lower-UTI symptoms, no fever/loin pain/systemic features, non-pregnant, no vaginal discharge or complicating factors — uncomplicated cystitis suitable for empirical short-course antibiotics.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "Pyelonephritis",
+          "snomed_code": "45816000",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No fever/loin pain/systemic features; escalation target if they develop."
+        },
+        {
+          "diagnosis": "Complicated UTI / pregnancy",
+          "snomed_code": "197927001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No complicating factors reported — but confirm pregnancy status and choose a suitable antibiotic accordingly."
+        }
+      ],
+      "scoring_note": "After a negative upper-tract/complicating screen, uncomplicated cystitis leads; guideline short-course antibiotic + fluids, with a pyelonephritis safety-net and pregnancy consideration."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Uncomplicated cystitis",
+          "snomed_code": "38822007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; resolves with a short antibiotic course; urine culture if fails/recurs; confirm pregnancy status for drug choice."
+        }
+      ],
+      "scoring_note": "Final position is uncomplicated cystitis (telehealth-appropriate empirical treatment)."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Pyelonephritis / systemic infection — fever, rigors, loin/costovertebral (back/side) pain, nausea/vomiting, or systemic illness/sepsis features",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Upper-tract infection needs different treatment ± admission and can progress to sepsis.",
+      "if_missed_consequence": "Untreated pyelonephritis / urosepsis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Complicating factors — pregnancy (mandates a pregnancy test and a pregnancy-safe antibiotic), male sex, children, catheter, recurrent/relapsing infection, immunosuppression, or STI/vaginitis features",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "These change the diagnosis/antibiotic choice and follow-up.",
+      "if_missed_consequence": "Inappropriate/unsafe antibiotic (e.g. in pregnancy) or missed alternative diagnosis.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Missing pyelonephritis",
+      "description": "Not screening fever/loin pain/systemic features before treating as simple cystitis."
+    },
+    {
+      "pitfall_name": "Not checking pregnancy / drug suitability",
+      "description": "Prescribing without confirming pregnancy status and antibiotic suitability (e.g. avoiding nitrofurantoin at term, trimethoprim in early pregnancy)."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Urine dipstick/culture (though empirical treatment is appropriate for typical uncomplicated cystitis)",
+      "Abdominal/renal-angle examination",
+      "Pregnancy test"
+    ],
+    "correct_escalation_action": "Empirical guideline short-course antibiotic + fluids + symptomatic advice (confirm pregnancy status/drug suitability); ED for pyelonephritis/systemic features; urine culture if recurrent/failed/pregnant/complicated.",
+    "premature_diagnosis_risk": "Missing pyelonephritis or an unsafe antibiotic choice in pregnancy."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: UTI (cystitis)",
+      "relevant_recommendation": "Empirical short-course antibiotics (e.g. nitrofurantoin or trimethoprim) for acute uncomplicated cystitis in non-pregnant women with typical symptoms; a clinical diagnosis is sufficient without routine culture. Investigate/treat differently for pyelonephritis, pregnancy, men, children, catheters, recurrence or treatment failure."
+    }
+  ]
+}

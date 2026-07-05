@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No pleuritic chest pain, breathlessness, or palpitations (against autoimmune condition pleuritis/pericarditis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any sharp chest pain on breathing, breathlessness, or palpitations?",
+        "Any pain worse lying flat or on deep breaths?"
+      ],
+      "patient_response_template": "No chest pain on breathing, no breathlessness, no palpitations.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No cola/red urine, reduced urine output, or ankle swelling (against autoimmune condition nephritis); no single intensely hot red joint or high fever (against septic arthritis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Genitourinary",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any cola/red-coloured urine, less urine, or swollen ankles?",
+        "Is any single joint bright red, hot and agony to move, with a fever?"
+      ],
+      "patient_response_template": "My urine is normal colour and amount, no swollen ankles, and no single hot red joint or fever.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Migratory polyarthralgia and fatigue after missed hydroxychloroquine, no new rash/oral ulcers",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did this flare after missing your autoimmune condition tablets?",
+        "Any new facial rash or mouth ulcers?"
+      ],
+      "patient_response_template": "Yes, it flared after I missed doses this week, and no new rash or mouth ulcers.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Are my organs involved? Do I need hospital tonight?",
+      "expected_ai_doctor_response_quality": "Screen pleuritis/pericarditis, nephritis and septic arthritis; if reassuringly negative, explain a mild articular/constitutional autoimmune condition flare (likely from missed hydroxychloroquine) does not damage organs tonight, advise restarting hydroxychloroquine + NSAIDs and rest, and give an organ-crisis/septic-joint safety-net with a low threshold for review given she lives alone."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-03-00045"
+}

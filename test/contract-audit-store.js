@@ -25,7 +25,7 @@ async function run() {
   const dir = mkdtempSync(join(tmpdir(), "heydoc-audit-"));
   process.env.HEYDOC_DATA_DIR = dir; // audit-store reads this lazily per call
 
-  const { appendEntry, verifyChain, persistContent, readContent, readLedger, GENESIS_HASH } = await import("../verification/audit-store.js");
+  const { appendEntry, verifyChain, persistContent, readContent, readLedger, GENESIS_HASH, registerAuditSubstrate, auditRetentionPolicy } = await import("../verification/audit-store.js");
   const { hashCandidateOutput } = await import("../verification/hash.js");
 
   // Seed two synthetic entries (content + ledger).
@@ -103,6 +103,50 @@ async function run() {
   writeFileSync(join(cdir, first), "TAMPERED");
   const integrityDrift = spawnSync("node", [rehashPath, "--integrity"], { env, cwd: repoRoot });
   if (integrityDrift.status !== 1) errors.push(`rehash --integrity (drift) expected exit 1, got ${integrityDrift.status}`);
+
+  // --- M8/C5: substrate seam + retention hook (run LAST; no subprocesses after) ---
+  const savedSub = process.env.HEYDOC_AUDIT_SUBSTRATE;
+  const savedRet = process.env.HEYDOC_AUDIT_RETENTION;
+  try {
+    // (a) Custom in-memory substrate proves the seam: the frozen chain works
+    //     end-to-end through a non-filesystem backend.
+    const mem = { ledger: [], content: new Map() };
+    registerAuditSubstrate("memtest", {
+      appendLedgerLine: (line) => mem.ledger.push(line),
+      readLedgerLines: () => mem.ledger.slice(),
+      writeContentOnce: (hex, text) => { if (!mem.content.has(hex)) mem.content.set(hex, text); return `mem:${hex}`; },
+      readContentByHex: (hex) => (mem.content.has(hex) ? mem.content.get(hex) : null),
+    });
+    process.env.HEYDOC_AUDIT_SUBSTRATE = "memtest";
+    const h = "sha256:" + "c".repeat(64);
+    persistContent(h, "synthetic through the seam", { synthetic: true });
+    appendEntry({ run_id: "run-mem-0-aaaaaaa", candidate_output_hash: h, pass: true,
+      check_results: [{ check: "no_invented_codes", passed: true }], receipts: [], mode: "mock", content_persisted: true });
+    appendEntry({ run_id: "run-mem-1-aaaaaaa", candidate_output_hash: h, pass: true,
+      check_results: [{ check: "no_invented_codes", passed: true }], receipts: [], mode: "mock", content_persisted: false });
+    if (mem.ledger.length !== 2) errors.push("custom substrate: appendLedgerLine not used");
+    if (!verifyChain().valid) errors.push("custom substrate: verifyChain invalid (chain must work through any substrate)");
+    if (readContent(h) !== "synthetic through the seam") errors.push("custom substrate: content did not round-trip through the seam");
+
+    // (b) Fail-safe: a non-local substrate with no adapter registered REFUSES.
+    process.env.HEYDOC_AUDIT_SUBSTRATE = "worm";
+    let refused = false;
+    try { appendEntry({ run_id: "run-worm-0-aaaaaa", candidate_output_hash: h, pass: true, check_results: [], receipts: [], mode: "mock", content_persisted: false }); }
+    catch { refused = true; }
+    if (!refused) errors.push("unconfigured WORM substrate did NOT refuse (must never write to a non-WORM backend)");
+
+    // (c) Retention hook: surfaced, never decides, never auto-deletes.
+    delete process.env.HEYDOC_AUDIT_RETENTION;
+    const unset = auditRetentionPolicy();
+    if (unset.configured !== false || unset.auto_delete !== false) errors.push("retention: unset default should be {configured:false, auto_delete:false}");
+    process.env.HEYDOC_AUDIT_RETENTION = "P7Y";
+    const set = auditRetentionPolicy();
+    if (set.configured !== true || set.retention !== "P7Y" || set.auto_delete !== false) errors.push("retention: configured value should surface with auto_delete:false");
+  } finally {
+    if (savedSub === undefined) delete process.env.HEYDOC_AUDIT_SUBSTRATE; else process.env.HEYDOC_AUDIT_SUBSTRATE = savedSub;
+    if (savedRet === undefined) delete process.env.HEYDOC_AUDIT_RETENTION; else process.env.HEYDOC_AUDIT_RETENTION = savedRet;
+  }
+  console.log("  [pass] substrate seam (custom adapter + WORM-refuse) and retention hook");
 
   if (errors.length) {
     console.error("Contract failures:", errors);

@@ -1,0 +1,62 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Chalk-white macules with completely normal skin texture — no scale/raised border/central clearing (against tinea/pityriasis versicolor), no ulceration/necrosis, no chemical exposure",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is there any flaky scale, a raised red active border, or blistering/open skin on the patches?",
+        "Any strong chemical or bleach exposure to the area?"
+      ],
+      "patient_response_template": "No scale, no raised border, no blisters or open skin, and no chemical/bleach exposure — the skin feels smooth and normal.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Painless, non-itchy, afebrile; the surrounding erythema is self-induced by scrubbing and blanches",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are the patches painful, itchy, or is there a fever?",
+        "Is the red rim from your scrubbing, and does it fade when pressed?"
+      ],
+      "patient_response_template": "No pain, no itch, no fever; the red rim is where I scrubbed and it fades when I press it.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is this a contagious fungus or parasite eating my skin?",
+      "expected_ai_doctor_response_quality": "Explain that chalk-white patches with completely normal, smooth, painless skin and no scale are benign loss of skin pigment (loss of pigment), not a fungus/parasite/burn, and you can't wash it away; advise stopping the scrubbing, gentle care and daily sunscreen to the depigmented skin, with an infection/necrosis safety-net — without ED over-triage."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-DERM-03-00049"
+}

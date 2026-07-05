@@ -1,0 +1,62 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No single intensely red, hot, exquisitely painful joint and no fever/rigors (against septic arthritis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is any ONE joint bright red, hot, and agony to even move slightly?",
+        "Any fever, shakes, or feeling generally unwell?"
+      ],
+      "patient_response_template": "No single joint is red or hot, it's both hands equally, and I have no fever.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Bilateral symmetric MCP/PIP ache after overuse in known seronegative RA; passive movement not agonising",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did this follow a day of heavy hand use, and is it symmetric across both hands?",
+        "Do you have a diagnosed inflammatory arthritis?"
+      ],
+      "patient_response_template": "Yes, after a heavy hand-work day, both hands equally, and I have mild seronegative RA.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Am I going to be permanently crippled? Should I go to hospital?",
+      "expected_ai_doctor_response_quality": "Reassure that a symmetric overuse flare of mild seronegative RA rarely causes rapid destruction, screen for a single hot joint/fever (septic arthritis) which is the escalation trigger, and if absent, offer NSAIDs, warmth and rest with a septic-arthritis safety-net — without ED over-triage."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-03-00031"
+}

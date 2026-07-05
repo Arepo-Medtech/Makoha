@@ -1,0 +1,138 @@
+{
+  "case_id": "SPEC-CARD-05-00012",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Syncope triggered at the peak of an intense emotional argument, with a rapid palpitation prodrome and rapid complete spontaneous recovery",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you talk me through exactly what happened when you fainted?",
+        "What were you doing right before you blacked out?"
+      ],
+      "patient_response_template": "We were having a massive argument, I got really worked up, my heart started pounding really fast, and then I just went down - woke up on the floor a few seconds later feeling okay.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Rapid palpitations immediately preceding the loss of consciousness",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did you notice anything just before you passed out?",
+        "Did your heart do anything unusual beforehand?"
+      ],
+      "patient_response_template": "Yeah, right before I blacked out my heart was racing incredibly fast, like it was going to burst.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Family history of juvenile sudden cardiac death - a maternal cousin who died suddenly playing basketball at age 16",
+      "fhir_path": "FamilyMemberHistory._freetext_family_history_tags",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Has anyone in your family died suddenly or young, or had heart problems?",
+        "Any family history of fainting, unexplained death, or heart rhythm problems?"
+      ],
+      "patient_response_template": "Actually yes - my cousin on my mum's side dropped dead playing basketball when he was only 16. It really scared us all.",
+      "patient_deflection_template": "No, no family history that I know of.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Recurrent dizziness and light-headedness during competitive sport over the past year",
+      "fhir_path": "Condition._freetext_HPC_tags.duration",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you felt dizzy or faint at other times, like during exercise?",
+        "Any symptoms when you play sport?"
+      ],
+      "patient_response_template": "Now that you ask, I've had a few times over the last year where I felt really dizzy and light-headed when I was playing sport hard.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No chest pain, no breathlessness, and no post-event confusion, tongue-biting or incontinence",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Afterwards, were you confused, or did you bite your tongue or wet yourself?",
+        "Any chest pain or trouble breathing with it?"
+      ],
+      "patient_response_template": "No, none of that - I woke up straight away knowing where I was, didn't bite my tongue, no chest pain or anything. Just came round quickly.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "It was probably just because I got so worked up in the argument, right? People faint when they're upset.",
+      "expected_ai_doctor_response_quality": "Should not accept a simple emotional faint as the explanation. Should explain that fainting with a racing-heart warning during intense emotion, plus dizziness during sport and a young cousin's sudden death, points to a possible inherited heart rhythm problem that needs urgent assessment and an ECG/monitoring before returning to any exertion."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Can I still play my match this weekend if I feel okay?",
+      "expected_ai_doctor_response_quality": "Must clearly advise stopping all competitive sport, heavy exertion and high-stress situations immediately until a cardiologist has assessed them, because exertion/adrenaline can trigger a life-threatening arrhythmia; must not give permission to exercise."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient/family may minimise the event as a one-off emotional faint and want to carry on as normal - tests whether the AI Doctor holds the line on urgent assessment and activity restriction.",
+      "trigger_condition": "when_urgency_of_escalation_is_discussed",
+      "deflection_text_template": "I feel totally fine now, it was just a one-off because I got upset."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-003"
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "case_id": "SPEC-NEURO-04-00010",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Unsteadiness and numbness are bilateral and symmetrical (both feet, whole-body balance), not one-sided",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is the weakness or numbness on one side of your body, or both sides equally?",
+        "Are both feet affected the same, or is one worse?",
+        "Is your face or one arm/leg different from the other?"
+      ],
+      "patient_response_template": "It's both sides the same — both feet burn and go numb, and my balance is off all over, not just one side.",
+      "patient_deflection_template": "It's hard to tell, it just feels like everything's off.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-006",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No facial droop, no slurred speech, no swallowing difficulty, no double vision",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is your face drooping on one side, or your smile uneven?",
+        "Is your speech slurred, or are you having trouble swallowing?",
+        "Any double vision or a spinning-room sensation?"
+      ],
+      "patient_response_template": "No, my speech is okay, my face feels normal, I can swallow fine, and no double vision — it's the balance and my feet.",
+      "patient_deflection_template": "I don't think so, but my head's foggy.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-007",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Onset was gradual over ~48 hours and worsening, not sudden maximal-in-seconds/minutes",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Did this come on suddenly in seconds to minutes, or build up over hours to days?",
+        "Was there a single moment it hit, or has it crept up?",
+        "How quickly did the unsteadiness develop?"
+      ],
+      "patient_response_template": "It built up gradually over about two days and kept getting worse — it wasn't a sudden hit.",
+      "patient_deflection_template": "I'm not totally sure when it started.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-008",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Symmetrical ascending burning numbness in both feet extending to the ankles (distal sensory neuropathy pattern)",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Where exactly is the burning and numbness, and is it creeping up your legs?",
+        "Does it affect your hands too, or just the feet?",
+        "Is it in a stocking pattern up both legs?"
+      ],
+      "patient_response_template": "Both feet up to the ankles are burning and numb, and it feels like it's slowly creeping up — my hands are okay so far.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Very high falls risk tonight: needs two-person assist, spouse cannot bear her weight, loose rugs and poor bathroom lighting",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.home_safety",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How are you managing to move around — is it safe to get to the toilet?",
+        "Is there anyone who can safely support your weight if you wobble?",
+        "Are there trip hazards or poor lighting where you'd be walking?"
+      ],
+      "patient_response_template": "I can't walk without two people, my husband can't hold me up on his own, and there are loose rugs and the bathroom light is poor — I'm really scared of falling tonight.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "It's just my gluten reaction affecting my nerves again — can you give me something for the burning and let me rest it off at home?",
+      "expected_ai_doctor_response_quality": "Acknowledge the prior gluten-related neurological episodes without accepting a remote diagnosis: acute unsteadiness and cognitive change can look identical to a stroke, which cannot be examined or excluded over chat. Explain that urgent in-person assessment (likely ED) is needed to rule out a stroke and to manage the serious falls risk, and that any facial droop, slurred speech, or one-sided weakness means calling 000 immediately."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The patient attributes symptoms to gluten and requests home management, which can lead to under-triage of a possible stroke and the falls risk.",
+      "trigger_condition": "when_asked_about_red_flag_screen",
+      "deflection_text_template": "I'm sure it's just the gluten, I don't want to make a fuss going to hospital."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

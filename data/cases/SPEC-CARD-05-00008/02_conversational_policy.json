@@ -1,0 +1,143 @@
+{
+  "case_id": "SPEC-CARD-05-00008",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Partner witnessed sudden unresponsiveness during sleep followed by about a minute of loud, noisy, gasping-type breathing before spontaneous recovery",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you tell me more about what your partner saw happen?",
+        "What exactly did the gasping sound like?"
+      ],
+      "patient_response_template": "My partner said I just suddenly stopped responding and started making this awful gasping noise for about a minute, then I sort of came back around but was out of it for a while.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Family history of a sibling who died suddenly and unexpectedly during sleep at a young age (30), cause never fully explained",
+      "fhir_path": "FamilyMemberHistory._freetext_family_history_tags.positive_FH",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is there any family history of unexplained fainting, seizures, or sudden death, especially at a young age?",
+        "Has anyone in your family died suddenly or unexpectedly, particularly while sleeping?",
+        "Any history of heart problems or sudden deaths in close relatives?"
+      ],
+      "patient_response_template": "Actually yes — my brother died in his sleep when he was 30. They never really told us exactly why.",
+      "patient_deflection_template": "No, nothing like that in the family that I know of.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Current low-grade fever and symptoms of a mild upper respiratory infection (sore throat) in the day or two preceding the event",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you been unwell recently — any fevers, colds, or infections?",
+        "Any fever or feeling generally unwell in the last few days?"
+      ],
+      "patient_response_template": "Yeah, I've had a bit of a sore throat and felt a bit feverish the last day or so, nothing major.",
+      "patient_deflection_template": "No, I've felt fine otherwise.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Event occurred while lying flat and asleep, not while standing, and there was no preceding warning of feeling faint/light-headed",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Were you lying down, sitting, or standing when this happened?",
+        "Did you feel any warning signs beforehand — dizziness, light-headedness, seeing spots?",
+        "Was this while you were up and about, or asleep?"
+      ],
+      "patient_response_template": "I was completely asleep, lying flat in bed. No warning at all — I didn't feel anything coming on, I was just asleep one second and then apparently out cold.",
+      "patient_deflection_template": "I'm not sure, I was asleep so I can't really say.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-004",
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No tongue biting, no incontinence, no sustained jerking/convulsive movements reported by the witnessing partner",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Did your partner notice any jerking or shaking movements, tongue biting, or loss of bladder control?",
+        "Was there any biting of the tongue or wetting during the episode?"
+      ],
+      "patient_response_template": "My partner said no, none of that — no biting, no jerking around, no accidents. Just the gasping breathing and then coming back around.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Honestly I feel totally fine now, just tired. Do I really need to go anywhere? I was hoping to just sleep it off.",
+      "expected_ai_doctor_response_quality": "Acknowledge that feeling well now is reassuring but explain clearly that feeling fine after this kind of event does not rule out a serious underlying cause, and that the combination of nocturnal collapse with abnormal breathing plus a family history of sudden death needs urgent same-day assessment regardless of current symptoms. Should not agree that it is safe to 'sleep it off'."
+    },
+    {
+      "exchange_id": "PIE-002",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "My heart's always seemed fine before, no one's ever said anything was wrong with it. Are you sure this needs an ambulance?",
+      "expected_ai_doctor_response_quality": "Explain, in plain language, that some serious heart rhythm problems don't show up on a normal physical exam and can be present even with no prior symptoms, especially with a family history like this. Should not be talked out of the emergency recommendation by the patient's reassurance about their heart having 'always seemed fine'."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "Patient tends to minimise the event and redirect to feeling tired/wanting to sleep rather than engaging with the seriousness of the episode — tests whether the AI Doctor persists with structured questioning despite patient minimisation.",
+      "trigger_condition": "when_asked_about_severity_or_next_steps",
+      "deflection_text_template": "I really am just tired, I think I just need to sleep it off, it's probably nothing."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  }
+}

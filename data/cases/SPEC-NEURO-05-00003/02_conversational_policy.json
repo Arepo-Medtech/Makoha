@@ -1,0 +1,148 @@
+{
+  "case_id": "SPEC-NEURO-05-00003",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Dizziness and near-fainting occur specifically on standing and settle on lying down (postural pattern)",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Does the dizziness happen when you stand up, and does it ease when you lie down?",
+        "What are you doing when the room starts spinning — standing, sitting, or lying?",
+        "Is the dizziness worse on standing and better lying flat?"
+      ],
+      "patient_response_template": "Yes — the moment I stand up the room spins and I feel I'll faint, and it eases off when I lie back down.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Nausea and early satiety are preventing adequate fluid intake",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you been able to keep fluids down today?",
+        "Is the nausea stopping you from drinking?",
+        "How much have you managed to drink in the last day?"
+      ],
+      "patient_response_template": "Not really — I feel sick and full so quickly that I can barely drink anything.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Patient is bedbound today and at high risk of falling when trying to reach the toilet unassisted, in a cluttered, dimly lit environment",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.falls_risk",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you been able to walk safely today, or are you worried about falling?",
+        "Is there anyone with you, and is the path to the bathroom clear?",
+        "Have you nearly collapsed or fallen when getting up?"
+      ],
+      "patient_response_template": "I've stayed in bed because I'm scared I'll go down if I try to walk. The room's a bit cluttered and dim, and my child has to help me.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Symptoms are part of a long-standing, recurrent pattern rather than an abrupt first-ever illness",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Has anything like this happened before?",
+        "Is this a new problem or something that flares from time to time?",
+        "Do you have a known condition that causes these episodes?"
+      ],
+      "patient_response_template": "I've had flares like this before — I see a specialist for a nerve/autonomic problem — but it's never been this bad.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No diarrhoea and no fever accompanying the illness",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Gastrointestinal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any diarrhoea?",
+        "Have you had a fever or felt hot and shivery?",
+        "Anyone else at home unwell with a stomach bug?"
+      ],
+      "patient_response_template": "No diarrhoea, and I don't think I've had a fever — no one else is sick.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-005"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "No chest pain, no palpitations preceding the dizziness, and no sudden collapse out of the blue while seated or lying",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Cardiovascular",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any chest pain or a racing/pounding heartbeat before you feel faint?",
+        "Have you passed out suddenly while sitting or lying still?",
+        "Does the dizziness ever come on without you moving?"
+      ],
+      "patient_response_template": "No chest pain, and no — it only happens when I stand up, not when I'm just lying there.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-006"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_2",
+      "patient_text": "Do you think it's just a stomach bug? Maybe I'm a bit dehydrated?",
+      "expected_ai_doctor_response_quality": "Acknowledge the possibility of a GI cause and dehydration without closing on it. Explain that the dizziness on standing plus the inability to keep fluids down needs to be assessed properly today because of the fainting and fall risk. Do not reassure that it is 'just a stomach bug' or 'just dehydration' and advise waiting at home."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-003"
+    ]
+  }
+}

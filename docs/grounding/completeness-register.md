@@ -11,6 +11,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Scan summary:** _(updated 2026-06-30)_ — **all 7 MCP servers now have a mock implementation**: `docs`/`identity-au`/`terminology` (stubs), and `pharmacology` (+ Trunk 8.0 firewall), `knowledge` (+ datasets), `fhir-broker` (+ Observation→parser), `messaging-geo` (never-sends) as mock cores. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology contract (ICD-10-AM/LOINC/PBS). _(Original Phase-0 line: 3 built / 4 unbuilt.)_ 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
 
+**M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
+
 ---
 
 ## CRITICAL
@@ -85,36 +87,36 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: clinician-verification-portal-unbuilt
-  path: (no file) — clinician-verification-portal
+  path: portal/verification-gate.js + mcp/schemas/verification-portal-decision.schema.json (gate + contract built); UI/workflow absent
   component_type: other
-  state: UNBUILT
-  evidence: absent from tree; listed Critical "Not started" in gap-register §1b.
-  blocks: any output becoming patient-facing (required human-in-the-loop gate)
-  safety_class: none
-  invariant_exposure: prime_directive human-in-the-loop
+  state: PARTIAL
+  evidence: GATE BUILT 2026-07-03 (M5) — the server-side HITL release gate and its contract exist: VerificationGateRecord (JSON Schema + zod mirror, lockstep-tested) binds a clinician decision (approved/rejected/amended, clinician_id, decided_at_utc, signature_ref) to the EXACT candidate_output_hash; releaseToPatient() is fail-closed — refuses without a gate record, refuses 'rejected', releases ONLY text that re-hashes to the attested hash (approved→candidate hash; amended→amended_output_hash — the amendment is its own medicolegal artifact), and refuses ANY release in mock/dry_run (mode-normaliser guard). Latest decision wins (re-review); records append, never mutate. Contract-tested (test/contract-verification-gate.js, npm test + CI). messaging-geo remains UNWIRED (M13). REMAINING for COMPLETE: clinician review UI/workflow, authenticated clinician identity + signature capture, durable (WORM) gate-record storage (M8 substrate) — the portal is NOT done; the release-blocking checkpoint contract is.
+  blocks: patient-facing readiness (UI/workflow + durable storage still open; the mechanical gate now exists for every future patient path to call)
+  safety_class: degrades_safe (fail-closed; dev modes never release)
+  invariant_exposure: prime_directive human-in-the-loop — now mechanically enforceable at the release boundary
   risk: Critical
   blocks_patient_facing: true
-  build_action: build the verification portal as the mandatory checkpoint before any patient-facing path; out of current mock scope — plan separately.
+  build_action: build the clinician review UI/workflow + authenticated identity/signature capture on top of the gate contract; move gate records to the M8 WORM substrate. Every patient-facing path MUST call releaseToPatient() (adoption rule, portal/README.md).
   gap_register_link: gap-verification-portal
-  status: open
-  last_scanned: 2026-06-30
+  status: open (gate resolved; UI/workflow + durable storage remain)
+  last_scanned: 2026-07-03
 ```
 
 ```md
 - id: session-persistence-unenforced
-  path: (no file) — session-bound persistence enforcement
+  path: verification/session-store.js (enforcement built)
   component_type: repository-store
-  state: UNBUILT
-  evidence: no persistence-boundary code; gap-register R-10 "not yet technically enforced".
-  blocks: data-handling no-persistence-beyond-session; patient-facing readiness
-  safety_class: none
-  invariant_exposure: patient-data minimisation; no-persistence-without-consent
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M4, enforcement) — verification/session-store.js built: MEMORY-ONLY working-state store (no disk path, no serialisation API — contract test asserts no persistence-shaped export and an untouched data dir); encounter-scoped lifetime (openEncounter → putWorkingState/getWorkingState → closeEncounter DESTROYS all state; closed refs never reopen; reads/writes after close throw; no implicit state creation); mechanical demographic guard per Trust Boundary 4 (demographic-looking keys anywhere in a value, and IHI-shaped values, are REFUSED with a thrown error — conservative over-blocking; identity data stays inside identity-au). The medicolegal ledger is documented exempt (append-only, PHI-free by .strict()). Tested by test/contract-session-store.js (npm test + CI). ADOPTION CONTRACT documented in-module: any future stateful session path MUST hold working state here — holding it elsewhere reintroduces this gap (re-check at every session-flow change). No production session flow exists yet to wire (trunk runs are stateless); the store is the gate artifact, current consumer = contract test.
+  blocks: (cleared — enforcement) 
+  safety_class: degrades_safe (refuses demographics; destroys on close)
+  invariant_exposure: closed at the enforcement layer — no-persistence-beyond-session is now mechanical, not policy
   risk: Critical
   blocks_patient_facing: true
-  build_action: enforce session-bound persistence technically (encounter-scoped lifetime, no demographic persistence); plan separately.
-  gap_register_link: gap-persistence
-  status: open
-  last_scanned: 2026-06-30
+  build_action: DONE (enforcement). Remaining, tracked separately: real-patient content persistence stays gated on consent + content-store-production-gated; adoption re-checked whenever a stateful session flow is built (portal/M5 onward).
+  gap_register_link: gap-persistence (R-10)
+  status: resolved
+  last_scanned: 2026-07-03
 ```
 
 ---
@@ -193,17 +195,17 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: receipt-store-append-only-unbuilt
   path: verification/audit-store.js, verification/ledger-schema.js, mcp/schemas/audit-ledger-entry.schema.json, verification/rehash.js, test/contract-audit-store.js
   component_type: repository-store
-  state: PARTIAL
-  evidence: RESOLVED FOR MOCK 2026-06-30 — append-only, hash-chained medicolegal-audit-ledger built (.heydoc-data/audit-ledger.jsonl); both report writers append per run via recordRun(); receipt metadata + candidate_output_hash captured; verifyChain() tamper-evidence; verify:rehash re-verifies. PARTIAL because production durability (WORM substrate) + org retention policy (a regulatory_posture decision) are not yet configured.
-  blocks: production-grade durable retention (mock/staging covered)
-  safety_class: none
-  invariant_exposure: auditability — now enforced for mock/staging
+  state: COMPLETE
+  evidence: DEV-COMPLETE 2026-07-05 (M8/C5). Append-only, hash-chained ledger built (2026-06-30). M8 added the PRODUCTION SUBSTRATE SEAM + retention hook with the chain algorithm FROZEN: the four raw I/O ops (appendLedgerLine/readLedgerLines/writeContentOnce/readContentByHex) are behind a pluggable substrate; built-in `local` = dev JSONL (byte-identical to before — verifyChain + all prior assertions unchanged); production registers a WORM adapter via registerAuditSubstrate() at deploy; FAIL-SAFE: a non-`local` HEYDOC_AUDIT_SUBSTRATE with no adapter REFUSES (never a non-WORM ledger). auditRetentionPolicy() surfaces HEYDOC_AUDIT_RETENTION as a minimum-keep regulatory_posture decision — NO period encoded, NEVER auto-deletes. Contract-tested (custom in-memory substrate proves the seam; WORM-refuse; retention surfaced). Architecture doc (trust-boundaries.md Boundary 5) updated. REMAINING is deploy/regulatory ONLY (register a live WORM store + set retention) — not an engineering gap. Content-text store stays synthetic-only (`content-store-production-gated`) until R-10 + consent.
+  blocks: (cleared for engineering; live WORM + retention are deploy/regulatory)
+  safety_class: none — seam is stricter (refuses on misconfig); chain frozen
+  invariant_exposure: auditability — enforced; production path now has a fail-safe seam
   risk: High
   blocks_patient_facing: true
-  build_action: configure durable WORM substrate + retention policy for production (the local JSONL ledger covers mock/staging today).
+  build_action: DONE (engineering). Deploy/regulatory: register a live WORM adapter (S3 Object Lock/immudb) via registerAuditSubstrate() + set HEYDOC_AUDIT_RETENTION per the org's minimum-keep decision. Do not encode a retention period in code.
   gap_register_link: R-17
-  status: in-progress
-  last_scanned: 2026-06-30
+  status: resolved
+  last_scanned: 2026-07-05
 ```
 
 ```md
@@ -217,10 +219,78 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: patient-data minimisation; no-persistence-beyond-session
   risk: Medium
   blocks_patient_facing: false
-  build_action: enable governed (consented, encrypted, retention-bound) content persistence ONLY after session-persistence-unenforced (Critical) + consent are green; keep the synthetic-only guard until then.
+  build_action: enable governed (consented, encrypted, retention-bound) content persistence ONLY after session-persistence-unenforced (Critical) + consent are green; keep the synthetic-only guard until then. Milestone link: gated on ARCH_PLAN C8/M4 (session-store enforcement) + consent — not independently schedulable.
   gap_register_link: none
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: routing-plan-next-trunks-dead-end
+  path: integration/trunk-sequencer.js (consumer built) ← trunk 1.0 routing_plan.next_trunks
+  component_type: other (pipeline orchestration edge)
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M2) — integration/trunk-sequencer.js built: consumes the PARSED Trunk 1.0 routing_plan.next_trunks (zod-gated; a malformed plan throws and never part-runs) and walks each routed trunk through the full five-step pipeline via runTrunkWithGrounding. Halts UNCONDITIONALLY on: (1) Trunk 1.0 safety_gate escalate_now/T5 BEFORE any routed trunk runs; (2) continuation_blocked — HARD_FAIL/BLOCKED_NO_PROOF now propagate ACROSS trunks with no override path (F2 closed); (3) escalate_now/T5 in any trunk output (conservative over-halt detection — over-triage-safe); (4) verification pass=false (a rejected output never grounds the next trunk). Ordered execution record per ARCH_PLAN §3.5.5. Gated behind HEYDOC_SEQUENCER (DEFAULT OFF = rollback; off runs nothing); re-exported from trunk-pipeline.js as the single integration surface. Tested end-to-end by test/contract-sequencer.js (in npm test + CI). RESIDUAL (by design): flag defaults off until an operator turns it on; manual multi-trunk chaining outside the sequencer must still honour continuation_blocked (documented in trunk-pipeline.js).
+  blocks: (cleared)
+  safety_class: none — halt logic is unconditional; escalation detection over-halts on ambiguity
+  invariant_exposure: closed — no-HARD_FAIL-override now holds across the whole sequence, not just within one trunk
+  risk: High
+  blocks_patient_facing: true
+  build_action: DONE — see evidence.
+  gap_register_link: R-24
+  status: resolved
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: mode-leakage-enforcelive
+  path: verification/mode.js (normaliser), verification/{verifier.js,pipeline.js,audit-store.js} (wired seams)
+  component_type: verifier
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M1) — verification/mode.js built: env(mock/dry_run/staging/production/live)→enforcement(mock/dry_run/live); staging/production→live⇒mock proof BLOCKED; UNKNOWN mode default-denies to live; absence keeps the documented dev default (mock). Wired into all three consumers of the seam: pipeline.js context_mode derivation, verifier.js enforceLive, and audit-store.js recordRun (staging is no longer classified synthetic — content NOT persisted, content_persisted=false, ledger mode enum-valid; this second F4 site was found during M1 research and fixed in the same step). Tested end-to-end by test/contract-mode-normaliser.js (mapping, default-deny, verifier blocking/flagging, pipeline packet mode, ledger classification) — wired into npm test + CI. RESIDUAL (tracked, not a defect here): MCP servers stamp receipt.mode from their own HEYDOC_MODE_DEFAULT read and only ever run mock today; server-side mode stamping is normalised at live-connect (M9/M11).
+  blocks: (cleared)
+  safety_class: none — enforcement is now monotone-stricter (staging/production/unknown block; mock/dry_run unchanged)
+  invariant_exposure: closed — mock proof can no longer stand as grounding evidence on a non-dev path
+  risk: High
+  blocks_patient_facing: true
+  build_action: DONE — see evidence.
+  gap_register_link: R-25
+  status: resolved
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: context-injection-allowlist
+  path: verification/context-allowlist.js (built), enforced in verification/pipeline.js contextInjection()
+  component_type: sanitiser
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-03 (M3) — verification/context-allowlist.js mirrors the cases:ingest field-scoped firewall at the packet boundary, DEFAULT-DENY. 01 allows only demographics/opening_complaint/history_as_reported (→ packet facts, category-mapped); 02 allows only the dialogue text sub-fields (classified exchange-channel and NEVER converted to packet facts — simulator material is not packet material); 00, psychosocial_profile, digital_tablet_field_map, unknown nodes/fields, and 02 scoring/gate sub-fields all reject. A sealed scoring node (10_–13_) ANYWHERE in the input THROWS ("SCORING-STORE FIREWALL") and halts packet assembly — never a silent drop. Enforced in contextInjection() via the new case_content path; end-to-end tested through the ContextPacket zod gate (test/contract-context-allowlist.js, in npm test + CI; all fixtures synthetic, no case file read). Firewall re-check at M3 close: only the known engineering set references sealed nodes; NOT breached. QUARANTINE (see objective-data-offered-sanitiser-policy): objective_data_offered rejects with a named pending-policy reason until the operator confirms the patient-reported-vitals sanitiser policy.
+  blocks: (cleared)
+  safety_class: none — default-deny; sealed content is a hard stop
+  invariant_exposure: closed — the live boundary now mirrors the ingest guard
+  risk: High
+  blocks_patient_facing: true
+  build_action: DONE — see evidence.
+  gap_register_link: R-26
+  status: resolved
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: objective-data-offered-sanitiser-policy
+  path: verification/context-allowlist.js (quarantine rule on 01.objective_data_offered)
+  component_type: sanitiser
+  state: PARTIAL
+  evidence: OPENED 2026-07-03 (M3) — CLAUDE.md <data_handling> flags an open follow-up: confirm the sanitiser policy for patient-reported vitals before the live pipeline injects objective_data_offered into trunk context. M3 built that injection path, so the field is QUARANTINED (rejected with a reason naming this item) rather than shipped unconfirmed. Values are schema-stored as strings (no structured raw number), but a leading-numeric patient-reported reading (e.g. "160 over 95") would enter LLM context under a non-lab category the packet gate does not guard — policy decision needed: pass as-is (telehealth carve-out), band via the investigation parser, or keep withheld.
+  blocks: patient-reported home/wearable observations reaching trunk context
+  safety_class: degrades_safe (withheld until confirmed)
+  invariant_exposure: none while quarantined; no-raw-lab-numbers adjacency is the question to settle
+  risk: Medium
+  blocks_patient_facing: true
+  build_action: operator + clinical confirmation of the sanitiser policy; then flip the quarantine rule (one line) + extend contract-context-allowlist.js for the chosen treatment. Input-gated — not schedulable as pure engineering.
+  gap_register_link: none (Medium — below promotion threshold; charter follow-up now register-tracked)
+  status: open
+  last_scanned: 2026-07-03
 ```
 
 ---
@@ -391,27 +461,137 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none (no patient path wired)
   risk: Medium
   blocks_patient_facing: false
-  build_action: replace stubs with real routing + receipt-driven context assembly once servers/datasets exist; keep mock mode deterministic.
-  gap_register_link: pending-promotion
+  build_action: replace stubs with real routing + receipt-driven context assembly once servers/datasets exist; keep mock mode deterministic. Milestone link: ARCH_PLAN C10 — input-gated at live-connect under M11 (contracts/zod gates unchanged; stub remains the rollback).
+  gap_register_link: none (Medium — below promotion threshold; stale pending-promotion tag corrected M0 2026-07-03)
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
 ```
 
 ```md
 - id: case-set-underpopulated
-  path: data/cases/ (only SPEC-CARD-04-00001)
+  path: data/cases/ (52 case directories; 51 manifest-conforming + reference)
   component_type: dataset
   state: PARTIAL
-  evidence: 1 case present; evaluation framework requires ≥45 (60/30/10) before the eval gate can run as a blocking CI job.
-  blocks: synthetic-case evaluation release gate
+  evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session; bulk_clinician_attestation in each manifest review block — node files + sha256 untouched). (4) **CVD (Cardiovascular) batch ingested 2026-07-04** — 49 of 50 operator-supplied CVD bundles (1 skipped: id collision, see `case-id-cross-series-collision`): brings the first COMPLEX-tier cases (5 × rare_condition, tier 05) and the 3rd diagnosis category (`zebra_rare`). 373 codes receipted (store total 709). Distribution now **68 straightforward / 77 atypical / 5 complex = 45/51/3**; **coverage 5 tiers · 3 diagnosis categories · 19 specialties — the 3-category + 3-tier minimums CLEARED**. The 49 CVD + the re-id'd AFib case (SPEC-CARD-01-00099) were ATTESTED 2026-07-04 (operator KL) → 151/151 attested. (5) **CIA (Common Infections & Afflictions) batch 2026-07-04** — 43 of 50 operator-supplied CIA bundles ingested (all straightforward/tier-01; 47 common + 3 important_not_to_miss categories); 190 codes receipted (store total **911**). 7 NOT ingested: **3 cross-series id collisions** (Burn/Laryngitis/Aphthous-Stomatitis vs existing AUC cases — see `case-id-cross-series-collision`) and **4 FIREWALL-REFUSED** (full diagnosis name leaked into AI-Doctor-readable text — see `cia-source-firewall-leaks`). Distribution **45/51/3 → 58/40/3** (194 cases; straightforward toward 60%, atypical over-weight pulled toward 30%; complex still 3%). The 43 CIA were ATTESTED 2026-07-04 (operator KL). (6) **4 firewall-remediated CIA bundles ingested 2026-07-04** (the previously-refused DERM-01-00036/EMG-01-00037/GI-01-00027/MH-01-00044 — operator removed the diagnosis name from injectable fields; see `cia-source-firewall-leaks` → resolved); 16 codes receipted (store total **927**). 198 cases now, and the 4 remediated CIA were ATTESTED 2026-07-04 (operator KL). (7) **3 re-id'd CIA collision cases ingested 2026-07-04** (the DERM/RESP/GI collisions → -00099 per bucket; see `case-id-cross-series-collision` — all 4 instances now resolved); 13 codes receipted (store total **940**); 201 cases. Distribution 59/39/3 → **59/38/2** (3 more straightforward dilute complex). The 3 re-id'd cases were ATTESTED 2026-07-04 (operator KL). (8) **CFE (Complex Fatigue Entities) batch, operator-RE-TIERED, ingested 2026-07-04** — after an initial recon showed the batch was under-tiered (genuinely complex entities labelled tier-03), the operator re-tiered at source; 49 well-formed bundles ingested (band split of the well-formed set: 36 atypical + 14 complex — rare_condition/05 + multi_morbidity_complex/06). 345 codes receipted (store total **1285**); 250 cases. **Distribution 59/38/2 → 48/45/8 — complex band jumped 2% → 8% (near the 10% target); coverage 5 → 6 difficulty tiers.** The 49 were ATTESTED 2026-07-05 (operator KL; scope guarded to the CFE ingest commit). The CFE collision case was re-id'd → SPEC-DERM-03-00099, ingested, and ATTESTED 2026-07-05 (operator KL). **eval:cases: attested conforming 251 (≥45), 0 unreviewed, PASS; distribution 47/45/8.** NOT ingested from the CFE batch (handed back to operator): 1 well-formed collision `SPEC-DERM-03-00041` (re-id'd → SPEC-DERM-03-00099, attested) and 13 operator-retired bundles (`cfe-malformed-bundles` → resolved, deleted). (10) **DST (Dermatology & Soft Tissue) batch, operator-re-tiered, ingested 2026-07-05** — 40 well-formed new bundles (20 straightforward + 19 atypical + 1 communication_barrier/complex); 233 codes receipted (store total **1524**); 291 cases. Distribution 47/45/8 → **48/45/7**; **coverage 6 → 7 difficulty tiers** (communication_barrier/07 added). The 40 pending_clinician_review. The **10 DERM collisions were then ingested 2026-07-05 via the new `--reseq` global-seq scheme** (→ SPEC-DERM-01-00100..00106 + SPEC-DERM-03-00107..00109; `case-id-cross-series-collision` resolved); 56 codes receipted (store total **1580**); **301 cases**; distribution 48/45/7 → **49/45/7**. Still handed back: **9 malformed stub bundles** (`dst-malformed-bundles`) + stray `_probe.tmp`. The 50 DST cases (40 direct + 10 reseq'd) were ATTESTED 2026-07-05 (operator KL) → **301/301 attested, 0 unreviewed**; the 9 DST malformed stubs + `_probe.tmp` deleted (`dst-malformed-bundles` resolved). **eval:cases: attested conforming 301 (≥45), 0 unreviewed, PASS; distribution 49/45/7.** Source `.txt` never entered the repo.
+  blocks: full 60/30/10 mix (complex now 8% vs 10% — nearly closed; straightforward under- / atypical over-weight remain)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: expand toward 45-case minimum; then wire eval as blocking CI.
-  gap_register_link: gap-case-set
+  build_action: SOLE REMAINING (input-gated, optional/polish): further rebalance toward 60/30/10 (straightforward under-weight at 49%, complex 7%). Everything required for a usable, gated, fully-attested eval set is DONE — 301/301 cases attested, gated, receipted; collisions auto-resolve (`--reseq`); malformed/stub findings resolved.
+  gap_register_link: R-23
+  status: open (301/301 attested; ONLY optional distribution polish remains — no blocking work)
+  last_scanned: 2026-07-05
+```
+
+```md
+- id: case-id-cross-series-collision
+  path: data/cases/ SPEC id scheme (SPEC-{specialty}-{difficulty}-{seq}); scripts/ingest-case-bundles.mjs
+  component_type: dataset
+  state: PARTIAL
+  evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series: CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both mapped to SPEC-CARD-01-00005. cases:ingest failed safe (COLLISION, no --force) and skipped the AFib case. INSTANCE RESOLVED 2026-07-04 (operator-authorised): the AFib bundle was re-id'd (blind literal id-string swap on a scratchpad COPY — source archive untouched, clinical content never read) to **SPEC-CARD-01-00099** (free globally; deliberately above the source-number-derived 1–51 range to mark it manually disambiguated) and ingested; 12 codes receipted; gate PASS. The existing SPEC-CARD-01-00005 (ACS) was never touched. SYSTEMIC gap remains: the id SCHEME is still not unique across series, so a future overlapping series would collide again.
+  evidence_addendum: 2026-07-04 — the CIA batch produced 3 MORE cross-series collisions (all distinct cases, all skipped safely). ALL 3 NOW RESOLVED 2026-07-04 (operator-authorised, same re-id method → free per-specialty seq 00099): SPEC-DERM-01-00021 (CIA "Localised First-Degree Burn") → SPEC-DERM-01-00099; SPEC-RESP-01-00003 (CIA "Acute Viral Laryngitis") → SPEC-RESP-01-00099; SPEC-GI-01-00010 (CIA "Aphthous Stomatitis") → SPEC-GI-01-00099. Re-id on scratchpad copies (source archive + the 3 existing AUC cases verified untouched); dry-run 3/3 OK; ingested; 13 codes receipted; gate PASS. **All 4 known collision INSTANCES across 3 series are now resolved (AFib + these 3).** The 3 re-id'd cases are pending_clinician_review. Convention emerged: seq 00099 in a specialty bucket = a manually disambiguated re-id.
+  evidence_addendum_2: 2026-07-04/05 — CFE batch produced a 5th collision, SPEC-DERM-03-00041 (CFE "Psoriasis Severe Plaque with Systemic Fatigue" vs AMS "Scalp Psoriasis (Mild)"); RESOLVED 2026-07-05 via re-id → SPEC-DERM-03-00099 (per-bucket convention; scratchpad copy; existing AMS case verified untouched; ingested; 6 codes receipted; gate PASS). SPEC-GI-03-00028 (CFE MCAS vs AMS Microscopic Colitis) was a 6th collision but the CFE bundle was operator-RETIRED and deleted 2026-07-05 (`cfe-malformed-bundles`), so that collision is moot. **All 5 well-formed collision INSTANCES across 4 series now resolved via re-id.** Systemic scheme weakness still recurs with every overlapping series.
+  blocks: nothing now (all well-formed instances resolved); future overlapping series until the SCHEME is fixed
+  safety_class: none (ingest fails safe — skips, never overwrites)
+  invariant_exposure: auditability — case_id is the eval/medicolegal anchor; a non-unique scheme undermines it
+  risk: Medium
+  blocks_patient_facing: false
+  evidence_addendum_3: 2026-07-05 — DST batch produced 10 more DERM collisions (15/5 series total). SYSTEMIC FIX IMPLEMENTED 2026-07-05 (operator decision: globally-assigned seq): `scripts/ingest-case-bundles.mjs` gained a `--reseq` flag — on collision it assigns the next free GLOBALLY-UNIQUE seq (above the max seq of any existing case dir, same specialty+difficulty), rewrites the case_id across all nodes, NEVER overwrites, and records the original→assigned mapping in `case_manifest.ingest.reseq` (audit trail). Contract-tested (test/contract-case-ingest.js: collision refused by default; --reseq assigns a new id + records the mapping + never overwrites the original). The 10 DST collisions ingested via --reseq → SPEC-DERM-01-00100..00106 + SPEC-DERM-03-00107..00109; the 3 pre-existing cases they collided with verified untouched. The 5 earlier manual re-ids (→ -00099) stand. **Cross-series collisions are now auto-resolved at ingest — the recurring finding is closed at the tooling level.**
+  blocks: (cleared — --reseq resolves collisions automatically going forward)
+  safety_class: degrades_safe (--reseq never overwrites; default still refuses; mapping recorded)
+  invariant_exposure: auditability — PRESERVED: the original→assigned case_id mapping is recorded in the manifest, so the anchor's provenance is intact
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — global-seq scheme implemented (`--reseq`), tested, and used for the 10 DST collisions. Future overlapping batches: ingest with `--reseq`. No further systemic action required.
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-05
+```
+
+```md
+- id: dst-malformed-bundles
+  path: source bundles (deleted 2026-07-05): 9 DST bundles with an empty `_bundle` (format+case_id null) + stray `_probe.tmp`
+  component_type: dataset
+  state: COMPLETE
+  evidence: FOUND 2026-07-05 — 9 of 59 DST bundles REFUSED at ingest for empty `_bundle` (no format, no case_id) — incomplete stub files from the operator's re-tier workflow; nothing entered the repo (ingest fail-safe). RESOLVED 2026-07-05 (operator instruction): the 9 stub bundles + `_probe.tmp` DELETED with a guard that removed a file only after confirming its `_bundle.format` was NOT "breath-ezy-casebundle" (all 9 confirmed format=null; no well-formed bundle at risk); 50 well-formed bundles remain in the folder. Recurring pattern noted (CFE left 13 "-RETIRED"; DST left 9 empty stubs) — recommend a leftover-cleanup step in the re-tier workflow.
+  blocks: (cleared — deleted per operator)
+  safety_class: degrades_safe (ingest refused throughout; nothing entered the repo; deletion guarded)
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE — 9 stub bundles + `_probe.tmp` deleted. RECOMMENDATION (standing): add a leftover-cleanup step to the re-tier workflow so ingest folders don't accumulate stub/temp files.
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-05
+```
+
+```md
+- id: verifier-repo-invention-severity
+  path: verification/verifier.js (per-check severity); docs/grounding/{trunk-constraints.md,gap-register.md}; .claude/server-status.md
+  component_type: verifier
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-05 (ARCH_PLAN C15/F11, milestone M7; operator-approved). Drift: Input A + code hard-failed `no_repo_invention` (pass=false) while the docs said "warning" AND the verifier emitted no `severity` the docs promised. Reconciled to surfaced-but-gating: verify() now tags EACH of the 5 checks with a `severity` (no_invented_codes/operations + hard_stop = critical; no_invented_guidelines = fail; no_repo_invention = warning) per the Risk Register. GATE UNCHANGED — pass = results.every(r=>r.passed); a failed check of any severity still rejects the output (contract-verifier asserts no_repo_invention is severity=warning AND passed=false AND drives pass=false). report-schema.js already permitted the field (no schema change). Docs reconciled: trunk-constraints.md severity legend added; gap-register §1b + R-11 and server-status.md tightened so "warning" reads as low-severity, not non-blocking.
+  blocks: (cleared)
+  safety_class: none — labels only; no gate/logic weakened (over-flag posture preserved)
+  invariant_exposure: none — the five mechanical checks and the fail-safe gate are intact
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — see evidence.
+  gap_register_link: R-11
+  status: resolved
+  last_scanned: 2026-07-05
+```
+
+```md
+- id: cfe-malformed-bundles
+  path: source bundles (deleted 2026-07-05): 13 CFE bundles tagged `_bundle.format:"breath-ezy-casebundle-RETIRED"` (SPEC-DERM-03-00027/00047, SPEC-GI-03-00019/00028/00036, SPEC-MSK-03-00015/00020/00049, SPEC-NEURO-03-00029/00039/00044/00046, SPEC-RHEUM-03-00050)
+  component_type: dataset
+  state: COMPLETE
+  evidence: FOUND 2026-07-04 — 13 of 63 CFE bundles REFUSED at ingest for "missing/invalid _bundle.format". CORRECTION 2026-07-05 (earlier "corrupted during save" diagnosis was WRONG): the operator had DELIBERATELY retired these 13 by tagging `_bundle.format` = "breath-ezy-casebundle-RETIRED" — which is exactly why the ingest tool (expecting "breath-ezy-casebundle") refused them. The refusal was the retirement working as intended, not a defect. RESOLVED 2026-07-05 (operator instruction "RETIRE or DELETE"): the 13 source bundles were DELETED with a safety guard that removed a file only after confirming its format was NOT "breath-ezy-casebundle" (so no well-formed bundle could be deleted) — all 13 confirmed "-RETIRED" and removed; 50 well-formed bundles remain in the folder. NOTHING malformed was ever in the repo (ingest fail-safe). One of the 13 (SPEC-GI-03-00028, CFE MCAS) also collided with an AMS case — retired, so that collision is moot. Stray `__t.txt` left in place (harmless; tool globs only *.casebundle.json).
+  blocks: (cleared — the 13 are retired + deleted by operator decision)
+  safety_class: degrades_safe (ingest refused throughout; nothing malformed entered the repo; deletion guarded to non-well-formed only)
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE — 13 retired source bundles deleted per operator instruction. No repo artifact existed. If any are wanted back later, re-author fresh with a valid `_bundle.format`.
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-05
+```
+
+```md
+- id: cia-source-firewall-leaks
+  path: data/cases/{SPEC-DERM-01-00036, SPEC-EMG-01-00037, SPEC-GI-01-00027, SPEC-MH-01-00044} (now ingested)
+  component_type: dataset
+  state: COMPLETE
+  evidence: FOUND 2026-07-04 — 4 CIA source bundles REFUSED by the ingest firewall (full primary_diagnosis name in AI-Doctor-readable injectable text: "Pityriasis rosea", "Post-viral fatigue", "Uncomplicated external haemorrhoid", "Transient (adjustment) insomnia"). Firewall worked (fail-safe REFUSE; nothing leaked). RESOLVED 2026-07-04 — operator regenerated all 4 with a "Firewall remediation: primary diagnosis name removed from AI-Doctor-readable 00/02 fields (02 clinical_facts made observational); diagnosis retained only in sealed nodes 10-13" transform step; re-dry-run 4/4 OK_DRY_RUN (0 leaks); ingested; 16 codes receipted; eval:cases PASS. The 4 remain pending_clinician_review (attestation outstanding). NOTE: the operator attached the 4 full bundles (incl. sealed 10-13) into the agent context for the ingest task — handled as engineering-only material (digest-carve-out precedent), not reasoned-from and not routed to any trunk/packet.
+  blocks: (cleared)
+  safety_class: degrades_safe (firewall blocked the leak at ingest; remediated bundles pass cleanly)
+  invariant_exposure: scoring-store firewall — held at the ingest boundary throughout; never breached
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE — remediated + ingested. Standing recommendation (not blocking): add a diagnosis-name leak pre-check to the authoring/kit step so leaks are caught before ingest, not only at it.
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-04
+```
+
+```md
+- id: reference-case-manifest-missing
+  path: data/cases/SPEC-CARD-04-00001/ (7 node files, no case_manifest.json)
+  component_type: dataset
+  state: PARTIAL
+  evidence: FOUND M6 2026-07-03 — the hand-built reference/worked case predates the cases:ingest manifest discipline: no case_manifest.json, so no file hashes, no codes_manifest, no attestation record in manifest form. Named-exempt in both cases:verify-codes (skip) and the eval gate (excluded from the attested count — the gate passes at 51 without it).
+  blocks: nothing today (gate exempts it by name); reference-case parity with the ingest discipline
+  safety_class: none
+  invariant_exposure: none
+  risk: Low
+  blocks_patient_facing: false
+  build_action: retrofit under a gated step — round-trip the reference case through the casebundle → cases:ingest path (or hand-author its manifest to the same contract: file sha256s, codes_manifest, review/attestation, firewall_assertion), then remove the named exemption from scripts/eval-case-gate.mjs.
+  gap_register_link: none (Low)
   status: open
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-03
 ```
 
 ```md
@@ -451,6 +631,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ---
 
 ## LOW
+
+```md
+- id: case-dir-duplicate-files
+  path: data/cases/*/ (236 untracked "<name> 2.json" files across 30 case directories)
+  component_type: dataset
+  state: PARTIAL
+  evidence: M0 scan 2026-07-03 — 236 untracked Finder-style duplicate files ("00_case_envelope 2.json" … "13_safety_netting_node 2.json", "case_manifest 2.json") across 30 case directories, including name-level duplicates of the sealed scoring nodes. Inventoried by filename only; content never opened. They are outside git and outside the ingest tool's hash/field-firewall discipline.
+  blocks: clean case-store provenance; unambiguous ingest/eval inputs (a glob-based reader could pick up the duplicates)
+  safety_class: none (untracked; no code reads them today)
+  invariant_exposure: scoring-store hygiene — duplicate sealed-node files exist outside the ingest discipline
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: delete the 236 untracked "* 2.json" duplicates under a gated cleanup step (M0 is docs-only and may not retire files); afterwards re-verify case manifests/hashes and confirm any future case reader matches exact filenames, never globs.
+  gap_register_link: none (Medium — below promotion threshold)
+  status: open
+  last_scanned: 2026-07-03
+```
+
+```md
+- id: repo-digest-sealed-node-carveout
+  path: scripts/export-repo-digest.mjs, breath-ezy-repo-digest.md (untracked at repo root; also distributed outside the repo)
+  component_type: other (derived engineering artifact)
+  state: PARTIAL
+  evidence: M0 scan 2026-07-03 — the digest exporter deliberately embeds the reference case's sealed 10–13 nodes for engineering use, with an in-file warning (export-repo-digest.mjs ~line 84: "Do not use this context to role-play the AI Doctor"). The digest is LLM-readable context handed to planning agents. No code routes the digest into any trunk/packet path.
+  blocks: nothing (documented carve-out); recorded for guard visibility
+  safety_class: none in code (would be firewall_breach only if the digest were ever injected into an AI-Doctor context path)
+  invariant_exposure: scoring-store firewall — carve-out is safe only while the digest stays out of every AI-Doctor context path
+  risk: Low
+  blocks_patient_facing: false
+  build_action: keep the carve-out documented; the digest MUST never be routed into an AI-Doctor context path; add a digest-shaped fixture to the M3 context-allowlist contract test (assert default-deny rejects it).
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-07-03
+```
 
 ```md
 - id: claudemd-behind-charter
@@ -503,7 +717,7 @@ Then the curated build order (gap-register Part D.11):
 6. `investigation-parser-unbuilt`. **Critical.**
 7. `knowledge-server-unbuilt` + `knowledge-datasets-empty`. **Medium.**
 8. `clinician-verification-portal-unbuilt`. **Critical (named release blocker).**
-9. `case-set-underpopulated` → 45 cases, wire eval as blocking CI. **Medium.**
+9. `case-set-underpopulated` → **52 cases ingested 2026-07-02 (≥45 minimum MET)**; remaining: 60/30/10 distribution top-up + terminology batch-verify + wire eval as blocking CI (ARCH_PLAN M6). **Medium.**
 10. `fhir-broker-unbuilt`, `messaging-geo-unbuilt`. **Medium.**
 
 Cross-cutting / decide under plan:
@@ -516,6 +730,8 @@ Cross-cutting / decide under plan:
 
 Already represented in `gap-register.md`: pharmacology, verification portal, investigation parser, persistence, knowledge datasets, fhir-broker, messaging-geo, case-set.
 
-**New High/Critical findings requiring promotion this cycle (pending):** `hashing-unimplemented` (Critical), `verifier-untested` (High), `verifier-weak-code-detection` (High), `receipt-store-append-only-unbuilt` (High). These are flagged `gap_register_link: pending-promotion` until mirrored, with the move noted in `CHANGELOG.md`.
+**Promoted 2026-06-30 cycle (done):** `hashing-unimplemented` → R-16, `verifier-untested` → R-18, `verifier-weak-code-detection` → R-19, `receipt-store-append-only-unbuilt` → R-17.
+
+**Promoted M0 2026-07-03 cycle (done):** `routing-plan-next-trunks-dead-end` → R-24 (High), `mode-leakage-enforcelive` → R-25 (High), `context-injection-allowlist` → R-26 (High). Also mirrored: `case-set-underpopulated` → R-23 (Medium — mirrored to fix the dangling `gap-case-set` link, not a threshold promotion). Moves noted in `CHANGELOG.md`.
 
 *Source of truth: this register + the live scan. Derived quick-reference: `.claude/completeness-index.md`.*

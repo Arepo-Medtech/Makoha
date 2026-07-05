@@ -1,0 +1,84 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "No saddle (groin/buttock) numbness, no loss of bladder/bowel control, no leg weakness (no cauda equina)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any numbness around your groin, buttocks or back passage?",
+        "Any loss of control of your bladder or bowels, or difficulty passing urine?",
+        "Any weakness in your legs, or do they give way?"
+      ],
+      "patient_response_template": "No numbness around the groin or back passage, no loss of bladder/bowel control, and no leg weakness.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No shooting/electric pain down the leg past the knee, no dermatomal numbness (no severe radiculopathy)",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does the pain shoot down your leg past the knee, or is it just in the back?",
+        "Any numb patches down the leg or foot?"
+      ],
+      "patient_response_template": "It's in my back, not shooting down my leg, and no numb patches.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Inflammatory pattern — worse with rest/sitting, eases with gentle movement — on known HLA-B27 an inflammatory back condition",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is your back worse after resting/sitting and better with gentle movement?",
+        "Do you have diagnosed inflammatory back pain (an inflammatory back condition)?"
+      ],
+      "patient_response_template": "Yes, it's worse after sitting and eases with gentle movement; I have an inflammatory back condition.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is this a ruptured disc? Am I going to be paralysed?",
+      "expected_ai_doctor_response_quality": "Screen cauda equina and severe radiculopathy red flags; if absent, reassure that an inflammatory back flare rarely causes nerve damage, explain it improves with movement (unlike a mechanical disc), advise NSAIDs, gentle regular movement and heat, and give a clear cauda equina safety-net — without ED over-triage."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 11,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-03-00034"
+}

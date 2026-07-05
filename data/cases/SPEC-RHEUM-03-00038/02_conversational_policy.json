@@ -1,0 +1,83 @@
+{
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Can swallow water/saliva without choking or drooling; normal voice (against food-bolus impaction/airway compromise)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Can you sip and swallow water without choking, and is your voice normal?",
+        "Are you drooling or unable to swallow your own saliva?"
+      ],
+      "patient_response_template": "I can swallow water and my saliva, my voice is normal, and I'm not drooling.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No fever and no acute painful parotid/submandibular swelling (against suppurative sialadenitis)",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Any fever, or painful swelling in front of your ear or under your jaw?",
+        "Any pus taste in the mouth?"
+      ],
+      "patient_response_template": "No fever, and no swelling in front of my ear or under my jaw.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Symptoms triggered by dry crackers on a background of the dry-eyes-and-mouth (sicca) condition sicca; relieved partly by lubrication/water",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did this start with dry/crumbly food, and do you have dry eyes/mouth (the dry-eyes-and-mouth (sicca) condition)?",
+        "Does artificial saliva or water help?"
+      ],
+      "patient_response_template": "Yes, it started with dry crackers, I have the dry-eyes-and-mouth (sicca) condition, and water/saliva spray helps a bit.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "after_turn_1",
+      "patient_text": "Is food stuck in my throat? Do I need an ambulance?",
+      "expected_ai_doctor_response_quality": "Explain that being able to swallow water and saliva with a normal voice and no drooling makes a food-bolus obstruction very unlikely; the burning is severe dryness friction from the dry-eyes-and-mouth (sicca) condition. Advise artificial saliva before meals, avoid dry foods, and give a bolus/parotitis safety-net — without ambulance over-triage."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 10,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": false,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002"
+    ]
+  },
+  "case_id": "SPEC-RHEUM-03-00038"
+}

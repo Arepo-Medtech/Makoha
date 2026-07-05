@@ -7,6 +7,8 @@ import { verify } from "./verifier.js";
 import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
+import { normaliseMode } from "./mode.js";
+import { contextAllowList, injectableFacts } from "./context-allowlist.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
 
 /**
@@ -87,6 +89,15 @@ function contextInjection(plan, receipts, meta = {}) {
   // (fhir-broker unbuilt); callers/tests supply raw_investigations.
   const facts = (meta.raw_investigations || []).map((raw) => sanitiseInvestigation(raw).fact);
 
+  // Case content is DEFAULT-DENY firewalled (C7/F9): any case-derived content a
+  // caller supplies goes through the field-scoped allow-list mirroring the
+  // cases:ingest firewall. Sealed scoring nodes (10–13) make it THROW — packet
+  // assembly halts. Only packet-channel allow-listed fields become facts;
+  // sim/scorer metadata and simulator dialogue material never enter the packet.
+  if (meta.case_content) {
+    facts.push(...injectableFacts(contextAllowList(meta.case_content)));
+  }
+
   return {
     facts,
     evidence,
@@ -112,8 +123,11 @@ export async function runPipeline(options = {}) {
 
   const run_id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const timestamp_utc = new Date().toISOString();
-  // Effective run mode (mock by default per HEYDOC_MODE_DEFAULT).
-  const context_mode = process.env.HEYDOC_MODE_DEFAULT || "mock";
+  // Effective run mode, normalised from HEYDOC_MODE_DEFAULT (C16/F4): env names
+  // staging/production map to "live" so mock proof is BLOCKED outside dev, and an
+  // unrecognised mode default-denies to "live". Keeps context_mode enum-valid for
+  // the packet, verifier, and ledger contracts.
+  const context_mode = normaliseMode(process.env.HEYDOC_MODE_DEFAULT).context_mode;
 
   // Step 1 — Routing. Gate the GroundingPlan before retrieval acts on it.
   const plan = validateGroundingPlan(routing(user_input, trunk));
@@ -167,7 +181,7 @@ export async function runPipeline(options = {}) {
   }
 
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
-  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations }));
+  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content }));
 
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
   const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));

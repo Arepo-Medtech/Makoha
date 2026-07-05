@@ -1,0 +1,153 @@
+{
+  "case_id": "SPEC-GI-01-00099",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Recurrent aphthous stomatitis (minor)",
+    "snomed_code": "426965005",
+    "snomed_display": "Aphthous ulcer of mouth",
+    "icd10am_code": "K12.0",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Recurrent aphthous stomatitis is a common immune-mediated ulceration of non-keratinised oral mucosa (buccal, labial, ventral tongue, floor of mouth), presenting as painful round/oval ulcers with a yellow-grey pseudomembranous centre and erythematous halo, often triggered by stress, trauma or haematinic deficiency. Minor aphthae are <10mm and heal within 7–14 days without scarring. It is benign; the ground-truth task is (1) distinguishing it from herpetic (HSV) stomatitis (vesicular prodrome, keratinised gingiva/hard-palate involvement, systemic features) and other mimics, (2) managing pain to preserve oral intake and prevent dehydration (relevant here, living alone with no intake), and (3) safety-netting the two flags that matter: a single ulcer persisting >3 weeks (malignancy — needs biopsy) and dehydration.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Recurrent aphthous stomatitis",
+          "snomed_code": "426965005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Recurrent painful round ulcers with yellow-grey centre/red halo on non-keratinised mucosa, stress-triggered.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Herpes simplex (HSV) stomatitis",
+          "snomed_code": "88594005",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Screen for vesicular prodrome and keratinised gingiva/hard-palate involvement — absent here, argues against.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "Oral candidiasis",
+          "snomed_code": "79740000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Wipeable white plaques, not discrete ulcers with halos — argues against."
+        },
+        {
+          "diagnosis": "Oral malignancy (persistent ulcer)",
+          "snomed_code": "363346000",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any single ulcer >3 weeks needs biopsy; recurrent self-healing pattern argues against here.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        }
+      ],
+      "scoring_note": "Aphthous stomatitis leads; HSV excluded by mucosa distribution/no vesicles; persistent-ulcer malignancy safety-net noted."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Recurrent aphthous stomatitis",
+          "snomed_code": "426965005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Non-keratinised distribution, no vesicular prodrome, no systemic features, recurrent self-healing <3 weeks — classic minor aphthae; dehydration is the active issue.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Herpes simplex stomatitis",
+          "snomed_code": "88594005",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No vesicles, keratinised mucosa spared."
+        },
+        {
+          "diagnosis": "Oral malignancy",
+          "snomed_code": "363346000",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Recurrent, self-healing, multiple small ulcers; escalation target only if a single ulcer persists >3 weeks."
+        }
+      ],
+      "scoring_note": "After a negative red-flag screen, minor aphthous stomatitis leads; topical therapy + analgesia-enabled hydration."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Recurrent aphthous stomatitis (minor)",
+          "snomed_code": "426965005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Working diagnosis; self-limiting; haematinic work-up (B12/folate/iron) via GP if frequently recurrent."
+        }
+      ],
+      "scoring_note": "Final position is benign recurrent minor aphthae."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Dehydration — no oral intake, reduced urine output, postural lightheadedness (living alone)",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Pain-driven cessation of intake can cause dehydration requiring ED/IV fluids.",
+      "if_missed_consequence": "Progressive dehydration.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Single ulcer persisting >3 weeks, or systemic features (fever, lymphadenopathy, spread beyond mouth)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Persistent ulcer requires biopsy to exclude malignancy; systemic features suggest infective/systemic cause.",
+      "if_missed_consequence": "Missed oral malignancy or systemic illness.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Mislabelling as herpes and prescribing antivirals",
+      "description": "Confusing aphthae with HSV; aphthous ulcers spare keratinised gingiva/palate and have no vesicular prodrome — antivirals are not indicated."
+    },
+    {
+      "pitfall_name": "Ignoring dehydration",
+      "description": "Focusing on the ulcers and missing that a patient living alone has stopped drinking."
+    },
+    {
+      "pitfall_name": "Missing the >3-week persistent-ulcer rule",
+      "description": "Not safety-netting that a single non-healing ulcer needs biopsy."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Full intraoral examination for ulcer distribution/keratinised involvement",
+      "Assessment of mucous-membrane moisture / hydration status",
+      "Cervical lymph node palpation"
+    ],
+    "correct_escalation_action": "Topical analgesia/corticosteroid + analgesia-enabled hydration; ED if unable to rehydrate or dehydration signs; GP for haematinics and any persistent ulcer.",
+    "premature_diagnosis_risk": "Treating HSV/malignancy as aphthae; under-recognising dehydration."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines: Oral mucosal ulceration (2024)",
+      "relevant_recommendation": "Minor aphthous ulcers: topical corticosteroid (e.g. triamcinolone dental paste) and topical analgesics; maintain hydration; investigate haematinics if frequently recurrent; biopsy any ulcer persisting beyond 3 weeks."
+    }
+  ]
+}

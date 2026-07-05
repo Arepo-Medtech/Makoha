@@ -3,6 +3,7 @@
  * Ensures no invented codes, guidelines, operations, or repo/API names; checks hard-stop enforcement.
  */
 import { hashCandidateOutput } from "./hash.js";
+import { normaliseMode } from "./mode.js";
 
 /** Known MCP / allowed service names (from gap register and implemented servers). */
 const ALLOWED_SERVICE_NAMES = new Set([
@@ -105,10 +106,29 @@ const LIVE_CLAIM_PATTERNS = [
 const REPO_NAME_PATTERN = /`([a-z0-9-]+(?:-[a-z0-9]+)*)`/g;
 
 /**
+ * Per-check severity label (C15/M7 reconciliation). This LABELS the report; it
+ * does NOT change the gate — `pass` is still `results.every(r => r.passed)`, so a
+ * failed check of ANY severity still rejects the output. Severities map to the
+ * gap-register Risk Register: fabricated codes (R-01), operational facts/IHI
+ * (R-04) and HARD_FAIL enforcement (R-03) are `critical`; a guideline claim
+ * without a citation (R-02, High) is `fail`; an unregistered service name
+ * (R-11, Moderate) is `warning` — surfaced-but-gating: it still fails, but is
+ * flagged as the lowest severity, resolving the docs↔code drift where the docs
+ * promised a `severity=warning` the verifier never emitted.
+ */
+const CHECK_SEVERITY = {
+  no_invented_codes: "critical",
+  no_invented_guidelines: "fail",
+  no_invented_operations: "critical",
+  no_repo_invention: "warning",
+  hard_stop_enforcement: "critical",
+};
+
+/**
  * Run all verification checks on output.
  * @param {string} output - Generation output text to verify
  * @param {{ citations: string[], terminology_receipts: string[], terminology?: Array<{request_id: string, codes: string[], mode: string}>, live_receipts: string[], hard_stop_receipt?: string, context_mode?: string, receipt_modes?: Array<{id: string, mode: string}> }} evidence - Collected proof refs
- * @returns {{ pass: boolean, results: Array<{ check: string, passed: boolean, reason?: string }>, missing_receipts: string[], candidate_output_hash: string, mock_receipt_flags: string[] }}
+ * @returns {{ pass: boolean, results: Array<{ check: string, passed: boolean, reason?: string, severity: "critical"|"fail"|"warning" }>, missing_receipts: string[], candidate_output_hash: string, mock_receipt_flags: string[] }}
  */
 export function verify(output, evidence = {}) {
   // Medicolegal anchor FIRST — hash the exact, unmodified output before any
@@ -125,11 +145,12 @@ export function verify(output, evidence = {}) {
   // the ids of every mock receipt for the report, and — only when the context is
   // not mock — treat mock proof as absent so anything grounded solely on mock
   // data fails. In mock/dev (the default) we flag but do not block.
-  const contextMode = evidence.context_mode || "mock";
-  // Only a genuine LIVE context blocks mock-grounded output. dry_run is a development
-  // mode (query validated, upstream not called) — treating it as production would
-  // fail every legitimately mock-grounded output during dev.
-  const enforceLive = contextMode === "live";
+  // Mode-normaliser (C16/F4): staging/production/live — and any UNRECOGNISED mode
+  // string (default-deny) — enforce; mock/dry_run are dev modes (query validated,
+  // upstream not called) and flag rather than block, since treating them as
+  // production would fail every legitimately mock-grounded output during dev.
+  // Absent context_mode keeps the documented dev default (mock).
+  const enforceLive = normaliseMode(evidence.context_mode).enforce_live;
   const receiptModes = evidence.receipt_modes || [];
   const mockIds = new Set(receiptModes.filter((m) => m.mode === "mock").map((m) => m.id));
   for (const e of terminologyEntries) if (e.mode === "mock" && e.request_id) mockIds.add(e.request_id);
@@ -167,7 +188,7 @@ export function verify(output, evidence = {}) {
     codeReason = parts.join("; ");
     missing_receipts.push("terminology.lookup receipt required to bind codes: " + (unbound.map((c) => c.code).concat(coarseSystems).join(", ")));
   }
-  results.push({ check: "no_invented_codes", passed: codePass, reason: codeReason });
+  results.push({ check: "no_invented_codes", passed: codePass, reason: codeReason, severity: CHECK_SEVERITY.no_invented_codes });
 
   // 2. No invented guidelines
   let guidelineViolations = 0;
@@ -176,7 +197,7 @@ export function verify(output, evidence = {}) {
   }
   const guidelinePass = guidelineViolations === 0 || effCitations.size > 0;
   if (!guidelinePass) missing_receipts.push("docs.cite ID required for guideline claims");
-  results.push({ check: "no_invented_guidelines", passed: guidelinePass, reason: guidelineViolations ? "output contains guideline claims; docs.cite required" : undefined });
+  results.push({ check: "no_invented_guidelines", passed: guidelinePass, reason: guidelineViolations ? "output contains guideline claims; docs.cite required" : undefined, severity: CHECK_SEVERITY.no_invented_guidelines });
 
   // 3. No invented operations
   let liveViolations = 0;
@@ -185,7 +206,7 @@ export function verify(output, evidence = {}) {
   }
   const livePass = liveViolations === 0 || effLiveReceipts.size > 0;
   if (!livePass) missing_receipts.push("live-data receipt required for IHI/lab/pharmacy/delivery claims");
-  results.push({ check: "no_invented_operations", passed: livePass, reason: liveViolations ? "output contains operational claims; live receipt required" : undefined });
+  results.push({ check: "no_invented_operations", passed: livePass, reason: liveViolations ? "output contains operational claims; live receipt required" : undefined, severity: CHECK_SEVERITY.no_invented_operations });
 
   // 4. No repo/API invention
   const mentionedRepos = [];
@@ -197,13 +218,13 @@ export function verify(output, evidence = {}) {
   }
   const repoPass = mentionedRepos.length === 0;
   if (!repoPass) missing_receipts.push("output must not introduce repo names outside gap register: " + mentionedRepos.join(", "));
-  results.push({ check: "no_repo_invention", passed: repoPass, reason: repoPass ? undefined : "invented repo/service names: " + mentionedRepos.join(", ") });
+  results.push({ check: "no_repo_invention", passed: repoPass, reason: repoPass ? undefined : "invented repo/service names: " + mentionedRepos.join(", "), severity: CHECK_SEVERITY.no_repo_invention });
 
   // 5. Hard-stop enforcement (if output mentions HARD_FAIL, we need a receipt)
   const hasHardFail = /\bHARD_FAIL\b|critical\s+acuity\s+override/i.test(output);
   const hardStopPass = !hasHardFail || !!evidence.hard_stop_receipt;
   if (!hardStopPass) missing_receipts.push("HARD_FAIL or critical acuity override requires pharmacology/investigation receipt");
-  results.push({ check: "hard_stop_enforcement", passed: hardStopPass, reason: hasHardFail && !evidence.hard_stop_receipt ? "hard-stop mentioned without receipt" : undefined });
+  results.push({ check: "hard_stop_enforcement", passed: hardStopPass, reason: hasHardFail && !evidence.hard_stop_receipt ? "hard-stop mentioned without receipt" : undefined, severity: CHECK_SEVERITY.hard_stop_enforcement });
 
   const pass = results.every((r) => r.passed);
   return { pass, results, missing_receipts, candidate_output_hash, mock_receipt_flags };
