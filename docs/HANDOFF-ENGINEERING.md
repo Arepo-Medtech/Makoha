@@ -2,78 +2,74 @@
 
 **To:** Head of Engineering
 **From:** Engineering agent (Claude Code)
-**Date:** 2026-07-02
-**Repo:** `kenleefreo/breath-ezy` · default branch `main` @ `9d376c1` (PRs #1–#12)
-**Status of this work:** Mock/development build, all green. **Nothing is wired to a patient-facing path.**
+**Date:** 2026-07-05
+**Repo:** `kenleefreo/breath-ezy` · default branch `main` @ `c9e0a64` (PRs #1–#17)
+**Status of this work:** Mock/development build + first live-connection slice, all green. **Nothing is wired to a patient-facing path.**
 
 ---
 
 ## TL;DR
 
-We now have a **complete, working mock of the grounding-and-verification system** that sits around the AI Doctor's language model, plus a **case-authoring pipeline and a populated evaluation set (52 cases)**. The clinical-safety scaffolding is in place and mechanically enforced; the five-step pipeline runs end to end; all seven internal services exist as deterministic mocks. **What remains before any patient could ever be affected is, deliberately, not engineering-only** — it needs vendor contracts, clinical sign-off, and two as-yet-unstarted subsystems.
+Since the last brief (2026-07-02, PRs #1–#12) the team completed the **entire ARCH_PLAN pure-engineering block (M0–M8)** and the **first live-connection slice (M11 P1)**, all merged to `main`. The clinical-safety scaffolding is not just present but now **orchestrated and hardened**: cross-trunk HARD_FAIL propagation, a live context-injection firewall, **enforced session-bound persistence**, a **Clinician Verification Portal release gate** (contract, not UI), a **CI-blocking evaluation gate over 301 clinician-attested cases**, verifier severity labelling, a **production-ready audit-ledger substrate seam**, and a **live terminology validation adapter** proven against a real FHIR server. What remains before any patient could be affected is, deliberately, **not engineering-only** — it needs vendor contracts, clinical/regulatory sign-off, and the Portal UI.
 
-Treat everything here as **certifiable scaffolding, not a clinical product**. All clinical data in the repo (drug rules, lab reference ranges, benign/red-flag/Axis-B datasets) is **synthetic and explicitly marked "not clinically authoritative."**
+Treat everything here as **certifiable scaffolding, not a clinical product**. All clinical data in the repo (drug rules, lab ranges, benign/red-flag/Axis-B datasets, case answer keys) is **synthetic and explicitly marked "not clinically authoritative."**
 
 ---
 
-## What was built (plain language)
+## What was built since the last brief (plain language)
 
-- **The safety "spine."** Every model output is now hashed (SHA-256) for a tamper-evident medicolegal record, written to an **append-only, hash-chained audit ledger**, and re-checkable with a `verify:rehash` tool.
-- **A grounding verifier** that mechanically blocks the model from inventing clinical codes, guideline claims, lab results, identities, or internal service names — with per-code checking against terminology proof.
-- **A pharmacology firewall** (Trunk 8.0): the only source of dose guidance; a `HARD_FAIL` blocks continuation with **no override path**; under-18 and unknown-age cases are refused a dose; Schedule-8 drugs require a PDMP check.
-- **A lab "sanitiser"** so the model never sees a raw lab number — values are converted to qualitative interpretations before it reads them.
-- **All seven MCP services** as deterministic mocks: docs, identity, **terminology (now multi-system: SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT)**, pharmacology, knowledge (+ curated datasets), **FHIR broker (mock lab → sanitiser, plus a deterministic AU Core structural conformance validator against vendored StructureDefinitions)**, and messaging/geo (which **never actually sends**).
-- **A case-authoring pipeline.** A documented protocol (v1.2.0) + a single-file "kit" turns semi-structured SOAP `.txt` notes into evaluation cases in Chat or Cowork; `cases:ingest` then validates, splits, and hashes each bundle into the case-set. The **scoring-store firewall is enforced at the sub-field level** (only patient-facing fields are checked/injectable; answer-key metadata is excluded).
-- **A populated evaluation set: 52 cases.** 51 synthetic Acute Urgent Care cases were ingested with a recorded **clinician attestation** (bulk sign-off), real SHA-256 integrity hashes, and candidate codes held `unverified` pending terminology receipts.
-- **Supply-chain & CI hygiene:** dependency advisories cleared; CI fails the build on High/Critical advisories; **15** automated contract tests gate every change.
+- **Cross-trunk orchestration (M2).** A sequencer walks Trunk 1.0's routing plan and **halts the whole sequence** on a pharmacology HARD_FAIL, an emergency escalation, or a failed verification — closing a real gap where a block could previously stop only one trunk. Off by default (feature-flagged), so it's a safe addition.
+- **Mock-can't-masquerade-as-live (M1).** A mode-normaliser makes staging/production (and any unknown mode) **block mock proof** — mock terminology/data can no longer be accepted as evidence outside dev.
+- **Live scoring-store firewall (M3).** The evaluation answer-key protection now also guards the *runtime* context boundary (not just ingest): sealed answer-key content hitting the context layer **halts loudly**, never leaks silently.
+- **Session-bound persistence enforced (M4).** "No patient data beyond the session" moved from policy to mechanism: encounter-scoped, memory-only, destroyed on close, with a guard that **refuses to store demographics**. This clears one of the four release blockers at the enforcement layer.
+- **Clinician Verification Portal release gate (M5).** The mandatory human-in-the-loop checkpoint now exists as a **fail-closed, hash-bound gate**: no output can be released to a patient path without a clinician's attested decision on the exact generated bytes. (The gate contract is built; the clinician UI/workflow and durable storage remain — see blockers.)
+- **Evaluation set: 52 → 301 clinician-attested cases (M6).** Six source series (Acute Urgent Care, Autoimmune, Cardiovascular, Common Infections, Complex Fatigue, Dermatology) were ingested and **all clinician-attested** (reviewer KL). **1580 candidate codes receipted**; all **7 difficulty tiers + 3 diagnosis categories** present; and the synthetic-case **evaluation gate is now a BLOCKING CI job**. A **global-seq id-scheme (`--reseq`)** ends the cross-series id collisions that recurred as batches grew. The ingest firewall also **caught and blocked a real answer-key leak** in one batch (remediated at source).
+- **Verifier severity labelling (M7).** Each of the five checks now reports a `severity` — reconciling a docs↔code drift without weakening any gate (an unregistered service name still fails, tagged "warning").
+- **Production audit substrate (M8).** The append-only, hash-chained ledger's storage is now **pluggable behind a seam** (chain algorithm frozen): production registers a WORM adapter; a misconfigured non-WORM backend **refuses to write**; retention is surfaced as a regulatory decision and **never auto-deletes**.
+- **Live terminology adapter (M11 P1).** The terminology server can now **validate codes against a real FHIR server** (`$validate-code`) — built and smoke-verified against the public CSIRO sandbox with **no credentials**, decoupling the engineering from the NCTS licence. The mock path is unchanged and remains the default; the sandbox is **refused in production**.
 
 ## How safety is enforced (for assurance)
 
-The non-negotiable invariants are enforced **in code**, not just in prompts: no fabricated codes/doses/facts, HARD_FAIL is terminal, no raw lab numbers reach the model, and the **scoring-store firewall is clean** (no code path can read the evaluation answer-key nodes). The audit ledger carries **no patient-identifiable information**; the only store that can hold output text is mechanically restricted to synthetic data.
+The non-negotiable invariants are enforced **in code**, not prompts: no fabricated codes/doses/facts (live-validated or fail-safe miss, never invented); HARD_FAIL is terminal **and now propagates across the trunk sequence**; no raw lab numbers reach the model; **mock proof is blocked in live-enforced contexts**; the **scoring-store firewall is clean at both ingest and the runtime context boundary**; every generated output is hashed and **no patient output can be released without an attested clinician decision on that exact hash**. The audit ledger carries **no PHI**; the only store that can hold output text is mechanically restricted to synthetic data; and the medicolegal ledger cannot be written to a non-WORM backend by misconfiguration.
 
 ---
 
-## Release-blocker status
-
-The charter defines four patient-facing release blockers. Current state:
+## Release-blocker status (the charter's four)
 
 | Blocker | State |
 |---|---|
-| Pharmacology vendor live + validated | Engine + firewall **built (mock)**; **needs a contracted vendor (MIMS-AU/equiv) + SafeScript + credentials** |
-| Clinician Verification Portal | **Not started** — a whole UI/review app; required before any output is patient-facing |
-| Deterministic investigation parser | Engine **built**; reference ranges are **provisional, need clinical sign-off**; needs a live EHR/FHIR source |
-| Session-bound persistence enforced | **Not enforced** — needs an infra/retention decision |
+| Pharmacology vendor live + validated | Engine + firewall **built (mock)**; **needs a contracted vendor (MIMS-AU/equiv) + SafeScript + credentials** (M9, input-gated) |
+| Clinician Verification Portal | **Gate contract built (M5)** — fail-closed, hash-bound release gate; **UI/review workflow + durable WORM gate-record storage remain** |
+| Deterministic investigation parser | Engine **built**; reference ranges **provisional, need clinical sign-off**; needs a live EHR/FHIR source (M10, input-gated) |
+| Session-bound persistence enforced | ✅ **Enforced (M4)** — encounter-scoped, memory-only, demographic guard |
 
-Additionally, the synthetic-case **evaluation gate**: the case-set now holds **52 cases** (clears the ≥45 count), each clinician-attested. Still open before the gate can run as a blocking job: the **difficulty distribution** is skewed (47 straightforward / 4 atypical-high-risk vs the 60/30/10 target), candidate **terminology codes are unverified** (pending receipts), and the **live context-injection layer** must enforce the same sub-field firewall the ingest tool applies.
+The synthetic-case **evaluation gate is now a blocking CI job** over **301 clinician-attested cases** (clears ≥45, all 7 tiers, 3 categories). Remaining is a **distribution top-up** (47/45/8 vs the 60/30/10 target — needs more source material) and, at live terminology connect, a **batch re-validation of the 301 cases' codes** against the licensed AU source.
 
 ---
 
-## Decisions made — and why
+## Decisions made since last brief — and why
 
-- **Bumped the MCP SDK** to clear all High/Critical advisories; added a CI audit gate (security policy).
-- **Two-store audit design:** a durable, no-PHI ledger vs a separately-governed, **synthetic-only** content store — to satisfy the "keep an immutable audit trail" requirement without violating patient-data-minimisation.
-- **Provisional-data-with-sign-off pattern:** all curated clinical data is shipped as clearly-labelled dev data; a tracked register item requires clinical + regulatory sign-off before it can go live.
-- **Pinned AUCDI Release 3** (supplements AU Core 0.3.0) at your direction — but flagged that *whether it re-targets or only supplements* the conformance target is an **organisational/regulatory decision**, not settled here.
-- **Vendored the AU Core StructureDefinitions at the current CI build (`2.0.1-ci-build`)** at your direction for the conformance validator — flagged as a **divergence from the pinned AU Core `0.3.0`**; which version is authoritative is an org/regulatory decision.
-- **Telehealth objective-data carve-out:** patient-obtainable readings (home/wearable devices, self-report, video-visible) may enter the presentation layer if provenance-tagged and `verified:false` — never as clinician gold-standard; clinician-only exam/labs/ECG stay sealed. (No hard limit weakened.)
-- **Case-ID convention:** machine-transformed cases are assigned canonical `SPEC-{SPECIALTY}-{DD}-{SEQ}` IDs (DD = difficulty ordinal); the source note's own ID is preserved in the manifest. Chosen over relaxing the schema pattern.
-- **Firewall is sub-field, not file-level:** validating the first real case showed the green files (`00/01/02`) mix patient-facing content with sim/scorer metadata — so both the ingest gate and (pending) the live context-injection layer must apply an allow-list, not a whole-file rule.
+- **Global-seq id-scheme (`--reseq`)** — as batches grew, source series reused case numbers (AUC-005 & CDV-005 → the same SPEC id). Rather than hand-re-id every collision, `cases:ingest --reseq` assigns the next free global seq, rewrites the id across all nodes, never overwrites, and records the original→assigned mapping. Ends the recurrence.
+- **Portal = gate contract now, UI later** — the release-blocking *mechanism* (fail-closed, hash-bound `releaseToPatient()`) is engineering; the clinician review UI/workflow is a separate build. Built the gate so every future patient path is forced through it.
+- **Audit substrate seam, chain frozen** — refined only the storage backend (pluggable, WORM-in-production, fail-safe on misconfig); left the hash-chain math untouched. Retention is surfaced, never decided or auto-applied (regulatory posture).
+- **Verifier severity is surfaced-but-gating** — labels the report without changing what passes/fails (`no_repo_invention` still blocks, tagged "warning"). Reconciled the docs to match.
+- **Terminology: three deployment models** — `terminology-servers.json` now cleanly separates the CSIRO **dev sandbox** (open, dev only, unlicensed reference content — refused in production), the **NCTS live API** (OAuth, licensed AU content), and **self-hosted** (own Ontoserver loaded with the SNOMED CT-AU RF2). Built the live adapter against the sandbox first to decouple engineering from the licence.
+- **NCTS licence-material handling** — the SNOMED CT-AU RF2 distribution is licensed content: **gitignored, never committed, deploy-injected**. The self-host path loads it into an Ontoserver (FHIR), **not** a plain SQL DB (ADHA's sample SQL scripts are reference-only; their own guidance prefers a FHIR terminology server).
 
 ---
 
 ## What needs leadership / specialist input (not engineering)
 
-1. **Vendor contracts + credentials:** MIMS-AU (or equivalent) + SafeScript (pharmacology), NCTS/Ontoserver (terminology), an EHR/MHR FHIR connection. The agent never handles credentials.
-2. **Clinical + regulatory sign-off** on: lab reference ranges, the benign/Axis-B/red-flag datasets, and the FHIR/AUCDI conformance target.
-3. **Build decisions** for the two unstarted blockers: the **Clinician Verification Portal** and **session-bound persistence** (storage backend + retention policy).
-4. **Regulatory posture:** the system is likely TGA-regulated Software as a Medical Device; classification/certification are organisational decisions with qualified specialists.
+1. **Vendor contracts + credentials:** MIMS-AU (or equivalent) + SafeScript (pharmacology, M9); **NCTS OAuth credentials** *or* a self-hosted Ontoserver for the licensed AU terminology (M11); an EHR/MHR FHIR connection (M11). The agent never handles credentials.
+2. **Clinical + regulatory sign-off** on: lab reference ranges (M10), the benign/Axis-B/red-flag datasets (M12), and the FHIR/AUCDI conformance target.
+3. **The Portal UI/workflow build** and **durable WORM audit storage + a retention period** (deploy/regulatory).
+4. **The C22 AU Core version-target decision** (0.3.0 pin vs vendored 2.0.1-ci; whether AUCDI R3 re-targets or supplements) — a prerequisite for the terminology/FHIR binding work; a decision, not code.
+5. **The `objective_data_offered` sanitiser policy** for patient-reported vitals (currently withheld/quarantined until confirmed).
+6. **Regulatory posture:** likely TGA-regulated SaMD; classification/certification are organisational decisions with qualified specialists. The Rx-Remedy/portal concepts (M14) would change the classification — decision-first, deferred.
 
-## Still buildable now (engineering-only, no external inputs)
+## Still buildable now (engineering-only) — mostly done
 
-- **Enforce the sub-field firewall allow-list in the live context-injection layer** (the ingest tool already does; the runtime pipeline must match) — the new High register item.
-- **Batch-verify** the 52 cases' candidate terminology codes against the mock terminology server (produce receipts; flip `unverified`).
-- **Top up case-set difficulty** toward the 60/30/10 distribution (count minimum already met).
-- AUCDI R3 / AU Core **value-set (binding) validation** — structural conformance is done; membership needs live NCTS.
+The M0–M8 engineering backlog is complete. What's left without external inputs is **polish**: distribution top-up (needs operator source material), verifier fuzz-corpus hardening, and — the large one — the **Portal UI/workflow** (part of release blocker #2). Everything else on the critical path (M9–M14) is input-gated; see `.planning/M9-M14-MASTER-PLAN.md` for the per-milestone plan and the exact input each is blocked on.
 
 ---
 
@@ -81,20 +77,23 @@ Additionally, the synthetic-case **evaluation gate**: the case-set now holds **5
 
 ```
 npm ci
-npm test                 # 15 contract suites — all pass
+npm test                 # 21 contract suites — all pass
+npm run eval:cases       # BLOCKING case-set gate — PASS (301 attested)
 npm run verification     # five-step harness — Pass
 npm run trunk:stub:all   # trunks 1.0–9.0 — 9/9 (also green with HEYDOC_USE_MCP=1)
-npm run cases:ingest -- "<bundle-folder>" --dry-run   # case-set validation (no write)
-npm audit --audit-level=high   # 0 High/Critical
+npm run verify:rehash -- --integrity   # ledger chain VALID, 0 drift
+npm audit --audit-level=high           # 0 High/Critical
 ```
-CI runs `npm test` on Node 20 on every push/PR; all merged PRs (#1–#12) passed.
+CI runs `npm test` + `eval:cases` (blocking) on Node 20 on every push/PR; all merged PRs (#1–#17) passed.
 
 ## Where the detail lives
 
+- `.planning/ARCH_PLAN.md` — the architectural blueprint (M0–M8 roadmap, FMEA, retain/refine/replace register).
+- `.planning/M9-M14-MASTER-PLAN.md` — the input-gated milestones, each with the exact operator input it awaits.
 - `docs/grounding/completeness-register.md` — the exhaustive build backlog (every open/resolved item, risk-rated).
-- `docs/grounding/gap-register.md` — the curated, prioritised gap view (risk rows R-01…R-22).
-- `docs/grounding/CHANGELOG.md` — what changed, task by task.
+- `docs/grounding/gap-register.md` — the curated, prioritised gap view (risk rows R-01…R-26).
+- `docs/grounding/CHANGELOG.md` — what changed, task by task (M0–M11).
 - `CLAUDE.md` — the engineering charter (invariants, workflow, safety rules).
-- `docs/case-authoring/` — the SOAP→case-set transformation protocol (v1.2.0), the single-file kit, and how to run it in Chat/Cowork; `scripts/{ingest-case-bundles,build-case-transformation-kit}.mjs`; the 52 cases live in `data/cases/`.
+- `docs/case-authoring/` — the SOAP→case-set transformation protocol + kit; `scripts/{ingest-case-bundles,verify-case-codes,eval-case-gate}.mjs`; the **301 cases** live in `data/cases/`.
 
-**Bottom line:** the safety-critical engineering scaffolding is built and tested in mock, and the evaluation case-set is now populated (52 clinician-attested cases) via an auditable authoring→ingest pipeline; the path to patient-facing remains gated on vendors, clinical/regulatory sign-off, and two named subsystems — by design.
+**Bottom line:** the safety-critical scaffolding is now **built, orchestrated, hardened, and CI-gated in mock**, the evaluation set is **301 clinician-attested cases behind a blocking gate**, and the **first real live-connection (terminology validation) is proven** against a live FHIR server. The path to patient-facing remains gated on vendor contracts, clinical/regulatory sign-off, the Portal UI, and named decisions — by design.
