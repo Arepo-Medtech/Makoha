@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 50 DST cases attested → 301/301; DST stubs retired (2026-07-05)
+
+**Status:** All 301 ingested cases now clinician-attested; DST housekeeping done. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL written in-session attestation** of the 50 DST cases (40 direct + 10 `--reseq`'d collisions). Recorded as `bulk_clinician_attestation` in each manifest `review` block; scope-guarded to the two DST ingest commits (`6a31499` + `02a1d22`; verified pending == that set). Review block only — node files + sha256 untouched; git diff = 50 manifests.
+- **`dst-malformed-bundles` retired** — the 9 empty-stub source bundles + stray `_probe.tmp` deleted with a guard removing only non-well-formed files (all 9 format=null; 50 well-formed bundles remain). Nothing was ever in the repo.
+- **`eval:cases`: attested conforming 251 → 301; unreviewed 50 → 0; PASS.** Distribution 49/45/7, coverage 7 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): distribution vs 60/30/10.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 301 cases attested**; only optional distribution polish remains — no blocking work.
+- **`dst-malformed-bundles` → resolved.**
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (301 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — id-scheme: globally-assigned seq (`--reseq`); 10 DST collisions auto-resolved (2026-07-05)
 
 **Status:** Cross-series id collisions resolved systemically at the tooling level. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
