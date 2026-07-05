@@ -4,6 +4,29 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M11 P1 — terminology live adapter (CSIRO sandbox target) (2026-07-05)
+
+**Status:** Adapter built + smoke-verified against the real sandbox; AU-content connect stays input-gated. Operator-approved (plan + the sandbox-refused-in-production guard). Branch `feat/terminology-live-adapter` (off `main` after PR #16 merged). npm test 21/21, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change (contract frozen — data source only)
+- **`mcp/servers/terminology/live-adapter.js` (new):** `validateCodeLive()` — CodeSystem `$validate-code` against a live FHIR terminology server (Node 20 global `fetch`, **no new dependency**); `resolveTxEndpoint()` — endpoint selection + the safety guard. `SYSTEM_URI` maps SNOMED/LOINC/ICD-11; AU-specific systems (ICD-10-AM/PBS/AMT) are `null` (validated only on NCTS/self-host).
+- **`mcp/servers/terminology/index.js`:** live branch in `terminology_lookup`/`terminology_validate` (code path) behind `HEYDOC_TERMINOLOGY_ENDPOINT` (`mock` default = rollback; `dev_sandbox`|`ncts_live_api`|`self_hosted`). Endpoint resolved once at startup; **`dev_sandbox` in production → server exits 1** (fail-safe, verified). Live receipts carry the actual endpoint + `mode:"live"`. `$translate` and live text lookup are P1-out-of-scope (fail-safe miss, never fabricated). **The `TerminologyLookup` contract + mock path are unchanged.**
+- **`test/contract-terminology-live.js` (new, in `npm test` → CI):** mocked-`fetch` unit tests — request shape (`$validate-code?url=…&code=…`), result-true mapping, every fail-safe path (result:false, HTTP 500, timeout/abort, AU-unmapped system with no network call), plus the production-refuse guard. An **opt-in live smoke** (`HEYDOC_TX_LIVE_SMOKE=1`, skipped in CI) validated a real SNOMED code against the CSIRO sandbox (`22298006` → "Myocardial infarction").
+
+### Invariants
+No-fabricated-codes strengthened: a code is live-validated or fail-safe-missed, never invented; the sandbox's unlicensed content is refused in production. Mock is the default rollback. Nothing patient-facing.
+
+### Register impact
+- **NEW** `terminology-live-adapter` → PARTIAL (adapter mechanics built; AU-content connect input-gated); gap-register **R-20** annotated; `.claude/server-status.md` + index updated. `terminology-contract-incomplete`/R-20 stays PARTIAL until AU-content validation (NCTS licence or self-host RF2 deploy).
+
+### Remaining (input-gated, M11 onward)
+AU-content validation (SNOMED CT-AU / ICD-10-AM / PBS / AMT) via NCTS OAuth or a self-hosted Ontoserver loaded with the SNOMED CT-AU RF2; AU Core value-set binding; live text lookup ($expand) + $translate; the 301-case code re-validation (flip `mock_verified_pending_live_ncts` → live-verified or block on mismatch).
+
+### Verification
+`npm test` 21/21 (mock terminology path unchanged); `npm run verification` pass; `trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift; live smoke (opt-in) validated a real sandbox code.
+
+---
+
 ## ARCH_PLAN Milestone M8 — production audit substrate seam + retention hook (C5/F3) (2026-07-05)
 
 **Status:** Complete (engineering); live WORM + retention are deploy/regulatory. Operator-approved (never auto-deletes; retention left as a surfaced unset hook). Branch `step-8-audit-worm-substrate`. npm test 20/20, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.

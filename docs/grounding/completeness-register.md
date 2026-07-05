@@ -158,6 +158,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: terminology-live-adapter
+  path: mcp/servers/terminology/live-adapter.js + index.js (live branch); terminology-servers.json; test/contract-terminology-live.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-05 (ARCH_PLAN M11 P1, operator-approved). The terminology server gained a LIVE path behind the frozen TerminologyLookup contract: a *code* lookup/validate is checked against a FHIR terminology server via CodeSystem $validate-code (live-adapter.js, Node 20 global fetch, no new dep). Endpoint selected by HEYDOC_TERMINOLOGY_ENDPOINT (mock default = rollback; dev_sandbox | ncts_live_api | self_hosted from terminology-servers.json). SAFETY: dev_sandbox (CSIRO reference server, unlicensed intl content) is REFUSED in production (server exits 1 — verified); receipts carry the actual endpoint + mode:"live"; fail-safe on any error/timeout/miss/AU-unmapped-system → validated:false, never a fabricated concept (verifier then blocks the unbound code). Contract-tested: mocked-fetch unit tests (request shape, mapping, all fail-safe paths, production-refuse guard) + an OPT-IN live smoke (HEYDOC_TX_LIVE_SMOKE=1) that validated a real SNOMED code against the CSIRO sandbox (22298006 → "Myocardial infarction"). Mock contract test unchanged (npm test 21/21). REMAINING (input-gated): AU-content validation (SNOMED CT-AU/ICD-10-AM/PBS/AMT) needs NCTS or self-host (sandbox validates only SNOMED-intl/LOINC/ICD-11); live text lookup ($expand) + $translate are P1-out-of-scope; the 301-case code re-validation happens at the NCTS/self-host connect.
+  blocks: nothing new — adapter mechanics proven; AU grounding is the next (input-gated) step
+  safety_class: none — mock is the default rollback; live path is opt-in and refuses unlicensed content in production; fail-safe never fabricates
+  invariant_exposure: no-fabricated-codes — strengthened (live validation or fail-safe miss; sandbox refused in production)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: NCTS/self-host connect (M11 onward, input-gated on the licence/RF2 deploy or NCTS OAuth creds): resolve the AU code systems, live-revalidate the 301 case codes, add live text/$translate.
+  gap_register_link: R-20
+  status: open (adapter built; AU-content connect input-gated)
+  last_scanned: 2026-07-05
+```
+
+```md
 - id: terminology-contract-incomplete
   path: mcp/schemas/terminology-lookup.schema.json, mcp/servers/terminology/{index.js,terminology-servers.json}, verification/{verifier,retrieval-mcp}.js, data/digital_tablet_omnibus.json
   component_type: schema
