@@ -218,6 +218,20 @@ Trunks 6/7/9, verifier check 1 (per-code binding), the 301 case manifests' code 
 **Contracts.** No change — `terminology-lookup.schema.json` (6-system enum) and fhir read/validate envelopes
 are frozen; live endpoints are additive behind config.
 
+**Three terminology deployment models (choose per environment; recorded in `terminology-servers.json`):**
+1. **Dev sandbox** — CSIRO public Ontoserver `https://r4.ontoserver.csiro.au/fhir` (self-describes as
+   "Ontoserver Sandbox (R4)"; open/Basic, no OAuth; reference/international content, **NOT** the licensed AU
+   edition). Use to **build and test the adapter without credentials** — never production/clinical.
+2. **NCTS live API** — `https://api.healthterminologies.gov.au/integration/R4/fhir` (ADHA; SMART-on-FHIR
+   OAuth2; SNOMED CT-AU + AMT + PBS + AU Core value sets). Needs an NCTS account + issued OAuth credentials.
+   `/integration/` is staging; production is a separate endpoint.
+3. **Self-hosted** — the operator's own Ontoserver loaded with the **NCTS SNOMED CT-AU RF2 distribution**
+   (production-grade; operator controls availability/SLA; licence-clean if hosted per NCTS terms).
+   **INPUT ON HAND (2026-07-05):** the SNOMED CT-AU RF2 distribution (module 32506021000036107, release
+   2026-06-30) is available to the operator — its possession evidences the NCTS account + affiliate licence.
+   It is **licensed material: NEVER committed** (gitignored); loaded into infrastructure at deploy. This
+   makes the self-hosted path viable and decouples the adapter engineering from live-API credentials.
+
 **Phases (gated on the licences + the C22 decision):**
 - **P0 C22 decision recorded.** Reconcile the AU Core version target + AUCDI R3 relationship in the standards
   pins + register (this is doc/decision, not code) — **prerequisite GATE.**

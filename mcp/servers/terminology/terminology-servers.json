@@ -1,8 +1,32 @@
 {
-  "note": "Live terminology-server endpoints, sourced from data/digital_tablet_omnibus.json (_digitalTablet.terminology_servers). Used ONLY in live mode; mock mode NEVER calls them. Live NCTS/Ontoserver grounding of SNOMED CT-AU content requires an NCTS licence/account (input-gated). These are public reference URLs, not secrets.",
-  "primary": "https://r4.ontoserver.csiro.au/fhir",
-  "servers": {
-    "NCTS_Ontoserver": "https://r4.ontoserver.csiro.au/fhir",
+  "note": "Terminology endpoints for the terminology server in LIVE mode. Mock mode NEVER calls them (it returns per-system placeholder codes). Using SNOMED CT-AU content on ANY endpoint requires an NCTS account + a SNOMED CT affiliate licence (input-gated, M11). These URLs are PUBLIC references, NOT secrets; OAuth credentials and any self-hosted endpoint are injected at DEPLOY from the secrets manager, never committed. The SNOMED CT-AU RF2 distribution itself is licensed material and MUST NOT enter the repo (gitignored).",
+  "primary": "https://api.healthterminologies.gov.au/integration/R4/fhir",
+  "primary_note": "Intended LIVE target = the NCTS server (see environments.ncts_live_api). A self-hosted deployment (environments.self_hosted) overrides this at deploy via config/env. NOT the CSIRO sandbox — that is dev-only.",
+  "environments": {
+    "dev_sandbox": {
+      "url": "https://r4.ontoserver.csiro.au/fhir",
+      "publisher": "CSIRO — Australian e-Health Research Centre",
+      "self_describes_as": "Ontoserver Sandbox (R4)",
+      "auth": "open / optional Basic; no OAuth",
+      "content": "reference/international content; NOT the licensed SNOMED CT Australian Edition, AMT, PBS, or AU Core value sets",
+      "use": "DEV/TEST ONLY — build and test the terminology adapter without credentials; NEVER production or clinical use"
+    },
+    "ncts_live_api": {
+      "url": "https://api.healthterminologies.gov.au/integration/R4/fhir",
+      "publisher": "Australian Digital Health Agency (NCTS)",
+      "auth": "SMART-on-FHIR OAuth2 (authorize/token at api.healthterminologies.gov.au/oauth2/*); credentials via secrets manager",
+      "content": "SNOMED CT Australian Edition, AMT, PBS, AU Core value sets (LICENSED)",
+      "use": "staging/production; requires NCTS account + issued OAuth credentials. '/integration/' is the NCTS integration (staging) environment; production is a separate endpoint/registration"
+    },
+    "self_hosted": {
+      "url": "<deploy-injected> — your own Ontoserver instance loaded with the NCTS SNOMED CT-AU RF2 distribution",
+      "publisher": "operator-hosted",
+      "auth": "deploy-defined",
+      "content": "SNOMED CT-AU RF2 (LICENSED; loaded at deploy, NEVER in the repo — see .gitignore)",
+      "use": "production-grade; operator controls availability/SLA; licence-clean if hosted per NCTS/affiliate-licence terms"
+    }
+  },
+  "reference_links": {
     "SNOMED_browser": "https://browser.ihtsdotools.org",
     "LOINC_search": "https://loinc.org/search",
     "TGA_ARTG": "https://www.tga.gov.au/resources/artg"
