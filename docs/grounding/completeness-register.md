@@ -527,6 +527,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: verifier-repo-invention-severity
+  path: verification/verifier.js (per-check severity); docs/grounding/{trunk-constraints.md,gap-register.md}; .claude/server-status.md
+  component_type: verifier
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-05 (ARCH_PLAN C15/F11, milestone M7; operator-approved). Drift: Input A + code hard-failed `no_repo_invention` (pass=false) while the docs said "warning" AND the verifier emitted no `severity` the docs promised. Reconciled to surfaced-but-gating: verify() now tags EACH of the 5 checks with a `severity` (no_invented_codes/operations + hard_stop = critical; no_invented_guidelines = fail; no_repo_invention = warning) per the Risk Register. GATE UNCHANGED — pass = results.every(r=>r.passed); a failed check of any severity still rejects the output (contract-verifier asserts no_repo_invention is severity=warning AND passed=false AND drives pass=false). report-schema.js already permitted the field (no schema change). Docs reconciled: trunk-constraints.md severity legend added; gap-register §1b + R-11 and server-status.md tightened so "warning" reads as low-severity, not non-blocking.
+  blocks: (cleared)
+  safety_class: none — labels only; no gate/logic weakened (over-flag posture preserved)
+  invariant_exposure: none — the five mechanical checks and the fail-safe gate are intact
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — see evidence.
+  gap_register_link: R-11
+  status: resolved
+  last_scanned: 2026-07-05
+```
+
+```md
 - id: cfe-malformed-bundles
   path: source bundles (deleted 2026-07-05): 13 CFE bundles tagged `_bundle.format:"breath-ezy-casebundle-RETIRED"` (SPEC-DERM-03-00027/00047, SPEC-GI-03-00019/00028/00036, SPEC-MSK-03-00015/00020/00049, SPEC-NEURO-03-00029/00039/00044/00046, SPEC-RHEUM-03-00050)
   component_type: dataset

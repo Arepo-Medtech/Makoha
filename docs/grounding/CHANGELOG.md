@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M7 — no_repo_invention severity reconciliation (C15/F11) (2026-07-05)
+
+**Status:** Complete. Operator-approved (gating + severity labels). Branch `step-7-noninvention-severity`. npm test 20/20, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change
+- **Drift (C15):** the verifier hard-failed `no_repo_invention` (pass=false), the docs said "warning", and the verifier emitted no `severity` the docs promised. Reconciled to **surfaced-but-gating**.
+- **`verification/verifier.js`:** each of the 5 checks now carries a `severity` (Risk-Register mapping): `no_invented_codes`, `no_invented_operations`, `hard_stop_enforcement` → **critical**; `no_invented_guidelines` → **fail**; `no_repo_invention` → **warning**. **Gate unchanged** — `pass = results.every(r => r.passed)`; a failed check of ANY severity still rejects the output. No logic touched beyond adding the label.
+- **`verification/report-schema.js`:** no change — it already permitted `severity` (optional). Confirmed it validates.
+- **`test/contract-verifier.js`:** asserts each check's severity, and specifically that `no_repo_invention` is `severity=warning` AND `passed=false` AND still drives overall `pass=false` (proves surfaced-but-gating).
+- **Docs reconciled:** trunk-constraints.md gains a severity legend; gap-register.md §1b rule + R-11 and .claude/server-status.md tightened so "warning" reads as low-severity, **not** non-blocking.
+
+### Invariants
+No verifier check weakened; the fail-safe gate is byte-identical (all existing fixtures keep their pass/fail outcome). Over-flag posture preserved (`no_repo_invention` still blocks). Nothing patient-facing.
+
+### Register impact
+- **NEW** `verifier-repo-invention-severity` → **resolved** (completeness-register); gap-register **R-11** annotated; `.claude/*` updated. C15/F11 closed.
+
+### Verification
+`npm test` 20/20 (contract-verifier extended); `npm run verification` pass; `trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift; emitted `report.json` now carries per-check severity.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 50 DST cases attested → 301/301; DST stubs retired (2026-07-05)
 
 **Status:** All 301 ingested cases now clinician-attested; DST housekeeping done. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.

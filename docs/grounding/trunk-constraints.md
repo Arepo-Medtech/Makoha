@@ -23,6 +23,18 @@ These constraints apply to every trunk regardless of specialisation. They are in
 | **HARD_FAIL blocks** | A `HARD_FAIL` from `mcp-pharmacology` pharm.check must block pipeline continuation — no trunk may override or ignore it. |
 | **Australia jurisdiction** | All clinical guideline references must be AU-aligned. Use AU sources present in context (eTG, Choosing Wisely AU, NHFA/CSANZ, RACGP) only when citation IDs are provided in the ContextPacket. |
 
+### Verifier severity labels (C15 reconciliation)
+
+The verifier (`verification/verifier.js`) tags each of its five checks with a `severity` in the VerificationReport. **Severity is a label, not the gate:** a failed check of ANY severity still sets `pass=false` and rejects the output — the gate is `results.every(r => r.passed)`. The labels map to the Risk Register:
+
+| Check | Severity | Basis |
+|---|---|---|
+| `no_invented_codes` | **critical** | R-01 — fabricated SNOMED/ICD/LOINC/PBS |
+| `no_invented_operations` | **critical** | R-04 — fabricated IHI / lab / stock |
+| `hard_stop_enforcement` | **critical** | R-03 — HARD_FAIL without a receipt |
+| `no_invented_guidelines` | **fail** | R-02 — guideline claim without a citation |
+| `no_repo_invention` | **warning** | R-11 — unregistered service name; **surfaced-but-gating** (tagged warning but STILL fails the gate) |
+
 ---
 
 ## Trunk-by-Trunk Reference

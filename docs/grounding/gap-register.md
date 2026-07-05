@@ -58,7 +58,7 @@ These are the only internal service and repository names that may appear in trun
 | `bayesian-inference-engine` | Not yet created | Gap — alias for neuro-symbolic engine |
 | `SOAP-agent` | Trunk 4.0 problem representation | Conceptual label, not a deployed service |
 
-> **Verifier rule:** Any backtick-quoted identifier in trunk output that does not appear in 1a or 1b above triggers the `no_repo_invention` check to fail with severity=warning.
+> **Verifier rule:** Any backtick-quoted identifier in trunk output that does not appear in 1a or 1b above **fails the `no_repo_invention` check** (so `pass=false` and the output is rejected), tagged `severity=warning` in the report — surfaced-but-gating, the lowest of the five check severities but still blocking. The verifier emits this `severity` field as of the C15/M7 reconciliation (2026-07-05); "warning" here means low-severity, NOT non-blocking.
 
 ---
 
@@ -176,7 +176,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
 | R-08 | Sycophantic alternative therapy recommendation | Medium | Moderate | `evidence_grade` mandatory in integrative_alternative_therapies schema | Schema enforced |
 | R-09 | S8 opioid without PDMP check | Low (Trunk 8.0 gates) | Critical | `schedule_8_pdmp_required` flag; HARD_FAIL if no PDMP | Controlled in stub |
 | R-10 | Patient data persists beyond session | High without controls (was) | Critical | Technical enforcement built (M4 2026-07-03): `verification/session-store.js` — memory-only, encounter-scoped working state, destroyed on close, closed refs never reopen, demographic-looking keys + IHI-shaped values REFUSED (Trust Boundary 4). Contract-tested (`test/contract-session-store.js`, npm test + CI). Ledger exempt by design (PHI-free, append-only). ADOPTION mandatory for any future stateful session path; real-patient content persistence still gated on consent (`content-store-production-gated`). | Enforcement built 2026-07-03 (M4); adoption re-checked per session-flow change |
-| R-11 | LLM invents internal service name | Medium (without verifier) | Moderate | `no_repo_invention` check; ALLOWED_SERVICE_NAMES list | Controlled |
+| R-11 | LLM invents internal service name | Medium (without verifier) | Moderate | `no_repo_invention` check; ALLOWED_SERVICE_NAMES list. C15/M7 (2026-07-05): the check now emits `severity=warning` in the report — surfaced-but-gating (still fails `pass`, lowest severity). Docs↔code drift reconciled. | Controlled |
 | R-12 | Mock pharmacology data used in patient context | High | Critical | `mode` field required; mode=mock must never reach patient | Policy only; technical gate TBD |
 | R-13 | Benign registry empty — Trunk 7.0 blocks all codes | High (was) | Moderate | Knowledge server (mock) built + benign-registry / Axis B / red-flag datasets seeded (DEV), served via kg_query. Content is DEV/SYNTHETIC-ONLY (`knowledge-datasets-provisional`) — clinical sign-off before live. | Mock-resolved 2026-06-30 |
 | R-14 | High/Critical advisory in a dependency reaches build | Medium | High | `@modelcontextprotocol/sdk` floor raised to `^1.29.0` (patched transitive deps); CI `npm audit --audit-level=high` blocks the build | Controlled |
