@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M8 — production audit substrate seam + retention hook (C5/F3) (2026-07-05)
+
+**Status:** Complete (engineering); live WORM + retention are deploy/regulatory. Operator-approved (never auto-deletes; retention left as a surfaced unset hook). Branch `step-8-audit-worm-substrate`. npm test 20/20, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
+
+### Change (chain algorithm FROZEN — substrate only)
+- **`verification/audit-store.js`** — the four raw storage ops (`appendLedgerLine` / `readLedgerLines` / `writeContentOnce` / `readContentByHex`) are now behind a pluggable **substrate**. Built-in **`local`** substrate = the dev JSONL/filesystem backend, **byte-identical** to before (verifyChain + every prior contract assertion unchanged). Production registers a **WORM adapter** (S3 Object Lock, immudb, …) via **`registerAuditSubstrate(name, adapter)`** at deploy — same interface; `computeEntryHash`/`verifyChain`/entry shape/synthetic-only `persistContent` guard all untouched.
+- **Fail-safe:** `HEYDOC_AUDIT_SUBSTRATE` (default `local`). A non-`local` value with no adapter registered → **refuses to write** (never a non-WORM medicolegal ledger silently).
+- **Retention hook:** `auditRetentionPolicy()` reads `HEYDOC_AUDIT_RETENTION` and surfaces it; unset ⇒ `{configured:false, auto_delete:false, note:"regulatory_posture decision required…"}`. **No period encoded in code; the ledger is never auto-deleted** — retention is a minimum-keep org/regulatory decision, and append-only/WORM forbids early deletion.
+- **`test/contract-audit-store.js`** — new case: a custom **in-memory substrate** proves the frozen chain works end-to-end through a non-filesystem backend (append + verifyChain valid + content round-trip); an unconfigured **WORM name refuses**; the **retention hook** surfaces unset/configured with `auto_delete:false`. Env save/restore so the rehash subprocesses are unaffected.
+- **`architecture/trust-boundaries.md`** (Boundary 5) — documents the substrate seam, the WORM adapter path, the fail-safe, and retention-as-regulatory-decision.
+
+### Invariants
+Append-only + hash-chain + tamper-evidence preserved (frozen); PHI-free entries unchanged; synthetic-only content guard untouched; the WORM guard is strictly stricter (refuses on misconfig). Nothing patient-facing.
+
+### Register impact
+- `receipt-store-append-only-unbuilt` (PARTIAL/in-progress) → **COMPLETE/resolved** (engineering); gap-register **R-17 → Dev-COMPLETE 2026-07-05**; index synced. Live WORM + retention explicitly a deploy/regulatory step, not an engineering gap.
+
+### Verification
+`npm test` 20/20; `npm run verification` pass; `trunk:stub:all` 9/9; `verify:rehash --integrity` 0 drift (chain byte-identical through the local substrate).
+
+---
+
 ## ARCH_PLAN Milestone M7 — no_repo_invention severity reconciliation (C15/F11) (2026-07-05)
 
 **Status:** Complete. Operator-approved (gating + severity labels). Branch `step-7-noninvention-severity`. npm test 20/20, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.

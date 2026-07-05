@@ -18,7 +18,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - ~~mode-leakage-enforcelive · verification/mode.js~~ · **resolved 2026-07-03 (M1)** — normaliser built + wired into verifier/pipeline/audit-store; staging/production/unknown block mock proof; contract-tested (R-25 resolved; server-side receipt stamping → M9/M11)
 - terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
 - knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
-- receipt-store-append-only-unbuilt · verification/audit-store.js · PARTIAL (mock-resolved; prod WORM+retention pending) · High · pf:true
+- ~~receipt-store-append-only-unbuilt · verification/audit-store.js~~ · **resolved 2026-07-05 (M8)** — production substrate SEAM (registerAuditSubstrate; default local; non-local refuses if unregistered) + retention hook (auditRetentionPolicy, minimum-keep, never auto-deletes) added, chain frozen, contract-tested; live WORM + retention = deploy/regulatory step (R-17)
 
 ## Medium
 - knowledge-server-unbuilt · mcp/servers/knowledge/ · PARTIAL (mock built; live PostgreSQL graph store pending) · Medium · pf:false

@@ -195,17 +195,17 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: receipt-store-append-only-unbuilt
   path: verification/audit-store.js, verification/ledger-schema.js, mcp/schemas/audit-ledger-entry.schema.json, verification/rehash.js, test/contract-audit-store.js
   component_type: repository-store
-  state: PARTIAL
-  evidence: RESOLVED FOR MOCK 2026-06-30 — append-only, hash-chained medicolegal-audit-ledger built (.heydoc-data/audit-ledger.jsonl); both report writers append per run via recordRun(); receipt metadata + candidate_output_hash captured; verifyChain() tamper-evidence; verify:rehash re-verifies. PARTIAL because production durability (WORM substrate) + org retention policy (a regulatory_posture decision) are not yet configured.
-  blocks: production-grade durable retention (mock/staging covered)
-  safety_class: none
-  invariant_exposure: auditability — now enforced for mock/staging
+  state: COMPLETE
+  evidence: DEV-COMPLETE 2026-07-05 (M8/C5). Append-only, hash-chained ledger built (2026-06-30). M8 added the PRODUCTION SUBSTRATE SEAM + retention hook with the chain algorithm FROZEN: the four raw I/O ops (appendLedgerLine/readLedgerLines/writeContentOnce/readContentByHex) are behind a pluggable substrate; built-in `local` = dev JSONL (byte-identical to before — verifyChain + all prior assertions unchanged); production registers a WORM adapter via registerAuditSubstrate() at deploy; FAIL-SAFE: a non-`local` HEYDOC_AUDIT_SUBSTRATE with no adapter REFUSES (never a non-WORM ledger). auditRetentionPolicy() surfaces HEYDOC_AUDIT_RETENTION as a minimum-keep regulatory_posture decision — NO period encoded, NEVER auto-deletes. Contract-tested (custom in-memory substrate proves the seam; WORM-refuse; retention surfaced). Architecture doc (trust-boundaries.md Boundary 5) updated. REMAINING is deploy/regulatory ONLY (register a live WORM store + set retention) — not an engineering gap. Content-text store stays synthetic-only (`content-store-production-gated`) until R-10 + consent.
+  blocks: (cleared for engineering; live WORM + retention are deploy/regulatory)
+  safety_class: none — seam is stricter (refuses on misconfig); chain frozen
+  invariant_exposure: auditability — enforced; production path now has a fail-safe seam
   risk: High
   blocks_patient_facing: true
-  build_action: configure durable WORM substrate + retention policy for production (the local JSONL ledger covers mock/staging today).
+  build_action: DONE (engineering). Deploy/regulatory: register a live WORM adapter (S3 Object Lock/immudb) via registerAuditSubstrate() + set HEYDOC_AUDIT_RETENTION per the org's minimum-keep decision. Do not encode a retention period in code.
   gap_register_link: R-17
-  status: in-progress
-  last_scanned: 2026-06-30
+  status: resolved
+  last_scanned: 2026-07-05
 ```
 
 ```md
