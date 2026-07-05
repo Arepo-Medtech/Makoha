@@ -651,19 +651,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: case-dir-duplicate-files
-  path: data/cases/*/ (236 untracked "<name> 2.json" files across 30 case directories)
+  path: data/cases/*/ (236 "<name> 2.json" sync-dupes across 30 case directories) · .gitignore · scripts/ingest-case-bundles.mjs
   component_type: dataset
-  state: PARTIAL
-  evidence: M0 scan 2026-07-03 — 236 untracked Finder-style duplicate files ("00_case_envelope 2.json" … "13_safety_netting_node 2.json", "case_manifest 2.json") across 30 case directories, including name-level duplicates of the sealed scoring nodes. Inventoried by filename only; content never opened. They are outside git and outside the ingest tool's hash/field-firewall discipline.
-  blocks: clean case-store provenance; unambiguous ingest/eval inputs (a glob-based reader could pick up the duplicates)
-  safety_class: none (untracked; no code reads them today)
-  invariant_exposure: scoring-store hygiene — duplicate sealed-node files exist outside the ingest discipline
-  risk: Medium
+  state: COMPLETE
+  evidence: M0 scan 2026-07-03 — 236 Finder/cloud-sync duplicate files ("00_case_envelope 2.json" … "13_safety_netting_node 2.json", "case_manifest 2.json") across 30 case directories (11 series: ID, MSK, NEURO, OBS, OPHTH, RENAL, RESP, SURG, URO, VASC), including name-level duplicates of the sealed scoring nodes. Inventoried by filename only; content never opened. At M0 they were untracked; by cleanup (2026-07-05) all 236 had been committed (swept in by a broad `git add` of the output tree), alongside a further ~1,998 untracked sync-dupes that had since accumulated. ROOT CAUSE is not a loose ingest glob — the input filter is tight (readdirSync().filter(n => n.endsWith(".casebundle.json"))), so ingest never admitted them; they entered the OUTPUT tree via cloud-sync + a broad `git add` with no .gitignore guard.
+  blocks: nothing — every dupe is a redundant copy of a clean-named tracked twin (twin-verified for all 236); eval:cases never counted them (302 dirs / 301 attested unchanged pre/post removal)
+  safety_class: none
+  invariant_exposure: none — removal was path-only; sealed 10–13 nodes never opened; scoring-store firewall intact
+  risk: Low
   blocks_patient_facing: false
-  build_action: delete the 236 untracked "* 2.json" duplicates under a gated cleanup step (M0 is docs-only and may not retire files); afterwards re-verify case manifests/hashes and confirm any future case reader matches exact filenames, never globs.
-  gap_register_link: none (Medium — below promotion threshold)
-  status: open
-  last_scanned: 2026-07-03
+  build_action: DONE (PR #20, 2026-07-05, main @ ccefabd) — git rm all 236 committed dupes (twin-verified, path-only) + deleted ~1,998 untracked sync-dupes from the working tree + .gitignore guards `* [0-9].*` (sync-dupe pattern) and `Projects/` (local binary docs). eval:cases re-verified PASS. Optional residual hardening (nice-to-have, not a defect): have `cases:ingest` warn when a target case dir contains non-canonical files (e.g. a "* N.json" stray) so sync cruft is caught at write time, not commit time.
+  gap_register_link: none (Low — below promotion threshold)
+  status: resolved
+  last_scanned: 2026-07-05
 ```
 
 ```md

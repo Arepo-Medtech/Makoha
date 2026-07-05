@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Chore — sync-dupe cruft cleanup + guards (2026-07-05)
+
+**Status:** Merged. PR #20 (`chore/cruft-guards-and-cleanup`), `main` @ `ccefabd`. CI `test` green; `eval:cases` PASS. Operator-approved merge.
+
+### Change
+- **Removed 236 committed `" 2.json"` cloud-sync duplicate case nodes** under `data/cases/` across 30 dirs / 11 series (ID, MSK, NEURO, OBS, OPHTH, RENAL, RESP, SURG, URO, VASC). Each removed file's clean-named tracked twin remains — **twin-verified for all 236**; removed **by path only** (sealed `10`–`13` nodes never opened). Also cleared ~1,998 *untracked* sync-dupes from the working tree.
+- **`.gitignore` guards:** `* [0-9].*` (the sync-dupe pattern) and `Projects/` (local business/strategy binary docs — operator reference, never version-controlled).
+
+### Safety / firewall
+Every removal ends in `" 2.json"` (asserted — no clean-named node deleted); new ignore pattern shadows **0** tracked files; `eval:cases` unchanged pre/post (302 dirs / 301 attested / 0 failures — the dupes were never counted as cases). Scoring-store firewall intact.
+
+### Register impact
+- `case-dir-duplicate-files` **PARTIAL/Medium → COMPLETE/resolved** (re-rated Low: redundant copies of tracked twins, no consumer, firewall never at risk). Root cause corrected in the record: a broad `git add` of the output tree while cloud-sync dupes were present, **not** a loose ingest glob — the ingest input filter is tight (`.endsWith(".casebundle.json")`). Optional residual hardening logged (nice-to-have): `cases:ingest` warn on stray non-canonical files in a target case dir. `.claude/completeness-index.md` updated. No gap-register move (below promotion threshold).
+
+---
+
 ## ARCH_PLAN Milestone M11 P1 — terminology live adapter (CSIRO sandbox target) (2026-07-05)
 
 **Status:** Adapter built + smoke-verified against the real sandbox; AU-content connect stays input-gated. Operator-approved (plan + the sandbox-refused-in-production guard). Branch `feat/terminology-live-adapter` (off `main` after PR #16 merged). npm test 21/21, verification pass, trunk stubs 9/9, `verify:rehash --integrity` 0 drift.
