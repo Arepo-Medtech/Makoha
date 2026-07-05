@@ -113,6 +113,11 @@ in patient context — technical gate now = mode-normaliser), R-09 (S8 without P
 - *AMT reference (for drug identity):* the Australian Medicines Terminology is on the NCTS SNOMED CT-AU
   release; `AuDigitalHealth/sctau-sample-scripts` (`AMTv3-/AMTv4-sample-scripts`) is useful **reference only**
   for AMT's structure. AMT is served via the terminology server (M11), not a repo-vendored SQL DB.
+- *FHIR Medication reference (drug identity, FHIR-native pattern):* `AuDigitalHealth/medserve` — an
+  experimental FHIR server exposing AMT + PBS as FHIR `Medication`/`Substance` resources. Useful **reference
+  only** for the FHIR-native medicines pattern; **ARCHIVED (read-only since 2021-04-30) — do NOT deploy or
+  depend on it.** Live medication/AMT grounding comes via the live terminology server (M11 NCTS/self-host),
+  not this prototype.
 
 **Topology.** `mcp/servers/pharmacology/` (+ new `vendor-adapter.js`), Trunk 8.0 firewall in
 `verification/pipeline.js`, verifier check 5 (HARD_FAIL enforcement). Blast radius: any run reaching Trunk 8.0.
