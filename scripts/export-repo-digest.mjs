@@ -6,7 +6,7 @@
  * Includes: source (mcp, trunk, integration, verification, scripts, test), contracts
  * (data/schemas, mcp/schemas), docs, architecture, .claude quick-refs, CI + config, and the
  * ONE reference case (SPEC-CARD-04-00001) as the canonical example.
- * Excludes: node_modules, .git, the 51-case bulk in data/cases, the vendored AU Core SDs
+ * Excludes: node_modules, .git, the case-bundle bulk in data/cases, the vendored AU Core SDs
  * (listed but not inlined), the derived kit JSON, the lockfile, binaries, and sync cruft.
  *
  * Output: breath-ezy-repo-digest.md (repo root; gitignored). Run: node scripts/export-repo-digest.mjs
@@ -68,6 +68,20 @@ try {
   auCore = readdirSync(dir).map((n) => `mcp/servers/fhir-broker/au-core/${n} (${(statSync(join(dir, n)).size / 1024).toFixed(0)} KB)`);
 } catch {}
 
+// Count the case bundles under data/cases (dirs named SPEC-*), so the "excluded
+// bulk" note is derived from the tree — never a hand-maintained number that
+// silently goes stale as the case set grows. FULL inlines the one reference
+// case; CORE inlines none.
+let caseDirCount = 0;
+try {
+  const cd = join(ROOT, "data/cases");
+  caseDirCount = readdirSync(cd).filter((n) => {
+    if (!/^SPEC-/.test(n)) return false;
+    try { return statSync(join(cd, n)).isDirectory(); } catch { return false; }
+  }).length;
+} catch {}
+const excludedCases = CORE ? caseDirCount : Math.max(0, caseDirCount - 1);
+
 const rel = (p) => relative(ROOT, p);
 const tree = files.map((f) => `  ${rel(f)}`).join("\n");
 
@@ -82,7 +96,7 @@ Single-file export of the relevant codebase for a Claude Chat context window.
 
 ## ⚠️ Read before using
 - **Scoring-store firewall.** This digest includes the reference case's sealed answer-key nodes (\`10_ground_truth_node\`, \`11_symptom_links_node\`, \`12_management_plan_node\`, \`13_safety_netting_node\`). That is fine for **engineering** work. Do **not** use this context to role-play the AI Doctor or generate patient-facing output — the AI Doctor must never see \`10–13\`.
-- **Excluded (bulk/derived, not needed for engineering):** \`node_modules\`, \`.git\`, the 51-case bulk in \`data/cases/\`${CORE ? " (no case data at all in this CORE variant)" : " (only the reference case \\`SPEC-CARD-04-00001\\` is included)"}, the 500 KB derived transformation kit (its parts — protocol, schemas, reference case — are all inlined separately), \`package-lock.json\`, and sync-duplicate cruft.${CORE ? " CORE also drops the FHIR omnibus and the vendored AU Core SDs and minifies JSON, to fit a ~200k window." : " Sized for a large-context model (e.g. Fable 5, 1M tokens)."}
+- **Excluded (bulk/derived, not needed for engineering):** \`node_modules\`, \`.git\`, the ${excludedCases}-case bulk in \`data/cases/\`${CORE ? " (no case data at all in this CORE variant)" : " (only the reference case \\`SPEC-CARD-04-00001\\` is included)"}, the 500 KB derived transformation kit (its parts — protocol, schemas, reference case — are all inlined separately), \`package-lock.json\`, and sync-duplicate cruft.${CORE ? " CORE also drops the FHIR omnibus and the vendored AU Core SDs and minifies JSON, to fit a ~200k window." : " Sized for a large-context model (e.g. Fable 5, 1M tokens)."}
 - **No secrets:** env templates use \`example.invalid\` placeholders by design.
 
 ### Vendored AU Core StructureDefinitions
