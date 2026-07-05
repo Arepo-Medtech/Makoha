@@ -17,6 +17,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - ~~routing-plan-next-trunks-dead-end · integration/trunk-sequencer.js~~ · **resolved 2026-07-03 (M2)** — sequencer built + contract-tested; HARD_FAIL/escalate/verify-fail halt the sequence unconditionally; behind HEYDOC_SEQUENCER (default off = rollback) (R-24 resolved)
 - ~~mode-leakage-enforcelive · verification/mode.js~~ · **resolved 2026-07-03 (M1)** — normaliser built + wired into verifier/pipeline/audit-store; staging/production/unknown block mock proof; contract-tested (R-25 resolved; server-side receipt stamping → M9/M11)
 - terminology-contract-incomplete · terminology (SNOMED/ICD-10-AM/ICD-11/LOINC/PBS/AMT, mock; live NCTS + AU Core binding pending) · PARTIAL · High · pf:true
+- terminology-live-adapter · mcp/servers/terminology/live-adapter.js (M11 P1) · PARTIAL · Medium · pf:false — live $validate-code adapter built + smoke-verified against CSIRO sandbox; mock default rollback; sandbox refused in production; AU-content connect (NCTS/self-host) input-gated (→ R-20)
 - knowledge-datasets-provisional · mcp/servers/knowledge/data/*.json · PARTIAL (dev seeded; clinical sign-off) · High · pf:true
 - ~~receipt-store-append-only-unbuilt · verification/audit-store.js~~ · **resolved 2026-07-05 (M8)** — production substrate SEAM (registerAuditSubstrate; default local; non-local refuses if unregistered) + retention hook (auditRetentionPolicy, minimum-keep, never auto-deletes) added, chain frozen, contract-tested; live WORM + retention = deploy/regulatory step (R-17)
 
