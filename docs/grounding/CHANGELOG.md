@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — 49 CFE cases attested → 250/250 attested (2026-07-05)
+
+**Status:** All 250 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Operator KL written in-session attestation** of the 49 CFE cases. Recorded as `bulk_clinician_attestation` in each manifest `review` block; scope-guarded to the CFE ingest commit `6b329a1` (verified: all 49 pending == that commit set). Review block only — node files + sha256 untouched; git diff = 49 manifests.
+- **`eval:cases`: attested conforming 201 → 250; unreviewed 49 → 0; PASS.** Distribution 48/45/8, coverage 6 tiers · 3 categories · 19 specialties. Sole remaining warning (non-blocking): complex 8% vs 10%.
+
+### Register impact
+- `case-set-underpopulated` / **R-23**: **all 250 ingested cases attested**; remaining input-gated = the 13 malformed CFE bundles + 1 CFE collision (would push complex past 10%), and optional straightforward rebalance.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS (250 attested, 0 unreviewed); `verify:rehash --integrity` 0 drift.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — CFE batch (operator-re-tiered) ingested; complex band 2% → 8% (2026-07-04)
 
 **Status:** 49 re-tiered CFE cases ingested; complex band near target. 2 findings handed back to operator. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
