@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## ARCH_PLAN Milestone M6 (cont.) — CFE collision re-id'd → SPEC-DERM-03-00099 and ingested (2026-07-05)
+
+**Status:** The CFE id collision resolved; all 5 well-formed collision instances now resolved. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
+
+### Change
+- **Re-id (operator-authorised), same method** — `SPEC-DERM-03-00041` (CFE *Psoriasis Severe Plaque with Systemic Fatigue*, collided with AMS *Scalp Psoriasis*) → **`SPEC-DERM-03-00099`** (blind 9-id swap on a scratchpad copy; source archive untouched; well-formed source verified). Ingested; 6 codes receipted (store total **1291**); 251 cases. Existing AMS `SPEC-DERM-03-00041` verified untouched (still Scalp Psoriasis, attested).
+- **`eval:cases` PASS** — attested 250 (the re-id'd case is `pending_clinician_review`, unreviewed 1); distribution 48/45/8 → **47/45/8**; coverage unchanged.
+
+### Register impact
+- `case-id-cross-series-collision`: **all 5 instances resolved** via re-id; only the systemic seq-uniqueness decision remains (Medium, recurs each overlapping batch).
+- `case-set-underpopulated` / **R-23**: 251 cases; remaining input-gated = attest the re-id'd CFE case, the 13 malformed CFE bundles, optional rebalance.
+
+### Verification
+`npm test` 20/20; `npm run eval:cases` PASS; `verify:rehash --integrity` 0 drift; git scope = 1 new case dir, existing untouched.
+
+---
+
 ## ARCH_PLAN Milestone M6 (cont.) — 49 CFE cases attested → 250/250 attested (2026-07-05)
 
 **Status:** All 250 ingested cases now clinician-attested. Branch `step-6-case-eval-gate`. npm test 20/20, `verify:rehash --integrity` 0 drift, `eval:cases` PASS.
