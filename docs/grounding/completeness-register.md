@@ -15,7 +15,9 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **H3 scoped re-scan** _(2026-07-06, FLOW_PLAN milestone H3 — MIRAGE trust gate)_ — Built a **FIRST-PARTY** MIRAGE-*style* benchmark (`benchmark/mirage/**`, non-shippable): `runMirage(path, corpus)` scores the three built H2 paths (#14/#15/#1) by the `MIRAGE-CORPUS-SPEC` partition rubric — P grounded-support rate ≥ **0.60**; **N abstain-correct = 1.00** + **A invariant-hold = 1.00** as HARD gates (A reuses the `assertNoDose` bar); L diagnostic — tagging each path by its Receipt `upstream`. `test/bench-mirage-gate.js` is wired **BLOCKING** in CI (`npm run bench:mirage`). **NO gzxiong/MedRAG #20 code** (its licence is pending → flipped to REFERENCE·methodology-only in the manifest; the licence gate does not walk `benchmark/`, `licence:check` still 0 blocks). NEW: `mirage-benchmark-gate` (COMPLETE). The three evidence items stay **PARTIAL / `patient_eligible:false`** — H3 gives them a measurable score but the v0.1.0 corpus is a first-tranche **DRAFT, fully unattested**, so **nothing gates** (attestation §7 + H7 governance still pending; MIRAGE-pass is necessary, not sufficient). Measured (mock diagnostic): #14/#15 *would pass if attested*; #1 docs would not (mock echoes citations → fails abstain — honest finding). Scores → `benchmark/mirage/scores/latest.json` (**audit ledger C5 untouched** — `.strict()`, no metadata slot). **No BLIND_STUB / DEAD_END opened**: the harness reads real Receipt/EvidenceNode output over stdio; corpora are independent synthetic QA (scoring nodes 10–13 never opened). 26 suites + licence:check + verification + eval:cases + **bench:mirage** green.
 
-**M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
+**H4 scoped re-scan** _(2026-07-06, FLOW_PLAN milestone H4 — Case factory)_ — **Case-count reconciled: the M0 line below ("52 cases") is STALE.** The live tree now holds **303 case dirs** (302 before H4 + 1 admitted this milestone): 301 ingested-with-manifest + the manifest-less reference `SPEC-CARD-04-00001`. Raw difficulty bands 01=148 / (02+03+04)=134 / (05+06+07)=21 ≈ **49 / 44 / 7**; only ~52 are clinician-attested (the *trusted* set), the rest `clinician_reviewed:false`. Built the case factory: three generators (synthea #dir, synthea-au #fork, chatty-notes #sib) **re-verified Apache-2.0 + pinned**, wrapped as **out-of-process CLI seams** (`case-factory/{synthea,synthea-au,narratives}/`, no Java vendored, fail-safe input-gated); the **shaper** `case-factory/to-casebundle.js` + **completion** `complete-scoring-nodes.js` (two-phase, CONTRACT §5) emit a contract-valid `.casebundle.json` that flows **through** the existing `cases:ingest` (firewall + `--reseq` + honesty gate untouched). Proven by `test/contract-case-factory.js` (0 problems/0 leaks; AU Core conformant; `synthetic:true`; `clinician_reviewed:false`; firewall fail-closed; never writes `data/cases/` directly; never reads a sealed 10–13 node). CONTRACT §6 drift corrected (`files[].node`→`path`, the tool's key). Demo case admitted (`SPEC-CARD-06-00000`, unreviewed) lifting complex band 20→21 (raw only — excluded from the trusted set until attested). New findings: `case-factory-shaper` (PARTIAL), `synthea-generators-input-gated` (input-gated, Medium). C22 unsettled (target 0.3.0 vs vendored 2.0.1-ci — flagged, not picked). **No BLIND_STUB/DEAD_END opened**: generators are producers with a fixture+contract-test consumer; bundles route only through ingest; scoring nodes 10–13 never opened. 27 suites + verification + trunk:stub:all + licence:check + eval:cases + bench:mirage green.
+
+**M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — _(case count SUPERSEDED by the H4 line above — 303 as of 2026-07-06.)_ Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
 
 ---
 
@@ -521,6 +523,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ---
 
 ## MEDIUM
+
+```md
+- id: case-factory-shaper
+  path: case-factory/{to-casebundle.js,complete-scoring-nodes.js,generate-from-fixture.js,fixtures/*}, test/contract-case-factory.js, docs/case-authoring/CASEBUNDLE-SHAPING-CONTRACT.md
+  component_type: other
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H4). The single new integration surface (CONTRACT §11): to-casebundle.js (shaper, Phase A) maps Synthea FHIR + a chatty-notes narrative onto 00/01/02 + a 10.primary_diagnosis.name SEED, FAIL-CLOSED on any diagnosis-name leak into injectable 01/02 text; complete-scoring-nodes.js (Phase B, two-phase per CONTRACT §5) authors schema-minimal DRAFT 10-13 FROM THE SEED (never copies a sealed node) → a contract-valid <CASE_ID>.casebundle.json that flows THROUGH the existing scripts/ingest-case-bundles.mjs (firewall + --reseq + honesty gate UNTOUCHED). Emits files[].path (CONTRACT §6 drift corrected — the tool's key, not `node`), all sha256 null, codes unverified_pending_terminology_receipt, synthetic:true, clinician_reviewed:false. Proven offline by test/contract-case-factory.js against a committed synthetic AU-Core fixture: ingest --dry-run 0 problems/0 leaks, AU Core conformant, firewall fail-closed, never writes data/cases/ directly, never reads 10-13. Demo case SPEC-CARD-06-00000 admitted (unreviewed) — raw complex band 20→21. PARTIAL: live volume generation is input-gated (synthea-generators-input-gated); the trusted distribution moves only after clinician attestation.
+  blocks: nothing on the H4 path; a measurable volume distribution shift is input-gated on the Java generators + clinician attestation
+  safety_class: degrades_safe (fail-closed firewall; synthetic-only; bundles routed only through ingest)
+  invariant_exposure: scoring-store firewall (placeholder 10-13 from seed, never copied; shaper de-anchors patient voice) + synthetic-only + augmented-not-autonomous (clinician_reviewed:false) — all held
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — provide a Java runtime + built Synthea/synthea-au/chatty-notes distributions (HEYDOC_SYNTHEA_JAR, HEYDOC_CHATTY_NOTES_CMD) to generate at volume; then clinician authoring/attestation of the draft scoring nodes flips cases into the trusted eval set. Refresh vendored AU Core SDs to 0.3.0 if C22 is settled.
+  gap_register_link: none (Medium, non-shippable, non-patient-facing — below promotion threshold)
+  status: in-progress
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: synthea-generators-input-gated
+  path: case-factory/synthea/run-synthea.js, case-factory/synthea-au/run-synthea-au.js, case-factory/narratives/run-chatty-notes.js, integration/harvest-manifest.json (dir-synthea/fork-synthea-at/sib-chatty-notes)
+  component_type: other
+  state: PARTIAL
+  evidence: WRAPPED 2026-07-06 (FLOW_PLAN H4). Three generators re-verified Apache-2.0 on-repo and pinned to HEAD SHAs (synthea 2b0a55ba, FHOOEAIST/synthea 4647221f, chatty-notes a767a579). Each is a thin OUT-OF-PROCESS CLI seam — NO Java vendored (H1 fhir-live precedent) — and FAIL-SAFE: with no Java runtime / distribution configured, generate()/generateAu()/narrate() return { available:false, reason:"input-gated …" } and NEVER fabricate a bundle or narrative. synthea-au gates output through the EXISTING fhir-broker AU Core conformance validator; auCoreTarget() flags the C22 divergence (0.3.0 target vs vendored 2.0.1-ci) rather than silently picking. No Java is installed in the current environment, so live generation cannot run here — it is input-gated, exactly like a live vendor connection.
+  blocks: live synthetic-case generation at volume (feeds ARCH_PLAN M6 eval)
+  safety_class: degrades_safe (fail-safe absence; synthetic-only; never presents fabricated output as generated)
+  invariant_exposure: synthetic-only (SYNTHETIC input by construction; no real record); AU-context (AU Core conformance gate)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — provide a Java runtime + built distributions (set HEYDOC_SYNTHEA_JAR + HEYDOC_CHATTY_NOTES_CMD); the shaper/completion/ingest path downstream is already proven on fixtures.
+  gap_register_link: none (Medium, non-shippable — below promotion threshold)
+  status: in-progress
+  last_scanned: 2026-07-06
+```
 
 ```md
 - id: knowledge-server-unbuilt

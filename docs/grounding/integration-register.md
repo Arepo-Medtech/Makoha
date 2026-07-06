@@ -93,13 +93,26 @@ Non-blocking **WARN**: an ADOPT repo not yet commit-pinned. Pinning an exact com
 > medgraph-ai #21 relational substrate DEFERRED (both licence-pending / not this milestone). #18 not scored
 > (UNBUILT/deferred).
 
-## Step 4 — Case factory (synthetic-only, offline)
+## Step 4 — Case factory (synthetic-only, offline) — WRAPPED at H4 (2026-07-06)
 
-| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
-|---|---|---|---|---|---|
-| dir | synthetichealth/synthea | ADOPT · WRAP | Apache-2.0 (verified) | `case-factory/synthea/` | no |
-| fork | FHOOEAIST/synthea | ADOPT · FORK | Apache-2.0 (verified) | `case-factory/synthea-au/` | no |
-| sib | synthetichealth/chatty-notes | ADOPT · WRAP | Apache-2.0 (verified) | `case-factory/narratives/` | no |
+| Ref | Repo | Verdict · Mode | Licence (status) | Pin | Target | Shippable |
+|---|---|---|---|---|---|---|
+| dir | synthetichealth/synthea | ADOPT · WRAP | Apache-2.0 (verified) | `2b0a55ba` | `case-factory/synthea/` | no |
+| fork | FHOOEAIST/synthea | ADOPT · FORK | Apache-2.0 (verified) | `4647221f` | `case-factory/synthea-au/` | no |
+| sib | synthetichealth/chatty-notes | ADOPT · WRAP | Apache-2.0 (verified) | `a767a579` | `case-factory/narratives/` | no |
+
+**H4 status.** All three re-verified Apache-2.0 on-repo and pinned to HEAD SHAs. Each is a
+thin **out-of-process CLI wrapper** (`case-factory/{synthea,synthea-au,narratives}/`) — **no
+Java vendored**; fail-safe `{available:false}` (input-gated on a Java runtime + the external
+distributions, the H1 fhir-live precedent). The **shaper** `case-factory/to-casebundle.js` +
+**completion** `complete-scoring-nodes.js` (two-phase, CONTRACT §5: 00/01/02 + a
+`10.primary_diagnosis.name` seed → schema-minimal draft 10–13) emit a contract-valid
+`.casebundle.json` that flows **through** the existing `cases:ingest` (firewall + `--reseq` +
+honesty gate intact). Proven offline by `test/contract-case-factory.js` against a committed
+synthetic fixture (0 problems / 0 leaks; AU Core conformant; `synthetic:true`;
+`clinician_reviewed:false`). **C22:** target AU Core 0.3.0, vendored SDs are 2.0.1-ci —
+`auCoreTarget()` flags the divergence, never silently picks. Live volume generation is
+input-gated on Java; the *trusted* distribution moves only after clinician attestation.
 
 ## Step 5 — Capability expansion
 

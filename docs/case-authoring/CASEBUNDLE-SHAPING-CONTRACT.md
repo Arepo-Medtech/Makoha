@@ -171,12 +171,20 @@ Required shape (the fields ingest reads):
 ```json
 "case_manifest": {
   "case_id": "SPEC-…",
-  "files": [ { "node": "00_case_envelope", "sha256": null }, … ],   // sha256 ALL null — ingest computes
-  "codes_manifest": [ { "code": "…", "system": "…",
+  "files": [ { "path": "00_case_envelope.json", "sha256": null }, … ], // key is `path` (see DRIFT note); sha256 ALL null — ingest computes
+  "codes_manifest": [ { "code": "…", "code_system": "…",
                         "verification_status": "unverified_pending_terminology_receipt" }, … ],
   "review": { "clinician_reviewed": false }                          // generator cannot attest
 }
 ```
+
+> **DRIFT corrected 2026-07-06 (H4 Phase 0 — the tool wins).** An earlier version of this
+> snippet showed `files[].node`. The live ingest fills hashes by `f.path`
+> (`fileHashes[f.path] ?? f.sha256`, `scripts/ingest-case-bundles.mjs`) and every real
+> ingested manifest uses `path` (matching the transformation protocol §7.8). A bundle
+> emitting `node` still passes the honesty gate but is written with `sha256:null` for every
+> file — silently defeating the integrity record. Emit `files[].path`. The H4 shaper
+> (`case-factory/complete-scoring-nodes.js`) does.
 
 - **`files[].sha256` all null** — a non-null value is refused (ingest owns hashing).
 - **Every code `unverified_pending_terminology_receipt`** — refused otherwise. Codes get verified later
