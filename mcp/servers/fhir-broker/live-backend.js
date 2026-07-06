@@ -34,6 +34,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { normaliseMode } from "../../../verification/mode.js";
 
 /** Public synthetic-data FHIR sandboxes — smoke targets only, never production. */
 export const PUBLIC_SANDBOX_HOSTS = [
@@ -70,7 +71,11 @@ export function resolveFhirMcpEndpoint(env) {
   }
   let upstream_host;
   try {
-    upstream_host = new URL(upstream_base).host;
+    // Use hostname (not host) so an explicit :port can't slip a sandbox past the
+    // guard, and strip a trailing FQDN dot — "hapi.fhir.org." resolves to the
+    // same server but would otherwise match neither the equality nor the suffix
+    // test. Fail-safe host normalisation for the sandbox check below.
+    upstream_host = new URL(upstream_base).hostname.replace(/\.$/, "").toLowerCase();
   } catch {
     throw new Error(`HEYDOC_FHIR_UPSTREAM_BASE is not a valid URL: ${upstream_base}`);
   }
@@ -80,6 +85,29 @@ export function resolveFhirMcpEndpoint(env) {
     throw new Error(`FHIR upstream '${upstream_host}' is a PUBLIC SANDBOX (synthetic test data) — REFUSED in production`);
   }
   return { mcp_url: raw.replace(/\/$/, ""), upstream_base: upstream_base.replace(/\/$/, ""), upstream_host };
+}
+
+/**
+ * Decide which path a fhir-broker request takes. PURE (no I/O) so it is
+ * unit-testable without the stdio server. Returns one of:
+ *   { kind: "mock",    mode }  — serve the templated mock resource (dev/rollback)
+ *   { kind: "live",    cfg  }  — call the wso2 live backend
+ *   { kind: "blocked", mode:"live" } — mode normalises to live but NO endpoint set
+ *
+ * THE C1 INVARIANT: rollback-to-mock (endpoint unset ⇒ mock) is safe in a
+ * mock/dry_run context but MUST NOT happen in a live one — serving a mock
+ * resource under a mode:"live" receipt would present mock as live (the C16 /
+ * mock-never-as-live invariant). A live context with no endpoint BLOCKS.
+ *
+ * @param {Record<string,string|undefined>} env
+ * @param {string|undefined} requestedMode  the request's mode field
+ * @param {string} defaultMode              server env default (HEYDOC_MODE_DEFAULT)
+ */
+export function chooseFhirRoute(env, requestedMode, defaultMode) {
+  const { context_mode } = normaliseMode(requestedMode || defaultMode);
+  if (context_mode !== "live") return { kind: "mock", mode: context_mode };
+  const cfg = resolveFhirMcpEndpoint(env); // null ⇒ no live endpoint configured
+  return cfg ? { kind: "live", cfg } : { kind: "blocked", mode: "live" };
 }
 
 function receipt(cfg, tool, extra = {}) {

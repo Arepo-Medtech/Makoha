@@ -21,6 +21,7 @@
  */
 import {
   resolveFhirMcpEndpoint,
+  chooseFhirRoute,
   fhirReadLive,
   fhirSearchLive,
   _resetSessions,
@@ -92,6 +93,27 @@ check("resolve: public sandbox + production → REFUSED", throws(() => resolveFh
 check("resolve: public sandbox + staging → allowed", resolveFhirMcpEndpoint({ HEYDOC_FHIR_MCP_ENDPOINT: "http://localhost:8000/mcp", HEYDOC_FHIR_UPSTREAM_BASE: "https://hapi.fhir.org/baseR4", HEYDOC_MODE_DEFAULT: "staging" }).upstream_host === "hapi.fhir.org");
 check("PUBLIC_SANDBOX_HOSTS includes hapi.fhir.org", PUBLIC_SANDBOX_HOSTS.includes("hapi.fhir.org"));
 
+// ── 1b. chooseFhirRoute — the C1 invariant: never serve mock under a live receipt ─
+// mock/dry_run contexts → mock path (rollback ok). live context → live only if an
+// endpoint is set; live context with NO endpoint → BLOCKED, never mock-as-live.
+{
+  const liveEnv = { HEYDOC_FHIR_MCP_ENDPOINT: "http://localhost:8000/mcp", HEYDOC_FHIR_UPSTREAM_BASE: "https://hapi.fhir.org/baseR4" };
+  check("route: mock env, no mode → mock path", chooseFhirRoute({}, undefined, "mock").kind === "mock");
+  check("route: dry_run → mock path (flagged, not live)", chooseFhirRoute({}, "dry_run", "mock").kind === "mock");
+  check("route: mode=live + endpoint set → live path", chooseFhirRoute(liveEnv, "live", "mock").kind === "live");
+  // THE C1 REGRESSION: production env, endpoint UNSET, explicit mode:live.
+  check("route: mode=live + endpoint UNSET → BLOCKED (never mock)", chooseFhirRoute({ HEYDOC_MODE_DEFAULT: "production" }, "live", "production").kind === "blocked");
+  // And a production env DEFAULT (mode omitted) must not silently serve mock either.
+  check("route: production env default + mode omitted + no endpoint → BLOCKED", chooseFhirRoute({ HEYDOC_MODE_DEFAULT: "production" }, undefined, "production").kind === "blocked");
+  check("route: staging env default + no endpoint → BLOCKED", chooseFhirRoute({ HEYDOC_MODE_DEFAULT: "staging" }, undefined, "staging").kind === "blocked");
+}
+// Guard must not be bypassable by host-spoofing tricks that hit the same server:
+const prodSandbox = (base) => throws(() => resolveFhirMcpEndpoint({ HEYDOC_FHIR_MCP_ENDPOINT: "http://localhost:8000/mcp", HEYDOC_FHIR_UPSTREAM_BASE: base, HEYDOC_MODE_DEFAULT: "production" }), /REFUSED in production/);
+check("resolve: sandbox + production + trailing-dot FQDN → still REFUSED", prodSandbox("https://hapi.fhir.org./baseR4"));
+check("resolve: sandbox + production + UPPERCASE host → still REFUSED", prodSandbox("https://HAPI.FHIR.ORG/baseR4"));
+check("resolve: sandbox + production + explicit :443 port → still REFUSED", prodSandbox("https://hapi.fhir.org:443/baseR4"));
+check("resolve: sandbox + production + subdomain → still REFUSED", prodSandbox("https://r4.hapi.fhir.org/baseR4"));
+
 // ── 2. Live read/search map onto the existing contract + emit a live receipt ──
 const OBS = {
   resourceType: "Observation",
@@ -149,8 +171,11 @@ const OBS = {
   const { facts } = collectEncounterFacts(ref);
   const lab = facts[0];
   check("ingest: lab fact is a sanitised lab_result", lab && lab.category === "lab_result" && typeof lab.sanitised_by === "string");
-  // THE hard limit: the raw number 52 must NOT appear in the stored fact — no digit at all.
-  check("ingest: NO raw lab number reaches stored state", !/\d/.test(lab.value) && !JSON.stringify(lab).includes("52"));
+  // THE hard limit: the raw measured value (52) must NOT appear anywhere in the
+  // stored fact. We ban the raw value specifically rather than all digits, so a
+  // future analyte whose NAME carries a digit (e.g. "Vitamin B12") wouldn't
+  // false-fail — a name digit is not a raw-value leak.
+  check("ingest: NO raw lab number reaches stored state", !JSON.stringify(lab).includes("52") && !String(lab.value).includes("52"));
   check("ingest: Troponin banded critically elevated (HH)", lab.interpretation === "HH");
 
   // Destroy-on-close: session-store C8. After close the ref refuses forever.

@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateResource, AU_CORE_MANIFEST } from "./conformance.js";
-import { resolveFhirMcpEndpoint, fhirReadLive, fhirSearchLive } from "./live-backend.js";
+import { chooseFhirRoute, fhirReadLive, fhirSearchLive } from "./live-backend.js";
 import { normaliseMode } from "../../../verification/mode.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,20 +25,29 @@ const MODE = process.env.HEYDOC_MODE_DEFAULT || "mock";
 const FHIR_UPSTREAM = process.env.FHIR_AUTH_MODE === "live" ? process.env.FHIR_BASE_URL || "live" : "stub";
 const RESOURCES = JSON.parse(readFileSync(join(__dirname, "mock-resources.json"), "utf8")).resources;
 
-/**
- * H1 live wiring: the wso2-backed live path is taken ONLY when BOTH hold —
- * HEYDOC_FHIR_MCP_ENDPOINT is configured (resolveFhirMcpEndpoint non-null;
- * throws on placeholder / sandbox-in-production) AND the request's effective
- * mode normalises to "live" (C16). Everything else stays on the mock path, so
- * unsetting the endpoint is a complete rollback.
- */
-function liveConfigFor(requestedMode) {
-  if (normaliseMode(requestedMode || MODE).context_mode !== "live") return null;
-  return resolveFhirMcpEndpoint(process.env); // null ⇒ mock (rollback default)
+// The zod `mode` field must default to a VALID enum value. HEYDOC_MODE_DEFAULT
+// carries ENV names (mock/staging/production/dry_run), so normalise it to the
+// enforcement enum (mock/dry_run/live) — otherwise a `production` env default
+// is an invalid enum and every mode-omitting call throws at the tool boundary.
+const DEFAULT_MODE = normaliseMode(MODE).context_mode;
+
+// H1 live wiring — the path decision (mock / live / blocked) is the pure,
+// unit-tested chooseFhirRoute() in live-backend.js. index.js only renders each
+// outcome. Rollback: unset HEYDOC_FHIR_MCP_ENDPOINT ⇒ mock in a mock context.
+const routeFor = (requestedMode) => chooseFhirRoute(process.env, requestedMode, MODE);
+
+/** Fail-safe envelope for a live request with no live endpoint (never mock-as-live). */
+function blockedLive(nullKey) {
+  return {
+    [nullKey]: null,
+    blocked: true,
+    block_reason: "BLOCKED_NO_PROOF",
+    receipt: receipt("live", { error: { code: "BLOCKED_NO_LIVE_ENDPOINT", message: "mode is live but HEYDOC_FHIR_MCP_ENDPOINT is not configured — refusing to serve mock under a live receipt", retryable: false } }),
+  };
 }
 
-function receipt(mode) {
-  return { request_id: `fhir-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, timestamp_utc: new Date().toISOString(), upstream: FHIR_UPSTREAM, mode, server: "fhir-broker" };
+function receipt(mode, extra = {}) {
+  return { request_id: `fhir-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, timestamp_utc: new Date().toISOString(), upstream: FHIR_UPSTREAM, mode, server: "fhir-broker", ...extra };
 }
 const text = (obj) => ({ content: [{ type: "text", text: JSON.stringify(obj, null, 2) }] });
 
@@ -49,14 +58,15 @@ server.registerTool(
   {
     title: "FHIR Read",
     description: "Read a single mock AU Core resource by type (and optional id). Returns { resource, receipt }.",
-    inputSchema: z.object({ resource_type: z.string(), id: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
+    inputSchema: z.object({ resource_type: z.string(), id: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(DEFAULT_MODE) }),
   },
   async ({ resource_type, id, mode }) => {
-    const live = liveConfigFor(mode);
-    if (live) return text(await fhirReadLive(live, { resource_type, id }));
+    const route = routeFor(mode);
+    if (route.kind === "live") return text(await fhirReadLive(route.cfg, { resource_type, id }));
+    if (route.kind === "blocked") return text(blockedLive("resource"));
     const list = RESOURCES[resource_type] || [];
     const resource = (id ? list.find((r) => r.id === id) : list[0]) || null;
-    return text({ resource, receipt: receipt(mode || MODE) });
+    return text({ resource, receipt: receipt(route.mode) });
   }
 );
 
@@ -65,14 +75,15 @@ server.registerTool(
   {
     title: "FHIR Search",
     description: "Search mock AU Core resources of a type. Returns a FHIR searchset Bundle + receipt.",
-    inputSchema: z.object({ resource_type: z.string(), params: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
+    inputSchema: z.object({ resource_type: z.string(), params: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(DEFAULT_MODE) }),
   },
   async ({ resource_type, params, mode }) => {
-    const live = liveConfigFor(mode);
-    if (live) return text(await fhirSearchLive(live, { resource_type, params }));
+    const route = routeFor(mode);
+    if (route.kind === "live") return text(await fhirSearchLive(route.cfg, { resource_type, params }));
+    if (route.kind === "blocked") return text(blockedLive("bundle"));
     const list = RESOURCES[resource_type] || [];
     const bundle = { resourceType: "Bundle", type: "searchset", total: list.length, entry: list.map((r) => ({ resource: r })) };
-    return text({ bundle, receipt: receipt(mode || MODE) });
+    return text({ bundle, receipt: receipt(route.mode) });
   }
 );
 
@@ -82,9 +93,9 @@ server.registerTool(
   {
     title: "FHIR Write (unavailable in mock)",
     description: "EHR write path. Not available in mock — returns status 'unavailable' (no fabricated write).",
-    inputSchema: z.object({ resource_type: z.string(), resource: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
+    inputSchema: z.object({ resource_type: z.string(), resource: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(DEFAULT_MODE) }),
   },
-  async ({ resource_type }) => text({ status: "unavailable", reason: "no EHR write in mock (no live FHIR connection)", result: null, resource_type, receipt: receipt(MODE) })
+  async ({ resource_type }) => text({ status: "unavailable", reason: "no EHR write in mock (no live FHIR connection)", result: null, resource_type, receipt: receipt(DEFAULT_MODE) })
 );
 
 server.registerTool(
@@ -92,9 +103,9 @@ server.registerTool(
   {
     title: "FHIR Conformance Validate (AU Core, structural)",
     description: `Validate a FHIR resource against the vendored AU Core StructureDefinition snapshot (${AU_CORE_MANIFEST.ig_version}). Deterministic structural checks (profile, required, cardinality, fixed system); ValueSet membership is 'not_evaluated' (needs live NCTS). Returns { conformance, receipt }.`,
-    inputSchema: z.object({ resource: z.record(z.unknown()), profile: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
+    inputSchema: z.object({ resource: z.record(z.unknown()), profile: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(DEFAULT_MODE) }),
   },
-  async ({ resource, profile }) => text({ ...validateResource(resource, profile), ig_version: AU_CORE_MANIFEST.ig_version, receipt: receipt(MODE) })
+  async ({ resource, profile }) => text({ ...validateResource(resource, profile), ig_version: AU_CORE_MANIFEST.ig_version, receipt: receipt(DEFAULT_MODE) })
 );
 
 const transport = new StdioServerTransport();
