@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FLOW_PLAN Milestone H1 — patient-record spine (2026-07-06)
+
+**Status:** Branch `feat/h1-patient-record-spine` (off `main` @ `7e435a3`). `npm test` 23/23 green (new `contract-fhir-live.js`); `npm run licence:check` PASS (0 blocks); `npm run verification` Pass:true. Exit state met: `contract-fhir-live.js` green; record ingest crosses parser + session-store; no raw lab exits; mock rollback intact.
+
+### Change
+- **`mcp/servers/fhir-broker/live-backend.js` [NEW]** — Node adapter to an EXTERNAL, commit-pinned `wso2/fhir-mcp-server` (#16, Apache-2.0, `6307fe71`, v0.10.0) over MCP streamable-HTTP. Maps onto the EXISTING `fhir_read`/`fhir_search` contract (`{resource}`/`{bundle}`); receipts `mode:live`; FAIL-SAFE to `null` on any transport/tool error (never a fabricated resource); `PUBLIC_SANDBOX_HOSTS` refused in production (mirrors the M11 terminology sandbox rule). No Python vendored; no new runtime dep. This file is also the harvest MARKER the licence gate keys off.
+- **`mcp/servers/fhir-broker/index.js` [~]** — live path taken only when `HEYDOC_FHIR_MCP_ENDPOINT` is configured AND the request mode normalises to `live` (C16, via `verification/mode.js`); mock stays default + full rollback (unset the endpoint).
+- **`integration/record-sources/` [NEW]** — FIRST-PARTY clean-room SMART-on-FHIR ingestion spine (`sources-client.js`, `au-providers/au-providers.json`, `README.md`). Every FHIR Observation with a numeric value crosses the investigation parser (C3) → qualitative `lab_result` fact (raw number stripped) → session-store (C8); non-lab resources reduced to bare `{resourceType,id,status}` references (demographics dropped; session-store guard is the backstop); all state destroyed on encounter close. `buildAuthorizeRequest()` builds a SMART App Launch authorize shape and refuses any provider not `available`. `au-providers.json` is metadata only — `client_id_ref` points at a secrets-manager key, never a secret; only the public HAPI synthetic sandbox is `available` (smoke target, refused in production).
+- **`test/contract-fhir-live.js` [NEW]** — live read/search mapping + fail-safe + SSE framing; no-raw-lab + no-demographics ingest; destroy-on-close; input-gated providers + no-secrets assertion; opt-in HAPI-sandbox smoke (`HEYDOC_FHIR_LIVE_SMOKE=1`). Appended to `npm test` (now 23 files).
+- **`integration/harvest-manifest.json`, `docs/grounding/integration-register.md`, `test/contract-harvest-manifest.js` [~]** — wso2 #16 `licence_status` pending→verified + commit-pinned. **`fasten-sources` register defect fixed:** upstream repo is private/404 and pkg.go.dev detects no licence for any retained version — the prior "Apache-2.0 verified" was wrong; downgraded ADOPT→REFERENCE (non-shippable), so `record-sources` is first-party clean-room (no Fasten code read/copied).
+
+### Registers
+- **completeness-register:** `harvest-confirm-licences-pending` narrowed (wso2 cleared; bgpt #18 remains). NEW `fhir-live-adapter` (PARTIAL, R-28) + `au-record-sources-ingest` (PARTIAL, R-28). `fhir-broker-unbuilt` updated with the live-backend note.
+- **gap-register:** R-27 narrowed (wso2 cleared H1); NEW **R-28** (live patient-record path input-gated); `fhir-broker` section updated.
+- **.claude:** `completeness-index.md` + `server-status.md` synced.
+
+### Safety / firewall
+No §1 invariant weakened: raw-lab path parser-gated + ContextPacket `superRefine` defence-in-depth; every live call receipted; mock never presented as live (C16); no dose/code/identity path touched; **no secrets in repo** (au-providers uses `secrets://` references + `example.invalid` placeholders); scoring-store firewall untouched (record-sources reads no case data). Licence floor upheld: wso2 cleared before wrap; unlicensed Fasten kept off every shippable path.
+
+---
+
 ## FLOW_PLAN Milestone H0 — harvest reconciliation & licence-clearance manifest (2026-07-06)
 
 **Status:** Branch `flow-h0-licence-clearance` (off `main` @ `31bb9be`). `npm test` 22/22 green; `npm run licence:check` PASS; `npm run verification` + `npm run eval:cases` unchanged. **NO integration code** — this milestone builds the licence + identity gate that H1+ harvest must pass; nothing is harvested or wired.
