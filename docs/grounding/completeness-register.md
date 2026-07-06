@@ -124,6 +124,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ## HIGH
 
 ```md
+- id: harvest-licence-clearance-gate
+  path: integration/harvest-manifest.json, scripts/check-licence-clearance.mjs, test/contract-harvest-manifest.js, docs/grounding/integration-register.md, .github/workflows/ci.yml, package.json
+  component_type: ci
+  state: COMPLETE
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H0). Machine-readable harvest allow-list (41 rows = FLOW_PLAN 6.2's 40 + split-out GPL fasten-onprem) is the source of truth; check-licence-clearance.mjs (zod-validated; exported runCheck for tests) BLOCKS on (1) AGPL/GPL SPDX/header in a shippable module, (2) a DROP/DEFER repo pulled in as a dependency or present at a target, (3) a licence-pending repo wrapped on a shippable path, (4) MedRAG conflation (gzxiong #20 vs SNOWTEAM2023). Override-existing targets (fhir-broker/docs) key off a live-backend marker, not directory existence, so our own mock servers do not false-positive. Wired BLOCKING into CI (licence:check step after npm audit) + npm test (contract-harvest-manifest → 22/22). Armed-and-green: 0 blocks today (no harvested code in tree — H0 authorises none), 12 warn (unpinned ADOPT rows — pin at H1+). SCORING-STORE FIREWALL: scans source under shippable paths for licence headers only; never opens case node bodies (10-13).
+  blocks: (cleared) — H1+ harvest may now be licence-gated
+  safety_class: none
+  invariant_exposure: licence floor (FLOW_PLAN §1) — now enforced mechanically; AGPL/GPL reference-only
+  risk: High
+  blocks_patient_facing: false
+  build_action: DONE — see evidence. Pin exact commits + flip Confirm licences to verified as each repo is wrapped (H1+).
+  gap_register_link: none (COMPLETE — the gate, not a gap)
+  status: resolved
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: harvest-confirm-licences-pending
+  path: integration/harvest-manifest.json (licence_status:pending rows)
+  component_type: dependency
+  state: PARTIAL
+  evidence: OPENED 2026-07-06 (FLOW_PLAN H0). Five harvest candidates carry an UNRESOLVED ("Confirm") licence and may not enter a shippable path until cleared on-repo: wso2/fhir-mcp-server (#16, SHIPPABLE -> fhir-broker), connerlambden/bgpt-mcp (#18, SHIPPABLE -> evidence-graded), 2023Anita/clinical-ai-agent-skills (#9, spec), asanmateu/medgraph-ai (#21, pattern), gzxiong/MedRAG (#20, benchmark). The licence-clearance gate (harvest-licence-clearance-gate) BLOCKS #16/#18 the moment their shippable target is wrapped while still pending (BLOCK 3); the non-shippable three are advisory until adoption. No code harvested yet — this is a forward gate, not a live breach.
+  blocks: H1 (wso2 wrap), H2 (bgpt-mcp evidence-graded), H3 (MIRAGE harness identity/pin)
+  safety_class: none (gate holds them back)
+  invariant_exposure: licence floor — no unresolved-licence dependency in a shippable path
+  risk: High
+  blocks_patient_facing: true
+  build_action: For each — verify the on-repo licence, record it + pin an exact commit in integration/harvest-manifest.json, flip licence_status pending->verified. Until then the gate blocks any shippable wrap.
+  gap_register_link: R-27
+  status: open
+  last_scanned: 2026-07-06
+```
+
+```md
 - id: verifier-untested
   path: verification/verifier.js, verification/pipeline.js, test/contract-verifier.js
   component_type: test

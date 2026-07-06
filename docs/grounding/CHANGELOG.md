@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FLOW_PLAN Milestone H0 — harvest reconciliation & licence-clearance manifest (2026-07-06)
+
+**Status:** Branch `flow-h0-licence-clearance` (off `main` @ `31bb9be`). `npm test` 22/22 green; `npm run licence:check` PASS; `npm run verification` + `npm run eval:cases` unchanged. **NO integration code** — this milestone builds the licence + identity gate that H1+ harvest must pass; nothing is harvested or wired.
+
+### Change
+- **`integration/harvest-manifest.json` [NEW]** — the machine-readable harvest allow-list and **source of truth**: 41 rows (FLOW_PLAN §6.2's 40 candidates + a split-out GPL `fasten-onprem` row so the copyleft app can never be confused with the Apache-2.0 Fasten Sources lib). Each row carries url · pin status · licence · licence_status · verdict · mode · target · shippable · governance mapping. ADOPT rows are intentionally **not** commit-pinned (`unpinned_pending_adoption`) — no SHA fabricated offline; pinning becomes mandatory at wrap time.
+- **`scripts/check-licence-clearance.mjs` [NEW]** (`npm run licence:check`) — zod-validated gate (exported `runCheck` for tests). BLOCKS on (1) AGPL/GPL SPDX/header in a shippable module, (2) a DROP/DEFER repo pulled in as a dependency or present at a target, (3) a licence-pending repo wrapped on a shippable path, (4) MedRAG conflation (gzxiong #20 ≠ SNOWTEAM2023). Override-existing targets (`fhir-broker`/`docs`) key off a `live-backend.js` marker, not directory existence, so our own mock servers don't false-positive.
+- **`test/contract-harvest-manifest.js` [NEW]** — proves every BLOCK fails closed, the override-existing regression guard holds, and the real committed manifest passes; appended to the `npm test` chain (now 22 files).
+- **`docs/grounding/integration-register.md` [NEW]** — human-readable mirror of §6.2 (the JSON manifest wins on any disagreement).
+- **`.github/workflows/ci.yml`, `package.json`** — CI gains a BLOCKING `Harvest licence-clearance gate` step after `npm audit`; `licence:check` npm script added.
+
+### Safety / firewall
+Gate is **armed-and-green**: 0 blocks today (no harvested code in the tree — H0 authorises none), 12 non-blocking warnings (unpinned ADOPT rows). The scan reads source under shippable paths for licence headers **only**; it never opens case node bodies (`10`–`13`) — scoring-store firewall intact by construction. No new runtime dependency (`zod` + `node:fs`). AGPL/GPL (open-health #13, fasten-onprem) recorded **reference-only** per the licence floor + D-2 (owner AGPL ruling pending). One design correction during the build: BLOCK 3 first false-positived on the existing mock `fhir-broker/` (a wso2 override-in-place target); fixed with the marker-file signal.
+
+### Register impact
+- **Completeness Register:** `+ harvest-licence-clearance-gate` (COMPLETE, High) · `+ harvest-confirm-licences-pending` (open, High, `pf:true` — 5 Confirm-licence repos held back until cleared on-repo).
+- **Gap Register:** `harvest-confirm-licences-pending` promoted → **R-27** (High, one-way). **Allowed Service Registry UNCHANGED** — harvested server names enter only when their servers exist (H2+), not at H0.
+- `.claude/completeness-index.md` updated (new Harvest section; sync line → 2026-07-06).
+
+---
+
 ## Chore — write-time hygiene warning on case ingest (2026-07-06)
 
 **Status:** Branch `chore/ingest-hygiene-warning` (off `main` @ `e5e33f7`). PR open; operator-gated merge. `npm test` 21/21 green. The optional residual hardening logged with the 2026-07-05 sync-dupe cleanup.

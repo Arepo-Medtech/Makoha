@@ -1,0 +1,359 @@
+{
+  "_note": "Machine-readable harvest allow-list — the SOURCE OF TRUTH for scripts/check-licence-clearance.mjs (FLOW_PLAN milestone H0). Human-readable mirror: docs/grounding/integration-register.md. This file authorises NO integration code; it is the licence + identity gate that every H1+ harvest must pass. Adding a repo here is a prerequisite for wrapping it, not permission to wrap it (that is plan-gated per CLAUDE.md).",
+  "version": "1.0.0",
+  "generated": "2026-07-06",
+  "milestone": "FLOW_PLAN H0",
+  "source": "FLOW_PLAN.md 6.2 (40 rows, Adoption Sequence 1-7 + future/optional/dropped)",
+  "config": {
+    "shippable_paths": ["mcp/servers", "integration/record-sources", "portal", "verification"],
+    "non_shippable_paths": ["benchmark", "case-factory", "test", "docs", ".planning"],
+    "blocked_spdx": [
+      "AGPL-1.0", "AGPL-1.0-only", "AGPL-1.0-or-later",
+      "AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later",
+      "GPL-1.0", "GPL-1.0-only", "GPL-1.0-or-later",
+      "GPL-2.0", "GPL-2.0-only", "GPL-2.0-or-later",
+      "GPL-3.0", "GPL-3.0-only", "GPL-3.0-or-later"
+    ],
+    "blocked_licence_phrases": ["GNU AFFERO GENERAL PUBLIC LICENSE", "GNU GENERAL PUBLIC LICENSE"],
+    "spdx_scan_exclude": ["integration/harvest-manifest.json", "scripts/check-licence-clearance.mjs"],
+    "spdx_scan_extensions": [".js", ".mjs", ".cjs", ".ts", ".py", ".java", ".json", ".yml", ".yaml"],
+    "spdx_scan_filenames": ["LICENSE", "LICENCE", "COPYING", "NOTICE"],
+    "_override_existing_note": "These shippable target dirs already exist as first-party mock servers (FLOW_PLAN 6.3 [OVR]). A harvested live backend WRAPS them behind the existing contract, so the directory's mere existence is NOT proof of harvest — the marker file (created only at H1+ wrap time) is. BLOCK 2b/3 key off the marker for these, off directory existence for genuinely new modules.",
+    "override_existing_targets": {
+      "mcp/servers/fhir-broker": "mcp/servers/fhir-broker/live-backend.js",
+      "mcp/servers/docs": "mcp/servers/docs/live-backend.js"
+    }
+  },
+  "elements": [
+    {
+      "ref": "16", "repo": "wso2/fhir-mcp-server", "url": "https://github.com/wso2/fhir-mcp-server",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0-unconfirmed", "licence_status": "pending",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/fhir-broker/", "shippable": true,
+      "governance_gate": "read path; record read gated by session-store (C8) + portal gate (C9)", "adoption_step": 1,
+      "notes": "Live backend behind the EXISTING fhir_read/search/validate contract; mock is rollback. Confirm on-repo licence before wrapping."
+    },
+    {
+      "ref": "dir-fasten-sources", "repo": "fastenhealth/fasten-sources", "url": "https://github.com/fastenhealth/fasten-sources",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "integration/record-sources/", "shippable": true,
+      "governance_gate": "ingest -> investigation-parser (C3) -> session-store (C8)", "adoption_step": 1,
+      "notes": "Apache-2.0 Sources library + gofhir-models ONLY. The fasten-onprem APP (fastenhealth/fasten-onprem) is GPL-3.0 — reference-only, separate row."
+    },
+    {
+      "ref": "dir-fasten-app", "repo": "fastenhealth/fasten-onprem", "url": "https://github.com/fastenhealth/fasten-onprem",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "GPL-3.0", "licence_status": "copyleft_reference_only",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": 1,
+      "notes": "GPL-3.0 application — architectural reference only; NO code enters a shippable path. Split out from Fasten Sources so the copyleft app can never be wrapped by accident."
+    },
+    {
+      "ref": "6", "repo": "StanfordBDHG/HealthGPT", "url": "https://github.com/StanfordBDHG/HealthGPT",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "MIT-unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "portal/", "shippable": false,
+      "governance_gate": "wearable -> sanitiser; gated", "adoption_step": 1,
+      "notes": "iOS app-shell pattern if pursued; product call, not forced."
+    },
+    {
+      "ref": "13", "repo": "open-health", "url": "https://github.com/OpenHealthForAll/open-health",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "AGPL-3.0", "licence_status": "copyleft_reference_only",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "portal/patient-ingest/", "shippable": false,
+      "governance_gate": "patient-facing; pre-governance closed", "adoption_step": 1,
+      "notes": "AGPL-3.0 CONFIRMED — PATTERN-LIFT ONLY, no code, until an explicit owner AGPL ruling (D-2). Network-copyleft is a commercial decision."
+    },
+    {
+      "ref": "1", "repo": "anthropics/healthcare", "url": "https://github.com/anthropics/healthcare",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "first-party", "licence_status": "first_party",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/docs/", "shippable": true,
+      "governance_gate": "retrieval -> Receipt; verifier-checked; MIRAGE-gated for patient use", "adoption_step": 2,
+      "notes": "PubMed/FHIR-dev overrides docs stub; CMS/NPI -> evidence-cms/ (US, lower AU priority)."
+    },
+    {
+      "ref": "14", "repo": "Cicatriiz/healthcare-mcp-public", "url": "https://github.com/Cicatriiz/healthcare-mcp-public",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "MIT", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/evidence-fda-pubmed/", "shippable": true,
+      "governance_gate": "fact -> Receipt -> verifier 1/2; MIRAGE-gated", "adoption_step": 2,
+      "notes": "FDA/PubMed/ClinicalTrials/ICD-10; pairs with #15."
+    },
+    {
+      "ref": "15", "repo": "JamesANZ/medical-mcp", "url": "https://github.com/JamesANZ/medical-mcp",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "MIT", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/evidence-drug-guideline/", "shippable": true,
+      "governance_gate": "ADVISORY ONLY — structurally barred from any dose field; pharmacology firewall (C2) stays the sole dose source; MIRAGE-gated", "adoption_step": 2,
+      "notes": "HARD boundary (G9): drug-interaction/paediatric output carries advisory:true and NEVER becomes a dose."
+    },
+    {
+      "ref": "18", "repo": "connerlambden/bgpt-mcp", "url": "https://github.com/connerlambden/bgpt-mcp",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/evidence-graded/", "shippable": true,
+      "governance_gate": "grade -> EvidenceNode.supports; MIRAGE-gated; hosted svc egress-scoped", "adoption_step": 2,
+      "notes": "Wrap hosted service with fallback to #14/#15; confirm licence before wrapping. Degrade to BLOCKED_NO_PROOF on outage, never fabricate."
+    },
+    {
+      "ref": "8", "repo": "Aperivue/medsci-skills", "url": "https://github.com/Aperivue/medsci-skills",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "MIT", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "PATTERN-LIFT", "target_module": "verification/integrity-detectors/", "shippable": true,
+      "governance_gate": "machine-decided gates -> verifier; strengthens C1, never loosens", "adoption_step": 2,
+      "notes": "~30 deterministic detector PATTERNS lifted into the verifier; NO runtime dependency (pattern-lift, no copied code)."
+    },
+    {
+      "ref": "9", "repo": "2023Anita/clinical-ai-agent-skills", "url": "https://github.com/2023Anita/clinical-ai-agent-skills",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "docs/grounding/guardrail-spec.md", "shippable": false,
+      "governance_gate": "codifies rules as written spec", "adoption_step": 2,
+      "notes": "Evidence-first rulebook as a spec; thin, rules only."
+    },
+    {
+      "ref": "20", "repo": "gzxiong/MedRAG", "url": "https://github.com/gzxiong/MedRAG",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "ADOPT", "mode": "BENCHMARK", "target_module": "benchmark/mirage/", "shippable": false,
+      "governance_gate": "THE trust gate: no retrieval path is patient_eligible until it passes MIRAGE at threshold", "adoption_step": 3,
+      "do_not_conflate_with": "SNOWTEAM2023/MedRAG",
+      "notes": "MIRAGE eval harness. DISTINCT from SNOWTEAM2023/MedRAG (G5). Pin exact repo URL + commit before adoption at H3."
+    },
+    {
+      "ref": "comp-snowteam", "repo": "SNOWTEAM2023/MedRAG", "url": "https://github.com/SNOWTEAM2023/MedRAG",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": 3,
+      "do_not_conflate_with": "gzxiong/MedRAG",
+      "notes": "Alternate relational MedRAG — reading reference ONLY. NOT #20 (the MIRAGE harness). Disambiguation pin (G5)."
+    },
+    {
+      "ref": "21", "repo": "asanmateu/medgraph-ai", "url": "https://github.com/asanmateu/medgraph-ai",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "mcp/servers/knowledge/graph/", "shippable": false,
+      "governance_gate": "if adopted, MIRAGE-gated", "adoption_step": 3,
+      "notes": "Graph-RAG reasoning pattern; pattern not dependency (Med maturity). Confirm licence if ever adopted."
+    },
+    {
+      "ref": "org-primekg", "repo": "mims-harvard/PrimeKG", "url": "https://github.com/mims-harvard/PrimeKG",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "MIT", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "INTEGRATE", "target_module": "mcp/servers/knowledge/primekg/", "shippable": true,
+      "governance_gate": "KG facts -> EvidenceNode; MIRAGE-gated; behind existing kg_query contract", "adoption_step": 3,
+      "notes": "KG substrate vs build-from-scratch; offline data load. Sibling OptimusKG optional."
+    },
+    {
+      "ref": "dir-synthea", "repo": "synthetichealth/synthea", "url": "https://github.com/synthetichealth/synthea",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "case-factory/synthea/", "shippable": false,
+      "governance_gate": "synthetic-only; never a real patient; feeds ARCH_PLAN M6 eval", "adoption_step": 4,
+      "notes": "Java generator behind a CLI/process boundary; no Node stack contamination."
+    },
+    {
+      "ref": "fork-synthea-at", "repo": "FHOOEAIST/synthea", "url": "https://github.com/FHOOEAIST/synthea",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "FORK", "target_module": "case-factory/synthea-au/", "shippable": false,
+      "governance_gate": "synthetic; AU Core 0.3.0", "adoption_step": 4,
+      "notes": "Fork to localise AT -> AU (AU-Core-profile + AuditEvent). Apache-2.0 fork."
+    },
+    {
+      "ref": "sib-chatty-notes", "repo": "synthetichealth/chatty-notes", "url": "https://github.com/synthetichealth/chatty-notes",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "case-factory/narratives/", "shippable": false,
+      "governance_gate": "synthetic", "adoption_step": 4,
+      "notes": "Note narratives from Synthea bundles; re-balances difficulty distribution."
+    },
+    {
+      "ref": "28", "repo": "mims-harvard/ToolUniverse", "url": "https://github.com/mims-harvard/ToolUniverse",
+      "pinned_commit": null, "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "ADOPT", "mode": "WRAP", "target_module": "mcp/servers/tooluniverse-gateway/", "shippable": true,
+      "governance_gate": "every tool output -> Receipt; MIRAGE-gated where retrieval; python_code_executor DISABLED; own auth; egress allow-list", "adoption_step": 5,
+      "notes": "Highest leverage + highest security surface. Pin >=v1.3.0 (RCE-patched). NEVER expose the code-executor (G2)."
+    },
+    {
+      "ref": "comp-txagent", "repo": "mims-harvard/TxAgent", "url": "https://github.com/mims-harvard/TxAgent",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DEFER", "mode": "DEFER", "target_module": null, "shippable": false,
+      "governance_gate": "Rx-Remedy scope; deferred", "adoption_step": 5,
+      "notes": "Therapeutic reasoning on ToolUniverse; hold until dispensing matures."
+    },
+    {
+      "ref": "org-medlog", "repo": "mims-harvard/MedLog", "url": "https://github.com/mims-harvard/MedLog",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "verification/audit-store.js", "shippable": false,
+      "governance_gate": "strengthens C5 audit ledger (pattern only)", "adoption_step": 5,
+      "notes": "Event-level clinical-AI logging pattern; study before WORM (ARCH M8). Pattern-lift, no copied code into the RETAIN ledger."
+    },
+    {
+      "ref": "5", "repo": "ahmadvh/octochains", "url": "https://github.com/ahmadvh/octochains",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": "verification/conflict-audit.js", "shippable": false,
+      "governance_gate": "consensus/conflict surfacing = trust mechanism; OWNER-GATED (D-1)", "adoption_step": 6,
+      "notes": "Parallel-expert conflict-check PATTERN into verifier; keep the trunk spine. Owner-gated before any code."
+    },
+    {
+      "ref": "3", "repo": "souvikmajumder26/Multi-Agent-Medical-Assistant", "url": "https://github.com/souvikmajumder26/Multi-Agent-Medical-Assistant",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": "HITL reference for C9", "adoption_step": 6,
+      "notes": "Sequential topology design ref, not a drop-in."
+    },
+    {
+      "ref": "2", "repo": "Azure-Samples/healthcare-agent-orchestrator", "url": "https://github.com/Azure-Samples/healthcare-agent-orchestrator",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "MIT-unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": 6,
+      "notes": "Multi-specialist coordination; MS-stack coupling; pattern/design ref only."
+    },
+    {
+      "ref": "4", "repo": "The-Swarm-Corporation/MedicalCoderSwarm", "url": "https://github.com/The-Swarm-Corporation/MedicalCoderSwarm",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": 6,
+      "notes": "Diagnosis->coding pipeline shape; demo-grade; do NOT adopt as a dependency."
+    },
+    {
+      "ref": "23", "repo": "sunlabuiuc/PyHealth", "url": "https://github.com/sunlabuiuc/PyHealth",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "MIT", "licence_status": "verified",
+      "verdict": "DEFER", "mode": "DEFER", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Predictive modelling on the record; new patient-facing capability — defer until record spine live + governance built."
+    },
+    {
+      "ref": "22", "repo": "Project-MONAI/MONAI", "url": "https://github.com/Project-MONAI/MONAI",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "Apache-2.0", "licence_status": "verified",
+      "verdict": "DEFER", "mode": "DEFER", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Imaging DL; adopt only if/when imaging becomes a pillar."
+    },
+    {
+      "ref": "19", "repo": "fulcradynamics/fulcra-context-mcp", "url": "https://github.com/fulcradynamics/fulcra-context-mcp",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DEFER", "mode": "DEFER", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Commercial backend = vendor lock-in (G8); prefer open wearable ingest. Any commercial dep needs owner sign-off."
+    },
+    {
+      "ref": "dir-tidepool", "repo": "tidepool-org", "url": null,
+      "pinned_commit": null, "pin_status": "unverified_directory_listed",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DEFER", "mode": "DEFER", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Only if diabetes/CGM vertical pursued. Directory-listed — re-verify live (exact repo + licence) before any reliance (G14)."
+    },
+    {
+      "ref": "11", "repo": "ajhcs/healthcare-agents", "url": "https://github.com/ajhcs/healthcare-agents",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "US 42 CFR/CMS-specific; read for revenue-cycle structure only (Rx-Remedy)."
+    },
+    {
+      "ref": "comp-ajhcs-data", "repo": "ajhcs/healthcare-data-mcp", "url": "https://github.com/ajhcs/healthcare-data-mcp",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Investor/market analytics, not clinical. Low priority."
+    },
+    {
+      "ref": "dir-ctakes", "repo": "apache/ctakes", "url": "https://github.com/apache/ctakes",
+      "pinned_commit": null, "pin_status": "unverified_directory_listed",
+      "licence": "Apache-2.0", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Clinical NLP for record enrichment; directory-listed — re-verify live before reliance (G14)."
+    },
+    {
+      "ref": "dir-hermes", "repo": "wardle/hermes", "url": "https://github.com/wardle/hermes",
+      "pinned_commit": null, "pin_status": "unverified_directory_listed",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "PATTERN-LIFT", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "SNOMED terminology server relevant to SNOMED-AU grounding; directory-listed — re-verify live before reliance (G14)."
+    },
+    {
+      "ref": "25", "repo": "kakoni/awesome-healthcare", "url": "https://github.com/kakoni/awesome-healthcare",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "CC0-1.0", "licence_status": "verified",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Reading map."
+    },
+    {
+      "ref": "26", "repo": "medtorch/awesome-healthcare-ai", "url": "https://github.com/medtorch/awesome-healthcare-ai",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "CC0-1.0", "licence_status": "verified",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "Reading map for future extensions."
+    },
+    {
+      "ref": "17", "repo": "sunanhe/awesome-medical-mcp-servers", "url": "https://github.com/sunanhe/awesome-medical-mcp-servers",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "REFERENCE", "mode": "REFERENCE", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": "future",
+      "notes": "MCP-server discovery map."
+    },
+    {
+      "ref": "10", "repo": "Rajathbharadwaj/voice-agent", "url": "https://github.com/Rajathbharadwaj/voice-agent",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DROP", "mode": "DROP", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": null,
+      "notes": "FLAG -> DROP. Unverified. Source voice from ElevenLabs / Web Speech API instead."
+    },
+    {
+      "ref": "7", "repo": "tmc/DoctorGPT", "url": "https://github.com/tmc/DoctorGPT",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DROP", "mode": "DROP", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": null,
+      "notes": "FLAG -> DROP. Inactive fork; use upstream idea only."
+    },
+    {
+      "ref": "12", "repo": "cittaverse", "url": null,
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DROP", "mode": "DROP", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": null,
+      "notes": "SKIP/park -> DROP. Early-stage (0-3 stars). Narrative-quality scoring parked."
+    },
+    {
+      "ref": "24", "repo": "taskade/taskade", "url": "https://github.com/taskade/taskade",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DROP", "mode": "DROP", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": null,
+      "notes": "SKIP -> DROP. No clinical utility."
+    },
+    {
+      "ref": "27", "repo": "nowork-studio/awesome-ai-startups", "url": "https://github.com/nowork-studio/awesome-ai-startups",
+      "pinned_commit": null, "pin_status": "na",
+      "licence": "unconfirmed", "licence_status": "pending",
+      "verdict": "DROP", "mode": "DROP", "target_module": null, "shippable": false,
+      "governance_gate": null, "adoption_step": null,
+      "notes": "SKIP -> DROP. No clinical value."
+    }
+  ]
+}
