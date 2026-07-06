@@ -17,11 +17,25 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateResource, AU_CORE_MANIFEST } from "./conformance.js";
+import { resolveFhirMcpEndpoint, fhirReadLive, fhirSearchLive } from "./live-backend.js";
+import { normaliseMode } from "../../../verification/mode.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.HEYDOC_MODE_DEFAULT || "mock";
 const FHIR_UPSTREAM = process.env.FHIR_AUTH_MODE === "live" ? process.env.FHIR_BASE_URL || "live" : "stub";
 const RESOURCES = JSON.parse(readFileSync(join(__dirname, "mock-resources.json"), "utf8")).resources;
+
+/**
+ * H1 live wiring: the wso2-backed live path is taken ONLY when BOTH hold —
+ * HEYDOC_FHIR_MCP_ENDPOINT is configured (resolveFhirMcpEndpoint non-null;
+ * throws on placeholder / sandbox-in-production) AND the request's effective
+ * mode normalises to "live" (C16). Everything else stays on the mock path, so
+ * unsetting the endpoint is a complete rollback.
+ */
+function liveConfigFor(requestedMode) {
+  if (normaliseMode(requestedMode || MODE).context_mode !== "live") return null;
+  return resolveFhirMcpEndpoint(process.env); // null ⇒ mock (rollback default)
+}
 
 function receipt(mode) {
   return { request_id: `fhir-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, timestamp_utc: new Date().toISOString(), upstream: FHIR_UPSTREAM, mode, server: "fhir-broker" };
@@ -38,6 +52,8 @@ server.registerTool(
     inputSchema: z.object({ resource_type: z.string(), id: z.string().optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
   },
   async ({ resource_type, id, mode }) => {
+    const live = liveConfigFor(mode);
+    if (live) return text(await fhirReadLive(live, { resource_type, id }));
     const list = RESOURCES[resource_type] || [];
     const resource = (id ? list.find((r) => r.id === id) : list[0]) || null;
     return text({ resource, receipt: receipt(mode || MODE) });
@@ -51,7 +67,9 @@ server.registerTool(
     description: "Search mock AU Core resources of a type. Returns a FHIR searchset Bundle + receipt.",
     inputSchema: z.object({ resource_type: z.string(), params: z.record(z.unknown()).optional(), mode: z.enum(["live", "dry_run", "mock"]).optional().default(MODE) }),
   },
-  async ({ resource_type, mode }) => {
+  async ({ resource_type, params, mode }) => {
+    const live = liveConfigFor(mode);
+    if (live) return text(await fhirSearchLive(live, { resource_type, params }));
     const list = RESOURCES[resource_type] || [];
     const bundle = { resourceType: "Bundle", type: "searchset", total: list.length, entry: list.map((r) => ({ resource: r })) };
     return text({ bundle, receipt: receipt(mode || MODE) });
