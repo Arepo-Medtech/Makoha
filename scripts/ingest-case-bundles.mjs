@@ -38,6 +38,13 @@ const NODE_KEYS = [
 const SCHEMA_OF = Object.fromEntries(NODE_KEYS.map((k) => [k, `${k}.schema.json`]));
 const CASEID_RE = /^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$/;
 
+// The exact set of files the splitter writes into a case dir: the 7 nodes + the manifest.
+// Anything else in a written case dir is non-canonical (a hygiene warning, below).
+const CANONICAL_FILES = new Set([...NODE_KEYS.map((k) => `${k}.json`), "case_manifest.json"]);
+// Cloud-sync copy pattern — "<node> 2.json", "case_manifest 3.json", etc. This is the exact
+// shape of the 236-file sync-dupe incident (2026-07-05); flag it explicitly as likely cruft.
+const SYNC_DUPE_RE = / \d+\.[A-Za-z]+$/;
+
 // --- ajv (draft-07; formats not enforced, matching the authoring-side validation) -----
 const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
 const validators = {};
@@ -140,6 +147,20 @@ function nextFreeGlobalId(outDir, specialty, difficulty) {
   return id;
 }
 
+/**
+ * Filename-only hygiene scan of a written case dir. Flags every entry that is NOT one of the 8
+ * canonical split files — in particular cloud-sync copies ("<node> 2.json"), the known offender
+ * (236-dupe incident, 2026-07-05). This is a non-fatal WARNING: it never blocks ingest, never
+ * changes the exit code, and NEVER opens a file body — readdirSync only — so the scoring-store
+ * firewall over the sealed 10–13 nodes is preserved by construction. Catches sync cruft at
+ * write time (here) instead of at commit time (a broad `git add`).
+ */
+function hygieneStrays(caseDir) {
+  return readdirSync(caseDir)
+    .filter((n) => !CANONICAL_FILES.has(n))
+    .map((n) => ({ name: n, syncDupe: SYNC_DUPE_RE.test(n) }));
+}
+
 /** Rewrite every case_id field in the bundle (all nodes + _bundle + manifest) to newId. */
 function reseqBundle(bundle, newId) {
   bundle._bundle.case_id = newId;
@@ -200,7 +221,8 @@ function ingestOne(path, outDir, { dryRun, force, reseq }, nowIso) {
   writeFileSync(join(caseDir, "case_manifest.json"), canonical(cm));
 
   return { file: basename(path), case_id: effectiveId, status: "INGESTED", reseq: reseqInfo,
-    reviewed: (cm.review || {}).clinician_reviewed === true, files: NODE_KEYS.length + 1 };
+    reviewed: (cm.review || {}).clinician_reviewed === true, files: NODE_KEYS.length + 1,
+    warnings: hygieneStrays(caseDir) };
 }
 
 function main() {
@@ -233,6 +255,14 @@ function main() {
   const ingested = results.filter((r) => r.status === "INGESTED");
   const reseqd = results.filter((r) => r.reseq);
   for (const r of reseqd) console.log(`  [reseq] ${r.reseq.original_case_id} -> ${r.reseq.assigned_case_id} (${opts.dryRun ? "would assign" : "assigned"}; original collided)`);
+  // Write-time hygiene warnings — non-fatal, do NOT affect the exit code. A stray file in a
+  // written case dir is almost always cloud-sync cruft ("<node> 2.json") that a broad `git add`
+  // would otherwise sweep into the repo (the 236-dupe incident, 2026-07-05).
+  const warned = results.filter((r) => (r.warnings || []).length);
+  for (const r of warned) {
+    console.log(`\n[HYGIENE] ${r.case_id}: ${r.warnings.length} non-canonical file(s) in the case dir —`);
+    for (const w of r.warnings) console.log(`    !! "${w.name}"${w.syncDupe ? " — likely cloud-sync cruft, delete it" : " — not a canonical case file"}`);
+  }
   if (ingested.length) console.log(`\n${ingested.length} case(s) written; ${ingested.filter((r) => r.reviewed).length} carry a clinician attestation.`);
   // non-zero exit if anything failed (so CI/callers notice)
   process.exit(bad.length ? 1 : 0);

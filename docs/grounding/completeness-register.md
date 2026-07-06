@@ -660,10 +660,10 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none — removal was path-only; sealed 10–13 nodes never opened; scoring-store firewall intact
   risk: Low
   blocks_patient_facing: false
-  build_action: DONE (PR #20, 2026-07-05, main @ ccefabd) — git rm all 236 committed dupes (twin-verified, path-only) + deleted ~1,998 untracked sync-dupes from the working tree + .gitignore guards `* [0-9].*` (sync-dupe pattern) and `Projects/` (local binary docs). eval:cases re-verified PASS. Optional residual hardening (nice-to-have, not a defect): have `cases:ingest` warn when a target case dir contains non-canonical files (e.g. a "* N.json" stray) so sync cruft is caught at write time, not commit time.
+  build_action: DONE (PR #20, 2026-07-05, main @ ccefabd) — git rm all 236 committed dupes (twin-verified, path-only) + deleted ~1,998 untracked sync-dupes from the working tree + .gitignore guards `* [0-9].*` (sync-dupe pattern) and `Projects/` (local binary docs). eval:cases re-verified PASS. Optional residual hardening — DONE (2026-07-06): `cases:ingest` now emits a non-fatal `[HYGIENE]` warning naming any non-canonical file in a written case dir (in particular the `/ \d+\.[A-Za-z]+$/` sync-dupe pattern, "<node> 2.json"), catching cruft at write time not commit time. Filename-only scan (`readdirSync`) — sealed 10–13 bodies never opened, firewall intact; warning-only (exit code unchanged). Covered by `test/contract-case-ingest.js` (fires on a stray, silent on a clean dir).
   gap_register_link: none (Low — below promotion threshold)
   status: resolved
-  last_scanned: 2026-07-05
+  last_scanned: 2026-07-06
 ```
 
 ```md
