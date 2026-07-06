@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Chore — write-time hygiene warning on case ingest (2026-07-06)
+
+**Status:** Branch `chore/ingest-hygiene-warning` (off `main` @ `e5e33f7`). PR open; operator-gated merge. `npm test` 21/21 green. The optional residual hardening logged with the 2026-07-05 sync-dupe cleanup.
+
+### Change
+- **`scripts/ingest-case-bundles.mjs`:** after splitting a bundle into its case dir, `cases:ingest` now scans that dir (filename-only, `readdirSync`) and emits a **non-fatal `[HYGIENE]` warning** naming any file that is not one of the 8 canonical split files (`00`/`01`/`02`/`10`/`11`/`12`/`13` + `case_manifest.json`). Cloud-sync copies matching `/ \d+\.[A-Za-z]+$/` ("<node> 2.json") are called out as likely cruft to delete. Catches sync dupes at write time instead of at commit time (the 236-dupe incident entered via a broad `git add`, not the ingest glob).
+- **`test/contract-case-ingest.js`:** new assertion block — a clean case dir produces no warning; a stray `"00_case_envelope 2.json"` (author-placed placeholder, no sealed body read) triggers the warning naming the file and flagging it as cruft, while ingest still exits `0`.
+
+### Safety / firewall
+Warning-only — never blocks ingest, never changes the exit code, never overwrites. Scan is **filename-only**; sealed `10`–`13` node bodies are never opened, so the scoring-store firewall is preserved by construction. No new dependency (Node 20 ESM; ajv/zod untouched).
+
+### Register impact
+- `case-dir-duplicate-files` stays **COMPLETE/resolved** (Low); its `build_action` optional-hardening note moved from "nice-to-have" to **DONE (2026-07-06)**, `last_scanned` → 2026-07-06. No gap-register move (below promotion threshold); no new register item opened.
+
+---
+
 ## Chore — sync-dupe cruft cleanup + guards (2026-07-05)
 
 **Status:** Merged. PR #20 (`chore/cruft-guards-and-cleanup`), `main` @ `ccefabd`. CI `test` green; `eval:cases` PASS. Operator-approved merge.

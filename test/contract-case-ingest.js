@@ -114,6 +114,26 @@ try {
   assert.strictEqual(sha256(readFileSync(join(origDir, "10_ground_truth_node.json"))), origHash, "original case never overwritten by --reseq");
   console.log("  [pass] collision refused by default; --reseq assigns a new global id, never overwrites");
 
+  // --- hygiene: a stray file in the target case dir warns at write time (non-fatal) ---
+  // A clean ingest must NOT warn; then drop a cloud-sync-style dupe into the dir and re-ingest
+  // (--force): ingest still succeeds (exit 0) but names the stray as likely cruft. The stray is a
+  // placeholder WE author ("00_case_envelope 2.json", a non-sealed node name) — no 10–13 body is
+  // ever read; the hygiene scan itself is filename-only.
+  const hygDir = join(work, "hyg_in"), hygOut = join(work, "hyg_out"); mkdirSync(hygDir, { recursive: true });
+  writeFileSync(join(hygDir, "h.casebundle.json"), JSON.stringify(buildBundle(), null, 2));
+  const h1 = run(hygDir, hygOut);
+  assert.strictEqual(h1.code, 0, "clean ingest ok");
+  assert.ok(!/HYGIENE/.test(h1.out), "clean case dir produces no hygiene warning");
+  // introduce a sync-dupe stray, then re-ingest over the same dir with --force
+  const hygCaseDir = join(hygOut, "SPEC-CARD-04-00001");
+  writeFileSync(join(hygCaseDir, "00_case_envelope 2.json"), "{}\n");
+  const h2 = run(hygDir, hygOut, "--force");
+  assert.strictEqual(h2.code, 0, "hygiene warning is non-fatal — ingest still succeeds (exit 0)\n" + h2.out);
+  assert.ok(/HYGIENE/.test(h2.out), "reports a HYGIENE warning");
+  assert.ok(/00_case_envelope 2\.json/.test(h2.out), "names the stray file");
+  assert.ok(/cloud-sync cruft/.test(h2.out), "flags the sync-dupe pattern as likely cruft");
+  console.log("  [pass] clean dir silent; stray '<node> 2.json' warns at write time, non-fatal");
+
   console.log("contract-case-ingest: OK");
 } finally {
   rmSync(work, { recursive: true, force: true });
