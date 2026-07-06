@@ -43,6 +43,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sanitiseInvestigation } from "../../verification/investigation-parser.js";
 import { putWorkingState, listWorkingState, getWorkingState } from "../../verification/session-store.js";
+import { releaseHarvestedOutput } from "../../portal/harvested-release.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -179,4 +180,17 @@ export function collectEncounterFacts(sessionRef) {
     else references.push(v);
   }
   return { facts, references };
+}
+
+/**
+ * GOVERNANCE SEAM (FLOW_PLAN H7 / G7). Any patient-directed release built on the
+ * record-spine (H1) MUST route here — it defers to the fail-closed portal gate
+ * (ARCH_PLAN C9) and REFUSES without a clinician-attested VerificationGateRecord
+ * bound to the exact output hash. Opens no patient path; never sets
+ * patient_eligible. Unreached today (no patient path exists) — the seam exists so
+ * that if one is ever built, the gate cannot be bypassed.
+ * @param {string} output - the exact text a patient-facing build would release
+ */
+export function governedRelease(output) {
+  return releaseHarvestedOutput("record-spine", output);
 }

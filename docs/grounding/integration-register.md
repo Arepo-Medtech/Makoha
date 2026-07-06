@@ -147,6 +147,30 @@ input-gated on Java; the *trusted* distribution moves only after clinician attes
 
 Governance is not harvested — it is ARCH_PLAN C9/M5 (`portal/verification-gate.js`, already built) + C5 audit ledger. Every harvested path routes through the portal gate before any patient-adjacent wiring (H7). MedLog (#org) informs the audit pattern only.
 
+**H7 wiring — per harvested path → the portal gate (fail-closed):**
+
+| Path | Milestone | Adapter seam (`governedRelease`) | Governance test | Fail-closed status |
+|---|---|---|---|---|
+| record-spine | H1 | `integration/record-sources/sources-client.js` | `test/contract-governance-record-spine.js` | REFUSED without an attested gate record on the exact hash |
+| evidence (#14/#15/#1) | H2 | `mcp/servers/_shared/evidence-map.js` | `test/contract-governance-evidence.js` | REFUSED; native `PATIENT_ELIGIBLE=false` unchanged |
+| retrieval (MIRAGE-gated) | H3 | `benchmark/mirage/index.js` | `test/contract-governance-retrieval-mirage.js` | REFUSED; harness never sets `patient_eligible` |
+| case factory | H4 | `case-factory/to-casebundle.js` | `test/contract-governance-case-factory.js` | REFUSED; synthetic-only (`synthetic:true`) |
+| tooluniverse-gateway | H5 | `mcp/servers/tooluniverse-gateway/tool-gateway.js` | `test/contract-governance-tooluniverse.js` | REFUSED; native `PATIENT_ELIGIBLE=false`; executor disabled |
+
+All five route through the shared seam `portal/harvested-release.js` → `releaseToPatient()` (RETAIN C9). The gate is fail-closed: it refuses without a clinician-attested `VerificationGateRecord` on the exact `candidate_output_hash`, refuses outside a live-enforced context, and re-derives the hash it trusts. **Nothing is `patient_eligible:true`; no patient path is opened.**
+
+> **H7 (2026-07-07) — governance wired across every harvested path; RETAIN gate untouched.** H7 WIRES, it does not
+> rewrite: `portal/verification-gate.js` and `verification/audit-store.js` are **byte-unchanged**. Each harvested
+> adapter gained one thin `governedRelease(output)` export that defers to the shared fail-closed seam
+> (`portal/harvested-release.js` → `releaseToPatient()`). Every path is REFUSED without a `VerificationGateRecord`
+> bound to the exact `candidate_output_hash`; opens ONLY with a **synthetic** attested record on the exact hash
+> (tested — no real clinician sign-off, no Portal UI exists); and **no path flips `patient_eligible:true`**. The
+> audit ledger (C5) is confirmed to record every harvested-path run metadata-only / PHI-free (asserted, internals
+> unmodified). H6's `conflict_flagged` was **NOT** wired into any release decision (future plan-gated). **The
+> four-part patient-eligibility precondition:** MIRAGE-passed (H3) AND governance-gated (H7) AND corpus attested
+> (§7) AND a real Portal UI gate record exists (M5 remainder) — H7 delivers exactly **one** (governance). The gate
+> stays fail-closed; nothing patient-facing is opened. H7 is the last FLOW milestone.
+
 ## Future / optional / dropped
 
 | Ref | Repo | Verdict | Note |

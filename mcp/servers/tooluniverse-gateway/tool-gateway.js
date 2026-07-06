@@ -35,6 +35,7 @@
  */
 import { normaliseMode } from "../../../verification/mode.js";
 import { assertEgressAllowed } from "./egress-allowlist.js";
+import { releaseHarvestedOutput } from "../../../portal/harvested-release.js";
 
 /** Self-identify via `upstream` — receipt.schema.json's `server` enum lists only the
  *  7 original servers, so a harvested server omits `server` and names itself here
@@ -388,4 +389,17 @@ export async function executeTool({ name, args = {}, input = {}, env, defaultMod
     // Fail-safe: any transport error → no fabrication, error-carrying receipt.
     return { ok: false, result: null, patient_eligible: PATIENT_ELIGIBLE, receipt: makeReceipt(route.mode, { requested_tool: name, error: { code: "TOOL_CALL_THREW", message: String(err && err.message || err).slice(0, 200), retryable: true } }) };
   }
+}
+
+/**
+ * GOVERNANCE SEAM (FLOW_PLAN H7 / G7). ToolUniverse tool output (H5) is
+ * patient_eligible:false and executor-disabled; governance is the additional
+ * release precondition. Any patient-directed release built on gateway output
+ * MUST route here — it defers to the fail-closed portal gate (ARCH_PLAN C9) and
+ * REFUSES without a clinician-attested VerificationGateRecord on the exact output
+ * hash. Opens no patient path; never sets patient_eligible; unreached today.
+ * @param {string} output - the exact tool-derived text a patient-facing build would release
+ */
+export function governedRelease(output) {
+  return releaseHarvestedOutput("tooluniverse", output);
 }

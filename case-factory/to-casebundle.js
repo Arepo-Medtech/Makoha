@@ -22,6 +22,8 @@
  * placeholders) by the completion step, never copied from an existing sealed node.
  */
 
+import { releaseHarvestedOutput } from "../portal/harvested-release.js";
+
 const CASEID_RE = /^SPEC-[A-Z]{2,6}-0[1-7]-[0-9]{5}$/;
 
 const DIFFICULTY_CODE = {
@@ -221,4 +223,18 @@ export function toCaseSeed({ fhir, narrative, profile }) {
     "02_conversational_policy": node02,
   };
   return { caseseed };
+}
+
+/**
+ * GOVERNANCE SEAM (FLOW_PLAN H7 / G7). The case factory is synthetic-only and
+ * non-patient-facing by construction (synthetic:true; feeds the eval corpus, not
+ * a patient). This seam makes that guarantee mechanical: any patient-directed
+ * release built on case-derived output MUST route through the fail-closed portal
+ * gate (ARCH_PLAN C9) and REFUSES without a clinician-attested
+ * VerificationGateRecord on the exact output hash. Opens no patient path; never
+ * sets patient_eligible; unreached today.
+ * @param {string} output - the exact case-derived text a patient-facing build would release
+ */
+export function governedRelease(output) {
+  return releaseHarvestedOutput("case-factory", output);
 }
