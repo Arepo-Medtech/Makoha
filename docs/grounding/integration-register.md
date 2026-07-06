@@ -126,10 +126,22 @@ input-gated on Java; the *trusted* distribution moves only after clinician attes
 
 | Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
 |---|---|---|---|---|---|
-| 5 | ahmadvh/octochains | REFERENCE · PATTERN-LIFT | ? (pending) | `verification/conflict-audit.js` | no — **owner-gated** |
-| 3 | souvikmajumder26/Multi-Agent-Medical-Assistant | REFERENCE | ? (pending) | (design ref) | no |
-| 2 | Azure-Samples/healthcare-agent-orchestrator | REFERENCE | MIT? (pending) | (design ref) | no |
-| 4 | The-Swarm-Corporation/MedicalCoderSwarm | REFERENCE | ? (pending) | (shape ref) | no |
+| 5 | ahmadvh/octochains | **REFERENCE · methodology-only** ⇩ | ? (pending) | — (first-party build at `verification/conflict-audit.js`) | no |
+| 3 | souvikmajumder26/Multi-Agent-Medical-Assistant | REFERENCE | ? (pending) | (design ref — read at H6, prose only) | no |
+| 2 | Azure-Samples/healthcare-agent-orchestrator | REFERENCE | MIT? (pending) | (design ref — read at H6, prose only) | no |
+| 4 | The-Swarm-Corporation/MedicalCoderSwarm | REFERENCE | ? (pending) | (shape ref — not read at H6) | no |
+
+> **H6 (2026-07-07) — D-1 ruled; conflict-audit built first-party.** The operator's D-1 ruling: KEEP the
+> tested trunk spine + verifier (ARCH_PLAN RETAIN); LIFT octochains' parallel-expert conflict-audit
+> PATTERN as a trust mechanism; do NOT fork or adopt a new orchestrator. #5's licence is pending, so —
+> same as #20 (MIRAGE) and the fasten-sources precedent — its **code was not wrapped, vendored, forked,
+> copied, or even read**. `verification/conflict-audit.js` is a **FIRST-PARTY clean-room build** from the
+> published parallel-expert-consensus methodology; #5's `target_module` is nulled in the manifest so the
+> first-party file can never read as a harvest target. The mechanism is **additive-only**: it surfaces
+> agreement/disagreement between independent expert opinions as a structured ConflictRecord, never gates,
+> never routes, and can never override a HARD_FAIL or BLOCKED_NO_PROOF (proven by
+> `test/contract-conflict-audit.js`). #3/#2 were read as design references (README prose, no code); #4
+> was not read (demo-grade shape reference only).
 
 ## Step 7 — Governance (cross-cutting; builder-owned)
 
