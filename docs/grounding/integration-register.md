@@ -1,0 +1,113 @@
+# Breath-Ezy Harvest Integration Register
+
+**Document ID:** `heydoc-grounding:integration-register:2026-07`
+**Version:** 1.0.0
+**Generated:** 2026-07-06 (FLOW_PLAN milestone H0)
+**Source of truth:** [`integration/harvest-manifest.json`](../../integration/harvest-manifest.json) — this Markdown is the **human-readable mirror**; when the two disagree, the JSON manifest wins and this file is the defect (same rule as the `.claude/` derived docs). The gate that enforces the manifest is [`scripts/check-licence-clearance.mjs`](../../scripts/check-licence-clearance.mjs) (`npm run licence:check`).
+
+This register is the plug-in artifact of FLOW_PLAN §6.2 — the allow-list of external build-elements considered for harvest into `kenleefreo/breath-ezy`, keyed by the Build-Elements Register `Ref`. **Being on this list is a prerequisite for harvesting a repo, not authorisation to harvest it** — every wrap/fork/pattern-lift is separately plan-gated per `CLAUDE.md`.
+
+> **H0 authorises NO integration code.** This milestone builds the licence + identity gate so that H1+ harvest has something to pass. Nothing here is wired yet.
+
+---
+
+## Licence floor (enforced mechanically by `licence:check`)
+
+The gate BLOCKS (fails CI) on any of:
+
+1. **Copyleft in a shippable module** — an AGPL/GPL SPDX identifier or licence header under a shippable path (`mcp/servers`, `integration/record-sources`, `portal`, `verification`). AGPL/GPL elements are **reference-only** and their code may never enter a shippable path.
+2. **Dropped/deferred repo pulled in** — a DROP or DEFER repo named as a dependency, or a harvested integration present at a DROP/DEFER target.
+3. **Unresolved licence on a shippable path** — a `pending`-licence repo wrapped into a shippable target before its licence is cleared on-repo.
+4. **MedRAG conflation** — `gzxiong/MedRAG` (the MIRAGE harness, #20) must stay distinct from `SNOWTEAM2023/MedRAG` (reference only).
+
+Non-blocking **WARN**: an ADOPT repo not yet commit-pinned. Pinning an exact commit is mandatory when a repo is actually wrapped (H1+); at H0 the ADOPT rows are intentionally unpinned (`pin_status: unpinned_pending_adoption`) — no commit SHA is fabricated.
+
+**Licence-clearance status legend:** `verified` (licence confirmed) · `pending` (Confirm on-repo before wrapping) · `copyleft_reference_only` (AGPL/GPL — pattern-lift only, owner ruling required) · `first_party`.
+
+---
+
+## Step 1 — Patient-record spine
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| 16 | wso2/fhir-mcp-server | ADOPT · WRAP | Apache-2.0? (**pending**) | `mcp/servers/fhir-broker/` (override) | yes |
+| dir | fastenhealth/fasten-sources | ADOPT · WRAP | Apache-2.0 (verified) | `integration/record-sources/` | yes |
+| dir | fastenhealth/fasten-onprem | REFERENCE | GPL-3.0 (**copyleft ref-only**) | — | no |
+| 13 | open-health | REFERENCE · PATTERN-LIFT | AGPL-3.0 (**copyleft ref-only**) | `portal/patient-ingest/` (pattern) | no |
+| 6 | StanfordBDHG/HealthGPT | REFERENCE · PATTERN-LIFT | MIT? (pending) | `portal/` | no |
+
+## Step 2 — Evidence taps + trust gate
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| 1 | anthropics/healthcare | ADOPT · WRAP | first-party | `mcp/servers/docs/` (override) + `evidence-cms/` | yes |
+| 14 | Cicatriiz/healthcare-mcp-public | ADOPT · WRAP | MIT (verified) | `mcp/servers/evidence-fda-pubmed/` | yes |
+| 15 | JamesANZ/medical-mcp | ADOPT · WRAP | MIT (verified) | `mcp/servers/evidence-drug-guideline/` | yes — **ADVISORY, never a dose** |
+| 18 | connerlambden/bgpt-mcp | ADOPT · WRAP | ? (**pending**) | `mcp/servers/evidence-graded/` | yes |
+| 8 | Aperivue/medsci-skills | ADOPT · PATTERN-LIFT | MIT (verified) | `verification/integrity-detectors/` | yes (our code; no runtime dep) |
+| 9 | 2023Anita/clinical-ai-agent-skills | REFERENCE · PATTERN-LIFT | ? (pending) | `docs/grounding/guardrail-spec.md` | no |
+
+## Step 3 — Prove it (benchmark)
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| 20 | **gzxiong/MedRAG** (MIRAGE) | ADOPT · BENCHMARK | ? (pending) | `benchmark/mirage/` | no (offline eval) |
+| comp | **SNOWTEAM2023/MedRAG** | REFERENCE | ? (pending) | — (reading only) | no |
+| 21 | asanmateu/medgraph-ai | REFERENCE · PATTERN-LIFT | ? (pending) | `mcp/servers/knowledge/graph/` (pattern) | no |
+| org | mims-harvard/PrimeKG | ADOPT · INTEGRATE | MIT (verified) | `mcp/servers/knowledge/primekg/` | yes |
+
+> **G5 disambiguation pin:** the two MedRAG rows carry distinct URLs and cross-reference each other via `do_not_conflate_with`. The gate fails if they are ever collapsed.
+
+## Step 4 — Case factory (synthetic-only, offline)
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| dir | synthetichealth/synthea | ADOPT · WRAP | Apache-2.0 (verified) | `case-factory/synthea/` | no |
+| fork | FHOOEAIST/synthea | ADOPT · FORK | Apache-2.0 (verified) | `case-factory/synthea-au/` | no |
+| sib | synthetichealth/chatty-notes | ADOPT · WRAP | Apache-2.0 (verified) | `case-factory/narratives/` | no |
+
+## Step 5 — Capability expansion
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| 28 | mims-harvard/ToolUniverse | ADOPT · WRAP | Apache-2.0 (verified) | `mcp/servers/tooluniverse-gateway/` | yes — **executor DISABLED; pin ≥v1.3.0** |
+| comp | mims-harvard/TxAgent | DEFER | ? (pending) | — | no |
+| org | mims-harvard/MedLog | REFERENCE · PATTERN-LIFT | ? (pending) | `verification/audit-store.js` (pattern) | no |
+
+## Step 6 — Reasoning topology (pick ONE; owner-gated, D-1)
+
+| Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
+|---|---|---|---|---|---|
+| 5 | ahmadvh/octochains | REFERENCE · PATTERN-LIFT | ? (pending) | `verification/conflict-audit.js` | no — **owner-gated** |
+| 3 | souvikmajumder26/Multi-Agent-Medical-Assistant | REFERENCE | ? (pending) | (design ref) | no |
+| 2 | Azure-Samples/healthcare-agent-orchestrator | REFERENCE | MIT? (pending) | (design ref) | no |
+| 4 | The-Swarm-Corporation/MedicalCoderSwarm | REFERENCE | ? (pending) | (shape ref) | no |
+
+## Step 7 — Governance (cross-cutting; builder-owned)
+
+Governance is not harvested — it is ARCH_PLAN C9/M5 (`portal/verification-gate.js`, already built) + C5 audit ledger. Every harvested path routes through the portal gate before any patient-adjacent wiring (H7). MedLog (#org) informs the audit pattern only.
+
+## Future / optional / dropped
+
+| Ref | Repo | Verdict | Note |
+|---|---|---|---|
+| 23 | sunlabuiuc/PyHealth | DEFER | Predictive modelling; MIT. Post-spine + governance. |
+| 22 | Project-MONAI/MONAI | DEFER | Imaging DL; Apache-2.0. Only if imaging becomes a pillar. |
+| 19 | fulcradynamics/fulcra-context-mcp | DEFER | Commercial backend = lock-in; prefer open ingest. |
+| 11 | ajhcs/healthcare-agents | REFERENCE | US 42 CFR/CMS; revenue-cycle structure only. |
+| comp | ajhcs/healthcare-data-mcp | REFERENCE | Market analytics, not clinical. |
+| dir | apache/ctakes | REFERENCE | Clinical NLP; **re-verify live** before reliance. |
+| dir | wardle/hermes | REFERENCE | SNOMED server; **re-verify live** before reliance. |
+| dir | tidepool-org | DEFER | Diabetes/CGM vertical only; **re-verify live**. |
+| 25 | kakoni/awesome-healthcare | REFERENCE | Reading map (CC0). |
+| 26 | medtorch/awesome-healthcare-ai | REFERENCE | Reading map (CC0). |
+| 17 | sunanhe/awesome-medical-mcp-servers | REFERENCE | MCP-server discovery. |
+| 10 | Rajathbharadwaj/voice-agent | **DROP** | Unverified — use ElevenLabs / Web Speech API. |
+| 7 | tmc/DoctorGPT | **DROP** | Inactive fork. |
+| 12 | cittaverse | **DROP** | Early-stage; parked. |
+| 24 | taskade/taskade | **DROP** | No clinical utility. |
+| 27 | nowork-studio/awesome-ai-startups | **DROP** | No clinical value. |
+
+---
+
+*Kept in sync with `integration/harvest-manifest.json` as elements land. Any divergence is a defect in this file, not the manifest.*
