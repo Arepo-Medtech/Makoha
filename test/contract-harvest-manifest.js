@@ -184,7 +184,14 @@ const baseManifest = (elements) => ({
   const res = runCheck({ repoRoot: REPO_ROOT, manifest: realManifest });
   check("real manifest: valid + PASS", res.ok === true && !res.schemaError);
   check("real manifest: 40+ elements", res.summary && res.summary.elements >= 40);
-  check("real manifest: exactly 2 pending shippable (wso2 #16, bgpt #18)", res.summary && res.summary.pendingShippable === 2);
+  // H1 (2026-07-06): wso2 #16 verified on-repo (Apache-2.0, pinned); fasten-sources
+  // downgraded to non-shippable REFERENCE (upstream private, no licence detected).
+  // Remaining pending shippable: bgpt #18 only.
+  check("real manifest: exactly 1 pending shippable (bgpt #18)", res.summary && res.summary.pendingShippable === 1);
+  const wso2 = realManifest.elements.find((e) => e.ref === "16");
+  check("real manifest: wso2 #16 verified + commit-pinned before wrap (G13)", wso2 && wso2.licence_status === "verified" && wso2.pin_status === "pinned" && /^[0-9a-f]{40}$/.test(wso2.pinned_commit || ""));
+  const fasten = realManifest.elements.find((e) => e.ref === "dir-fasten-sources");
+  check("real manifest: fasten-sources never shippable (no licence detected upstream)", fasten && fasten.shippable === false && fasten.verdict === "REFERENCE" && fasten.mode === "PATTERN-LIFT");
 }
 
 if (errors.length) {
