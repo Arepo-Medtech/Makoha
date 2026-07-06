@@ -118,9 +118,9 @@ input-gated on Java; the *trusted* distribution moves only after clinician attes
 
 | Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
 |---|---|---|---|---|---|
-| 28 | mims-harvard/ToolUniverse | ADOPT · WRAP | Apache-2.0 (verified) | `mcp/servers/tooluniverse-gateway/` | yes — **executor DISABLED; pin ≥v1.3.0** |
+| 28 | mims-harvard/ToolUniverse | ADOPT · WRAP | Apache-2.0 (verified) | `mcp/servers/tooluniverse-gateway/` | **WRAPPED H5** — pinned **v1.3.1 `9b7ff91d`** (RCE floor v1.3.0, enforced by licence:check BLOCK 5); compact-mode; code-executor + agentic/loader/compose families DISABLED + proven UNREACHABLE (default-deny allow-list); own auth; egress bounded; runtime input-gated |
 | comp | mims-harvard/TxAgent | DEFER | ? (pending) | — | no |
-| org | mims-harvard/MedLog | REFERENCE · PATTERN-LIFT | ? (pending) | `verification/audit-store.js` (pattern) | no |
+| org | mims-harvard/MedLog | REFERENCE · PATTERN-LIFT | ? (pending) | `verification/audit-store.js` (pattern) | no — STUDIED at H5 (audit pattern only; ledger untouched) |
 
 ## Step 6 — Reasoning topology (pick ONE; owner-gated, D-1)
 

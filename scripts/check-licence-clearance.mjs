@@ -20,6 +20,11 @@
  *   BLOCK 4  MedRAG conflation — gzxiong/MedRAG (MIRAGE harness, #20) and
  *            SNOWTEAM2023/MedRAG (reference) must both exist, carry distinct
  *            URLs, and cross-reference via do_not_conflate_with (G5).
+ *   BLOCK 5  RCE-floor pin — a row that declares a security-patch floor
+ *            (rce_floor) must be commit-pinned and carry a pinned_version at or
+ *            above the floor (semver-gte), so a later bump can never silently
+ *            drop below a security patch. ToolUniverse #28: floor v1.3.0, the
+ *            release that patched the unauthenticated code-executor RCE (G2).
  *
  * Plus manifest self-validation (zod): every row has the required shape; an
  * ADOPT row must carry a resolvable URL; a shippable row must name a target.
@@ -72,6 +77,13 @@ const ElementSchema = z
     governance_gate: z.string().nullable(),
     adoption_step: z.union([z.number().int(), z.string()]).nullable(),
     do_not_conflate_with: z.string().optional(),
+    // RCE-floor pin (FLOW_PLAN H5, G2): a row that adopts a package with a known
+    // security-patch release floor declares rce_floor (the minimum safe version)
+    // and pinned_version (the version its pinned_commit corresponds to). BLOCK 5
+    // enforces pinned_version >= rce_floor so a later bump can never silently drop
+    // below the patch. Optional — only rows with a security floor carry them.
+    pinned_version: z.string().optional(),
+    rce_floor: z.string().optional(),
     notes: z.string().optional(),
   })
   .strict()
@@ -109,6 +121,41 @@ const ManifestSchema = z
   .strict();
 
 const repoToken = (repo) => repo.split("/").pop().toLowerCase();
+
+/**
+ * Parse a dotted version ("v1.3.1", "1.0.11.2") into a numeric segment array.
+ * Strips a leading "v"; a non-numeric or empty segment yields NaN (→ invalid).
+ * Returns null if the string has no numeric segments at all.
+ */
+function parseVersion(v) {
+  const segs = String(v == null ? "" : v).trim().replace(/^v/i, "").split(".");
+  if (!segs.length || segs[0] === "") return null;
+  const nums = segs.map((s) => Number(s));
+  if (nums.some((n) => !Number.isInteger(n) || n < 0)) return null;
+  return nums;
+}
+
+/**
+ * Semver-style ordered compare of two parsed version arrays.
+ * Missing trailing segments count as 0 (1.3 == 1.3.0). Returns -1|0|1.
+ */
+function compareVersions(a, b) {
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+/** True iff version `v` is >= floor `f`; false if either is unparseable. */
+export function versionMeetsFloor(v, f) {
+  const pv = parseVersion(v);
+  const pf = parseVersion(f);
+  if (!pv || !pf) return false;
+  return compareVersions(pv, pf) >= 0;
+}
 
 /**
  * Run the gate against a manifest + a repo root. Pure (no process.exit, no
@@ -244,6 +291,31 @@ export function runCheck({ repoRoot, manifest }) {
     }
   }
 
+  // ── BLOCK 5: RCE-floor pin enforcement (FLOW_PLAN H5, G2) ───────────────────
+  // A row that declares a security-patch floor (rce_floor) MUST be commit-pinned,
+  // carry a parseable pinned_version, and satisfy pinned_version >= rce_floor.
+  // This makes the floor mechanical: a later bump to a commit whose version drops
+  // below the patched release fails CI. (ToolUniverse #28: floor v1.3.0, the
+  // release that patched the unauthenticated python_code_executor RCE.)
+  for (const e of elements) {
+    if (e.rce_floor === undefined) continue;
+    if (e.pin_status !== "pinned" || !e.pinned_commit) {
+      fail(`BLOCK 5 (RCE-floor pin): ${e.repo} (#${e.ref}) declares rce_floor=${e.rce_floor} but is not commit-pinned — a security-floor row must pin an exact commit (G2).`);
+      continue;
+    }
+    if (e.pinned_version === undefined || parseVersion(e.pinned_version) === null) {
+      fail(`BLOCK 5 (RCE-floor pin): ${e.repo} (#${e.ref}) declares rce_floor=${e.rce_floor} but has no parseable pinned_version — cannot prove the pin is at/above the floor (G2).`);
+      continue;
+    }
+    if (parseVersion(e.rce_floor) === null) {
+      fail(`BLOCK 5 (RCE-floor pin): ${e.repo} (#${e.ref}) has an unparseable rce_floor "${e.rce_floor}" (G2).`);
+      continue;
+    }
+    if (!versionMeetsFloor(e.pinned_version, e.rce_floor)) {
+      fail(`BLOCK 5 (RCE-floor pin): ${e.repo} (#${e.ref}) pinned_version ${e.pinned_version} is BELOW the security floor ${e.rce_floor} — a pin below the patched release re-opens the RCE (G2). Bump the pin to a release at/above ${e.rce_floor}.`);
+    }
+  }
+
   // ── WARN: ADOPT rows not yet commit-pinned (mandatory at adoption, not H0) ──
   for (const e of elements) {
     if (e.verdict === "ADOPT" && e.pin_status === "unpinned_pending_adoption") {
@@ -261,6 +333,9 @@ export function runCheck({ repoRoot, manifest }) {
     shippable: elements.filter((e) => e.shippable).length,
     pendingShippable: elements.filter((e) => e.shippable && e.licence_status === "pending").length,
     shippablePaths: config.shippable_paths,
+    rceFloors: elements
+      .filter((e) => e.rce_floor !== undefined)
+      .map((e) => `${e.repo}@${e.pinned_version || "unpinned"} (floor ${e.rce_floor})`),
   };
   return { ok: failures.length === 0, failures, warnings, schemaError: false, summary };
 }
@@ -293,6 +368,7 @@ function main() {
   console.log(`  elements:            ${summary.elements} (${summary.adopt} ADOPT · ${summary.reference} REFERENCE · ${summary.defer} DEFER · ${summary.drop} DROP)`);
   console.log(`  shippable targets:   ${summary.shippable} (${summary.pendingShippable} still licence-pending — blocked from shipping until cleared)`);
   console.log(`  shippable paths:     ${summary.shippablePaths.join(", ")}`);
+  if (summary.rceFloors.length) console.log(`  RCE-floor pins:      ${summary.rceFloors.join(" · ")}`);
   console.log(`  warnings:            ${warnings.length}`);
   for (const w of warnings) console.log(`  [warn] ${w}`);
   console.log(`  blocks:              ${failures.length}`);

@@ -4,6 +4,32 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FLOW_PLAN Milestone H5 — Capability expansion: ToolUniverse (2026-07-07)
+
+**Status:** off `main` @ branch `h5-tooluniverse-gateway`. `npm test` **28/28** green (incl. new `contract-tooluniverse-gateway`); `npm run licence:check` PASS (0 blocks; **RCE-floor BLOCK 5 armed**); `npm run verification` Pass:true; `npm run eval:cases` PASS; `npm run bench:mirage` PASS; `npm run trunk:stub:all` 9/9. Exit state met: ToolUniverse (#28, Apache-2.0, pinned **v1.3.1 `9b7ff91d`** ≥ RCE floor v1.3.0) wrapped as a compact-mode gateway; the code executor **AND** the wider agentic/loader/compose families are **disabled and proven unreachable**; own auth; egress bounded and enforced; runtime input-gated (fail-safe). **The highest security surface in the harvest.**
+
+**Model routing (operator override):** security-boundary design (executor unreachability, auth, egress, pin floor) — Fable 5; gateway wrap + tests — Opus 4.8.
+
+### Security-boundary hardening (adversarial review → all fixed)
+A single full-codebase adversarial security sub-agent (one at a time, per the rule) — plus an independent check against the pinned v1.3.1 source (2620 tools) — found the initial 3-name deny-list insufficient. Fixes, all locked by the contract test:
+- **F1 (Critical) — indirect code execution bypassed the deny-list.** `MCPAutoLoaderTool` (spawns other MCP servers), `AgenticTool`/`SmolAgentTool`/`CallAgent`, `ComposeTool`/`*Pipeline`/`ToolGraph*`, `Replicate_run_prediction`, and the meta `ExecuteTool` reach the subprocess under a name blocklist. **Fix: DEFAULT-DENY** — `execute_tool` forwards ONLY vetted retrieval tools; executors + families + any un-vetted name are refused before any forward (proven by a spy asserted never-called even with valid auth + live context + the name force-allow-listed). Deny-list/shape-guard broadened as a belt behind it.
+- **F2 (Critical) — egress allow-list was a dead control** (imported by nothing but its test). **Fix:** egress ENFORCED on the forward path — each vetted tool declares its upstream host, refused (`EGRESS_BLOCKED`/`EGRESS_UNKNOWN_HOST`) if off the declared allow-list; asserted THROUGH `executeTool`.
+- **F3 (High) — live-as-mock:** mock context + runtime present forwarded a real call stamped `mode:"mock"` (the ledger would mis-classify it synthetic). **Fix:** dev/mock NEVER forwards to a real subprocess; execution requires an explicit live context.
+- **F4 (Low) — `HEYDOC_MODE_DEFAULT=staging/production` threw at the zod enum.** **Fix:** `MODE` normalised through `verification/mode.js`.
+- **Confirmed sound:** named-executor deny-list vs evasion (case/separator/unicode/zero-width), gate ordering (deny before auth before forward), auth (no unauthenticated path), `normaliseMode` fail-safe, and **BLOCK 5 semver** (numeric not lexical; prerelease → fail-closed; floor cannot be silently dropped).
+
+### Change
+- **`mcp/servers/tooluniverse-gateway/{tool-gateway,launch-spec,egress-allowlist,index}.js + fixtures/tool-catalogue.json + README.md` [NEW]** — the compact-mode gateway. `tool-gateway.js` is the pure, unit-tested security core (default-deny, hard-deny families, auth, routing, egress); `launch-spec.js` builds the SMCP launch spec (compact_mode + full executor/family exclude) + locates the runtime (null → fail-safe); `egress-allowlist.js` is the default-deny host boundary; `index.js` exposes the ≤5 core tools; the fixture drives discovery deterministically while the runtime is absent (metadata only, never a fabricated result).
+- **`test/contract-tooluniverse-gateway.js` [NEW] + `package.json` [~]** — wired into `npm test` (28th suite). Adversarial: executor + family unreachable (incl. evasion variants, force-allow-listed, live+auth); default-deny; egress through `executeTool`; auth; no live-as-mock; Receipt emitted; `patient_eligible:false`; fail-safe absence.
+- **`scripts/check-licence-clearance.mjs` [~] + `test/contract-harvest-manifest.js` [~]** — new **BLOCK 5** (RCE-floor pin): a row declaring `rce_floor` must be commit-pinned with a `pinned_version` ≥ floor (semver-gte, `versionMeetsFloor`). A sub-floor bump fails CI. Contract test covers at/above/equal/below-floor, unpinned, and no-`pinned_version`.
+- **`integration/harvest-manifest.json` [~]** — #28 pinned `9b7ff91d` (v1.3.1, Apache-2.0 re-verified on-repo), `pin_status: pinned`, added `pinned_version: v1.3.1` + `rce_floor: v1.3.0`.
+- **`mcp/mcpServers.template.json` [~]** — `tooluniverse-gateway` launch entry (`HEYDOC_TOOLUNIVERSE_CMD` empty → input-gated; auth + API token as **secrets-manager references**, never literals).
+- **Registers [~]** — completeness-register: H5 scoped re-scan + new `tooluniverse-gateway` (PARTIAL) / `tooluniverse-runtime-input-gated` (PARTIAL); gap-register **R-30** (High); integration-register Step 5 #28 → WRAPPED.
+
+**Honest exit / input-gated remainder.** No Python runtime here → live tool execution is input-gated (HEYDOC_TOOLUNIVERSE_CMD + keys + deploy egress policy), the subprocess `forward` seam is intentionally not wired (live path fail-safes), retrieval tools stay MIRAGE-gated (H3) + governance-gated (H7), `patient_eligible:false`. MedLog studied for the audit pattern only — no WORM built, `audit-store.js` untouched. **Structural note (review):** BLOCK 5 enforces the version floor, not the tool-surface diff — a future pin bump must re-reconcile the allow-list against the new tool manifest. **STOP condition honoured:** no path makes the executor reachable; the contract test going RED here is the stop signal.
+
+---
+
 ## FLOW_PLAN Milestone H4 — Case factory (2026-07-06)
 
 **Status:** off `main` @ `fcf42e5` (branch `feat/flow-h4-case-factory`). `npm test` **27/27** green (incl. new `contract-case-factory`); `npm run verification` Pass:true; `npm run trunk:stub:all` 9/9; `npm run licence:check` PASS (0 blocks; the 3 synthea repos no longer warn — pinned); `npm run eval:cases` PASS; `npm run bench:mirage` PASS. Exit state met: synthea + synthea-au (AU Core conformance-gated) + chatty-notes wrapped **out-of-process** (no Java vendored, fail-safe input-gated); the two-phase shaper emits contract-valid bundles that flow **through** the existing ingest (firewall + `--reseq` intact); placeholder 10–13 authored **from seed** (`clinician_reviewed:false`), never copied; synthetic-only asserted; a demo complex case moved the **raw** distribution (complex band 20→21).

@@ -17,6 +17,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **H4 scoped re-scan** _(2026-07-06, FLOW_PLAN milestone H4 — Case factory)_ — **Case-count reconciled: the M0 line below ("52 cases") is STALE.** The live tree now holds **303 case dirs** (302 before H4 + 1 admitted this milestone): 301 ingested-with-manifest + the manifest-less reference `SPEC-CARD-04-00001`. Raw difficulty bands 01=148 / (02+03+04)=134 / (05+06+07)=21 ≈ **49 / 44 / 7**; only ~52 are clinician-attested (the *trusted* set), the rest `clinician_reviewed:false`. Built the case factory: three generators (synthea #dir, synthea-au #fork, chatty-notes #sib) **re-verified Apache-2.0 + pinned**, wrapped as **out-of-process CLI seams** (`case-factory/{synthea,synthea-au,narratives}/`, no Java vendored, fail-safe input-gated); the **shaper** `case-factory/to-casebundle.js` + **completion** `complete-scoring-nodes.js` (two-phase, CONTRACT §5) emit a contract-valid `.casebundle.json` that flows **through** the existing `cases:ingest` (firewall + `--reseq` + honesty gate untouched). Proven by `test/contract-case-factory.js` (0 problems/0 leaks; AU Core conformant; `synthetic:true`; `clinician_reviewed:false`; firewall fail-closed; never writes `data/cases/` directly; never reads a sealed 10–13 node). CONTRACT §6 drift corrected (`files[].node`→`path`, the tool's key). Demo case admitted (`SPEC-CARD-06-00000`, unreviewed) lifting complex band 20→21 (raw only — excluded from the trusted set until attested). New findings: `case-factory-shaper` (PARTIAL), `synthea-generators-input-gated` (input-gated, Medium). C22 unsettled (target 0.3.0 vs vendored 2.0.1-ci — flagged, not picked). **No BLIND_STUB/DEAD_END opened**: generators are producers with a fixture+contract-test consumer; bundles route only through ingest; scoring nodes 10–13 never opened. 27 suites + verification + trunk:stub:all + licence:check + eval:cases + bench:mirage green.
 
+**H5 scoped re-scan** _(2026-07-07, FLOW_PLAN milestone H5 — Capability expansion: ToolUniverse)_ — Wrapped #28 mims-harvard/ToolUniverse (Apache-2.0, re-verified on-repo at v1.3.1) as `mcp/servers/tooluniverse-gateway/` in COMPACT-MODE (≤5 core tools; `execute_tool(name,args)→{result,receipt}`), the highest security surface in the harvest. **Executor DISABLED + proven UNREACHABLE, not just flagged.** An adversarial full-codebase security sub-agent (one at a time, per the rule) confirmed a 3-name deny-list is INSUFFICIENT — ToolUniverse v1.3.1 ships **2620 tools** including `MCPAutoLoaderTool` (spawns other MCP servers), `AgenticTool`/`SmolAgentTool`/`CallAgent`, `ComposeTool`/`*Pipeline`/`ToolGraph*`, `Replicate_run_prediction`, and the meta `ExecuteTool` that execute code indirectly or run autonomous loops and bypass a name blocklist (verified against the pinned source). Reworked to **DEFAULT-DENY**: `executeTool` forwards ONLY vetted retrieval tools; executors + the agentic/loader/compose families (`isHardDeniedTool`) + any un-vetted/unknown name are refused BEFORE any subprocess forward — the injected `forward` spy is asserted never-called even with valid auth on a live context AND the name force-added to the allow-list. Config layer: `compact_mode`+`exclude_tools` (launch-spec, pure, asserted to always carry the full executor+family exclude set). Own auth (no unauthenticated path; token = secrets-manager ref). **Egress allow-list now ENFORCED on the forward path** (review F2: it was previously imported by nothing but its test) — bounded to declared upstream hosts, default-deny. dev/mock **never** forwards to a real subprocess (review F3: no live-as-mock mislabel). Mode default normalised (review F4). Pinned **v1.3.1 `9b7ff91d`** ≥ RCE floor v1.3.0, enforced by `licence:check` **BLOCK 5** (semver-gte). MedLog #org **STUDIED** for the audit pattern only — NO WORM built, `verification/audit-store.js` UNTOUCHED (ARCH M8 seam already exists). NEW: `tooluniverse-gateway` (PARTIAL — mock/fixture built + contract-tested; live input-gated), `tooluniverse-runtime-input-gated` (PARTIAL, Medium). **No BLIND_STUB/DEAD_END opened**: the gateway is a producer with a contract-test consumer; retrieval tools MIRAGE-gated (`patient_eligible:false`); runtime absent → fail-safe `{available:false}` (never fabricated); no case node (10–13) ever opened. 28 suites + licence:check (BLOCK 5 armed) + verification + eval:cases + bench:mirage + trunk:stub:all green.
+
 **M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — _(case count SUPERSEDED by the H4 line above — 303 as of 2026-07-06.)_ Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
 
 ---
@@ -246,6 +248,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   gap_register_link: R-29
   status: resolved
   last_scanned: 2026-07-06
+```
+
+```md
+- id: tooluniverse-gateway
+  path: mcp/servers/tooluniverse-gateway/{index.js,tool-gateway.js,launch-spec.js,egress-allowlist.js,fixtures/tool-catalogue.json,README.md}, test/contract-tooluniverse-gateway.js, scripts/check-licence-clearance.mjs (BLOCK 5), integration/harvest-manifest.json (#28), mcp/mcpServers.template.json
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-07 (FLOW_PLAN H5, #28 mims-harvard/ToolUniverse, Apache-2.0 re-verified on-repo at v1.3.1, pinned 9b7ff91d, RCE floor v1.3.0). Compact-mode MCP gateway exposing ≤5 core tools (execute_tool/list_tools/find_tools/get_tool_info); the full 600-1000+ library is reached ONLY via execute_tool(name,args)→{result,receipt}. **Executor DISABLED + PROVEN UNREACHABLE.** Adversarial full-codebase security review (single sub-agent) found a 3-name deny-list insufficient — v1.3.1 ships 2620 tools incl. MCPAutoLoaderTool/AgenticTool/ComposeTool/Replicate_run/meta ExecuteTool that execute code indirectly or run autonomous loops (confirmed against pinned source). Reworked to DEFAULT-DENY (tool-gateway.js executeTool gate order: hard-deny executors+families → auth → allow-list → route → egress): only vetted retrieval tools forward; everything else refused before any subprocess forward — the injected forward spy is asserted NEVER called even with valid auth + live context + the name force-allow-listed. Config layer: buildLaunchSpec() compact_mode + exclude_tools (pure, asserted full executor+family exclude). Auth: no unauthenticated path (token=secrets-manager ref). Egress: ENFORCED on the forward path (review F2 fix — was a dead control), bounded to declared upstream hosts, default-deny. F3 fix: dev/mock NEVER forwards to a real subprocess (no live-as-mock). F4 fix: MODE normalised through mode.js. Pin floor enforced by licence:check BLOCK 5 (semver-gte; a sub-floor bump fails CI). Fail-safe absence: runtime absent → {available:false, input-gated}, never fabricated (H4). MedLog #org STUDIED (audit pattern only; audit-store.js UNTOUCHED). Contract-tested adversarially (test/contract-tooluniverse-gateway.js: executor+family unreachable incl. evasion variants; default-deny; egress through executeTool; auth; no live-as-mock; Receipt; patient_eligible:false; fail-safe absence). 28 suites + licence:check + verification + eval:cases + bench:mirage green.
+  blocks: nothing on the H5 path; live tool execution input-gated + MIRAGE/governance-gated
+  safety_class: degrades_safe (executor unreachable; default-deny; runtime absent → fail-safe; never mock-as-live)
+  invariant_exposure: augmented-not-autonomous + no-autonomous-execution (executor + agentic/loader/compose disabled + proven unreachable); licence floor (Apache-2.0 + RCE floor enforced); evidence-verified-trust (patient_eligible:false); no-fabricated-facts (verifier applies unchanged) — all held
+  risk: High
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — a Python runtime + runnable SMCP entrypoint (HEYDOC_TOOLUNIVERSE_CMD) + API keys via secrets manager + the deploy-time egress netns policy; then MIRAGE-gate retrieval tools (H3) + governance (H7) before any patient path. When the pin is bumped, re-reconcile the deny-list/allow-list against the new tool-surface diff (structural weakness noted by the review — BLOCK 5 enforces the version floor, not the tool-surface diff).
+  gap_register_link: R-30
+  status: in-progress
+  last_scanned: 2026-07-07
+```
+
+```md
+- id: tooluniverse-runtime-input-gated
+  path: mcp/servers/tooluniverse-gateway/launch-spec.js (locateToolUniverse), index.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: OPENED 2026-07-07 (FLOW_PLAN H5). No ToolUniverse Python runtime is present in the environment (ModuleNotFoundError; no pip). Per the H4/H1 precedent the gateway is built + contract-tested against a committed FIXTURE catalogue and FAIL-SAFES to {available:false, reason:"input-gated: ToolUniverse runtime absent"} — never fabricates a tool result, never half-initialises. Live execution is input-gated exactly like a live vendor connection: HEYDOC_TOOLUNIVERSE_CMD (a runnable SMCP entrypoint) + a Python runtime + API keys via the secrets manager + the deploy-time egress policy.
+  blocks: live scientific-tool execution at volume
+  safety_class: degrades_safe (fail-safe absence; synthetic fixture for discovery only; never presents absence as a result)
+  invariant_exposure: none while input-gated
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — provide a Python runtime + SMCP entrypoint + keys; wire the subprocess transport `forward` seam (currently omitted → live path fail-safes); then MIRAGE + governance before any patient use.
+  gap_register_link: none (Medium, non-blocking — mirrored via tooluniverse-gateway R-30)
+  status: in-progress
+  last_scanned: 2026-07-07
 ```
 
 ```md
@@ -994,5 +1030,7 @@ Already represented in `gap-register.md`: pharmacology, verification portal, inv
 **Promoted 2026-06-30 cycle (done):** `hashing-unimplemented` → R-16, `verifier-untested` → R-18, `verifier-weak-code-detection` → R-19, `receipt-store-append-only-unbuilt` → R-17.
 
 **Promoted M0 2026-07-03 cycle (done):** `routing-plan-next-trunks-dead-end` → R-24 (High), `mode-leakage-enforcelive` → R-25 (High), `context-injection-allowlist` → R-26 (High). Also mirrored: `case-set-underpopulated` → R-23 (Medium — mirrored to fix the dangling `gap-case-set` link, not a threshold promotion). Moves noted in `CHANGELOG.md`.
+
+**Promoted H5 2026-07-07 cycle (done):** `tooluniverse-gateway` → R-30 (High). Moves noted in `CHANGELOG.md`.
 
 *Source of truth: this register + the live scan. Derived quick-reference: `.claude/completeness-index.md`.*
