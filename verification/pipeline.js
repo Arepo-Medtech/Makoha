@@ -4,6 +4,7 @@
  * Otherwise uses stub retrieval. Produces context packet and runs verifier.
  */
 import { verify } from "./verifier.js";
+import { runDetectors, combineVerification } from "./integrity-detectors/index.js";
 import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
@@ -201,7 +202,7 @@ export async function runPipeline(options = {}) {
     mode: (r.receipt && r.receipt.mode) || r.mode || context_mode,
   }));
 
-  const verification = verify(candidate_output, {
+  const evidence = {
     citations,
     terminology_receipts: terminologyReceipts,
     terminology,
@@ -209,7 +210,16 @@ export async function runPipeline(options = {}) {
     hard_stop_receipt: hardStopReceipt,
     context_mode,
     receipt_modes,
-  });
+  };
+  // Step 5: the frozen verifier (C1) runs its five mechanical checks, then the
+  // #8-pattern integrity detectors STRENGTHEN the gate via a monotone AND
+  // (combineVerification). verifier.js is untouched; detectors can only add a
+  // failure, never rescue one. `results` stays the five checks so the
+  // VerificationReport contract is unchanged.
+  const verification = combineVerification(
+    verify(candidate_output, evidence),
+    runDetectors(candidate_output, evidence)
+  );
 
   return {
     run_id,

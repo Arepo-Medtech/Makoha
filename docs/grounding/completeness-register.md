@@ -11,6 +11,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Scan summary:** _(updated 2026-06-30)_ — **all 7 MCP servers now have a mock implementation**: `docs`/`identity-au`/`terminology` (stubs), and `pharmacology` (+ Trunk 8.0 firewall), `knowledge` (+ datasets), `fhir-broker` (+ Observation→parser), `messaging-geo` (never-sends) as mock cores. Remaining: live vendors/EHR + conformance, clinical sign-off on provisional datasets/ranges, Clinician Verification Portal, session persistence, terminology contract (ICD-10-AM/LOINC/PBS). _(Original Phase-0 line: 3 built / 4 unbuilt.)_ 9 trunk prompts + 9 stub agents + 9 cheat-sheets present. Verifier present; the hash/report path is now tested, the 5 checks themselves still untested (`verifier-untested`). ~~No code computes `candidate_output_hash`.~~ **Resolved 2026-06-30** — `candidate_output_hash` (SHA-256) computed in `verify()`, required in the report schema, gated by zod, and tested (`hashing-unimplemented` → COMPLETE). The VerificationReport edge is now zod-validated; GroundingPlan/ContextPacket/EvidenceNode edges remain ungated. Scoring-store firewall **not breached in code today** — no JS reads `data/cases` at all (case ingestion unbuilt).
 
+**H2 scoped re-scan** _(2026-07-06, FLOW_PLAN milestone H2 — Evidence taps, licence-clear subset)_ — Wrapped the three licence-clear evidence taps behind a common `evidence_search`→EvidenceNode contract (NO schema churn): #14→`evidence-fda-pubmed-server`, #15→`evidence-drug-guideline-server` (advisory, structural no-dose bar), #1→`docs-override-live` (contract-docs.js green unchanged). Pattern-lifted #8 detectors into `integrity-detectors` (COMPLETE — wired into pipeline.js via a monotone-AND that keeps `results[]` = the 5 verifier checks; verifier.js untouched). #9 → `guardrail-spec-written` (spec only, no code). #18 → `evidence-graded-deferred` (UNBUILT, deferred-on-licence; licence gate BLOCK 3 refuses it, contract-tested); `evidence-cms-deferred` (US, not built). All evidence paths are **mock-gated / `patient_eligible:false` pending H3/MIRAGE** (H3 blocked on #20's licence). Manifest pinned #14/#15/#1 to verified on-repo SHAs. **No BLIND_STUB or DEAD_END opened**: detectors are wired (real consumer); evidence servers are producers with a contract-test consumer + a future gated retrieval-wiring step (session-store precedent); mock never presented as live (blocked route). 26 suites + licence:check + verification + trunk:stub:all + eval:cases green.
+
 **M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
 
 ---
@@ -145,15 +147,134 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: integration/harvest-manifest.json (licence_status:pending rows)
   component_type: dependency
   state: PARTIAL
-  evidence: OPENED 2026-07-06 (FLOW_PLAN H0); NARROWED 2026-07-06 (FLOW_PLAN H1). H1 CLEARED wso2/fhir-mcp-server (#16): on-repo licence verified Apache-2.0 (release v0.10.0), pinned commit 6307fe71, licence_status pending->verified — it was wrapped at H1 as an external process behind mcp/servers/fhir-broker/live-backend.js and the licence gate BLOCK 3 stays green. REMAINING shippable pending: connerlambden/bgpt-mcp (#18 -> evidence-graded, H2). Non-shippable advisory-pending: 2023Anita #9 (spec), asanmateu/medgraph-ai #21 (pattern), gzxiong/MedRAG #20 (benchmark). SEPARATE H1 FINDING (register defect, resolved same step): dir-fasten-sources was mislabelled "Apache-2.0 verified" — the GitHub repo is now PRIVATE/404 and pkg.go.dev detects NO licence for any retained version; downgraded ADOPT->REFERENCE (shippable:false), and integration/record-sources/ rebuilt FIRST-PARTY clean-room from the public SMART App Launch spec (no Fasten code read/copied), so no licence obligation attaches.
-  blocks: H2 (bgpt-mcp evidence-graded)
+  evidence: OPENED 2026-07-06 (FLOW_PLAN H0); NARROWED 2026-07-06 (FLOW_PLAN H1); NARROWED AGAIN 2026-07-06 (FLOW_PLAN H2). H1 CLEARED wso2/fhir-mcp-server (#16): Apache-2.0 verified on-repo (v0.10.0), pinned 6307fe71, wrapped behind fhir-broker/live-backend.js; BLOCK 3 stays green. H2 CLEARED + PINNED the three licence-clear evidence taps: #14 Cicatriiz/healthcare-mcp-public (MIT re-verified on-repo, pinned 1c4c40c3 -> evidence-fda-pubmed), #15 JamesANZ/medical-mcp (MIT, pinned 13d2fddd -> evidence-drug-guideline), #1 anthropics/healthcare (first_party, pinned dff06a1b -> docs override marker) — all wrapped as external pinned processes (no vendored code), pin_status pinned, gate green. REMAINING shippable pending = ONLY connerlambden/bgpt-mcp (#18 -> evidence-graded): DEFERRED-ON-LICENCE at H2 (NOT wrapped, evidence-graded/ left unbuilt, licence_status kept 'pending' DELIBERATELY so licence gate BLOCK 3 refuses any premature wrap). A preliminary GitHub check 2026-07-06 reported SPDX MIT for #18 but that is NOT on-repo LICENSE clearance and #18 is out of H2 scope — adoption is its own plan-gated milestone. Non-shippable advisory-pending: 2023Anita #9 (guardrail-spec written H2, still spec-only), asanmateu/medgraph-ai #21 (pattern), gzxiong/MedRAG #20 (benchmark, H3). H1 register-defect (fasten-sources mislabel) stands resolved.
+  blocks: adoption of #18 evidence-graded (deferred-on-licence; H3-adjacent, own plan-gate)
   safety_class: none (gate holds them back)
   invariant_exposure: licence floor — no unresolved-licence dependency in a shippable path
   risk: High
   blocks_patient_facing: true
-  build_action: For bgpt-mcp #18 — verify the on-repo licence, record it + pin an exact commit, flip pending->verified before wrapping evidence-graded (H2). Non-shippable three are advisory until adoption.
+  build_action: For bgpt-mcp #18 — verify the on-repo LICENSE file, record it + pin an exact commit, flip pending->verified BEFORE wrapping evidence-graded (its own milestone; NOT H2). Non-shippable rows are advisory until adoption.
   gap_register_link: R-27
   status: open
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: evidence-fda-pubmed-server
+  path: mcp/servers/evidence-fda-pubmed/{index.js,live-backend.js}, mcp/servers/_shared/evidence-map.js, test/contract-evidence-fda-pubmed.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H2, #14 Cicatriiz/healthcare-mcp-public, MIT, pinned 1c4c40c3). Mock-core MCP server exposing evidence_search(query, filters?) -> { results[], receipt } over FDA/PubMed/ClinicalTrials/ICD-10 canned literature; each result maps onto the EXISTING evidence-node.schema.json (NO churn) via _shared/evidence-map.js toEvidenceNode (supports[].kind="live_data_receipt", ref=receipt.request_id). Common Receipt emitted; the receipt.schema.json `server` enum (7 servers only) is deliberately OMITTED, self-id via upstream. live-backend.js is an input-gated adapter seam to the external pinned #14 process (no vendored code); mock is default+rollback; a live context with no endpoint BLOCKS (mock-never-as-live, C16). Contract-tested (Receipt shape, EvidenceNode conformance via ajv, ref==request_id grounding, filter, patient_eligible:false). PARTIAL: live external process + API keys (input-gated) and the H3 MIRAGE gate before any patient use.
+  blocks: nothing on the H2 path; patient use blocked by H3 MIRAGE + governance (by design)
+  safety_class: degrades_safe (mock default; blocks in live w/o endpoint; never presents mock as live)
+  invariant_exposure: evidence-verified-trust (patient_eligible:false until MIRAGE); no-fabricated-facts (verifier applies unchanged)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — connect the external pinned #14 process + keys via secrets manager + egress allow-list; then H3 MIRAGE-gate before patient_eligible. Optional: wire evidence_search into the pipeline retrieval path (a future gated step) — today the consumer is the contract test.
+  gap_register_link: R-27
+  status: in-progress
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: evidence-drug-guideline-server
+  path: mcp/servers/evidence-drug-guideline/{index.js,live-backend.js}, mcp/servers/_shared/evidence-map.js, test/contract-evidence-drug-guideline.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H2, #15 JamesANZ/medical-mcp, MIT, pinned 13d2fddd) — ADVISORY ONLY. Mock-core evidence_search over drug-interaction/paediatric/guideline advisory evidence; each result maps to a conformant EvidenceNode. THE NO-DOSE STRUCTURAL BAR (G9 / §1 dose-source-singular), three fail-closed layers: (1) AdvisoryResultSchema is z.strict() with advisory:true REQUIRED and NO dose/dosage/strength/frequency field EXPRESSIBLE; (2) assertNoDose() throws on any dose-shaped key anywhere in a result OR its EvidenceNode before serialisation; (3) claims are advisory-framed, no dose value placed in a readable field. The pharmacology firewall (Trunk 8.0 PharmCheck) + verifier check 5 remain the ONLY dose source. Contract-tested ADVERSARIALLY (every result advisory:true; whole-payload has no dose-shaped key; assertNoDose throws on {dose},{dosage_mg},{max_dose},{frequency}; EvidenceNode conformant; patient_eligible:false). live-backend.js input-gated seam (any future live path MUST pass buildAdvisoryResponse -> schema + assertNoDose). Mock default+rollback; blocks in live w/o endpoint.
+  blocks: nothing on the H2 path; patient use blocked by H3 MIRAGE + governance
+  safety_class: degrades_safe (advisory; structurally barred from a dose; mock default)
+  invariant_exposure: dose-source-singular (G9) — enforced structurally; no-fabricated-facts; evidence-verified-trust
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — connect external pinned #15 process + keys; H3 MIRAGE-gate before patient_eligible. The no-dose bar holds on mock and any future live path.
+  gap_register_link: R-27
+  status: in-progress
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: docs-override-live
+  path: mcp/servers/docs/{index.js,live-backend.js}, test/contract-docs.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H2, #1 anthropics/healthcare, first_party, pinned dff06a1b). OVERRIDE not rebuild: docs/live-backend.js is the input-gated adapter seam to the #1 PubMed/FHIR-dev backend AND the harvest MARKER the licence gate keys off (override_existing_targets "mcp/servers/docs" -> live-backend.js). index.js gained a shared docsLiveGuard() that diverts ONLY when the context normalises to live (blocked w/o endpoint, fail-safe live otherwise); the mock/dry_run docs_search/docs_get/docs_cite behaviour + receipt shape are preserved VERBATIM — contract-docs.js stays green unchanged. patient_eligible:false pending H3.
+  blocks: nothing; live docs retrieval input-gated + MIRAGE-gated
+  safety_class: degrades_safe (mock default preserved; blocks in live w/o endpoint)
+  invariant_exposure: mock-never-as-live (C16); evidence-verified-trust
+  risk: Low
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — connect the #1 backend + creds; H3 MIRAGE-gate. evidence-cms/ (US CMS/NPI) deliberately NOT built at H2 (low AU priority) — see evidence-cms-deferred.
+  gap_register_link: R-27
+  status: in-progress
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: integrity-detectors
+  path: verification/integrity-detectors/{index.js,detectors.js}, verification/pipeline.js (composed), test/contract-integrity-detectors.js
+  component_type: verifier
+  state: COMPLETE
+  evidence: BUILT + WIRED 2026-07-06 (FLOW_PLAN H2, #8 Aperivue/medsci-skills PATTERN-LIFT, MIT, NO copied code / NO runtime dep). Four pure deterministic detectors (advisory_dose_leak [critical, reinforces the #15 no-dose boundary at the verification layer], fabricated_citation_marker [fail], unsupported_statistic [fail], overconfident_diagnosis [warning]) STRENGTHEN the frozen verifier.js (C1) via combineVerification() — a MONOTONE AND: it folds the detectors' verdict into `pass`, records detector failures in missing_receipts, and KEEPS results[] = the five verifier checks so the VerificationReport contract (report-schema.js, validateReport in run.js AND trunk-pipeline.js) is unchanged (no schema churn). Wired at the single verify() call site in pipeline.js — verifier.js UNTOUCHED. Contract-tested: per-detector fixtures, MONOTONICITY (detector fail fails a passing base; passing detectors never rescue a failing base; results stays 5 checks; hash preserved), composed report validates, clean stub passes, a dose-leaking advisory output is blocked. npm test + verification harness green.
+  blocks: (cleared)
+  safety_class: none — strengthens C1; monotone (can only add a failure)
+  invariant_exposure: no-fabricated-facts / dose-source-singular — strengthened, never loosened
+  risk: High
+  blocks_patient_facing: false
+  build_action: DONE — see evidence. Future: lift more of #8's ~30 patterns as additional pure detectors (each must stay monotone + low-false-positive).
+  gap_register_link: none (COMPLETE — the strengthening, not a gap)
+  status: resolved
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: evidence-graded-deferred
+  path: mcp/servers/evidence-graded/ (INTENTIONALLY UNBUILT), integration/harvest-manifest.json (#18), scripts/check-licence-clearance.mjs
+  component_type: mcp-server
+  state: UNBUILT
+  evidence: DEFERRED-ON-LICENCE 2026-07-06 (FLOW_PLAN H2). #18 connerlambden/bgpt-mcp (graded full-text evidence) is OUT OF H2 SCOPE per operator directive and its on-repo licence is unconfirmed — mcp/servers/evidence-graded/ is deliberately LEFT UNBUILT and #18's licence_status kept 'pending' so the licence gate BLOCK 3 REFUSES any wrap of the shippable target (proven by test/contract-harvest-manifest.js: planting evidence-graded/index.js + a pending #18 row fires BLOCK 3). A preliminary GitHub check 2026-07-06 reported SPDX MIT for #18, but that is not on-repo LICENSE clearance; adoption is a separate plan-gated milestone (H3-adjacent). No fabricated dependency, no directory, no pin.
+  blocks: graded-evidence retrieval (deferred by design); nothing on the H2 path
+  safety_class: none (gate refuses it; nothing built)
+  invariant_exposure: licence floor — held (deferred until on-repo clearance)
+  risk: High
+  blocks_patient_facing: true
+  build_action: DEFERRED — its own plan-gated + licence-gated milestone: verify the on-repo LICENSE, pin an exact commit, flip pending->verified, wrap evidence-graded/ with fallback to #14/#15 (degrade to BLOCKED_NO_PROOF on outage, never fabricate), then H3 MIRAGE-gate. Do NOT build until then.
+  gap_register_link: R-27
+  status: open (deferred-on-licence)
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: evidence-cms-deferred
+  path: mcp/servers/evidence-cms/ (NOT built at H2)
+  component_type: mcp-server
+  state: UNBUILT
+  evidence: DEPRIORITISED 2026-07-06 (FLOW_PLAN H2). #1 anthropics/healthcare's CMS/NPI capability would target evidence-cms/ (FLOW_PLAN 6.3), but CMS/NPI are US-centric and low AU priority; the H2 directive says include only if trivial and do not build evidence-cms/ as a priority. Only the docs override (PubMed/FHIR-dev) was taken from #1. evidence-cms/ is intentionally absent.
+  blocks: nothing (US capability, out of AU scope now)
+  safety_class: none
+  invariant_exposure: AU-context (US assets are localisation templates, not connectors to ship)
+  risk: Low
+  blocks_patient_facing: false
+  build_action: build only if/when a US CMS/NPI capability is scoped; not scheduled. Would still be MIRAGE-gated + governance-gated like every retrieval path.
+  gap_register_link: none (Low — below promotion threshold)
+  status: open (deferred)
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: guardrail-spec-written
+  path: docs/grounding/guardrail-spec.md
+  component_type: derived-doc
+  state: COMPLETE
+  evidence: WRITTEN 2026-07-06 (FLOW_PLAN H2, #9 2023Anita/clinical-ai-agent-skills PATTERN-LIFT, SPEC ONLY). Evidence-first rulebook (G-1..G-11) codifying the rules the grounding stack already enforces, each mapped to its mechanical enforcement point. NO code lifted/read/forked/vendored from #9 (licence pending, non-shippable). Subordinate to CLAUDE.md / ARCH_PLAN §1 / FLOW_PLAN §1.
+  blocks: (cleared)
+  safety_class: none (documentation)
+  invariant_exposure: none
+  risk: Low
+  blocks_patient_facing: false
+  build_action: DONE — see evidence. Keep in sync if an enforcement point moves.
+  gap_register_link: none
+  status: resolved
   last_scanned: 2026-07-06
 ```
 
