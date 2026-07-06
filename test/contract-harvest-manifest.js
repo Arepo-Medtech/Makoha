@@ -22,7 +22,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runCheck } from "../scripts/check-licence-clearance.mjs";
+import { runCheck, versionMeetsFloor } from "../scripts/check-licence-clearance.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -170,6 +170,30 @@ const baseManifest = (elements) => ({
   check("BLOCK 4: fires when the rows do not cross-reference", hasBlock(noCross, 4));
 }
 
+// 4b. BLOCK 5 — RCE-floor pin enforcement (FLOW_PLAN H5, G2).
+{
+  const rceRow = (over = {}) =>
+    el({ ref: "28", repo: "mims-harvard/ToolUniverse", url: "https://github.com/mims-harvard/ToolUniverse", verdict: "ADOPT", mode: "WRAP", target_module: "mcp/servers/tooluniverse-gateway/", shippable: true, licence_status: "verified", pin_status: "pinned", pinned_commit: "9b7ff91ddb45b567cac2fa8ea31b82851e877617", pinned_version: "v1.3.1", rce_floor: "v1.3.0", ...over });
+  // at/above floor → passes (no BLOCK 5).
+  const ok = runCheck({ repoRoot: newRoot(), manifest: baseManifest([rceRow()]) });
+  check("BLOCK 5: pinned_version at/above floor passes", !hasBlock(ok, 5));
+  // equal to floor → passes.
+  const eq = runCheck({ repoRoot: newRoot(), manifest: baseManifest([rceRow({ pinned_version: "v1.3.0", pinned_commit: "6a6b0421dfc0fc8af4af22917381781330eb809d" })]) });
+  check("BLOCK 5: pinned_version equal to floor passes", !hasBlock(eq, 5));
+  // BELOW floor → fires (a pin below the patched release re-opens the RCE).
+  const below = runCheck({ repoRoot: newRoot(), manifest: baseManifest([rceRow({ pinned_version: "v1.0.17" })]) });
+  check("BLOCK 5: pinned_version below floor FIRES", hasBlock(below, 5) && below.ok === false);
+  // floor declared but not commit-pinned → fires.
+  const unpinned = runCheck({ repoRoot: newRoot(), manifest: baseManifest([rceRow({ pin_status: "unpinned_pending_adoption", pinned_commit: null })]) });
+  check("BLOCK 5: rce_floor without a commit pin FIRES", hasBlock(unpinned, 5));
+  // floor declared but no pinned_version → fires (cannot prove the pin meets the floor).
+  const noVer = runCheck({ repoRoot: newRoot(), manifest: baseManifest([rceRow({ pinned_version: undefined })]) });
+  check("BLOCK 5: rce_floor without a pinned_version FIRES", hasBlock(noVer, 5));
+  // a row with NO rce_floor is unaffected (backward-compatible).
+  const noFloor = runCheck({ repoRoot: newRoot(), manifest: baseManifest([el({ verdict: "ADOPT", mode: "WRAP", target_module: "mcp/servers/evidence-x/", shippable: true })]) });
+  check("BLOCK 5: rows without a floor are unaffected", !hasBlock(noFloor, 5));
+}
+
 // 5. Schema — an ADOPT row without a url, and a shippable row without a target.
 {
   const noUrl = runCheck({ repoRoot: newRoot(), manifest: baseManifest([el({ verdict: "ADOPT", mode: "WRAP", url: null, target_module: "mcp/servers/y/", shippable: true })]) });
@@ -192,6 +216,12 @@ const baseManifest = (elements) => ({
   check("real manifest: wso2 #16 verified + commit-pinned before wrap (G13)", wso2 && wso2.licence_status === "verified" && wso2.pin_status === "pinned" && /^[0-9a-f]{40}$/.test(wso2.pinned_commit || ""));
   const fasten = realManifest.elements.find((e) => e.ref === "dir-fasten-sources");
   check("real manifest: fasten-sources never shippable (no licence detected upstream)", fasten && fasten.shippable === false && fasten.verdict === "REFERENCE" && fasten.mode === "PATTERN-LIFT");
+  // H5 (2026-07-07): ToolUniverse #28 pinned at/above the v1.3.0 RCE floor; BLOCK 5
+  // enforces the floor so no BLOCK fires and the version compare holds.
+  const tu = realManifest.elements.find((e) => e.ref === "28");
+  check("real manifest: ToolUniverse #28 verified + commit-pinned before wrap (G13)", tu && tu.licence_status === "verified" && tu.pin_status === "pinned" && /^[0-9a-f]{40}$/.test(tu.pinned_commit || ""));
+  check("real manifest: ToolUniverse #28 pinned_version at/above rce_floor (G2)", tu && versionMeetsFloor(tu.pinned_version, tu.rce_floor) && tu.rce_floor === "v1.3.0");
+  check("real manifest: no BLOCK 5 on the real tree", !hasBlock(res, 5));
 }
 
 if (errors.length) {
