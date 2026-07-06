@@ -7,8 +7,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { chooseDocsRoute } from "./live-backend.js";
 
 const MODE = process.env.HEYDOC_MODE_DEFAULT || "mock";
+// FLOW_PLAN H2 #1: docs retrieval is patient_eligible:false until the H3 MIRAGE
+// gate scores it. This override adds an input-gated live route (live-backend.js)
+// while the mock/dry_run behaviour below is preserved verbatim (contract-docs.js).
+const PATIENT_ELIGIBLE = false;
 
 function receipt(mode, requestId) {
   return {
@@ -17,6 +22,31 @@ function receipt(mode, requestId) {
     upstream: "heydoc-mcp-docs",
     mode,
   };
+}
+
+/**
+ * Input-gated live-route guard shared by all three docs tools. Returns a response
+ * object to SHORT-CIRCUIT with (blocked or fail-safe live), or null to fall
+ * through to the UNCHANGED mock/dry_run logic. Only diverts when the context
+ * normalises to "live" (never during mock/dry_run — so the docs contract holds).
+ */
+function docsLiveGuard(mode, requestId, tool) {
+  const route = chooseDocsRoute(process.env, mode, MODE);
+  if (route.kind === "blocked") {
+    return { content: [{ type: "text", text: JSON.stringify({
+      blocked: true, patient_eligible: PATIENT_ELIGIBLE,
+      block_reason: "BLOCKED_NO_PROOF: live context but no #1 docs endpoint configured; mock citations must not be served under a live receipt",
+      receipt: { ...receipt("live", requestId), tool, error: { code: "NO_LIVE_ENDPOINT", message: "docs live endpoint unset", retryable: false } },
+    }, null, 2) }] };
+  }
+  if (route.kind === "live") {
+    // Input-gated (external #1 backend + creds). Fail-safe until wired: no fabricated citation.
+    return { content: [{ type: "text", text: JSON.stringify({
+      patient_eligible: PATIENT_ELIGIBLE,
+      receipt: { ...receipt("live", requestId), tool, upstream: route.cfg.upstream, error: { code: "LIVE_NOT_WIRED", message: "anthropics/healthcare backend adapter not yet connected (input-gated)", retryable: true } },
+    }, null, 2) }] };
+  }
+  return null; // mock / dry_run — continue with the existing contract behaviour
 }
 
 const MOCK_SNIPPETS = [
@@ -57,6 +87,8 @@ server.registerTool(
   },
   async ({ query, top_k, mode }) => {
     const requestId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const gated = docsLiveGuard(mode, requestId, "docs_search");
+    if (gated) return gated;
     if (mode === "dry_run") {
       return { content: [{ type: "text", text: JSON.stringify({ receipt: receipt("dry_run", requestId), message: "dry_run: validated" }, null, 2) }] };
     }
@@ -80,6 +112,8 @@ server.registerTool(
   },
   async ({ source_id, locator, mode }) => {
     const requestId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const gated = docsLiveGuard(mode, requestId, "docs_get");
+    if (gated) return gated;
     if (mode === "dry_run") {
       return { content: [{ type: "text", text: JSON.stringify({ receipt: receipt("dry_run", requestId), message: "dry_run: validated" }, null, 2) }] };
     }
@@ -106,6 +140,8 @@ server.registerTool(
   },
   async ({ source_id, locator, excerpt_max_chars, mode }) => {
     const requestId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const gated = docsLiveGuard(mode, requestId, "docs_cite");
+    if (gated) return gated;
     if (mode === "dry_run") {
       return { content: [{ type: "text", text: JSON.stringify({ receipt: receipt("dry_run", requestId), message: "dry_run: validated" }, null, 2) }] };
     }

@@ -18,6 +18,21 @@ All seven servers default to `HEYDOC_MODE_DEFAULT=mock`. Status drives what you 
 - **fhir-broker mock built + parser wired** → Trunk 6.0 receives sanitised lab facts from mock fhir Observations (raw values never reach the LLM); a LIVE EHR source + conformance validation remain before patient-ready.
 - **All 7 MCP servers now have a mock implementation** (docs, identity-au, terminology stubs; knowledge, pharmacology, fhir-broker, messaging-geo mock cores). Remaining work is live connections + the non-server blockers (Clinician Portal, persistence).
 
+## Harvested evidence taps (FLOW_PLAN H2, 2026-07-06) — NOT part of the original 7
+
+These are harvested evidence servers, wrapped mock-first behind a common `evidence_search(query, filters) → { results[], receipt }` contract. Each result maps onto the EXISTING `evidence-node.schema.json` (`supports[].kind:"live_data_receipt"`, `ref`=receipt.request_id — NO schema churn). They emit the common Receipt but **omit** the `server` enum field (it lists only the 7 originals) and self-identify via `upstream`. **All are mock-gated / `patient_eligible:false` until the H3 MIRAGE benchmark scores them** (H3 blocked on #20's licence).
+
+| Server | Status | Source (pinned) | Mock vs live | Notes |
+|---|---|---|---|---|
+| `evidence-fda-pubmed` | ◑ Mock core (H2) | #14 Cicatriiz/healthcare-mcp-public MIT `1c4c40c3` | `evidence_search` over FDA/PubMed/ClinicalTrials/ICD-10 canned literature → EvidenceNodes; `live-backend.js` input-gated seam (external pinned process + keys); blocks in live w/o endpoint | patient_eligible:false; consumer = contract test (retrieval wiring is a future gated step) |
+| `evidence-drug-guideline` | ◑ Mock core (H2) — **ADVISORY** | #15 JamesANZ/medical-mcp MIT `13d2fddd` | drug-interaction/paediatric/guideline advisory evidence → EvidenceNodes | **NO-DOSE structural bar (G9):** `.strict()` result schema (no dose field expressible) + `assertNoDose()` + `advisory_dose_leak` detector. Pharmacology firewall (Trunk 8.0 PharmCheck) is the SOLE dose source |
+| `docs` (override) | ◑ Mock preserved + live seam (H2) | #1 anthropics/healthcare first-party `dff06a1b` | `live-backend.js` = input-gated adapter + licence-gate marker; `index.js` mock/dry_run behaviour unchanged (`contract-docs.js` green) | `evidence-cms/` (US CMS/NPI) NOT built (low AU priority) |
+| `evidence-graded` (#18) | ✗ UNBUILT — **DEFERRED-ON-LICENCE** | connerlambden/bgpt-mcp (pending) | not built; licence gate BLOCK 3 refuses any wrap while pending | out of H2 scope; own plan-gated milestone |
+
+**Integrity detectors (#8 pattern-lift, `verification/integrity-detectors/`) — COMPLETE + WIRED.** Four pure deterministic detectors strengthen the frozen `verifier.js` via `combineVerification()` (monotone AND, wired at the single `verify()` call site in `pipeline.js`; `results[]` stays the 5 verifier checks so the report contract is unchanged). `verifier.js` untouched.
+
+**Allowed Service Registry note:** the harvested evidence server names are NOT in `ALLOWED_SERVICE_NAMES` and are NOT emitted in trunk output — they self-identify via `receipt.upstream` / `EvidenceNode.created_by` (metadata, not the candidate_output string the verifier's `no_repo_invention` check scans). If a future path emits one in trunk output, register it first.
+
 ## Mode enforcement (C16 — RESOLVED 2026-07-03, M1)
 `verification/mode.js` normalises `HEYDOC_MODE_DEFAULT` at every consumer seam (pipeline `context_mode`, verifier `enforceLive`, audit-store `recordRun`): `mock`/`dry_run` are dev modes (mock proof flagged, not blocked); `staging`/`production`/`live` **block mock receipts** as grounding proof; an **unrecognised mode default-denies to live**; staging/production runs are never classified synthetic (no content persistence). Contract-tested: `test/contract-mode-normaliser.js`. Residual for live-connect (M9/M11): the MCP servers stamp `receipt.mode` from their own env read and only ever run mock today — normalise server-side stamping when a live vendor connects.
 

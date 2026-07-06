@@ -48,12 +48,23 @@ Non-blocking **WARN**: an ADOPT repo not yet commit-pinned. Pinning an exact com
 
 | Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
 |---|---|---|---|---|---|
-| 1 | anthropics/healthcare | ADOPT · WRAP | first-party | `mcp/servers/docs/` (override) + `evidence-cms/` | yes |
-| 14 | Cicatriiz/healthcare-mcp-public | ADOPT · WRAP | MIT (verified) | `mcp/servers/evidence-fda-pubmed/` | yes |
-| 15 | JamesANZ/medical-mcp | ADOPT · WRAP | MIT (verified) | `mcp/servers/evidence-drug-guideline/` | yes — **ADVISORY, never a dose** |
-| 18 | connerlambden/bgpt-mcp | ADOPT · WRAP | ? (**pending**) | `mcp/servers/evidence-graded/` | yes |
-| 8 | Aperivue/medsci-skills | ADOPT · PATTERN-LIFT | MIT (verified) | `verification/integrity-detectors/` | yes (our code; no runtime dep) |
-| 9 | 2023Anita/clinical-ai-agent-skills | REFERENCE · PATTERN-LIFT | ? (pending) | `docs/grounding/guardrail-spec.md` | no |
+| 1 | anthropics/healthcare | ADOPT · WRAP | first-party (**verified, pinned `dff06a1b`**) | `mcp/servers/docs/` (override) · `evidence-cms/` NOT built (US, low priority) | yes |
+| 14 | Cicatriiz/healthcare-mcp-public | ADOPT · WRAP | MIT (**verified, pinned `1c4c40c3`**) | `mcp/servers/evidence-fda-pubmed/` | yes |
+| 15 | JamesANZ/medical-mcp | ADOPT · WRAP | MIT (**verified, pinned `13d2fddd`**) | `mcp/servers/evidence-drug-guideline/` | yes — **ADVISORY, never a dose** |
+| 18 | connerlambden/bgpt-mcp | ADOPT · WRAP | ? (**pending — DEFERRED-ON-LICENCE, gate refuses**) | `mcp/servers/evidence-graded/` (**UNBUILT**) | yes |
+| 8 | Aperivue/medsci-skills | ADOPT · PATTERN-LIFT | MIT (verified) | `verification/integrity-detectors/` (**built + wired**) | yes (our code; no runtime dep) |
+| 9 | 2023Anita/clinical-ai-agent-skills | REFERENCE · PATTERN-LIFT | ? (pending) | `docs/grounding/guardrail-spec.md` (**written, spec-only**) | no |
+
+> **H2 (2026-07-06) — evidence taps wrapped (licence-clear subset).** #14/#15/#1 cleared on-repo and
+> commit-pinned, wrapped as EXTERNAL pinned processes (no vendored code) behind a common
+> `evidence_search`→EvidenceNode contract; all mock-gated, `patient_eligible:false` until the H3 MIRAGE gate.
+> #15 output is ADVISORY and structurally barred from any dose (`.strict()` schema + `assertNoDose` +
+> `advisory_dose_leak` detector; pharmacology firewall C2 is the sole dose source). #8 detectors lifted into
+> `verification/integrity-detectors/` and wired into `pipeline.js` (monotone-AND; `verifier.js` untouched).
+> #9 written as `guardrail-spec.md` (spec only). **#18 DEFERRED-ON-LICENCE** — NOT wrapped, `evidence-graded/`
+> left unbuilt, `licence_status` kept `pending` so the gate's BLOCK 3 refuses any premature wrap
+> (contract-tested); a preliminary GitHub check showed MIT but that is not on-repo LICENSE clearance and #18
+> is out of H2 scope. `evidence-cms/` (US CMS/NPI) deprioritised — not built.
 
 ## Step 3 — Prove it (benchmark)
 

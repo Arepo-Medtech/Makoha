@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FLOW_PLAN Milestone H2 — evidence taps (licence-clear subset) (2026-07-06)
+
+**Status:** Off `main` @ `897e5e5`. `npm test` 26/26 green (3 new: `contract-evidence-fda-pubmed.js`, `contract-evidence-drug-guideline.js`, `contract-integrity-detectors.js`); `npm run licence:check` PASS (0 blocks, **still refuses #18**); `npm run verification` Pass:true; `npm run trunk:stub:all` green; `npm run eval:cases` PASS (pre-existing distribution-skew warning only). Exit state met: #1/#14/#15 wrapped behind `evidence_search`→EvidenceNode with Receipts; #15 advisory/no-dose enforced + adversarially tested; #8 detectors strengthen the verifier; #9 guardrail-spec written; #18 deferred-on-licence (gate refuses it); all evidence paths mock-gated / `patient_eligible:false` pending H3/MIRAGE.
+
+### Change
+- **`mcp/servers/_shared/evidence-map.js` [NEW]** — the safety seam: `toEvidenceNode()` maps every result onto the EXISTING `evidence-node.schema.json` (`supports[].kind:"live_data_receipt"`, `ref`=Receipt.request_id — NO schema churn; the `literature`/`graded_evidence` kinds in FLOW_PLAN prose do not exist and were not added); `assertNoDose()` fail-closed dose-shaped-key guard (G9); `PATIENT_ELIGIBLE=false`.
+- **`mcp/servers/evidence-fda-pubmed/{index.js,live-backend.js}` [NEW]** — #14 Cicatriiz (MIT, pinned `1c4c40c3`) mock-core `evidence_search` (FDA/PubMed/ClinicalTrials/ICD-10); common Receipt (the 7-only `server` enum omitted, self-id via `upstream`); input-gated live seam, mock default+rollback, blocks in live w/o endpoint (C16).
+- **`mcp/servers/evidence-drug-guideline/{index.js,live-backend.js}` [NEW]** — #15 JamesANZ (MIT, pinned `13d2fddd`), ADVISORY. Three-layer no-dose bar: `.strict()` result schema with `advisory:true` required + no dose field expressible; `assertNoDose()` on every result AND its EvidenceNode; advisory-framed claims. Pharmacology firewall (Trunk 8.0 PharmCheck) stays the sole dose source.
+- **`mcp/servers/docs/{index.js,live-backend.js}` [OVR]** — #1 anthropics/healthcare (first_party, pinned `dff06a1b`). `live-backend.js` is the input-gated adapter AND the licence-gate marker; `index.js` gained `docsLiveGuard()` that diverts ONLY on a live context — mock/dry_run `docs_search/get/cite` + receipt shape preserved verbatim (`contract-docs.js` green unchanged). `evidence-cms/` (US CMS/NPI) deliberately NOT built (low AU priority).
+- **`verification/integrity-detectors/{index.js,detectors.js}` [NEW] + `verification/pipeline.js` [~]** — #8 medsci-skills PATTERN-LIFT (no copied code, no runtime dep). Four pure detectors (advisory_dose_leak/critical, fabricated_citation_marker/fail, unsupported_statistic/fail, overconfident_diagnosis/warning) STRENGTHEN the frozen `verifier.js` via `combineVerification()` — a MONOTONE AND that keeps `results[]` = the 5 verifier checks (report contract unchanged; `validateReport` valid in `run.js` + `trunk-pipeline.js`), folds detector verdicts into `pass`, records failures in `missing_receipts`. Wired at the single `verify()` call site in `pipeline.js`; **verifier.js untouched**.
+- **`docs/grounding/guardrail-spec.md` [NEW]** — #9 2023Anita evidence-first rulebook (G-1..G-11) as a WRITTEN spec, each rule mapped to its enforcement point. No code lifted/read/forked.
+- **`integration/harvest-manifest.json` [~]** — #14/#15/#1 pinned to verified on-repo SHAs (`pin_status:pinned`); #18 kept `pending`/unpinned with a deferred-on-licence note (so BLOCK 3 refuses it). MIT-observed-but-deferred recorded honestly.
+- **`test/contract-evidence-fda-pubmed.js`, `test/contract-evidence-drug-guideline.js`, `test/contract-integrity-detectors.js` [NEW]** — Receipt + EvidenceNode conformance (ajv vs the real schema); #15 adversarial no-dose (whole-payload + direct `assertNoDose`); detector monotonicity + composed-report validity + clean-stub regression. Appended to `npm test` (23→26). `.github/workflows/ci.yml` unchanged — the new suites run under the existing `npm test` step.
+
+### Registers
+- **completeness-register:** H2 scoped re-scan note added. NEW: `evidence-fda-pubmed-server` (PARTIAL), `evidence-drug-guideline-server` (PARTIAL, no-dose bar), `docs-override-live` (PARTIAL), `integrity-detectors` (COMPLETE), `evidence-graded-deferred` (UNBUILT, deferred-on-licence), `evidence-cms-deferred` (UNBUILT), `guardrail-spec-written` (COMPLETE). `harvest-confirm-licences-pending` narrowed (#14/#15/#1 cleared+pinned; #18 sole remaining shippable pending).
+- **gap-register:** R-27 narrowed (H2 cleared #14/#15/#1; #18 deferred-on-licence, gate refuses it).
+- **.claude:** `completeness-index.md` + `server-status.md` synced.
+
+### Safety / firewall
+No §1 invariant weakened. **Dose source singular** — #15 structurally barred from a dose (schema + `assertNoDose` + `advisory_dose_leak` detector); pharmacology firewall C2 untouched. **Licence floor** — only MIT/first-party wrapped as external pinned processes (no vendored code); #18 refused by the gate and left unbuilt. **Evidence-verified-trust** — every path `patient_eligible:false` until H3/MIRAGE (blocked on #20's licence); nothing trusted, nothing patient-facing. Verifier C1 unchanged and STRENGTHENED by detectors (monotone). No schema churn (mapped onto existing EvidenceNode/Receipt). Scoring-store firewall untouched (`data/cases/10–13` never read). Mock never presented as live (blocked route on live-without-endpoint).
+
+---
+
 ## FLOW_PLAN Milestone H1 — patient-record spine (2026-07-06)
 
 **Status:** Branch `feat/h1-patient-record-spine` (off `main` @ `7e435a3`). `npm test` 23/23 green (new `contract-fhir-live.js`); `npm run licence:check` PASS (0 blocks); `npm run verification` Pass:true. Exit state met: `contract-fhir-live.js` green; record ingest crosses parser + session-store; no raw lab exits; mock rollback intact.
