@@ -145,14 +145,48 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: integration/harvest-manifest.json (licence_status:pending rows)
   component_type: dependency
   state: PARTIAL
-  evidence: OPENED 2026-07-06 (FLOW_PLAN H0). Five harvest candidates carry an UNRESOLVED ("Confirm") licence and may not enter a shippable path until cleared on-repo: wso2/fhir-mcp-server (#16, SHIPPABLE -> fhir-broker), connerlambden/bgpt-mcp (#18, SHIPPABLE -> evidence-graded), 2023Anita/clinical-ai-agent-skills (#9, spec), asanmateu/medgraph-ai (#21, pattern), gzxiong/MedRAG (#20, benchmark). The licence-clearance gate (harvest-licence-clearance-gate) BLOCKS #16/#18 the moment their shippable target is wrapped while still pending (BLOCK 3); the non-shippable three are advisory until adoption. No code harvested yet — this is a forward gate, not a live breach.
-  blocks: H1 (wso2 wrap), H2 (bgpt-mcp evidence-graded), H3 (MIRAGE harness identity/pin)
+  evidence: OPENED 2026-07-06 (FLOW_PLAN H0); NARROWED 2026-07-06 (FLOW_PLAN H1). H1 CLEARED wso2/fhir-mcp-server (#16): on-repo licence verified Apache-2.0 (release v0.10.0), pinned commit 6307fe71, licence_status pending->verified — it was wrapped at H1 as an external process behind mcp/servers/fhir-broker/live-backend.js and the licence gate BLOCK 3 stays green. REMAINING shippable pending: connerlambden/bgpt-mcp (#18 -> evidence-graded, H2). Non-shippable advisory-pending: 2023Anita #9 (spec), asanmateu/medgraph-ai #21 (pattern), gzxiong/MedRAG #20 (benchmark). SEPARATE H1 FINDING (register defect, resolved same step): dir-fasten-sources was mislabelled "Apache-2.0 verified" — the GitHub repo is now PRIVATE/404 and pkg.go.dev detects NO licence for any retained version; downgraded ADOPT->REFERENCE (shippable:false), and integration/record-sources/ rebuilt FIRST-PARTY clean-room from the public SMART App Launch spec (no Fasten code read/copied), so no licence obligation attaches.
+  blocks: H2 (bgpt-mcp evidence-graded)
   safety_class: none (gate holds them back)
   invariant_exposure: licence floor — no unresolved-licence dependency in a shippable path
   risk: High
   blocks_patient_facing: true
-  build_action: For each — verify the on-repo licence, record it + pin an exact commit in integration/harvest-manifest.json, flip licence_status pending->verified. Until then the gate blocks any shippable wrap.
+  build_action: For bgpt-mcp #18 — verify the on-repo licence, record it + pin an exact commit, flip pending->verified before wrapping evidence-graded (H2). Non-shippable three are advisory until adoption.
   gap_register_link: R-27
+  status: open
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: fhir-live-adapter
+  path: mcp/servers/fhir-broker/live-backend.js, mcp/servers/fhir-broker/index.js, test/contract-fhir-live.js
+  component_type: mcp-server
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H1, #16). Node adapter to an EXTERNAL commit-pinned wso2/fhir-mcp-server (Apache-2.0, 6307fe71, v0.10.0) over MCP streamable-HTTP; maps onto the EXISTING fhir_read/fhir_search contract ({resource}/{bundle}); receipts mode=live; FAIL-SAFE to null on any transport/tool error (never a fabricated resource); PUBLIC_SANDBOX_HOSTS refused in production (mirrors the M11 terminology dev_sandbox rule). Live path taken only when HEYDOC_FHIR_MCP_ENDPOINT configured AND mode normalises to live (C16); mock stays default + full rollback. Contract-tested offline (mocked MCP transport) + wired into npm test; opt-in HAPI-sandbox smoke (HEYDOC_FHIR_LIVE_SMOKE=1). No Python vendored, no new runtime dep. PARTIAL: a real EHR/SMART-on-FHIR connection needs a running wso2 process + OAuth2 credentials via the secrets manager (input-gated) + AU Core ValueSet binding (needs live NCTS).
+  blocks: live FHIR reads for Trunk 6.0 (still mock until a live upstream + creds)
+  safety_class: degrades_safe
+  invariant_exposure: no fabricated operational facts (fail-safe null); mock-never-as-live (C16); no-raw-lab (Observations routed via record-sources -> parser)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — operator supplies a running wso2 fhir-mcp-server + SMART-on-FHIR/OAuth2 creds via secrets manager; then live-smoke against a real AU EHR in staging (synthetic patients) before any prod consideration. Live AU Core binding tracked by fhir-r4-aucdi-conformance-unbuilt.
+  gap_register_link: R-28
+  status: open
+  last_scanned: 2026-07-06
+```
+
+```md
+- id: au-record-sources-ingest
+  path: integration/record-sources/ (sources-client.js, au-providers/au-providers.json, README.md)
+  component_type: other
+  state: PARTIAL
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H1). FIRST-PARTY clean-room SMART-on-FHIR ingestion spine (Fasten upstream private/unlicensed — see harvest-confirm-licences-pending). Enforces the record boundary: every FHIR Observation with a numeric value crosses the investigation parser (C3) to a qualitative lab_result fact (raw number stripped, sanitised_by set) then session-store (C8); non-lab resources reduced to bare {resourceType,id,status} references (name/DOB/etc dropped); demographics never persist (session-store guard is the backstop); all state destroyed on encounter close. buildAuthorizeRequest() builds a SMART App Launch authorize-request shape and REFUSES any provider not status:available. au-providers.json is metadata only — client_id_ref points at a secrets-manager key, NEVER a secret; only the public HAPI synthetic sandbox is 'available' (smoke target, refused in production). Contract-tested (contract-fhir-live.js). PARTIAL: au-mhr provider is status:input_gated — live MHR connection needs ADHA conformance registration + OAuth2 client + credentials (none in repo).
+  blocks: live patient-record ingest (My Health Record) — input-gated on ADHA registration + creds
+  safety_class: degrades_safe
+  invariant_exposure: no-raw-lab (parser-gated); patient-data minimisation / no-demographic-persistence (Trust Boundary 4); no secrets in repo
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: REMAINING (input-gated) — operator supplies ADHA/MHR conformance registration + a registered OAuth2 client + credentials via secrets manager; flip au-mhr status input_gated->available; live-connect in staging (synthetic) behind the portal gate (C9) before any patient path.
+  gap_register_link: R-28
   status: open
   last_scanned: 2026-07-06
 ```
@@ -404,16 +438,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: mcp/servers/fhir-broker/{index.js,mock-resources.json}, test/contract-fhir-broker.js, verification/{retrieval-mcp,pipeline}.js
   component_type: mcp-server
   state: PARTIAL
-  evidence: MOCK BUILT 2026-06-30 — fhir_read/fhir_search return templated AU Core resources (incl. lab Observations); fhir_write SAFE_STUB. Wired: on the MCP path, Trunk 6.0 Observations flow through the investigation parser into sanitised lab_result facts (raw number never in the packet). Contract-tested. PARTIAL: live FHIR/SMART-on-FHIR/EHR + AU Core/AUCDI conformance validation (fhir-r4-aucdi-conformance-unbuilt) pending.
-  blocks: (mock cleared) — live EHR + conformance validation remain
+  evidence: MOCK BUILT 2026-06-30 — fhir_read/fhir_search return templated AU Core resources (incl. lab Observations); fhir_write SAFE_STUB. Wired: on the MCP path, Trunk 6.0 Observations flow through the investigation parser into sanitised lab_result facts (raw number never in the packet). Contract-tested. H1 2026-07-06: a LIVE backend adapter (see fhir-live-adapter) now sits behind the same fhir_read/fhir_search contract — external pinned wso2 process, taken only when configured + mode=live; mock remains default+rollback. PARTIAL: a real live FHIR/SMART-on-FHIR/EHR connection + creds + AU Core/AUCDI conformance validation (fhir-r4-aucdi-conformance-unbuilt) pending.
+  blocks: (mock cleared) — live EHR connection + creds + conformance validation remain
   safety_class: degrades_safe
   invariant_exposure: no-raw-lab-numbers (raw fhir values pass through the parser)
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING — live FHIR R4 base URL + SMART-on-FHIR/mTLS + AU Core 0.3.0/AUCDI R3 conformance validator; patient consent for MHR.
+  build_action: REMAINING (input-gated) — running wso2 process + live FHIR R4 base URL + SMART-on-FHIR/OAuth2 creds via secrets manager (see fhir-live-adapter, au-record-sources-ingest) + AU Core 0.3.0/AUCDI R3 conformance validator; patient consent for MHR.
   gap_register_link: gap-fhir-broker
   status: in-progress
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-06
 ```
 
 ```md

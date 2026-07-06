@@ -1,0 +1,37 @@
+{
+  "_note": "AU patient-record provider directory — a FIRST-PARTY named build (FLOW_PLAN H1 'AU provider metadata must be built'). This is structured metadata only: SMART App Launch endpoints + a REFERENCE (client_id_ref) to a secrets-manager key, NEVER a client secret, token, or credential (<security_and_secrets>). Every provider ships status 'input_gated' until an operator supplies conformance evidence + credentials; live connection is not opened by this file. Endpoints use the sanctioned example.invalid placeholder until real values are injected at deploy time.",
+  "dataset_version": "au-providers:v0.1.0-scaffold:2026-07-06",
+  "standard": "SMART App Launch 2.0.0",
+  "fhir_version": "R4 (4.0.1)",
+  "au_core_profile": "0.3.0",
+  "providers": [
+    {
+      "id": "au-mhr",
+      "name": "My Health Record (Australian Digital Health Agency)",
+      "jurisdiction": "AU",
+      "status": "input_gated",
+      "status_reason": "Live MHR connection requires ADHA conformance registration, a registered OAuth2 client, and credentials via the secrets manager — none of which this repo holds. Metadata scaffold only.",
+      "fhir_base_url": "https://fhir.example.invalid/mhr/r4",
+      "authorize_endpoint": "https://auth.example.invalid/mhr/authorize",
+      "token_endpoint": "https://auth.example.invalid/mhr/token",
+      "client_id_ref": "secrets://heydoc/mhr/client_id",
+      "default_scope": "launch/patient patient/Observation.read patient/Condition.read patient/MedicationRequest.read offline_access openid fhirUser",
+      "conformance": "AU Core 0.3.0 (structural validation via fhir-broker fhir_validate; ValueSet binding pending live NCTS)",
+      "notes": "My Health Record is the primary AU longitudinal source. Real endpoints + client registration are injected at deploy time; the id/scope/profile shape here is what the SMART App Launch flow will use."
+    },
+    {
+      "id": "au-hapi-sandbox",
+      "name": "Public HAPI FHIR R4 sandbox (synthetic data)",
+      "jurisdiction": "AU-test",
+      "status": "available",
+      "status_reason": "Public, open, synthetic-data-only FHIR R4 server — the H1 smoke target. NEVER production (see fhir-broker/live-backend.js PUBLIC_SANDBOX_HOSTS refusal).",
+      "fhir_base_url": "https://hapi.fhir.org/baseR4",
+      "authorize_endpoint": "https://hapi.fhir.org/baseR4/authorize",
+      "token_endpoint": "https://hapi.fhir.org/baseR4/token",
+      "client_id_ref": "public-open-sandbox-no-auth",
+      "default_scope": "patient/Observation.read patient/Condition.read",
+      "conformance": "Generic R4 (not AU Core profiled) — smoke/plumbing verification only, not clinical grounding",
+      "notes": "Open synthetic sandbox for proving the wso2 live-backend plumbing end to end without credentials. Data here is synthetic and unprofiled; it validates transport, not AU conformance."
+    }
+  ]
+}

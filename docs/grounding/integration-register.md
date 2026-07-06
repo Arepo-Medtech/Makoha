@@ -30,9 +30,17 @@ Non-blocking **WARN**: an ADOPT repo not yet commit-pinned. Pinning an exact com
 
 | Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
 |---|---|---|---|---|---|
-| 16 | wso2/fhir-mcp-server | ADOPT · WRAP | Apache-2.0? (**pending**) | `mcp/servers/fhir-broker/` (override) | yes |
-| dir | fastenhealth/fasten-sources | ADOPT · WRAP | Apache-2.0 (verified) | `integration/record-sources/` | yes |
+| 16 | wso2/fhir-mcp-server | ADOPT · WRAP | Apache-2.0 (**verified 2026-07-06**, pinned `6307fe7`) | `mcp/servers/fhir-broker/` (override) | yes |
+| dir | fastenhealth/fasten-sources | **REFERENCE · PATTERN-LIFT** ⇩ | none-detected (**pending — upstream private**) | — (concept only) | no |
 | dir | fastenhealth/fasten-onprem | REFERENCE | GPL-3.0 (**copyleft ref-only**) | — | no |
+
+> **H1 finding (2026-07-06, G13/G14) — fasten-sources downgraded ADOPT→REFERENCE.** The
+> `fastenhealth/fasten-sources` GitHub repo is now private/404, and pkg.go.dev detects **no licence for any
+> retained version** (including v0.6.25, which `fasten-onprem` pins). The earlier "Apache-2.0 (verified)"
+> status was a register defect: it was never verifiable on-repo. No licence = all-rights-reserved — the code
+> may never be wrapped, forked, or read for implementation. `integration/record-sources/` is therefore a
+> **first-party clean-room build** on the public SMART App Launch standard, not a harvest target. The wso2
+> wrap (#16) is unaffected and licence-cleared.
 | 13 | open-health | REFERENCE · PATTERN-LIFT | AGPL-3.0 (**copyleft ref-only**) | `portal/patient-ingest/` (pattern) | no |
 | 6 | StanfordBDHG/HealthGPT | REFERENCE · PATTERN-LIFT | MIT? (pending) | `portal/` | no |
 
