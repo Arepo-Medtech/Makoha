@@ -20,6 +20,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { loadAllCorpora } from "./corpus-loader.js";
 import { realPaths } from "./paths.js";
 import { runMirage, DEFAULT_THRESHOLD } from "./run-mirage.js";
+import { releaseHarvestedOutput } from "../../portal/harvested-release.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORPORA_DIR = join(__dirname, "corpora");
@@ -94,6 +95,20 @@ function pathUpstream(p) {
     "evidence-drug-guideline": "heydoc-mcp-evidence-drug-guideline",
     docs: "heydoc-mcp-docs",
   }[p];
+}
+
+/**
+ * GOVERNANCE SEAM (FLOW_PLAN H7 / G7). The MIRAGE harness is an offline
+ * benchmark and never sets patient_eligible — MIRAGE-pass is necessary, not
+ * sufficient. This seam makes governance the enforced second precondition: any
+ * patient-directed release built on a MIRAGE-gated retrieval path MUST route
+ * through the fail-closed portal gate (ARCH_PLAN C9) and REFUSES without a
+ * clinician-attested VerificationGateRecord on the exact output hash. Opens no
+ * patient path; never sets patient_eligible; unreached today.
+ * @param {string} output - the exact retrieval text a patient-facing build would release
+ */
+export function governedRelease(output) {
+  return releaseHarvestedOutput("retrieval-mirage", output);
 }
 
 /** Write the score artifact (latest.json). */

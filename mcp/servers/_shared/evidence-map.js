@@ -31,6 +31,23 @@
  *  the contract tests can assert no path claims patient-eligibility at H2. */
 export const PATIENT_ELIGIBLE = false;
 
+// Governance seam import (FLOW_PLAN H7). Placed here (not in transport plumbing)
+// because this shared module is the single seam all three evidence taps cross.
+import { releaseHarvestedOutput } from "../../../portal/harvested-release.js";
+
+/**
+ * GOVERNANCE SEAM (FLOW_PLAN H7 / G7). Any patient-directed release of evidence
+ * (#14/#15/#1, H2) MUST route here — it defers to the fail-closed portal gate
+ * (ARCH_PLAN C9) and REFUSES without a clinician-attested VerificationGateRecord
+ * bound to the exact output hash. This is ADDITIONAL to PATIENT_ELIGIBLE (which
+ * stays false pending H3 MIRAGE): governance is a separate, later precondition.
+ * Opens no patient path; never sets patient_eligible; unreached today.
+ * @param {string} output - the exact evidence text a patient-facing build would release
+ */
+export function governedRelease(output) {
+  return releaseHarvestedOutput("evidence", output);
+}
+
 /**
  * Dose-shaped key detector for the #15 structural bar. Deliberately conservative
  * (over-blocks): matches any key that names or abbreviates a dose/strength/
