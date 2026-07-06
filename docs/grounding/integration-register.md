@@ -70,12 +70,28 @@ Non-blocking **WARN**: an ADOPT repo not yet commit-pinned. Pinning an exact com
 
 | Ref | Repo | Verdict · Mode | Licence (status) | Target | Shippable |
 |---|---|---|---|---|---|
-| 20 | **gzxiong/MedRAG** (MIRAGE) | ADOPT · BENCHMARK | ? (pending) | `benchmark/mirage/` | no (offline eval) |
+| 20 | **gzxiong/MedRAG** (MIRAGE) | **REFERENCE · methodology-only** | ? (pending, **not adopted**) | — (first-party `benchmark/mirage/`; **no #20 code**) | no (offline eval) |
 | comp | **SNOWTEAM2023/MedRAG** | REFERENCE | ? (pending) | — (reading only) | no |
-| 21 | asanmateu/medgraph-ai | REFERENCE · PATTERN-LIFT | ? (pending) | `mcp/servers/knowledge/graph/` (pattern) | no |
-| org | mims-harvard/PrimeKG | ADOPT · INTEGRATE | MIT (verified) | `mcp/servers/knowledge/primekg/` | yes |
+| 21 | asanmateu/medgraph-ai | REFERENCE · PATTERN-LIFT | ? (pending) | `mcp/servers/knowledge/graph/` (pattern) | no (DEFERRED — licence-pending) |
+| org | mims-harvard/PrimeKG | ADOPT · INTEGRATE | MIT (verified) | `mcp/servers/knowledge/primekg/` | yes (DEFERRED at H3 — licence clear but not built this milestone) |
 
 > **G5 disambiguation pin:** the two MedRAG rows carry distinct URLs and cross-reference each other via `do_not_conflate_with`. The gate fails if they are ever collapsed.
+>
+> **H3 (2026-07-06) — MIRAGE trust gate built, FIRST-PARTY.** Per the H3 scope change (#20's licence is
+> PENDING/unshippable, so its code is refused exactly like #18), `benchmark/mirage/` is a **clean-room**
+> MIRAGE-*style* harness — **no #20 code wrapped/vendored/forked** (#20 flipped ADOPT·BENCHMARK →
+> **REFERENCE·methodology-only** in the manifest). `runMirage()` scores the three built H2 paths (#14/#15/#1)
+> by the partition rubric (P grounded-support rate ≥ **0.60**; N abstain-correct = 1.00 and A invariant-hold
+> = 1.00 as hard gates; L diagnostic), tagging each path by its Receipt `upstream`. `test/bench-mirage-gate.js`
+> is wired **BLOCKING** in CI (`npm run bench:mirage`). Corpus v0.1.0 is a first-tranche **DRAFT** authored to
+> `MIRAGE-CORPUS-SPEC` (§5 strict loader, firewall-clean, question-only), sized to the mock retrievers and
+> **fully unattested** — so **no path is `patient_eligible`** (attestation §7 + H7 governance still pending;
+> MIRAGE-pass is necessary, not sufficient). **Measured (diagnostic, mock):** #14 and #15 *would pass if
+> attested* (P 1.00, abstain ✓, no-dose ✓); **#1 docs would not** — its mock echoes 2 canned citations for
+> any query, so it fails the abstain hard gate (honest finding). Scores → `benchmark/mirage/scores/latest.json`
+> (+ registers); the **audit ledger (C5) is not touched** (`.strict()`, no metadata slot). PrimeKG #org /
+> medgraph-ai #21 relational substrate DEFERRED (both licence-pending / not this milestone). #18 not scored
+> (UNBUILT/deferred).
 
 ## Step 4 — Case factory (synthetic-only, offline)
 

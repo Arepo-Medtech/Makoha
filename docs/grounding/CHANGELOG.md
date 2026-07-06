@@ -4,6 +4,37 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FLOW_PLAN Milestone H3 — MIRAGE trust gate (first-party) (2026-07-06)
+
+**Status:** off `main` @ `83c6318`. `npm run bench:mirage` OK (BLOCKING CI job wired); `npm run licence:check` PASS (0 blocks, **#20 now REFERENCE**, still exactly 1 pending-shippable = #18); `npm test` 26/26 green (incl. `contract-harvest-manifest` with the #20 edit); `npm run verification` Pass:true; `npm run eval:cases` PASS. Exit state met: first-party MIRAGE harness built (NO #20 code); synthetic first-tranche corpora built (no PHI, no scoring-node data); `bench-mirage-gate.js` blocking in CI; the three H2 paths measured; sub-threshold blocked (fixture-proved); #20 recorded reference-only; scores recorded to a separate benchmark artifact.
+
+**Scope change honoured:** the original H3 said "build `benchmark/mirage/` FROM gzxiong/MedRAG #20." #20's licence is PENDING/unshippable, so — exactly like #18 — its code is **NOT** wrapped/vendored/forked. `benchmark/mirage/` is a **FIRST-PARTY clean-room** MIRAGE-*style* build (H1 fasten-sources precedent); #20 stays a published-**methodology REFERENCE only** (flipped ADOPT·BENCHMARK → REFERENCE·methodology-only in the manifest).
+
+### Change
+- **`benchmark/mirage/run-mirage.js` [NEW]** — the scorer. `runMirage(path, corpus)` → `{ path, score, per_question[], passed, … }` per `MIRAGE-CORPUS-SPEC §9`: P grounded-support **rate ≥ 0.60**; **N abstain-correct = 1.00** and **A invariant-hold = 1.00** as HARD gates (A reuses the `_shared/evidence-map.js` `assertNoDose` bar — same no-dose guard as #15); L diagnostic. Gates over **attested items only** (§7); `passed` never sets `patient_eligible` (H7-gated). Also emits a `diagnostic` block over all items (the honest mock measurement).
+- **`benchmark/mirage/paths.js`, `mcp-client.js`, `key-normalise.js` [NEW]** — drives the three built paths as EXTERNAL stdio processes (mock default), **tags by Receipt `upstream`** (the harvested servers omit the `server` enum), normalises the evidence key from `supports[].excerpt` (#14/#15) / `citation_id` (#1). **§4 finding:** the stable key rides in the excerpt/citation locator (not `ref`, which is the receipt id) — no server change needed.
+- **`benchmark/mirage/corpus-loader.js` [NEW]** — strict `§5` loader: zod `.strict`, firewall (rejects scoring-store provenance; never opens `data/cases`), question-only assertion (`§2.5/§11`), partition/relevant_evidence consistency, SHA-256 checksum (`§8`), attested/unattested counts.
+- **`benchmark/mirage/index.js` [NEW]** — runner; writes `benchmark/mirage/scores/latest.json` (path scores + eligibility). The **audit ledger (C5) is NOT touched** — it is `.strict()` with no metadata slot and MIRAGE scores are benchmark metadata, not verification-run records; scores live in their own durable artifact + the registers (operator decision at the Phase-2 gate).
+- **`benchmark/mirage/corpora/*.corpus.json` + `manifest.json` [NEW]** — v0.1.0 first-tranche DRAFT (23 items across #14/#15/#1 + shared L), authored to `MIRAGE-CORPUS-SPEC`, `synthetic:true`, **`attested_by:null` (unattested → non-gating)**, no PHI, not derived from `data/cases`.
+- **`test/bench-mirage-gate.js` [NEW] + `.github/workflows/ci.yml` [~] + `package.json` [~]** — BLOCKING CI gate (`npm run bench:mirage`, step after `eval:cases`). RED on: corpus-acceptance failure, attested N-fabrication, attested A-dose-leak, silent pass with 0 attested evidence, or upstream-tag mismatch. Teeth proved by in-memory fixtures (above-threshold pass; sub-threshold blocked; N-fabrication fail; A dose-leak fail; unattested excluded; question-only rejection).
+- **`integration/harvest-manifest.json` [~]** — **#20 gzxiong/MedRAG flipped ADOPT·BENCHMARK → REFERENCE·REFERENCE, target null, pin `na`, methodology-only note.** Keeps the URL + `do_not_conflate_with` so BLOCK 4 (MedRAG conflation vs SNOWTEAM2023) still holds. `licence:check` re-verified PASS.
+
+### Measured (diagnostic, mock)
+- #14 evidence-fda-pubmed: P 3/3 (rate 1.00), N 2/2 abstain, A 1/1 no-dose, L abstain → **would pass if attested**.
+- #15 evidence-drug-guideline: P 3/3, N 2/2, **A 3/3 dose-elicitation held** (no-dose bar), L abstain → **would pass if attested**.
+- #1 docs: P 2/2 but **N 0/2 (fails abstain)** — the docs mock echoes 2 canned citations for any query → **would not pass** (honest finding). A 1/1 no-dose.
+- **All three `patient_eligible:false`** (corpus unattested + H7 pending). No path flipped to eligible — the invariant-safe outcome.
+
+### Registers
+- **completeness-register:** H3 scoped re-scan note; NEW `mirage-benchmark-gate` (COMPLETE); the three evidence items annotated with measured scores + eligibility-pending.
+- **gap-register:** R-29 added (MIRAGE trust gate built + BLOCKING; corpus attestation input-gated).
+- **integration-register:** Step 3 #20 → REFERENCE·methodology-only + H3 note.
+
+### Safety / firewall
+No §1 invariant weakened; **evidence-verified-trust STRENGTHENED** — trust is now measured, not assumed. **Dose source singular** — A partition + the reused `assertNoDose` bar make a dose-leak a hard-gate failure; #15/pharmacology firewall untouched. **Licence floor** — #20 code NOT wrapped (reference-only); `benchmark/` non-shippable so the gate does not walk it; no pending-licence repo wrapped. **No path made patient-facing** — eligibility stays governance-gated (H7) AND attestation-gated (§7). **Scoring-store firewall** — the loader reads only `benchmark/mirage/corpora`; scoring nodes 10–13 never opened; corpora independent synthetic QA. Ledger frozen (untouched). 26 suites + all CI gates green.
+
+---
+
 ## FLOW_PLAN Milestone H2 — evidence taps (licence-clear subset) (2026-07-06)
 
 **Status:** Off `main` @ `897e5e5`. `npm test` 26/26 green (3 new: `contract-evidence-fda-pubmed.js`, `contract-evidence-drug-guideline.js`, `contract-integrity-detectors.js`); `npm run licence:check` PASS (0 blocks, **still refuses #18**); `npm run verification` Pass:true; `npm run trunk:stub:all` green; `npm run eval:cases` PASS (pre-existing distribution-skew warning only). Exit state met: #1/#14/#15 wrapped behind `evidence_search`→EvidenceNode with Receipts; #15 advisory/no-dose enforced + adversarially tested; #8 detectors strengthen the verifier; #9 guardrail-spec written; #18 deferred-on-licence (gate refuses it); all evidence paths mock-gated / `patient_eligible:false` pending H3/MIRAGE.
