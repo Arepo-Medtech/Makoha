@@ -50,7 +50,7 @@ const TRUNK_CONSTRAINTS = {
  * @returns {Promise<{ pass: boolean, report: object, packet: object, verification: object }>}
  */
 export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
-  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts, raisedFlags, patientAnswers, abcdeInput } = options;
+  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts, raisedFlags, patientAnswers, abcdeInput, generateCandidate } = options;
   const constraints = TRUNK_CONSTRAINTS[trunkId] ?? ["no diagnosis", "no dosages"];
 
   const result = await runPipeline({
@@ -64,6 +64,8 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
     raised_flags: raisedFlags,
     patient_answers: patientAnswers,
     abcde_input: abcdeInput,
+    // Step-4 generation hook (LIVE_PLAN L3): sees ONLY the sealed packet.
+    generate_candidate: generateCandidate,
   });
 
   // Override packet constraints with trunk-specific ones
@@ -72,11 +74,16 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
   const hardFail = result.firewall_status === "HARD_FAIL";
   const out = {
     pass: result.verification.pass,
-    // Firewall gate (Trunk 8.0): continuation_blocked is set purely from the
-    // pharmacology firewall_status — a HARD_FAIL blocks continuation with no
-    // override path (no-HARD_FAIL-override hard limit).
+    // continuation_blocked: pharmacology firewall (HARD_FAIL — no override
+    // path — and BLOCKED_NO_PROOF) OR a fail-closed Step-4 generation block
+    // (LIVE_PLAN L3). Both block in the same fail-safe direction.
     firewall_status: result.firewall_status,
     continuation_blocked: !!result.continuation_blocked,
+    // The exact candidate text (generated or supplied) + the generation audit —
+    // callers/sequencer need the text for escalation detection when the
+    // pipeline generated it in-place.
+    output: result.output,
+    generation: result.generation ?? null,
     report: {
       run_id: result.run_id,
       timestamp_utc: result.timestamp_utc,

@@ -4,7 +4,10 @@
  * <test_and_evaluation_gates> requires deterministic safety code to be tested.
  *
  * Asserts:
- *   - DEFAULT OFF: with HEYDOC_SEQUENCER unset, nothing runs (rollback state);
+ *   - DEFAULT ON (LIVE_PLAN L4 graduation): with HEYDOC_SEQUENCER unset the
+ *     sequencer runs; an explicit "0"/"off"/"false" (or unrecognised value)
+ *     disables it — the rollback lever survives graduation;
+ *   - STRUCTURED PPP-TTT STOP halts (HALT RULE 5) with the graded-triage reason;
  *   - next_trunks is CONSUMED: routed trunks execute in plan order;
  *   - a pharmacology HARD_FAIL halts the sequence — later trunks never run,
  *     with no override path (F2: HARD_FAIL now propagates across trunks);
@@ -31,12 +34,18 @@ async function main() {
   const saved = process.env.HEYDOC_SEQUENCER;
 
   try {
-    // 1. DEFAULT OFF — the rollback state runs nothing.
+    // 1. DEFAULT ON (L4 graduation) — unset runs the sequence; explicit off is
+    // the rollback and runs NOTHING; an unrecognised value fails toward off.
     delete process.env.HEYDOC_SEQUENCER;
-    const off = await runTrunkSequence(plan(["2.0", "3.0"]), "input", { outputs: { "2.0": CLEAN, "3.0": CLEAN } });
-    check("off: enabled=false", off.enabled === false);
-    check("off: nothing executed", off.executed.length === 0);
-    check("off: not completed", off.completed === false);
+    const dflt = await runTrunkSequence(plan(["2.0"]), "input", { outputs: { "2.0": CLEAN } });
+    check("default: enabled=true with env unset (graduated)", dflt.enabled === true && dflt.completed === true);
+    for (const offVal of ["0", "off", "false", "bogus-value"]) {
+      process.env.HEYDOC_SEQUENCER = offVal;
+      const off = await runTrunkSequence(plan(["2.0", "3.0"]), "input", { outputs: { "2.0": CLEAN, "3.0": CLEAN } });
+      check(`rollback "${offVal}": enabled=false`, off.enabled === false);
+      check(`rollback "${offVal}": nothing executed`, off.executed.length === 0);
+      check(`rollback "${offVal}": not completed`, off.completed === false);
+    }
 
     process.env.HEYDOC_SEQUENCER = "1";
 
@@ -90,6 +99,16 @@ async function main() {
     check("verify-fail: halted at 2.0", vf.halted_at === "2.0" && /verification_failed/.test(vf.halt_reason || ""));
     check("verify-fail: entry records pass=false", vf.executed[0].pass === false);
     check("verify-fail: 3.0 never ran", vf.executed.length === 1);
+
+    // 7b. HALT RULE 5 — a STRUCTURED PPP-TTT STOP halts with the graded reason
+    // (LIVE_PLAN L4 / PPP-TTT Step 2). Ectopic pregnancy is always_immediate
+    // in the attested scope registry → STOP regardless of answers.
+    const stop = await runTrunkSequence(plan(["2.0", "3.0"]), "input", {
+      outputs: { "2.0": CLEAN, "3.0": CLEAN },
+      triageByTrunk: { "2.0": { raisedFlags: [{ source: "trunk_1.0", area_id: "uti", condition: "Ectopic pregnancy" }] } },
+    });
+    check("ppp-stop: halted at 2.0 with the structured triage reason", stop.halted_at === "2.0" && /ppp_ttt_stop/.test(stop.halt_reason || ""));
+    check("ppp-stop: 3.0 never ran", stop.executed.length === 1);
 
     // 8. Malformed plan throws — never part-runs.
     let threw = false;
