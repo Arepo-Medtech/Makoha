@@ -276,6 +276,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: medgemma-generation-backend
+  path: integration/llm-adapter-medgemma.js · integration/generation-backend.js · integration/harvest-manifest.json (REFERENCE row #medgemma) · test/contract-llm-adapter-medgemma.js · test/contract-generation-backend.js
+  component_type: other (generation adapter)
+  state: PARTIAL
+  evidence: BUILD 2026-07-11 (MEDGEMMA-ADAPTER-PLAN, operator-approved: Decision A3 selectable-only backend, Decision B clinician-attested cleared for use). MedGemma is a second Step-4 backend under the IDENTICAL bars to the Claude adapter (L3): strict-packet re-gate (a smuggled field REFUSES before any fetch call, spy-proven), fail-closed to BLOCKED_NO_PROOF on invalid packet / missing endpoint or key / HTTP non-2xx / timeout / safety finish_reason / empty / truncation; mock by default (live requires HEYDOC_MEDGEMMA_LIVE + endpoint + secrets-seam key, all three); audit backend:"medgemma" + model + prompt_sha256 + mode; output → the frozen verifier + detectors + PPP-TTT (dose-leaking generated draft blocked, contract-proven). FIRST-PARTY clean-room HTTPS (OpenAI-compatible chat-completions; endpoint-agnostic for Vertex/HAI-DEF/self-host vLLM/HF) — NO Google code, NO weights in-repo (harvest manifest REFERENCE row #medgemma; weights gitignored/deploy-injected). generation-backend.js selects claude|medgemma from HEYDOC_LLM_BACKEND (default claude; unknown throws); Decision A3 = SELECTABLE ONLY, no failover — a safety refusal stays BLOCKED and is NEVER rerouted to the other model (the-other-transport-never-touched, contract-proven). Imaging/DICOM explicitly OUT (packet carries no images). Frozen core + pipeline + L3 adapter byte-unchanged.
+  blocks: nothing — REMAINING: staging live smoke against a real MedGemma endpoint (operator supplies HEYDOC_MEDGEMMA_ENDPOINT + key via the secrets manager; synthetic packets only) + confirm the served endpoint's exact request/response shape (OpenAI-compatible default; Vertex-native shape is a deploy adapter concern)
+  safety_class: degrades_safe
+  invariant_exposure: LLM-vs-deterministic-truth boundary — enforced mechanically (strict packet re-gate + frozen verifier); no autonomous dx/rx (same bars as any candidate)
+  risk: High
+  blocks_patient_facing: false
+  build_action: REMAINING — staging live smoke + endpoint-shape confirmation; then validate through eval:cases per L14. Licence/regulatory clearance = RESOLVED by clinician attestation (Decision B, attested_by KL 2026-07-11; manifest #medgemma notes).
+  gap_register_link: R-41
+  status: open (adapter + selector built + contract-proven; live smoke input-gated)
+  last_scanned: 2026-07-11
+```
+
+```md
 - id: consent-capture-unbuilt
   path: (absent) consent capture/record mechanism
   component_type: other (consent)

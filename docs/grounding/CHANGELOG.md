@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## MEDGEMMA — MedGemma as a selectable alternative Step-4 generation backend (2026-07-11)
+
+**Status:** `npm test` **45/45** green (43 prior + `contract-llm-adapter-medgemma`, `contract-generation-backend`); `security:secrets` PASS; `licence:check` 0 blocks (new REFERENCE row #medgemma); `verification` Pass:true; `trunk:stub:all` 9/9; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. RETAIN core + `pipeline.js` + the L3 Claude adapter **byte-unchanged** (purely additive). Plan: `.planning/MEDGEMMA-ADAPTER-PLAN.md` — operator-approved with **Decision A3** (selectable backend, no failover) and **Decision B** (clinician-attested cleared for use, attested_by KL). **No patient-facing change; nothing sets patient_eligible; mock remains the default.**
+
+### Change
+- **`integration/llm-adapter-medgemma.js` [NEW]** — a second Step-4 generation backend under the IDENTICAL bars to the L3 Claude adapter: strict-packet re-gate (a field outside the `.strict()` ContextPacket contract REFUSES generation before any `fetch` call, spy-proven); fail-closed to `BLOCKED_NO_PROOF` on invalid packet / missing endpoint or key / HTTP non-2xx / `AbortError` timeout / safety `finish_reason` / empty / truncation; mock by default (live requires `HEYDOC_MEDGEMMA_LIVE` + `HEYDOC_MEDGEMMA_ENDPOINT` + a secrets-seam key, all three); audit `backend:"medgemma"` + model + `prompt_sha256` + mode + latency. FIRST-PARTY clean-room HTTPS, OpenAI-compatible chat-completions (endpoint-agnostic — Vertex / HAI-DEF / self-host vLLM / HF); **no Google code and no weights in-repo**. Imaging/DICOM deliberately OUT (the packet carries no images; feeding one would breach the packet-only bar).
+- **`integration/generation-backend.js` [NEW]** — selects the Step-4 backend from `HEYDOC_LLM_BACKEND` (default `claude`; unknown value THROWS — loud misconfig, never a silent default); routes each transport override to its matching backend only. **Decision A3 — SELECTABLE ONLY, NO FAILOVER:** exactly one backend serves a run; a safety refusal stays `BLOCKED_NO_PROOF` and is NEVER rerouted to the other model (contract-proven: the other model's transport is never touched — the absence of failover code IS the guarantee).
+- **`integration/harvest-manifest.json` [~]** — +1 REFERENCE row (#medgemma): MedGemma ships under the Health AI Developer Foundations terms (NOT OSI); no code/weights wrapped; `licence_status` records the **clinician attestation** that it is cleared for use here (Decision B), not an on-repo OSI detection. `licence:check` 0 blocks.
+- **`test/contract-llm-adapter-medgemma.js` + `test/contract-generation-backend.js` [NEW]** — mirror the L3 suite (packet-only refusal, all fail-closed paths, mock default, dose-leak blocked by the composed detectors, no forbidden surfaces) + the A3 no-failover safety proof. `package.json` [~] test line.
+
+**Register [~]:** NEW `medgemma-generation-backend` (PARTIAL — built + contract-proven; staging live smoke input-gated on the operator's endpoint/key), promoted → gap-register **R-41**. Licence/regulatory clearance RESOLVED by clinician attestation (Decision B).
+
+**Invariants held:** frozen core + pipeline + L3 adapter byte-unchanged (CI pin); LLM-vs-deterministic-truth boundary enforced mechanically at Step 4 (strict packet re-gate) for this backend too; no autonomous dx/rx (same downstream verifier + detectors + PPP-TTT); no minted codes/doses/facts; mock never presented as live; no scoring-store path; no `patient_eligible`; no Google code/weights in-repo (harvest discipline).
+
+**Open follow-ups:** staging live smoke against a real MedGemma endpoint (operator supplies `HEYDOC_MEDGEMMA_ENDPOINT` + key; synthetic packets only) + confirm the served request/response shape (OpenAI-compatible default; Vertex-native is a deploy adapter concern).
+
+---
+
 ## L3L4 — Live LLM Step-4 adapter (the model enters the loop, behind bars) + sequencer graduation with the structured STOP halt (2026-07-11)
 
 **Status:** `npm test` **43/43** green (42 prior + `contract-llm-adapter`; `contract-sequencer` extended for graduation + HALT RULE 5); `security:secrets` PASS; `licence:check` 0 blocks; `verification` Pass:true; `trunk:stub:all` 9/9; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. RETAIN core **byte-unchanged** (CI pin). Plan: `.planning/LIVE_PLAN.md` L3 + L4 (operator-approved). **Nothing patient-facing; nothing sets patient_eligible; mock remains the default everywhere.**
