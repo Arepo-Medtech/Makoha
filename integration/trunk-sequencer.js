@@ -17,17 +17,23 @@
  *   4. Any executed trunk FAILS verification (pass=false) → halt. A rejected
  *      output must never become upstream context for the next trunk (fail-safe;
  *      building on unverified output would bypass Step 5 of the spine).
+ *   5. Any executed trunk's PPP-TTT graded triage is a STRUCTURED STOP
+ *      (verification.ppp_ttt.tier === "STOP") → halt with the triage reason
+ *      (LIVE_PLAN L4 / PPP-TTT plan Step 2). Additive defence in depth on top
+ *      of rules 3 and 4 — a STOP already carries the escalate_now token and
+ *      forces pass=false, but the structured field is checked directly so the
+ *      halt never depends on text rendering.
  *
  * Escalation detection is deliberately CONSERVATIVE: it scans the trunk's
  * structured output (or raw text) for escalate_now / a T5 safety-tier signal and
  * over-halts on ambiguity — halting too eagerly is safe (over-triage); running
  * past an escalation is not (under-triage outranks over-triage).
  *
- * ROLLBACK / FEATURE FLAG: the sequencer only runs when HEYDOC_SEQUENCER is
- * enabled ("1" | "on" | "true"). DEFAULT IS OFF — when off, runTrunkSequence()
- * runs NOTHING and returns a disabled record (status quo: callers run single
- * trunks via runTrunkWithGrounding and must honour continuation_blocked
- * themselves).
+ * ROLLBACK / FEATURE FLAG (LIVE_PLAN L4 graduation, 2026-07-11): the sequencer
+ * is ON BY DEFAULT. HEYDOC_SEQUENCER remains the rollback lever — an explicit
+ * "0" | "off" | "false" disables it, and runTrunkSequence() then runs NOTHING
+ * and returns a disabled record (pre-L4 status quo: callers run single trunks
+ * via runTrunkWithGrounding and must honour continuation_blocked themselves).
  *
  * The sequencer adds the missing OUTER loop only — each trunk still runs the
  * full five-step pipeline (Route→Retrieve→Inject→Generate→Verify) inside
@@ -67,9 +73,12 @@ const SequenceRecord = z
   })
   .strict();
 
-/** Feature flag (default OFF → rollback is the status quo). */
+/** Feature flag — DEFAULT ON since L4 graduation; explicit "0"/"off"/"false"
+ *  is the rollback (an unrecognised value also disables — fail toward the
+ *  known-good single-trunk status quo rather than guessing). */
 export function isSequencerEnabled() {
-  const v = String(process.env.HEYDOC_SEQUENCER || "").trim().toLowerCase();
+  const v = String(process.env.HEYDOC_SEQUENCER ?? "").trim().toLowerCase();
+  if (v === "") return true; // graduated default (LIVE_PLAN L4)
   return v === "1" || v === "on" || v === "true";
 }
 
@@ -100,7 +109,9 @@ export function detectEscalation(output) {
  * @param {string} userInput - The user/patient input threaded to every trunk.
  * @param {{
  *   outputs?: Record<string, string|object>,      // per-trunk candidate output (stubs/tests)
- *   generate?: (trunkId: string, userInput: string) => Promise<string|object>, // Step 4 external generation
+ *   generate?: (trunkId: string, userInput: string) => Promise<string|object>, // Step 4 external generation (legacy text hook)
+ *   generateCandidate?: (packet: object) => Promise<object>, // Step 4 packet-only generation (LIVE_PLAN L3 llm-adapter hook)
+ *   triageByTrunk?: Record<string, { raisedFlags?: Array<object>, patientAnswers?: object, abcdeInput?: object }>, // PPP-TTT inputs per trunk (L4)
  *   pharmIntents?: Record<string, object>,        // per-trunk PharmIntent (Trunk 8.0)
  *   resolvedFacts?: object,
  *   sessionRef?: string,
@@ -140,6 +151,7 @@ export async function runTrunkSequence(trunkOneOutput, userInput, options = {}) 
     let output = options.outputs?.[trunkId];
     if (output === undefined && options.generate) output = await options.generate(trunkId, userInput);
     const candidateOutput = typeof output === "object" && output !== null ? JSON.stringify(output) : output;
+    const triage = options.triageByTrunk?.[trunkId];
 
     const result = await runTrunkWithGrounding(trunkId, userInput, {
       candidateOutput,
@@ -148,6 +160,13 @@ export async function runTrunkSequence(trunkOneOutput, userInput, options = {}) 
       useMcp: options.useMcp,
       pharmIntent: options.pharmIntents?.[trunkId],
       resolvedFacts: options.resolvedFacts,
+      // Step-4 packet-only generation (L3): used only when no fixed output /
+      // legacy generator supplied a candidate for this trunk.
+      generateCandidate: candidateOutput === undefined ? options.generateCandidate : undefined,
+      // PPP-TTT graded triage inputs for this trunk (L4).
+      raisedFlags: triage?.raisedFlags,
+      patientAnswers: triage?.patientAnswers,
+      abcdeInput: triage?.abcdeInput,
     });
 
     executed.push({
@@ -164,9 +183,18 @@ export async function runTrunkSequence(trunkOneOutput, userInput, options = {}) 
         halt_reason: `continuation_blocked: pharmacology firewall ${result.firewall_status || "block"} at Trunk ${trunkId} — sequence halted, no override path`,
       });
     }
-    // HALT RULE 3 — emergency escalation short-circuits the rest.
-    if (detectEscalation(output ?? candidateOutput)) {
+    // HALT RULE 3 — emergency escalation short-circuits the rest. Scans the
+    // supplied output, or the in-pipeline generated text (L3) when generation
+    // produced the candidate.
+    if (detectEscalation(output ?? candidateOutput ?? result.output)) {
       return record({ halted_at: trunkId, halt_reason: `escalate_now: Trunk ${trunkId} output signalled emergency escalation` });
+    }
+    // HALT RULE 5 — a STRUCTURED PPP-TTT STOP halts with the graded-triage
+    // reason (LIVE_PLAN L4). Checked before rule 4 so the halt reason carries
+    // the clinical grading, not just the generic verification failure a STOP
+    // also forces (monotone-AND). Additive: no STOP → identical behaviour.
+    if (result.verification?.ppp_ttt?.tier === "STOP") {
+      return record({ halted_at: trunkId, halt_reason: `ppp_ttt_stop: Trunk ${trunkId} graded triage is STOP (escalate_now) — mandatory escalation, sequence halted with no override path` });
     }
     // HALT RULE 4 — a rejected output never grounds the next trunk.
     if (!result.pass) {

@@ -124,7 +124,10 @@ function contextInjection(plan, receipts, meta = {}) {
 export async function runPipeline(options = {}) {
   const user_input = options.user_input ?? "Patient reports lower back pain.";
   const trunk = options.trunk ?? "5.0";
-  const candidate_output = options.candidate_output ?? stubGenerationOutput();
+  // Step-4 candidate: caller-supplied text, else the generation hook (below,
+  // AFTER the packet is sealed — generation may only ever see the packet),
+  // else the deterministic stub (status quo).
+  let candidate_output = options.candidate_output;
   const useMcp = options.use_mcp ?? (process.env.HEYDOC_USE_MCP === "1" || process.env.HEYDOC_USE_MCP === "true");
 
   const run_id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -188,6 +191,25 @@ export async function runPipeline(options = {}) {
 
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
   const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content }));
+
+  // Step 4 — Generation (LIVE_PLAN L3). The hook receives ONLY the sealed
+  // packet — the packet-only bar is the calling convention here AND the
+  // adapter's own re-gate. A failed/refused generation FAILS CLOSED: the
+  // candidate becomes an explicit blocked notice and continuation is blocked
+  // (a missing draft is a blocked status, never a fabricated one). With no
+  // hook and no caller text, the deterministic stub runs (status quo).
+  let generation = null;
+  if (candidate_output === undefined && options.generate_candidate) {
+    const gen = await options.generate_candidate(packet);
+    generation = { ok: gen.ok, ...(gen.audit || {}), ...(gen.ok ? {} : { status: gen.status, reason: gen.reason }) };
+    if (gen.ok) {
+      candidate_output = gen.candidate_output;
+    } else {
+      candidate_output = `Generation blocked (BLOCKED_NO_PROOF): ${gen.reason || "no candidate produced"}. This encounter requires clinician escalation. No diagnosis or dosages are given.`;
+      continuation_blocked = true;
+    }
+  }
+  if (candidate_output === undefined) candidate_output = stubGenerationOutput();
 
   // AUDIT CHANNEL — omnibus fact provenance + consult tagging. Everything in
   // this block rides on the RESULT (ledger / scorer / evidence_tree), never on
@@ -326,6 +348,11 @@ export async function runPipeline(options = {}) {
     // tagged ABCDE record. Audit channel only — never merged into the packet.
     ppp_ttt,
     abcde_record,
+    // Step-4 generation audit (null when no generation hook ran): mode
+    // (mock/live — never conflated), model id, prompt_sha256 (what the model
+    // was shown), latency; on failure also status/reason. Medicolegal
+    // reproducibility rides the audit channel, like everything else here.
+    generation,
     // Terminology receipts WITH their validated codes — recorded in the ledger so a
     // later verify:rehash --reissue can faithfully re-bind codes (otherwise a
     // previously-passing coded output would be re-recorded as FAIL).

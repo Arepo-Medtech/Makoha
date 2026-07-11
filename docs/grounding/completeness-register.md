@@ -35,18 +35,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: live-llm-generation-adapter-unbuilt
-  path: integration/llm-adapter.js (absent) · trunk/*-stub-agent.js (Step 4 stand-ins)
+  path: integration/llm-adapter.js · verification/pipeline.js (Step-4 hook, additive) · test/contract-llm-adapter.js
   component_type: other (generation adapter)
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — pipeline Step 4 is stub agents only; no gated live-LLM client exists (ContextPacket-only input, output→hash+verify, fail-closed on timeout/refusal, model-id+prompt-hash audit trail). The model has never actually been in the loop.
-  blocks: any real consult; L4 sequencer live runs; L11 product surface; L14 staging soak
-  safety_class: none (absence refuses; nothing fabricates)
-  invariant_exposure: LLM-vs-deterministic-truth boundary must be enforced mechanically in the adapter when built
+  state: PARTIAL
+  evidence: L3 BUILD 2026-07-11 — the gated Step-4 client exists and is contract-proven. PACKET-ONLY BAR is mechanical and default-deny: generateCandidate() re-gates through the strict validateContextPacket zod contract and serialises exactly the parsed object; a smuggled extra field REFUSES generation before any transport call (proven with a spy transport). FAIL-CLOSED: invalid packet, missing trunk prompt, live-without-key, API error/timeout, safety refusal (stop_reason "refusal"), empty output, and max_tokens truncation all → BLOCKED_NO_PROOF; the pipeline turns that into continuation_blocked + an explicit blocked candidate (never fabricated). MOCK BY DEFAULT: HEYDOC_LLM_LIVE AND a secrets-seam key (placeholders refuse) both required for live; mock is audited mode:"mock" (never presented as live). AUDIT: model id (pinned default claude-opus-4-8, adaptive thinking) + prompt_sha256 (the exact bytes shown to the model) + latency ride result.generation. E2E: a clean grounded fake-live output passes the full composed gate; a dose-leaking generated output is blocked by the detectors; no-hook runs are byte-identical status quo. Dependency @anthropic-ai/sdk ^0.111.0 (MIT) adopted at its LIVE_PLAN §7 gate; npm audit 0.
+  blocks: L14 staging soak — REMAINING: real live smoke in STAGING (operator supplies ANTHROPIC_API_KEY via the secrets manager; synthetic packets only) + trunk-prompt tuning against real generations
+  safety_class: degrades_safe
+  invariant_exposure: LLM-vs-deterministic-truth boundary — now enforced mechanically (strict packet re-gate + frozen verifier downstream)
   risk: Critical
   blocks_patient_facing: true
-  build_action: LIVE_PLAN L3 — build integration/llm-adapter.js (@anthropic-ai/sdk, Phase-2-gated dependency; key via L2 secrets manager; mock default + rollback via HEYDOC_LLM_LIVE; packet-only input asserted by contract test).
+  build_action: REMAINING — staging live smoke (HEYDOC_LLM_LIVE=1) + prompt tuning; then validate through eval:cases per L14.
   gap_register_link: R-32
-  status: open
+  status: open (adapter built + contract-proven; live smoke input-gated)
   last_scanned: 2026-07-11
 ```
 
@@ -1207,18 +1207,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: sequencer-default-off
-  path: integration/trunk-sequencer.js (HEYDOC_SEQUENCER default OFF)
+  path: integration/trunk-sequencer.js
   component_type: other (orchestration flag)
-  state: PARTIAL
-  evidence: LIVE scan 2026-07-11 — the outer loop is built + contract-tested but default-OFF; live multi-trunk consults need graduation + the PPP-TTT Step-2 structured-tier halt rule.
-  blocks: L11 live consult flow
-  safety_class: none (OFF = status quo single-trunk)
-  invariant_exposure: none
+  state: COMPLETE
+  evidence: L4 BUILD 2026-07-11 — sequencer graduated to DEFAULT ON (HEYDOC_SEQUENCER unset ⇒ enabled); explicit "0"/"off"/"false" — or ANY unrecognised value, failing toward the known-good single-trunk status quo — is the rollback (all four contract-tested). NEW HALT RULE 5 (additive): a structured PPP-TTT STOP (verification.ppp_ttt.tier === "STOP") halts with the graded-triage reason, checked before rule 4 so the halt names the clinical grading — defence in depth on top of the escalate_now text and pass:false halts (closes PPP-TTT plan Step 2). The sequencer also passes through the L3 packet-only generation hook (generateCandidate; used only when no fixed output exists) and per-trunk triage inputs (triageByTrunk); rule-3 escalation detection now also scans in-pipeline generated text. Halt rules 1–4 re-proven unchanged.
+  blocks: (cleared)
+  safety_class: none
+  invariant_exposure: none — every halt remains unconditional; no override path added
   risk: Medium
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L4 — flip default ON (env still overrides) + additive HALT RULE 5 on ppp_ttt.tier === "STOP" + real Trunk 1.0 routing with L3.
+  build_action: DONE (L4). Real Trunk 1.0 routing content arrives with live generation tuning (L3 remainder / L11).
   gap_register_link: none (Medium)
-  status: open
+  status: resolved
   last_scanned: 2026-07-11
 ```
 
