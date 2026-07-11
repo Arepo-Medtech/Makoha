@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "heydoc-grounding:portal-review-bundle",
+  "title": "Portal Review Bundle (what the clinician reviewer was shown, hashed)",
+  "description": "The complete review workspace presented to a clinician in the Verification Portal (portal/review-bundle.js): the exact candidate output + medicolegal hash, verification results, receipts, evidence claims, firewall status, and the producer-gated audit artifacts (PPP-TTT verdict, ABCDE record, history summary, conflict audit). bundle_sha256 is computed over the canonical bundle-without-that-field and is recorded with the clinician's decision (gate-record-store), so the audit trail proves what was REVIEWED, not just what was decided. Zod mirror: portal/review-bundle-schema exports in portal/review-bundle.js (this JSON schema is the source of truth).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bundle_version", "run_id", "timestamp_utc", "mode", "candidate_output", "candidate_output_hash", "verification", "receipts", "evidence_claims", "continuation_blocked", "hard_stops", "bundle_sha256"],
+  "properties": {
+    "bundle_version": { "const": "1.0" },
+    "run_id": { "type": "string", "minLength": 8 },
+    "trunk_id": { "type": "string" },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "mode": { "type": "string", "enum": ["mock", "dry_run", "live"] },
+    "candidate_output": { "type": "string", "minLength": 1, "description": "The exact bytes under review." },
+    "candidate_output_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "verification": {
+      "type": "object",
+      "required": ["pass", "results", "missing_receipts"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["check", "passed"],
+            "properties": {
+              "check": { "type": "string" },
+              "passed": { "type": "boolean" },
+              "reason": { "type": "string" },
+              "severity": { "type": "string" }
+            }
+          }
+        },
+        "missing_receipts": { "type": "array", "items": { "type": "string" } },
+        "mock_receipt_flags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id", "upstream", "mode"],
+        "properties": {
+          "request_id": { "type": "string" },
+          "upstream": { "type": "string" },
+          "mode": { "type": "string" },
+          "timestamp_utc": { "type": "string" }
+        }
+      }
+    },
+    "evidence_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "supports"],
+        "properties": {
+          "claim": { "type": "string" },
+          "supports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "ref"],
+              "properties": { "kind": { "type": "string" }, "ref": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "firewall_status": { "type": "string" },
+    "continuation_blocked": { "type": "boolean" },
+    "hard_stops": { "type": "array", "items": { "type": "string" } },
+    "ppp_ttt": { "type": "object", "description": "Producer-gated (ppp-ttt-verdict.schema.json); carried opaque." },
+    "abcde_record": { "type": "object", "description": "Producer-gated (ppp-ttt-abcde-record.schema.json); carried opaque." },
+    "history_summary": { "type": "object", "description": "Producer-gated (patient-history-summary.schema.json); carried opaque." },
+    "conflict_audit": { "type": "object", "description": "Producer-gated (verification/conflict-audit.js); carried opaque." },
+    "bundle_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

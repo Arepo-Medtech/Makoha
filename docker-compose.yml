@@ -1,0 +1,24 @@
+# Dev/staging compose for the Breath-Ezy portal (LIVE_PLAN L2, R-35).
+# Dev default is mock (no patients, no live vendors). A staging deployment
+# overrides HEYDOC_MODE_DEFAULT=staging and MUST supply HEYDOC_PORTAL_TOKEN —
+# the portal refuses to start live-enforced without auth (fail-closed).
+services:
+  portal:
+    build: .
+    ports:
+      - "8787:8787"
+    environment:
+      HEYDOC_MODE_DEFAULT: ${HEYDOC_MODE_DEFAULT:-mock}
+      HEYDOC_PORTAL_PORT: "8787"
+      # Real value injected by the deployment's secret store — never committed.
+      HEYDOC_PORTAL_TOKEN: ${HEYDOC_PORTAL_TOKEN:-}
+      # Non-local substrates refuse unless a WORM adapter is registered at
+      # boot (deploy/register-substrates.example.mjs) — fail-closed.
+      HEYDOC_AUDIT_SUBSTRATE: ${HEYDOC_AUDIT_SUBSTRATE:-local}
+      HEYDOC_GATE_RECORD_SUBSTRATE: ${HEYDOC_GATE_RECORD_SUBSTRATE:-local}
+      HEYDOC_AUDIT_RETENTION: ${HEYDOC_AUDIT_RETENTION:-}
+    volumes:
+      - heydoc-data:/data
+
+volumes:
+  heydoc-data:

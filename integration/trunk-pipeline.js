@@ -15,6 +15,8 @@ import { runPipeline } from "../verification/pipeline.js";
 import { verify } from "../verification/verifier.js";
 import { validateReport } from "../verification/report-schema.js";
 import { recordRun } from "../verification/audit-store.js";
+import { appendPppTttEntry, ledgerCoreFromRecord } from "../verification/ppp-ttt/ledger.js";
+import { recordRunMetrics } from "../verification/metrics.js";
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -48,7 +50,7 @@ const TRUNK_CONSTRAINTS = {
  * @returns {Promise<{ pass: boolean, report: object, packet: object, verification: object }>}
  */
 export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
-  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts } = options;
+  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts, raisedFlags, patientAnswers, abcdeInput } = options;
   const constraints = TRUNK_CONSTRAINTS[trunkId] ?? ["no diagnosis", "no dosages"];
 
   const result = await runPipeline({
@@ -58,6 +60,10 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
     use_mcp: useMcp,
     pharm_intent: pharmIntent,
     resolved_facts: resolvedFacts,
+    // PPP-TTT graded triage (additive; no flags = byte-identical behaviour).
+    raised_flags: raisedFlags,
+    patient_answers: patientAnswers,
+    abcde_input: abcdeInput,
   });
 
   // Override packet constraints with trunk-specific ones
@@ -96,6 +102,11 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
 
     // Append to the append-only medicolegal ledger (+ synthetic content store).
     recordRun(result, { trunkId, sessionRef });
+    // PPP-TTT parallel trail (LIVE_PLAN L1 wiring): PHI-free triage record,
+    // cross-linked by run_id + candidate_output_hash.
+    if (result.abcde_record) appendPppTttEntry(ledgerCoreFromRecord(result.abcde_record));
+    // Charter metrics (LIVE_PLAN L2) — observability only, never a gate change.
+    recordRunMetrics(result);
     const evidenceTree = [
       "# Evidence tree",
       "",

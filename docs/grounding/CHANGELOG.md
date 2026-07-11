@@ -4,6 +4,35 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## LIVE — LIVE_PLAN approved; L1 Portal UI/workflow + durable gate records; L2 runtime/secrets/metrics/CI hardening (2026-07-11)
+
+**Status:** `npm test` **42/42** green (40 prior + `contract-portal-review`, `contract-live-ops`); `security:secrets` PASS (new BLOCKING CI gate, 2669 files/0 findings); `verification` Pass:true; `trunk:stub:all` 9/9; `licence:check` 0 blocks; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. Plan: `.planning/LIVE_PLAN.md` (operator approved the master plan + L1/L2 commencement 2026-07-11). RETAIN core **byte-unchanged** (CI-pinned). **Nothing patient-facing opened; nothing sets patient_eligible.**
+
+### LIVE_PLAN (Phase-0 + approval record)
+Master plan for public release: 15 dependency-ordered workstreams in two tracks (engineering-now vs operator-input-gated), the four release blockers, the default-settings matrix (mock/staging/production), evaluation thresholds as the final arbiter, and the operator-input checklist (vendor, NCTS/RF2, attestations, WORM backend, TGA ruling, GO/NO-GO). Phase-0 scan opened 11 items; the 9 High/Critical promoted → gap-register **R-32…R-40**.
+
+### L1 — Clinician Verification Portal: review console + durable gate records (release blocker #2, UI/storage half)
+- **`portal/server.js` [NEW]** — dependency-free (node:http, server-rendered, no build step) clinician review console: queue (live `submitForReview()` + POST /submit, plus ledger/content-store items), review workspace (exact output bytes, five checks + surfaced detector/triage findings, receipts, evidence claims, firewall status, **PPP-TTT verdict + ABCDE safety-net**), decision form (approve/reject/amend + signature_ref + notes). Auth FAIL-CLOSED: live-enforced mode refuses to start without `HEYDOC_PORTAL_TOKEN` (resolved via the secrets seam); bearer on every console route; XSS-escaped rendering (contract-tested). **The portal never releases anything** — it permits the frozen gate to permit.
+- **`portal/review-bundle.js` + `mcp/schemas/portal-review-bundle.schema.json` [NEW]** — the review workspace as a hashed contract: `bundle_sha256` over what the reviewer was SHOWN, recorded with the decision (tamper-evident review provenance).
+- **`portal/gate-record-store.js` [NEW]** — DURABLE-FIRST, append-only, hash-chained gate-record trail (`gate-records.jsonl`) with the M8-style substrate seam (`registerGateRecordSubstrate`; non-local unregistered REFUSES); `hydrateGateRegistry()` replays the durable chain into the FROZEN gate's in-memory registry across restarts (idempotent). `portal/verification-gate.js` byte-unchanged.
+- **PPP-TTT ledger wiring [~]** — both report writers (`verification/run.js`, `integration/trunk-pipeline.js`) now append `ledgerCoreFromRecord(result.abcde_record)` alongside `recordRun()`; `runTrunkWithGrounding` passes `raisedFlags/patientAnswers/abcdeInput` through (closes `ppp-ttt-ledger-wiring`).
+- **`test/contract-portal-review.js` [NEW]** — end-to-end decision→durable-chain→hydrate→`releaseToPatient()` round-trip: mock refuses even approved; live releases ONLY exact attested bytes; amend switches to the amended text; reject kills; tamper breaks the chain; 401 without token; live portal without token refuses to start; no `patient_eligible` reference (static).
+
+### L2 — Runtime, secrets, observability, CI hardening
+- **`integration/secrets.js` [NEW]** — fail-closed secrets seam: env backend default; unregistered scheme REFUSES (no silent fallback); missing/empty REFUSES; `example.invalid` placeholders REFUSED as credentials; values never logged.
+- **`verification/metrics.js` [NEW]** — charter metrics (runs/pass/fail, HARD_FAIL, BLOCKED_NO_PROOF, PPP-TTT tier counts, derived rates) recorded by both writers (observability only, never a gate change) + alarm seam (`onAlarm`/`raiseAlarm`, structured stderr): HARD_FAIL → `pharmacology_hard_fail`; `critical_under_triage` channel for the eval layer; `/metrics` on the portal. STOP is counted, not paged (over-triage is the system working).
+- **`Dockerfile` + `.dockerignore` + `docker-compose.yml` + `deploy/{README.md,register-substrates.example.mjs}` [NEW]** — runtime image (node:20-alpine, lockfile-only, mock default, `/data` volume so ledgers outlive containers); compose (staging must supply the portal token); deploy bootstrap example registering WORM/gate-record/secrets backends BEFORE start (placeholders the secrets seam refuses).
+- **`scripts/check-secrets.mjs` [NEW] + CI [~]** — first-party deterministic secret scan (private-key blocks, AWS/GitHub/Anthropic/Slack/Google tokens, signed JWTs; tracked files; never echoes values), **BLOCKING** in CI as `security:secrets`; pattern teeth self-tested. Org-grade SAST = operator tool choice (R-38 remainder).
+- **`test/contract-live-ops.js` [NEW]** — secrets fail-closed matrix; metrics/alarms on real pipeline runs (incl. a receipt-backed HARD_FAIL); writer-wired PPP-TTT ledger append; scanner green + self-test.
+
+**Register [~]:** `ppp-ttt-ledger-wiring` → **resolved**; `clinician-verification-portal-unbuilt` narrowed (gate + UI/workflow + durable chained storage built; REMAINING: WORM registration R-39 + identity federation); `deployment-runtime-unbuilt` / `secrets-manager-integration-unbuilt` / `observability-metrics-unbuilt` / `ci-secret-scanning-sast-missing` → **PARTIAL** (engineering halves done; deploy/operator halves named).
+
+**Invariants held:** frozen core byte-unchanged (CI pin green); portal never sends; human sign-off is the product spine; hashing extended (bundle_sha256 = review provenance); fail-closed everywhere new (portal auth, substrates, secrets); mock never presented as live; no scoring-store access; no `patient_eligible` anywhere (static + tested).
+
+**Open follow-ups (per LIVE_PLAN):** L3 live-LLM adapter (next engineering-critical item) · L4 sequencer graduation · WORM adapter + retention (R-39, operator backend) · staging deploy job (operator cloud) · SAST choice (operator) · under-triage alarm call-site in the eval gate (L10) · Track-B operator inputs (L5–L9, L13).
+
+---
+
 ## PPP — PPP-TTT graded triage: GO/CAUTION/STOP as a monotone-AND layer (Step 1) (2026-07-11)
 
 **Status:** `npm test` **40/40** green (37 prior + `contract-ppp-ttt`, `contract-ppp-ttt-monotone`, `contract-ppp-ttt-ledger`); `verification` Pass:true; `trunk:stub:all` 9/9; `licence:check` PASS (0 blocks — 100% first-party, no manifest row); `eval:cases` PASS (301 attested, 0 failures — the gate does not exercise the pipeline seam); `bench:mirage` OK; `npm audit` 0. Plan: `.planning/PPP-TTT-PLAN.md` (operator-approved; Step 1 only — Steps 2–4 remain gated). **Additive, non-patient-facing, mock-by-default; nothing sets the patient-eligibility flag.**

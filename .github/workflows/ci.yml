@@ -27,6 +27,14 @@ jobs:
       - name: Dependency audit (fail on High/Critical)
         run: npm audit --audit-level=high
 
+      # Secret scan — BLOCKING (LIVE_PLAN L2, R-38; charter security_and_secrets:
+      # secret-scanning in CI before any production path). First-party,
+      # deterministic, high-confidence credential shapes only (private keys,
+      # AWS/GitHub/Anthropic/Slack/Google tokens, signed JWTs) over TRACKED
+      # files. Org-grade SAST tool selection remains an operator decision.
+      - name: Secret scan (blocking)
+        run: npm run security:secrets
+
       # Harvest licence + identity gate — BLOCKING (FLOW_PLAN H0). Enforces the
       # licence floor mechanically against integration/harvest-manifest.json:
       # no AGPL/GPL in a shippable module, no dropped/deferred repo pulled in,

@@ -11,6 +11,8 @@ import { fileURLToPath } from "url";
 import { runPipeline } from "./pipeline.js";
 import { validateReport } from "./report-schema.js";
 import { recordRun } from "./audit-store.js";
+import { appendPppTttEntry, ledgerCoreFromRecord } from "./ppp-ttt/ledger.js";
+import { recordRunMetrics } from "./metrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERIFICATION_DIR = join(__dirname);
@@ -50,6 +52,12 @@ async function main() {
   // Append the run to the append-only medicolegal ledger (and, for synthetic
   // data, the content store). This is the durable, tamper-evident audit trail.
   recordRun(result);
+  // PPP-TTT parallel trail (LIVE_PLAN L1 wiring): a graded run's PHI-free
+  // triage record is appended alongside, cross-linked by run_id + hash.
+  if (result.abcde_record) appendPppTttEntry(ledgerCoreFromRecord(result.abcde_record));
+  // Charter metrics (LIVE_PLAN L2): counters + alarm seam — observability
+  // only, never a gate change.
+  recordRunMetrics(result);
 
   const evidenceTree = buildEvidenceTreeMd(result);
   writeFileSync(join(VERIFICATION_DIR, "evidence_tree.md"), evidenceTree);
