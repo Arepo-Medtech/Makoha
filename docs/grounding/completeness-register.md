@@ -25,11 +25,64 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **PPP-TTT scoped re-scan** _(2026-07-11, PPP-TTT Step 1 — graded triage GO/CAUTION/STOP; plan `.planning/PPP-TTT-PLAN.md`)_ — Built `verification/ppp-ttt/` as a **pure, additive, monotone-AND** layer over the existing pipeline (H2 detector lineage): Step-1 veracity interrogation grades raised flags against the clinician-attested `scope-registry.json` v1.3.0 discriminators (deterministic IDs `uhao-N` / `<condition>-cs-N` / `<condition>-refer-1`; read-only, sha256-pinned dataset receipt); CAUTION (the only new runtime state — stigmata attested-absent + stable refer_if form present) runs the fixed ABCDE protocol; **every default-deny branch (unknown/unanswered discriminator, off-registry, managed-only, unattested/TBD, registry drift, module error, malformed input) fails closed to STOP** — gradeConcern cannot throw. `composeTriage()` mirrors `combineVerification()` exactly: `results[]` = the 5 verifier checks untouched, `pass` = AND (STOP ⇒ false, never rescues), tier = ordinal max (never downgrades), STOP reasons carry the literal `escalate_now` token so the UNTOUCHED sequencer halts via its existing rules (Seam B). ABCDE record is self-describing (`_pppTtt` header, `urn:au:digital-tablet`/`ppp-ttt-v1` tag, LOINC sections PROVEN from the pinned omnibus, never minted) and rides the AUDIT CHANNEL only — the ContextPacket is contract-tested byte-identical with/without flags. Parallel PHI-free hash-chained ledger (`ppp-ttt-ledger.jsonl`, own strict schema, cross-linked to the main ledger by `{run_id, candidate_output_hash}`; audit-store.js untouched). **RETAIN core BYTE-UNCHANGED and now PINNED in CI**: `test/contract-ppp-ttt-monotone.js` asserts the sha256 of `verifier.js` / `portal/verification-gate.js` / `audit-store.js` — the first mechanical byte-unchanged gate. Nothing sets the patient-eligibility flag (statically asserted); no scoring-node (10–13) read path (statically asserted); E-PP potestative choice bounded to CAUTION, `subordinate_to_signoff` schema-literal true; decline → refer (no autonomous continuation). NEW: `ppp-ttt-graded-triage` (COMPLETE, Medium). **No BLIND_STUB/DEAD_END opened**: the module has a real producer seam (pipeline `raised_flags`) + contract-test and audit consumers; the Step-3 patient-facing surface stays behind the mock/portal gates (plan §10). 40 suites (37 + 3 PPP-TTT) + licence:check + verification + trunk:stub:all + eval:cases + bench:mirage + npm audit green.
 
+**LIVE readiness scan** _(2026-07-11, `.planning/LIVE_PLAN.md` Phase 0 — operator APPROVED the master plan + commencement of L1/L2 the same day)_ — Scanned the tree for what public release / live execution requires beyond the open register items. The safety core (pipeline, verifier, detectors, PPP-TTT, firewalls, both ledgers, portal gate) is built and fail-closed; what is ABSENT is the product around it: **no deployment/runtime story** (CI is test-only; no entrypoint/Dockerfile/IaC), **no live LLM Step-4 adapter** (generation is stub agents by design — the model has never been in the loop), **no patient/pharmacist product surface**, **no secrets-manager integration**, **no metrics/alarms**, **no production WORM adapter** (M8 seam only), **no consent capture**, **SAST/secret-scanning absent from CI**, sequencer default-OFF, PPP-TTT ledger unwired from the report writers, and the TGA SaMD classification unresolved (org decision — `regulatory_confirmation_exempt_cdss` is a scope-activation-gate condition). Eleven new items registered below (LIVE-PLAN §0.1); the nine High/Critical promoted one-way into the gap-register (R-32…R-40). Build order for remaining work now follows LIVE_PLAN §2 (extends Part D.11). **No BLIND_STUB or DEAD_END on the L1/L2 path** — every named absence degrades to refusal/BLOCKED, none presents mock as live.
+
 **M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — _(case count SUPERSEDED by the H4 line above — 303 as of 2026-07-06.)_ Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
 
 ---
 
 ## CRITICAL
+
+```md
+- id: live-llm-generation-adapter-unbuilt
+  path: integration/llm-adapter.js (absent) · trunk/*-stub-agent.js (Step 4 stand-ins)
+  component_type: other (generation adapter)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — pipeline Step 4 is stub agents only; no gated live-LLM client exists (ContextPacket-only input, output→hash+verify, fail-closed on timeout/refusal, model-id+prompt-hash audit trail). The model has never actually been in the loop.
+  blocks: any real consult; L4 sequencer live runs; L11 product surface; L14 staging soak
+  safety_class: none (absence refuses; nothing fabricates)
+  invariant_exposure: LLM-vs-deterministic-truth boundary must be enforced mechanically in the adapter when built
+  risk: Critical
+  blocks_patient_facing: true
+  build_action: LIVE_PLAN L3 — build integration/llm-adapter.js (@anthropic-ai/sdk, Phase-2-gated dependency; key via L2 secrets manager; mock default + rollback via HEYDOC_LLM_LIVE; packet-only input asserted by contract test).
+  gap_register_link: R-32
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: product-surface-unbuilt
+  path: (absent) patient consult app + pharmacist console/API layer
+  component_type: other (product surface)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — no frontend/API anywhere in the tree; the consult loop exists only as stub agents + the pipeline harness. L1 portal server is the first surface (pharmacist console); the patient side (incl. PPP-TTT Step-3 E-PP screen) is unbuilt.
+  blocks: public release; PPP-TTT Step 3; L14
+  safety_class: none
+  invariant_exposure: every patient-visible output MUST flow through releaseToPatient() — no side channel
+  risk: Critical
+  blocks_patient_facing: true
+  build_action: LIVE_PLAN L11 (needs L1–L4; content gated by L5–L9).
+  gap_register_link: R-33
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: regulatory-classification-undecided
+  path: (organisational) TGA SaMD classification / regulatory_confirmation_exempt_cdss
+  component_type: other (regulatory decision)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — no classification ruling or documented CDSS exemption exists; it is a scope_activation_gate condition in the attested registry and a hard precondition of PUBLIC release.
+  blocks: public release (L13/L14); scope activation of every area
+  safety_class: none
+  invariant_exposure: regulatory_posture — surface, do not decide
+  risk: Critical
+  blocks_patient_facing: true
+  build_action: LIVE_PLAN L13 — operator + qualified specialists rule; the agent prepares the traceability/evidence pack (62304/14971 artifacts from this register chain).
+  gap_register_link: R-34
+  status: open
+  last_scanned: 2026-07-11
+```
 
 ```md
 - id: hashing-unimplemented
@@ -136,6 +189,108 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ---
 
 ## HIGH
+
+```md
+- id: deployment-runtime-unbuilt
+  path: (absent) Dockerfile / compose / process entrypoints / deploy pipeline
+  component_type: other (runtime/deploy)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — CI is test-only; nothing in the tree can run as a deployed service.
+  blocks: staging environment; every live connect (L5–L8); L14
+  safety_class: none
+  invariant_exposure: none (three-environment one-way promotion must be config-enforced when built)
+  risk: High
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L2 — entrypoints, Dockerfile/compose, three-env config via HEYDOC_MODE_DEFAULT (mode.js already maps), staging deploy job. Cloud account/backend = operator input.
+  gap_register_link: R-35
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: secrets-manager-integration-unbuilt
+  path: integration/secrets.js (absent)
+  component_type: other (secrets)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — env templates assume deploy-time injection; no resolver/rotation seam exists; `example.invalid` placeholders are the only convention.
+  blocks: every live credentialed connect (L3, L5–L8)
+  safety_class: none
+  invariant_exposure: security_and_secrets — agent never handles real values; placeholders must be refused as secrets
+  risk: High
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L2 — fail-closed resolver seam (env backend default; named backends registered at deploy; unregistered scheme refuses; placeholder values refused).
+  gap_register_link: R-36
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: observability-metrics-unbuilt
+  path: verification/metrics.js (absent)
+  component_type: other (observability)
+  state: PARTIAL
+  evidence: LIVE scan 2026-07-11 — structured logs exist in places (sensitivity warnings, correlation via run_id) but the charter-required monitored metrics (pipeline pass/fail rate, HARD_FAIL count, BLOCKED_NO_PROOF rate, ALARMED critical under-triage) are unbuilt.
+  blocks: L14 alarm drills; production operability
+  safety_class: none
+  invariant_exposure: observability_and_audit
+  risk: High
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L2 — counters + snapshot endpoint + alarm seam, wired into both report writers; under-triage alarm wired to the eval gate.
+  gap_register_link: R-37
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: ci-secret-scanning-sast-missing
+  path: .github/workflows/ci.yml
+  component_type: ci
+  state: PARTIAL
+  evidence: LIVE scan 2026-07-11 — npm audit is blocking; no secret-scanning, no SAST. Charter: add both before any production path.
+  blocks: production path (charter requirement)
+  safety_class: none
+  invariant_exposure: security_and_secrets
+  risk: High
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L2 — first-party blocking secret-scan now; org-grade SAST tool choice (CodeQL/semgrep licence + repo-visibility dependent) = operator infra input.
+  gap_register_link: R-38
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: worm-substrate-adapter-unbuilt
+  path: verification/audit-store.js registerAuditSubstrate() (seam only) · portal gate records · ppp-ttt ledger
+  component_type: repository-store
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — the M8 seam exists and refuses unregistered non-local substrates; no production WORM adapter (S3 Object Lock / immudb / operator choice) implemented for the main ledger, the PPP-TTT ledger, or gate records; retention unset.
+  blocks: production medicolegal storage; L14
+  safety_class: none (seam fail-closed)
+  invariant_exposure: observability_and_audit (append-only, tamper-evident, retention)
+  risk: High
+  blocks_patient_facing: true
+  build_action: LIVE_PLAN L2 — adapter for the operator-chosen backend + HEYDOC_AUDIT_RETENTION (minimum-keep) + verify:rehash --integrity against it in staging. Backend choice + retention period = operator input.
+  gap_register_link: R-39
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: consent-capture-unbuilt
+  path: (absent) consent capture/record mechanism
+  component_type: other (consent)
+  state: UNBUILT
+  evidence: LIVE scan 2026-07-11 — "no persistence beyond session without explicit consent" is enforced negatively (session-store destroys; content store synthetic-only) but no mechanism exists to CAPTURE and RECORD a consent (omnibus Consent conventions unused at runtime).
+  blocks: any consented persistence; L11 product flows; L12
+  safety_class: none (absence = nothing persists, the safe direction)
+  invariant_exposure: data_handling / Privacy Act APP
+  risk: High
+  blocks_patient_facing: true
+  build_action: LIVE_PLAN L12 — consent record schema + capture flow + APP mapping doc.
+  gap_register_link: R-40
+  status: open
+  last_scanned: 2026-07-11
+```
 
 ```md
 - id: governance-wiring-harvested-paths
@@ -1047,6 +1202,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   build_action: DONE (HIST-3, 2026-07-11) — schema + deterministic builder: sections per standardised history-taking sequence, every entry {as_stated verbatim, provenance, verified:false const, omnibus fhir_path, taxonomy_tags}, schema-const unverified disclaimer, pinned omnibus dataset receipt, summary_sha256 audit anchor; AU Core structural conformance recorded ADVISORY on condition/medication/allergy entries (vendored 2.0.1-ci snapshot). Clinician-facing only (never packet-injected — contract-tested), encounter-scoped, memory-only (persistence stays gated). Rides result.history_summary + evidence_tree.md.
   gap_register_link: none (Medium — below promotion threshold)
   status: resolved
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: sequencer-default-off
+  path: integration/trunk-sequencer.js (HEYDOC_SEQUENCER default OFF)
+  component_type: other (orchestration flag)
+  state: PARTIAL
+  evidence: LIVE scan 2026-07-11 — the outer loop is built + contract-tested but default-OFF; live multi-trunk consults need graduation + the PPP-TTT Step-2 structured-tier halt rule.
+  blocks: L11 live consult flow
+  safety_class: none (OFF = status quo single-trunk)
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L4 — flip default ON (env still overrides) + additive HALT RULE 5 on ppp_ttt.tier === "STOP" + real Trunk 1.0 routing with L3.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: ppp-ttt-ledger-wiring
+  path: verification/run.js · integration/trunk-pipeline.js (writers) · verification/ppp-ttt/ledger.js
+  component_type: verifier
+  state: PARTIAL
+  evidence: LIVE scan 2026-07-11 — the PPP-TTT parallel ledger is a contract-tested library capability; the report writers do not append it, so a flagged run's triage record is not yet durably recorded alongside recordRun().
+  blocks: complete PPP-TTT audit trail on real runs
+  safety_class: none
+  invariant_exposure: observability_and_audit (traceability)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: LIVE_PLAN L1 — append ledgerCoreFromRecord(result.abcde_record) in both writers alongside recordRun().
+  gap_register_link: none (Medium)
+  status: open
   last_scanned: 2026-07-11
 ```
 
