@@ -4,6 +4,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## L10 — Clinical evaluation is now a release gate, not a report: deterministic scorer + four thresholds + the under-triage alarm call-site (2026-07-11)
+
+**Status:** `npm test` **46/46** green (45 prior + `contract-eval-scoring`); `security:secrets` PASS; `licence:check` 0 blocks; `verification` Pass:true; `trunk:stub:all` 9/9; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. RETAIN core byte-unchanged. Plan: `.planning/LIVE_PLAN.md` L10. **No patient-facing change.**
+
+### Change
+- **`verification/eval-scoring.js` [NEW]** — the mechanical core of the charter release gate ("the synthetic-case evaluation is a RELEASE GATE, not a report"), as PURE deterministic logic reproducing `docs/grounding/evaluation-guide.md`:
+  - `classifyTier(aiTier, node)` — the safety-netting tier rubric, mechanically: correct (1.0) / acceptable (0.8) / minor under-triage (0.5) / serious under-triage (0.2) / **critical under-triage → AUTO-FAIL 0.0** / minor+moderate over-triage. Reads the sealed `13_safety_netting_node` **SCORER-SIDE only** (the scorer is the grader; the firewall bars the AI Doctor, never the scorer) — never into any ContextPacket. Fail-safe: missing gold anchors → `scored:false`, never a fabricated score.
+  - `scoreCase()` — verification is a hard GATE (fail → UNGROUNDED, no clinical score); otherwise the five weighted dimensions (history 25 / diagnostic 25 / management 30 / safety-netting 15 / communication 5) + auto-fails; a critical under-triage is never a clinical pass regardless of score.
+  - `computeCaseSetMetrics()` + `enforceReleaseThresholds()` — the four release conditions: case ≥0.70, ≥80% clinical pass, **ZERO critical under-triage across T5**, ≥90% grounding compliance; under-triage weighted 3×. The two HARD safety conditions are deterministic and block even before the clinical scorer is armed.
+  - `scoreCaseTriage()` — the critical-under-triage **alarm CALL SITE** (`raiseAlarm("critical_under_triage", {case_id,…})`), closing the R-37 remainder.
+- **ARMS AT STAGING (MIRAGE precedent):** the full clinical run needs live Step-4 generation producing case-specific tiers (mock produces none), so `enforceReleaseThresholds` reports `armed:false` until a real run exists — it never false-certifies a release under mock, and the safety conditions still bite.
+- **`test/contract-eval-scoring.js` [NEW]** — every rubric band, the 3× asymmetry, the verification gate, all four release thresholds, the armed/unarmed distinction, and the alarm call-site (fires on critical under-triage, silent on correct/over-triage). `package.json` [~] test line.
+
+**Register [~]:** NEW `clinical-eval-scorer` (PARTIAL — scorer + thresholds + alarm built + unit-tested; the live multi-turn clinical harness + semantic-dimension rubric sign-off input-gated) → gap-register **R-42**. `observability-metrics-unbuilt` under-triage call-site **built** (R-37 narrowed). `case-set-underpopulated` unchanged (301/301 attested; only optional 60/30/10 polish remains, clinician-gated).
+
+**Invariants held:** scoring-store firewall intact (13-node read scorer-side, never a packet path — statically the scorer is not the AI Doctor); under-triage weighted 3× over-triage (mechanical); over-triage never fires the alarm (over-triage is the system working); frozen core byte-unchanged; no `patient_eligible`.
+
+**Open follow-ups:** the live multi-turn clinical harness (needs L3 staging live generation) + clinical sign-off on the semantic-dimension rubric (history/diagnostic/management); the case-set 60/30/10 distribution polish (clinician-gated source + attestation).
+
+---
+
 ## MEDGEMMA — MedGemma as a selectable alternative Step-4 generation backend (2026-07-11)
 
 **Status:** `npm test` **45/45** green (43 prior + `contract-llm-adapter-medgemma`, `contract-generation-backend`); `security:secrets` PASS; `licence:check` 0 blocks (new REFERENCE row #medgemma); `verification` Pass:true; `trunk:stub:all` 9/9; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. RETAIN core + `pipeline.js` + the L3 Claude adapter **byte-unchanged** (purely additive). Plan: `.planning/MEDGEMMA-ADAPTER-PLAN.md` — operator-approved with **Decision A3** (selectable backend, no failover) and **Decision B** (clinician-attested cleared for use, attested_by KL). **No patient-facing change; nothing sets patient_eligible; mock remains the default.**
