@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## L11 — Patient consult surface (mock-gated; PPP-TTT Step 3): no clinical draft escapes the release gate (2026-07-11)
+
+**Status:** `npm test` **47/47** green (46 prior + `contract-patient-consult`); all gates green; RETAIN core + `pipeline.js` byte-unchanged. Plan: `.planning/LIVE_PLAN.md` L11 (+ PPP-TTT plan Step 3). **NO patient path opened — the surface is mock-gated and releases nothing; nothing sets the patient-eligibility flag.**
+
+### Change
+- **`patient/consult-flow.js` [NEW]** — the pure, testable consult-flow decision logic. THE LOAD-BEARING INVARIANT: no patient-visible clinical draft escapes the release gate. Every clinical draft routes through the FROZEN `releaseToPatient()` FIRST; mock/dev release NOTHING, so a dev consult shows "pending clinician sign-off," never a draft (a draft appears ONLY on `released:true`). **Safety-screen precedence** (contract-proven): EMERGENCY (PPP-TTT STOP / escalate_now / T5 / firewall hard-stop) → NON-OVERRIDABLE 000 screen, no draft, wins over paediatric/interpreter; under-18 → in-person referral (paediatric hard limit — no dose/draft); interpreter_required → human escalation; CAUTION → PPP-TTT **Step-3 E-PP** bounded choice (proceed/decline, subordinate to sign-off) + "No diagnosis / No decisions" caveats + safety-net descriptors, draft still gated; GO → gated (dev → pending). Fail-safe: any flow error routes to the emergency screen, never a draft.
+- **`patient/consult-server.js` [NEW]** — dependency-free (node:http, server-rendered, XSS-escaped) renderer over the flow logic; runs a consult through the sequenced pipeline (mock Step-4) + PPP-TTT and renders the chosen screen; a safety banner on every page; `npm run consult`.
+- **`test/contract-patient-consult.js` [NEW]** — proves the invariant exhaustively (no draft on any screen unless `released:true`), the safety-screen precedence, the E-PP caveats/safety-net, the release-gate call on every clinical path, the fail-safe, the HTTP server (healthz/intake/consult, XSS-escaped, dev shows pending), and no `patient_eligible`/scoring-store reference in `patient/`. `package.json` [~] test line + `consult` script.
+
+**Register [~]:** `product-surface-unbuilt` → **PARTIAL** (both surfaces built mock-gated + contract-proven; no patient path opened, by design — R-33 updated). PPP-TTT Step 3 **done**. Allowed Service Registry `patient-client-app` row updated (built mock-gated).
+
+**Invariants held:** prime-directive human-in-the-loop mechanically enforced at the surface (releaseToPatient on every clinical path; dev releases nothing); emergencies non-overridable; paediatric → in-person, no dose; interpreter → escalation, not language switch; frozen core byte-unchanged; no scoring-store path; nothing sets the patient-eligibility flag (statically asserted). **NO patient path opened** — the four patient-facing blockers + the four-part eligibility precondition remain not-green, correctly.
+
+**Open follow-ups:** the surface stays mock-gated until the blockers/precondition clear (owned elsewhere); real intake→Trunk-1.0 flag mapping (plan-gated); clinician identity/session UX.
+
+---
+
 ## L10 — Clinical evaluation is now a release gate, not a report: deterministic scorer + four thresholds + the under-triage alarm call-site (2026-07-11)
 
 **Status:** `npm test` **46/46** green (45 prior + `contract-eval-scoring`); `security:secrets` PASS; `licence:check` 0 blocks; `verification` Pass:true; `trunk:stub:all` 9/9; `eval:cases` PASS; `bench:mirage` OK; `npm audit` 0. RETAIN core byte-unchanged. Plan: `.planning/LIVE_PLAN.md` L10. **No patient-facing change.**

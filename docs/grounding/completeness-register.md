@@ -52,18 +52,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: product-surface-unbuilt
-  path: (absent) patient consult app + pharmacist console/API layer
+  path: patient/consult-flow.js · patient/consult-server.js · test/contract-patient-consult.js · portal/server.js (pharmacist console, L1) · npm run consult
   component_type: other (product surface)
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — no frontend/API anywhere in the tree; the consult loop exists only as stub agents + the pipeline harness. L1 portal server is the first surface (pharmacist console); the patient side (incl. PPP-TTT Step-3 E-PP screen) is unbuilt.
-  blocks: public release; PPP-TTT Step 3; L14
-  safety_class: none
-  invariant_exposure: every patient-visible output MUST flow through releaseToPatient() — no side channel
+  state: PARTIAL
+  evidence: L11 BUILD 2026-07-11 — both surfaces now exist as MOCK-GATED, non-patient-facing demonstrations. Pharmacist console = the L1 portal (built). Patient side (patient/): consult-flow.js is the PURE decision logic + consult-server.js the dependency-free (node:http, server-rendered, XSS-escaped) renderer. THE LOAD-BEARING INVARIANT — no patient-visible CLINICAL DRAFT escapes the release gate — is contract-proven: every clinical draft routes through the FROZEN releaseToPatient() FIRST, and mock/dev release NOTHING, so a dev consult shows "pending clinician sign-off," NOT a draft (a draft appears ONLY when a gate returns released:true, contract-tested). Safety-screen precedence proven: EMERGENCY (PPP-TTT STOP / escalate_now / T5 / hard-stop) → NON-OVERRIDABLE 000 screen, no draft, wins over paediatric/interpreter; under-18 → in-person referral (paediatric hard limit — no dose/draft); interpreter_required → human escalation; CAUTION → PPP-TTT Step-3 E-PP bounded choice (proceed/decline, subordinate to sign-off) + "No diagnosis / No decisions" caveats + safety-net descriptors, draft still gated. Fail-safe: any flow error routes to the emergency screen, never a draft. Nothing sets the patient-eligibility flag; no scoring-store path (statically asserted over patient/).
+  blocks: public release, L14 — REMAINING: nothing OPENS a patient path (correct — the four patient-facing blockers + the four-part eligibility precondition are still not green); real intake→Trunk-1.0 flag mapping (plan-gated); clinician identity/session UX; the surface stays mock-gated until L5–L9 content + L13 regulatory clear
+  safety_class: degrades_safe (mock/dev releases nothing; emergencies non-overridable)
+  invariant_exposure: every patient-visible output flows through releaseToPatient() — now mechanically enforced + contract-proven (no side channel)
   risk: Critical
   blocks_patient_facing: true
-  build_action: LIVE_PLAN L11 (needs L1–L4; content gated by L5–L9).
+  build_action: REMAINING — keep mock-gated; a real patient path opens only when the four blockers + four-part eligibility precondition are green (owned elsewhere). PPP-TTT Step 3 (E-PP screen) is DONE here.
   gap_register_link: R-33
-  status: open
+  status: open (both surfaces built mock-gated + contract-proven; no patient path opened, by design)
   last_scanned: 2026-07-11
 ```
 
