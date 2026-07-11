@@ -230,14 +230,14 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   component_type: other (observability)
   state: PARTIAL
   evidence: L2 BUILD 2026-07-11 — charter metrics built + contract-tested: counters (runs/pass/fail, HARD_FAIL, BLOCKED_NO_PROOF, PPP-TTT GO/CAUTION/STOP) with derived rates, recorded by BOTH report writers (observability only — never a gate change); alarm seam (onAlarm subscribers + structured stderr line, never throws) — HARD_FAIL raises pharmacology_hard_fail; critical_under_triage channel exposed for the evaluation layer; /metrics JSON on the portal (auth-gated). PPP-TTT STOP deliberately counted, not paged (over-triage is the system working).
-  blocks: L14 alarm drills — REMAINING: dashboards/pager wiring (deploy infra); under-triage alarm CALL SITE in the eval gate (L10)
+  blocks: L14 alarm drills — REMAINING: dashboards/pager wiring (deploy infra)
   safety_class: none
   invariant_exposure: observability_and_audit
   risk: High
   blocks_patient_facing: false
-  build_action: REMAINING — deploy wires onAlarm to the pager; L10 calls raiseAlarm("critical_under_triage") from eval-case-gate on any critical under-triage.
+  build_action: REMAINING — deploy wires onAlarm to the pager. The under-triage alarm CALL SITE is now BUILT (L10, 2026-07-11): verification/eval-scoring.js scoreCaseTriage() fires raiseAlarm("critical_under_triage", {case_id,...}) on any critical under-triage (contract-tested).
   gap_register_link: R-37
-  status: open (counters + alarm seam built; pager/dashboards deploy-gated)
+  status: open (counters + alarm seam + under-triage call-site built; pager/dashboards deploy-gated)
   last_scanned: 2026-07-11
 ```
 
@@ -974,6 +974,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   gap_register_link: none (Medium — below promotion threshold; stale pending-promotion tag corrected M0 2026-07-03)
   status: open
   last_scanned: 2026-07-03
+```
+
+```md
+- id: clinical-eval-scorer
+  path: verification/eval-scoring.js · test/contract-eval-scoring.js
+  component_type: verifier
+  state: PARTIAL
+  evidence: L10 BUILD 2026-07-11 — the mechanical core of the charter release gate ("the synthetic-case evaluation is a RELEASE GATE, not a report") built as PURE deterministic logic, unit-tested against fixtures of every evaluation-guide rubric band. classifyTier() reproduces the safety-netting tier table mechanically (correct/acceptable/minor+serious under-triage/critical-AUTO-FAIL/over-triage) reading the sealed 13-node SCORER-SIDE only (never into any packet); scoreCase() applies the verification GATE + the five weighted dimensions (history 25/diagnostic 25/management 30/safety-netting 15/communication 5) + auto-fails; computeCaseSetMetrics() + enforceReleaseThresholds() encode the four release conditions (≥0.70 case, ≥80% pass, ZERO critical under-triage on T5, ≥90% grounding), under-triage weighted 3×. scoreCaseTriage() is the under-triage alarm CALL SITE (fires raiseAlarm("critical_under_triage") — closes the R-37 remainder). ARMS AT STAGING (MIRAGE precedent): the full clinical run needs live Step-4 generation producing case-specific tiers (mock produces none) — enforceReleaseThresholds reports (armed:false) but the two HARD safety conditions (critical under-triage, grounding) block even unarmed.
+  blocks: L14 staging soak — REMAINING: the live clinical harness (multi-turn consult + the diagnostic/history/management dimension scorers) that runs the attested set through live generation; and clinical sign-off on the per-dimension rubric (the tier + verification dims are attested via evaluation-guide; the semantic dims are pending, like knowledge-datasets-provisional)
+  safety_class: none (scorer-side node read; never a packet path)
+  invariant_exposure: test_and_evaluation_gates (the release gate is now mechanised, arms at staging)
+  risk: High
+  blocks_patient_facing: false
+  build_action: REMAINING — build the live multi-turn clinical harness (needs live generation, L3 staging smoke) + clinical rubric sign-off for the semantic dimensions; then wire enforceReleaseThresholds as a BLOCKING staging gate over a real run.
+  gap_register_link: R-42
+  status: open (deterministic scorer + thresholds + alarm call-site built + unit-tested; live clinical run input-gated)
+  last_scanned: 2026-07-11
 ```
 
 ```md
