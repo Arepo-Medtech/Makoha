@@ -1,6 +1,12 @@
 /**
  * ppp-ttt discriminators — READ-ONLY loader + matcher over the clinician-
- * attested scope registry (Projects/Breath Ezy Documents/scope-registry.json).
+ * attested scope registry (data/scope-registry.json — the tracked, pinned
+ * v1.3.0 snapshot of the operator's source document, vendored the same way
+ * data/digital_tablet_omnibus.json is; the operator's original lives outside
+ * version control under Projects/, which is gitignored as sensitive business
+ * material and therefore absent in CI. A registry update is a clinician
+ * attestation event: re-vendor the snapshot AND bump the pin below under an
+ * approved plan — until then a drifted file fails closed).
  *
  * Trust boundary 3 (structured knowledge): the registry is a versioned,
  * attested dataset. This module is PPP-TTT's ONLY read path into it — it loads
@@ -29,7 +35,7 @@ import { fileURLToPath } from "node:url";
 import { sha256Prefixed } from "../hash.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REGISTRY_PATH = join(__dirname, "..", "..", "Projects", "Breath Ezy Documents", "scope-registry.json");
+const REGISTRY_PATH = join(__dirname, "..", "..", "data", "scope-registry.json");
 
 /** The only registry version this module will grade against. Bumping it is a
  *  plan-gated change that re-verifies every discriminator assumption. */
