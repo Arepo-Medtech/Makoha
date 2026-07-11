@@ -134,6 +134,21 @@
               "trunk-pipeline-sanitiser",
               "not-applicable"
             ]
+          },
+          "provenance": {
+            "type": "string",
+            "description": "Optional. Present when the fact is PATIENT-PROVIDED (self-disclosed history, patient-measured vitals, video-observable findings). Values mirror 01_presentation_layer objective_data_offered[].source — all denote patient-provided/observable channels; none imply clinician measurement or verification. A fact carrying this field is an unverified encounter input: the trunk may reason on it but must treat it as the patient's account, never as confirmed clinical truth. MECHANICAL BAR (enforced in pipeline-schemas.js): a fact with provenance may NEVER carry category lab_result — patient-provided data cannot masquerade as laboratory data.",
+            "enum": [
+              "patient_home_device",
+              "patient_wearable",
+              "patient_reported",
+              "video_observable",
+              "caregiver_reported"
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Optional. Whether the fact has been clinician- or receipt-verified. Patient-provided facts (provenance set) always enter as false; nothing in the pipeline may flip it to true without a receipt-backed verification step. Defaults to absent (not applicable) for tool-derived facts, which carry their proof via receipt_id instead."
           }
         }
       }

@@ -60,12 +60,21 @@ export const EvidenceNodeSchema = z
       })
       .strict(),
     fhir_path: z.string().optional(),
+    // Audit/scorer-side consult tags (FreeText_Taxonomy vocabulary) — advisory
+    // metadata on audit-channel evidence only, never on packet-injected facts.
+    taxonomy_tags: z
+      .array(z.object({ group: z.string(), tag: z.string(), matched: z.string().optional() }).strict())
+      .optional(),
     snomed_ref: z
       .object({ system: z.string(), code: z.string(), display: z.string(), receipt_id: z.string() })
       .strict()
       .optional(),
   })
   .strict();
+
+/** Patient-provided channels (mirror of 01 objective_data_offered[].source).
+ *  None imply clinician measurement or verification. */
+const PATIENT_PROVENANCE = ["patient_home_device", "patient_wearable", "patient_reported", "video_observable", "caregiver_reported"];
 
 const FactSchema = z
   .object({
@@ -80,6 +89,11 @@ const FactSchema = z
     receipt_id: z.string().optional(),
     evidence_node_id: z.string().optional(),
     sanitised_by: z.string().optional(),
+    // Patient-provided fact stamps (HIST-1): provenance marks the channel,
+    // verified is always false on entry — nothing may flip it without a
+    // receipt-backed verification step.
+    provenance: z.enum(PATIENT_PROVENANCE).optional(),
+    verified: z.boolean().optional(),
   })
   .strict();
 
@@ -135,6 +149,13 @@ export const ContextPacketSchema = z
   // can enter a packet the LLM sees (<non_negotiable_invariants>).
   .superRefine((packet, ctx) => {
     (packet.facts || []).forEach((f, i) => {
+      // MECHANICAL BAR (HIST-1): patient-provided data can never masquerade as
+      // laboratory data. A lab_result reaches the packet only via the
+      // deterministic parser over a tool-derived source — never via a
+      // patient-provenance channel.
+      if (f.provenance && f.category === "lab_result") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["facts", i, "category"], message: "a patient-provenance fact may never carry category lab_result — patient-provided data cannot masquerade as laboratory data" });
+      }
       if (f.category !== "lab_result") return;
       if (!f.sanitised_by) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["facts", i, "sanitised_by"], message: "lab_result fact must be sanitised (sanitised_by required) — raw lab values must go through the investigation parser" });

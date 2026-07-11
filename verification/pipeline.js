@@ -9,7 +9,11 @@ import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
 import { normaliseMode } from "./mode.js";
-import { contextAllowList, injectableFacts } from "./context-allowlist.js";
+import { contextAllowList, injectableFacts, factProvenance } from "./context-allowlist.js";
+import { EvidenceNodeSchema } from "./pipeline-schemas.js";
+import { omnibusDatasetReceipt } from "./omnibus.js";
+import { tagConsultFacts, sensitivityWarnings } from "./consult-tagger.js";
+import { buildEncounterHistorySummary } from "./history-summary.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
 
 /**
@@ -184,6 +188,56 @@ export async function runPipeline(options = {}) {
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
   const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content }));
 
+  // AUDIT CHANNEL — omnibus fact provenance + consult tagging. Everything in
+  // this block rides on the RESULT (ledger / scorer / evidence_tree), never on
+  // the packet: the LLM-visible ContextPacket above is byte-identical whether
+  // this block runs or not (operator ruling 2026-07-11). Paths are proven
+  // against the pinned omnibus (spoiler paths throw, unresolvable withhold);
+  // taxonomy tags are deterministic and advisory; sensitive-tier facts get a
+  // withheld marker instead of tags (default-deny on this new path).
+  let fact_provenance = null;
+  if (options.case_content) {
+    const cls = contextAllowList(options.case_content);
+    const provenance = factProvenance(cls);
+    const caseFacts = injectableFacts(cls);
+    const tags = tagConsultFacts(caseFacts);
+    const now = new Date().toISOString();
+    const receipt = omnibusDatasetReceipt();
+    const evidence = provenance.map((p, i) => {
+      const tagged = tags[i];
+      return EvidenceNodeSchema.parse({
+        id: `prov-${p.fact_id}`,
+        claim: `Case fact provenance: ${p.label}${p.fhir_path ? ` ← ${p.fhir_path}` : " (no proven omnibus anchor — withheld)"}`,
+        supports: [{ kind: "structured_dataset", ref: receipt.ref }],
+        provenance: { created_at_utc: now, created_by: "context-allowlist/factProvenance", verification: { status: "verified" } },
+        ...(p.fhir_path ? { fhir_path: p.fhir_path } : {}),
+        ...(tagged.taxonomy_tags?.length ? { taxonomy_tags: tagged.taxonomy_tags } : {}),
+      });
+    });
+    fact_provenance = {
+      dataset_receipt: receipt,
+      evidence,
+      tag_withheld: tags.filter((t) => t.withheld),
+    };
+  }
+
+  // Encounter history summary (HIST-3): the clinician-facing digest of the
+  // patient's self-disclosed history + offered vitals, assembled from the
+  // patient-provenance packet facts + the audit-channel provenance above.
+  // Encounter-scoped, memory-only, schema-gated, hashed. NEVER injected into
+  // the packet — it is portal/audit material, not trunk context.
+  const history_summary = fact_provenance
+    ? buildEncounterHistorySummary({ packet, fact_provenance, run_id })
+    : null;
+
+  // Warn-only sensitivity observability over ALL packet facts (existing paths
+  // included): structured log + counter, never a gate change. Promotion to
+  // blocking is a later, separately-gated step.
+  const sensitivity_warnings = sensitivityWarnings(packet.facts);
+  if (sensitivity_warnings.length) {
+    process.stderr?.write?.(JSON.stringify({ event: "sensitive_field_tier_warning", run_id, trunk_id: trunk, warnings: sensitivity_warnings }) + "\n");
+  }
+
   const citations = receipts.filter((r) => r.kind === "static_doc").map((r) => r.citation_id);
   const terminologyRaw = receipts.filter((r) => r.kind === "live_data" && (r.upstream === "terminology" || r.upstream?.includes("terminology")));
   const terminologyReceipts = terminologyRaw.map((r) => r.request_id);
@@ -231,6 +285,14 @@ export async function runPipeline(options = {}) {
     firewall_status,
     continuation_blocked,
     hard_stops,
+    // Audit-channel omnibus enrichment (null when no case content): dataset
+    // receipt + provenance EvidenceNodes (fhir_path, taxonomy_tags) + withheld
+    // markers. Rides to the ledger/scorer; NEVER merged into the packet.
+    fact_provenance,
+    sensitivity_warnings,
+    // Clinician-facing encounter history summary (null when no case content).
+    // Portal/audit material only — never trunk context.
+    history_summary,
     // Terminology receipts WITH their validated codes — recorded in the ledger so a
     // later verify:rehash --reissue can faithfully re-bind codes (otherwise a
     // previously-passing coded output would be re-recorded as FAIL).

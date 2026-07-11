@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/patient-history-summary.schema.json",
+  "title": "PatientHistorySummary",
+  "description": "AUCDI-aligned encounter history summary (HIST-3, operator-approved 2026-07-11): a deterministic, clinician-facing digest of everything the patient self-disclosed or self-measured during ONE encounter — conditions, medications, allergies, family/social history, offered vitals — each entry carrying its provenance channel, verified:false, and its Digital Tablet omnibus anchor. AUDIENCE AND BOUNDARY: this artifact is for the Clinician Verification Portal reviewer and the audit trail (evidence_tree). It is NEVER injected into a ContextPacket and never feeds back to the trunk LLM. It is ENCOUNTER-SCOPED and memory-only — persistence beyond the session is a separately-gated Critical item; nothing may write this to durable storage until that gate is green. Every entry is UNVERIFIED patient account by construction: verified is const false, and the mandatory disclaimer states it. AU Core conformance fields are ADVISORY structural checks against the vendored StructureDefinition snapshot (2.0.1-ci-build) — recorded, never gating, and terminology bindings are not evaluated (live NCTS required).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "generated_at_utc", "dataset_receipt", "disclaimer", "sections", "summary_sha256"],
+  "properties": {
+    "run_id": { "type": "string", "description": "The pipeline run this summary was assembled from (correlates with the VerificationReport and ledger entry)." },
+    "generated_at_utc": { "type": "string", "format": "date-time" },
+    "dataset_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "sha256"],
+      "description": "The pinned Digital Tablet omnibus version the entries' fhir_path anchors were proven against.",
+      "properties": {
+        "ref": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "disclaimer": {
+      "type": "string",
+      "const": "PATIENT-REPORTED, UNVERIFIED: every entry below is the patient's own account or a patient-provided measurement captured during this encounter. Nothing here is a confirmed diagnosis, a verified medication record, or a clinician-obtained measurement. Clinician confirmation is required before any clinical action.",
+      "description": "Mandatory and fixed — a summary without this exact statement is contract-invalid."
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Entries grouped by standardised history-taking section. Empty arrays are valid (section taken, nothing disclosed).",
+      "properties": {
+        "demographics": { "$ref": "#/$defs/entryList" },
+        "presenting_symptoms": { "$ref": "#/$defs/entryList" },
+        "conditions": { "$ref": "#/$defs/entryList" },
+        "medications": { "$ref": "#/$defs/entryList" },
+        "allergies": { "$ref": "#/$defs/entryList" },
+        "family_history": { "$ref": "#/$defs/entryList" },
+        "social_history": { "$ref": "#/$defs/entryList" },
+        "vitals_offered": { "$ref": "#/$defs/entryList" }
+      },
+      "required": ["demographics", "presenting_symptoms", "conditions", "medications", "allergies", "family_history", "social_history", "vitals_offered"]
+    },
+    "summary_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 over the canonical JSON of {run_id, generated_at_utc, dataset_receipt, disclaimer, sections} — the audit anchor for exactly what the clinician was shown."
+    }
+  },
+  "$defs": {
+    "entryList": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact_id", "as_stated", "provenance", "verified"],
+      "properties": {
+        "fact_id": { "type": "string", "description": "The ContextPacket fact this entry was assembled from (case-N)." },
+        "as_stated": { "type": "string", "description": "The patient's words / patient-provided value, verbatim as it entered the packet. Never normalised, coded, or interpreted here." },
+        "provenance": {
+          "type": "string",
+          "enum": ["patient_home_device", "patient_wearable", "patient_reported", "video_observable", "caregiver_reported"],
+          "description": "The declared patient-provided channel (mirrors the packet fact's provenance stamp)."
+        },
+        "verified": { "type": "boolean", "const": false, "description": "Const false — nothing in this artifact can be verified; verification happens at the portal, by a human." },
+        "fhir_path": { "type": ["string", "null"], "description": "Digital Tablet omnibus anchor (proven), or null when withheld." },
+        "taxonomy_tags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["group", "tag"],
+            "properties": { "group": { "type": "string" }, "tag": { "type": "string" }, "matched": { "type": "string" } }
+          },
+          "description": "Deterministic consult tags carried over from the audit-channel provenance node, when present."
+        },
+        "au_core": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profile", "status"],
+          "properties": {
+            "profile": { "type": ["string", "null"] },
+            "status": { "type": "string" }
+          },
+          "description": "ADVISORY structural conformance result against the vendored AU Core snapshot (fhir-broker validateResource) for sections with a mapped profile (conditions, medications, allergies). Recorded, never gating."
+        }
+      }
+    }
+  }
+}

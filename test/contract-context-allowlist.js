@@ -13,9 +13,10 @@
  *   - the ingest allow-list is mirrored exactly: 01 patient-presentation fields
  *     flow (channel packet); 02 dialogue text sub-fields classify as exchange
  *     material and NEVER become packet facts;
- *   - objective_data_offered is QUARANTINED (pending the charter's
- *     patient-reported-vitals sanitiser-policy confirmation) — rejected with a
- *     reason naming the policy, not silently dropped;
+ *   - objective_data_offered flows under the STRING-PRESERVING sanitiser
+ *     policy (operator ruling 2026-07-11): per-item vital_sign facts, value =
+ *     the patient-stated string verbatim, provenance = the declared source;
+ *     an item with NO declared source channel is withheld, not defaulted;
  *   - end-to-end: runPipeline({ case_content }) injects only allow-listed 01
  *     facts, the packet passes the zod gate, and no rejected value appears
  *     anywhere in the packet;
@@ -35,7 +36,10 @@ const presentation = {
   demographics: { age: "58", sex: "female" },
   opening_complaint: "I've had a heavy feeling in my chest since this morning.",
   history_as_reported: "Similar tightness last month after climbing stairs.",
-  objective_data_offered: [{ label: "home BP", value: "160 over 95", provenance: "patient_home_device", verified: false }],
+  objective_data_offered: [
+    { type: "blood_pressure", value: "160 over 95", source: "patient_home_device" },
+    { type: "spo2", value: "97%" }, // no declared source — must be withheld
+  ],
   psychosocial_profile: { hidden_agenda: "SIM-ONLY: fears diagnosis X", communication_style: "minimiser" },
   digital_tablet_field_map: { maps_to: "SIM-ONLY mapping" },
   simulator_notes: "SIM-ONLY unknown field",
@@ -68,10 +72,12 @@ check("01: unknown field rejected (default-deny)", rejectedPaths.includes("01_pr
 check("00: whole envelope rejected", rejectedPaths.includes("00_case_envelope"));
 check("unknown node rejected", contextAllowList({ mystery_node: { a: 1 } }).rejected_fields.length === 1);
 
-// objective_data_offered: QUARANTINED with a reason naming the open policy.
-const quarantine = cls.rejected_fields.find((f) => f.path === "01_presentation_layer.objective_data_offered");
-check("01: objective_data_offered quarantined", !!quarantine && /quarantined/.test(quarantine.reason) && /sanitiser-policy/.test(quarantine.reason));
-check("01: objective_data_offered NOT injectable", !injectablePaths.some((p) => p.includes("objective_data_offered")));
+// objective_data_offered: quarantine LIFTED (operator ruling 2026-07-11) —
+// string-preserving policy: sourced items flow as vital_sign, unsourced withheld.
+const bp = cls.injectable_fields.find((f) => f.path === "01_presentation_layer.objective_data_offered[0]");
+check("01: sourced vitals item injectable (vital_sign, declared channel)", !!bp && bp.category === "vital_sign" && bp.provenance === "patient_home_device" && bp.value === "blood_pressure: 160 over 95");
+const noSource = cls.rejected_fields.find((f) => f.path === "01_presentation_layer.objective_data_offered[1]");
+check("01: unsourced vitals item withheld (never defaulted)", !!noSource && /no declared patient-source channel/.test(noSource.reason));
 
 // 02: only the named text sub-fields pass, as exchange channel; scorer/sim sub-fields rejected.
 check("02: clinical_fact exchange-injectable", cls.injectable_fields.some((f) => f.path === "02_conversational_policy.disclosure_items[0].clinical_fact" && f.channel === "exchange"));
@@ -100,8 +106,9 @@ for (const sealed of ["10_ground_truth_node", "11_symptom_links_node", "12_manag
 
 // 3. Facts conversion — packet channel only; exchange material never becomes facts.
 const facts = injectableFacts(cls);
-check("facts: only packet-channel fields", facts.length === 3);
-check("facts: valid categories", facts.every((f) => ["demographic", "symptom", "past_history"].includes(f.category)));
+check("facts: only packet-channel fields", facts.length === 4);
+check("facts: valid categories", facts.every((f) => ["demographic", "symptom", "past_history", "vital_sign"].includes(f.category)));
+check("facts: every case fact stamped patient-provenance + verified:false", facts.every((f) => f.provenance && f.verified === false));
 check("facts: no exchange text in facts", !JSON.stringify(facts).includes("left arm"));
 
 // 4. End-to-end through the pipeline + packet zod gate.
@@ -110,11 +117,13 @@ const result = await runPipeline({
   case_content: { "01_presentation_layer": presentation, "02_conversational_policy": policy, "00_case_envelope": envelope },
 });
 const packetBlob = JSON.stringify(result.packet);
-check("e2e: packet carries the 3 allow-listed facts", result.packet.facts.filter((f) => f.fact_id.startsWith("case-")).length === 3);
+check("e2e: packet carries the 4 allow-listed facts", result.packet.facts.filter((f) => f.fact_id.startsWith("case-")).length === 4);
 check("e2e: packet passes the zod gate (pipeline returned)", !!result.verification);
 check("e2e: no SIM-ONLY content in packet", !packetBlob.includes("SIM-ONLY"));
 check("e2e: no SCORER-ONLY content in packet", !packetBlob.includes("SCORER-ONLY"));
-check("e2e: no quarantined vitals in packet", !packetBlob.includes("160 over 95"));
+check("e2e: sourced vitals now IN packet (quarantine lifted, string-preserving)", packetBlob.includes("160 over 95"));
+check("e2e: unsourced vitals item still withheld from packet", !packetBlob.includes("97%"));
+check("e2e: no patient-provenance fact is a lab_result (mechanical bar)", result.packet.facts.every((f) => !(f.provenance && f.category === "lab_result")));
 check("e2e: no exchange dialogue in packet", !packetBlob.includes("left arm"));
 check("e2e: no envelope metadata in packet", !packetBlob.includes("SPEC-TEST-01-99999"));
 
