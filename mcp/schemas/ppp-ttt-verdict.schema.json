@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "heydoc-grounding:ppp-ttt-verdict",
+  "title": "PPP-TTT Step-1 Verdict (graded triage: GO | CAUTION | STOP)",
+  "description": "Aggregate output of the PPP-TTT veracity interrogation (verification/ppp-ttt/interrogate.js + index.js). Grades raised safety flags against the clinician-attested scope-registry discriminators (v1.3.0). Fail-closed: any ambiguity, unattested discriminator, off-registry condition, or module error yields STOP. Zod mirror: verification/ppp-ttt/verdict-schema.js (if they disagree, this JSON schema is the source of truth).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tier",
+    "tier_model",
+    "entity_class",
+    "concerns",
+    "discriminators_asked",
+    "evidence_considered",
+    "scope_registry_version",
+    "reason",
+    "fail_closed",
+    "reasons_if_blocking"
+  ],
+  "properties": {
+    "tier": { "$ref": "#/definitions/tier" },
+    "tier_model": { "$ref": "#/definitions/tier_model" },
+    "entity_class": { "$ref": "#/definitions/entity_class" },
+    "concerns": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/concern_verdict" },
+      "description": "Per-flag verdicts. The run tier is the ordinal MAX across concerns (never an average)."
+    },
+    "discriminators_asked": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/discriminator_asked" },
+      "description": "Concatenated per-flag discriminators, preserving per-flag order."
+    },
+    "evidence_considered": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "EvidenceNode / citation / receipt ids from the pipeline evidence bundle that were in view during grading."
+    },
+    "scope_registry_version": { "type": "string", "minLength": 1 },
+    "reason": { "type": "string", "minLength": 5 },
+    "fail_closed": {
+      "type": "boolean",
+      "description": "true when any concern reached STOP via the default-deny branch (ambiguity, unattested, off-registry, module error)."
+    },
+    "reasons_if_blocking": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 5 },
+      "description": "Non-empty ONLY for STOP. Each string carries the literal token 'escalate_now' so the untouched trunk-sequencer detectEscalation() halts on any rendered surface (defence in depth)."
+    }
+  },
+  "definitions": {
+    "tier": {
+      "type": "string",
+      "enum": ["GO", "CAUTION", "STOP"],
+      "description": "Severity ordinal GO(0) < CAUTION(1) < STOP(2). Within a run the tier may only rise; STOP is terminal and absorbing."
+    },
+    "tier_model": {
+      "type": "string",
+      "enum": ["always_immediate", "acuity_dependent", "safeguarding_always_report", "unresolved"],
+      "description": "The attested scope-registry tier model, or 'unresolved' for the fail-closed default branch."
+    },
+    "entity_class": {
+      "type": "string",
+      "enum": ["typifies_stigmata", "differential_only", "indeterminate"]
+    },
+    "answer": { "type": "string", "enum": ["present", "absent", "unknown"] },
+    "discriminator_asked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "text", "answer"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "string",
+          "enum": [
+            "universal_high_acuity_override",
+            "condition_specific.escalate_to_immediate_if",
+            "condition_specific.refer_if",
+            "always_immediate",
+            "safeguarding_always_report"
+          ]
+        },
+        "text": { "type": "string", "minLength": 1 },
+        "answer": { "$ref": "#/definitions/answer" },
+        "snomed": {
+          "type": "string",
+          "description": "Optional SNOMED binding — only ever populated from a terminology lookup receipt, never minted in-module."
+        }
+      }
+    },
+    "concern_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["area_id", "condition", "tier", "tier_model", "entity_class", "discriminators_asked", "reason", "fail_closed", "mandatory_report"],
+      "properties": {
+        "area_id": { "type": "string", "minLength": 1 },
+        "condition": { "type": "string", "minLength": 1 },
+        "tier": { "$ref": "#/definitions/tier" },
+        "tier_model": { "$ref": "#/definitions/tier_model" },
+        "entity_class": { "$ref": "#/definitions/entity_class" },
+        "discriminators_asked": { "type": "array", "items": { "$ref": "#/definitions/discriminator_asked" } },
+        "reason": { "type": "string", "minLength": 5 },
+        "fail_closed": { "type": "boolean" },
+        "mandatory_report": {
+          "type": "boolean",
+          "description": "true for safeguarding_always_report verdicts — mandatory-report action, acuity-independent, no patient override."
+        }
+      }
+    }
+  }
+}

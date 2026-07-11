@@ -15,6 +15,7 @@ import { omnibusDatasetReceipt } from "./omnibus.js";
 import { tagConsultFacts, sensitivityWarnings } from "./consult-tagger.js";
 import { buildEncounterHistorySummary } from "./history-summary.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
+import { gradeConcern, composeTriage, buildAbcdeRecord } from "./ppp-ttt/index.js";
 
 /**
  * Stub routing: return a GroundingPlan.
@@ -270,10 +271,37 @@ export async function runPipeline(options = {}) {
   // (combineVerification). verifier.js is untouched; detectors can only add a
   // failure, never rescue one. `results` stays the five checks so the
   // VerificationReport contract is unchanged.
-  const verification = combineVerification(
+  let verification = combineVerification(
     verify(candidate_output, evidence),
     runDetectors(candidate_output, evidence)
   );
+
+  // PPP-TTT graded triage (STOP/CAUTION/GO) — ADDITIVE, MONOTONE-AND, same
+  // composition pattern as the detectors above: it can only ADD caution or
+  // escalation (a STOP folds into pass:false and carries the escalate_now
+  // token), never rescue or downgrade. Runs ONLY when a caller raises flags;
+  // with no flags this block is a no-op and the pipeline is byte-identical to
+  // its pre-PPP-TTT behaviour. The ABCDE record rides the AUDIT CHANNEL on the
+  // result (like fact_provenance) — never the ContextPacket, which was sealed
+  // above before this block runs. gradeConcern cannot throw (fail-closed STOP).
+  let ppp_ttt = null;
+  let abcde_record = null;
+  if (options.raised_flags && options.raised_flags.length) {
+    const triage = gradeConcern({
+      flags: options.raised_flags,
+      patient_answers: options.patient_answers,
+      evidence: { citations, terminology_receipts: terminologyReceipts },
+      abcde_input: options.abcde_input,
+    });
+    verification = composeTriage(verification, triage);
+    ppp_ttt = verification.ppp_ttt;
+    abcde_record = buildAbcdeRecord({
+      run_id,
+      trunk_id: trunk,
+      candidate_output_hash: verification.candidate_output_hash,
+      triage,
+    });
+  }
 
   return {
     run_id,
@@ -293,6 +321,11 @@ export async function runPipeline(options = {}) {
     // Clinician-facing encounter history summary (null when no case content).
     // Portal/audit material only — never trunk context.
     history_summary,
+    // PPP-TTT graded triage (null when no raised_flags): the composed verdict
+    // (also on verification.ppp_ttt) + the self-describing, Digital-Tablet-
+    // tagged ABCDE record. Audit channel only — never merged into the packet.
+    ppp_ttt,
+    abcde_record,
     // Terminology receipts WITH their validated codes — recorded in the ledger so a
     // later verify:rehash --reissue can faithfully re-bind codes (otherwise a
     // previously-passing coded output would be re-recorded as FAIL).

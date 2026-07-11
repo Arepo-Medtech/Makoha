@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "heydoc-grounding:ppp-ttt-abcde-record",
+  "title": "PPP-TTT ABCDE Record (self-describing, Digital-Tablet-tagged)",
+  "description": "The full graded-triage record for one run (verification/ppp-ttt/record.js): the Step-1 verdict plus, for CAUTION only, the A–E protocol (Plausible passage / Balance / Caveats / Pitfalls / Education-potestative). AUDIT CHANNEL ONLY: rides the pipeline result (like fact_provenance), never the ContextPacket. Anchored to the exact verified output bytes by candidate_output_hash and to the datasets it derives from by dataset receipts. Zod mirror: verification/ppp-ttt/abcde-schema.js (this JSON schema is the source of truth).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_pppTtt", "run_id", "candidate_output_hash", "scope_registry_version", "dataset_receipts", "step1_verdict", "provenance"],
+  "properties": {
+    "_pppTtt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "version", "meta"],
+      "description": "Self-describing header (Digital Tablet `_digitalTablet` idiom).",
+      "properties": {
+        "schema": { "const": "ppp-ttt-abcde-record" },
+        "version": { "const": "1.0" },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tag"],
+          "properties": {
+            "tag": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["system", "code", "display"],
+                "properties": {
+                  "system": { "const": "urn:au:digital-tablet" },
+                  "code": { "const": "ppp-ttt-v1" },
+                  "display": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "run_id": { "type": "string", "minLength": 8, "description": "Join key to the main audit ledger." },
+    "trunk_id": { "type": "string" },
+    "candidate_output_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "scope_registry_version": { "type": "string", "minLength": 1 },
+    "dataset_receipts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_registry_sha256", "omnibus_ref"],
+      "description": "Structured-dataset proofs (receipt discipline: no receipt, no claim).",
+      "properties": {
+        "scope_registry_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "omnibus_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "_composition_section_LOINC": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Assessment", "Plan"],
+      "description": "Composition section codes PROVEN against the pinned omnibus (FreeText_Taxonomy._composition_section_LOINC); withheld entirely if unprovable — never defaulted.",
+      "properties": {
+        "Assessment": { "type": "string", "minLength": 1 },
+        "Plan": { "type": "string", "minLength": 1 }
+      }
+    },
+    "step1_verdict": { "$ref": "heydoc-grounding:ppp-ttt-verdict" },
+    "abcde": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A_plausible_passage", "B_balance", "C_caveats", "D_pitfalls", "E_education"],
+      "description": "Present ONLY when step1_verdict.tier is CAUTION (Step 2 ran).",
+      "properties": {
+        "A_plausible_passage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["graded_verdict", "residual_discriminators_open"],
+          "properties": {
+            "graded_verdict": { "type": "string", "enum": ["plausibly_safe", "not_safe"] },
+            "residual_discriminators_open": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "B_balance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pathway", "residual_risk", "practicality_benefit"],
+          "properties": {
+            "pathway": { "type": "string", "enum": ["continue_with_safety_net", "refer", "escalate"] },
+            "residual_risk": {
+              "type": "string",
+              "enum": ["negligible", "low", "moderate", "high"],
+              "description": "RiskAssessment.prediction_qualitative vocabulary (digital tablet omnibus)."
+            },
+            "practicality_benefit": { "type": "string", "minLength": 1 }
+          }
+        },
+        "C_caveats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provisionality", "no_diagnosis", "no_decisions", "plain_language"],
+          "properties": {
+            "provisionality": { "type": "string", "minLength": 1 },
+            "no_diagnosis": { "const": true },
+            "no_decisions": { "const": true },
+            "plain_language": { "type": "string", "minLength": 1 }
+          }
+        },
+        "D_pitfalls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["safety_net", "coded_pitfalls"],
+          "properties": {
+            "safety_net": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "descriptor", "watch_for", "when_urgent"],
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "descriptor": { "type": "string", "minLength": 1 },
+                  "watch_for": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                  "when_urgent": { "type": "string", "minLength": 1 },
+                  "snomed": { "type": "string", "description": "Only from a terminology receipt — never minted." },
+                  "tier_ref": { "type": "string", "description": "Safety-tier VOCABULARY NAME only (e.g. T4-T5) — never content read from the sealed 13_safety_netting_node." }
+                }
+              }
+            },
+            "coded_pitfalls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label"],
+                "properties": {
+                  "label": { "type": "string", "minLength": 1 },
+                  "snomed": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "E_education": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["explanation_plain", "bounded_choice_offered", "patient_decision", "decision_recorded_at_utc", "subordinate_to_signoff", "potestative_scope"],
+          "properties": {
+            "explanation_plain": { "type": "string", "minLength": 1 },
+            "bounded_choice_offered": { "const": true },
+            "patient_decision": { "type": "string", "enum": ["proceed", "decline", "undecided"] },
+            "decision_recorded_at_utc": { "type": "string", "format": "date-time" },
+            "subordinate_to_signoff": { "const": true, "description": "ALWAYS true — the patient choice never overrides a gate or a professional sign-off." },
+            "potestative_scope": { "const": "continued_passage_only", "description": "The bounded choice covers continued passage only — never a diagnosis, dose, or release." }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_types", "created_at_utc", "created_by"],
+      "properties": {
+        "agent_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "enum": ["verifier", "reviewer", "attester"] }
+        },
+        "created_at_utc": { "type": "string", "format": "date-time" },
+        "created_by": { "const": "verification/ppp-ttt/record.js" }
+      }
+    }
+  }
+}
