@@ -571,10 +571,10 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none while quarantined; no-raw-lab-numbers adjacency is the question to settle
   risk: Medium
   blocks_patient_facing: true
-  build_action: operator + clinical confirmation of the sanitiser policy; then flip the quarantine rule (one line) + extend contract-context-allowlist.js for the chosen treatment. Input-gated — not schedulable as pure engineering.
+  build_action: DONE (HIST-2, 2026-07-11) — operator CONFIRMED the STRING-PRESERVING policy: objective_data_offered flows per item as a vital_sign fact, value = the patient-stated string verbatim ("<type>: <value>"), provenance = the item's DECLARED source channel (no source → withheld, never defaulted), verified:false; values never parsed to structured numbers on this path; the no-raw-lab-numbers adjacency settled by a NEW MECHANICAL BAR in pipeline-schemas.js (a patient-provenance fact may never carry category lab_result). Charter <data_handling> reconciled in CLAUDE.md; contract-tested (contract-context-allowlist + contract-history-summary, in npm test).
   gap_register_link: none (Medium — below promotion threshold; charter follow-up now register-tracked)
-  status: open
-  last_scanned: 2026-07-03
+  status: resolved
+  last_scanned: 2026-07-11
 ```
 
 ---
@@ -961,6 +961,91 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   gap_register_link: gap-knowledge-datasets
   status: resolved
   last_scanned: 2026-06-30
+```
+
+```md
+- id: omnibus-dataset-unversioned
+  path: data/digital_tablet_omnibus.json
+  component_type: dataset
+  state: PARTIAL
+  evidence: Omnibus scan 2026-07-11 — the Digital Tablet omnibus (118,863 bytes, FHIR R4 field vocabulary, v1.0 per _digitalTablet.version) is consumed by the case-authoring kit, terminology systems enum, and 4 schemas' fhir_path conventions, but carries NO dataset_version receipt discipline: no checksum manifest, no structured_dataset receipt shape, and no consumer records which omnibus version a fhir_path was authored against. Violates receipt discipline ("a dataset_version with checksums for structured datasets") the moment any live path consumes it.
+  blocks: safe live-pipeline incorporation of the omnibus (fhir_path tagging, FreeText_Taxonomy tagging) — tags without a versioned dataset receipt are unprovable claims
+  safety_class: none (currently authoring-side only)
+  invariant_exposure: receipt discipline (engineering_standards) if consumed live untagged; none today
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE (OMNI-1, 2026-07-11) — verification/omnibus.js: pinned sha256 + omnibusDatasetReceipt() (structured_dataset, never presents as live), resolveOmnibusPath (proof-based), assertSpoilerSafePath (mechanical example_*/reasoning-root refusal); contract-tested (test/contract-omnibus.js, in npm test)
+  gap_register_link: none (pending omnibus-incorporation plan approval)
+  status: resolved
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: fhir-path-hooks-unwired
+  path: mcp/schemas/evidence-node.schema.json (fhir_path) · mcp/schemas/context-packet.schema.json (facts[].fhir_path) · verification/pipeline-schemas.js
+  component_type: schema
+  state: DEAD_END
+  evidence: Omnibus scan 2026-07-11 — both schemas define an optional fhir_path field referencing omnibus dot-notation (contract text says it "enables the case builder and AI Doctor output scorer to cross-reference claims against the patient record"), but grep shows ZERO producers: nothing in integration/, verification/pipeline.js, or mcp/servers/ populates it, and 0 of 303 cases contain a fhir_path. Additionally no validator checks a fhir_path resolves into the omnibus — the field is convention, not contract. Spoiler hazard noted: omnibus example paths can carry diagnosis names (e.g. Condition.code.example_SNOMED.T2DM); an unvalidated fhir_path on an LLM-visible fact could leak a diagnosis label.
+  blocks: scorer cross-referencing of AI Doctor output against the patient record; omnibus-anchored audit trail
+  safety_class: none today (field unused); can_emit_fabrication-adjacent if populated without spoiler screening
+  invariant_exposure: scoring-store firewall (indirect — a diagnosis-naming path on an injectable fact is a spoiler); none while unused
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE (OMNI-2 + OMNI-4, 2026-07-11) — factProvenance() in context-allowlist.js (audit-channel, fact_id-aligned, omnibus-proven) + pipeline.js result.fact_provenance (EvidenceNodes with fhir_path, packet byte-identical per operator ruling — contract-tested) + backfill: 303/303 cases now carry digital_tablet_field_map (scripts/backfill-field-maps.mjs, manifests re-hashed with attestation carried forward, eval:cases PASS)
+  gap_register_link: none (pending omnibus-incorporation plan approval)
+  status: resolved
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: freetext-taxonomy-unconsumed
+  path: data/digital_tablet_omnibus.json → schema.part_c…FreeText_Taxonomy + _digitalTablet.security.sensitive_field_tiers + SDOH_Observations.full_SDOH_field_map
+  component_type: dataset
+  state: ORPHAN
+  evidence: Omnibus scan 2026-07-11 — the FreeText_Taxonomy (SOAP headings, HPC sub-tags, ROS/exam headings, negative-findings NLP targets, temporal tags, AU abbreviation library, mental-health/obstetric/paediatric tags), the sensitive_field_tiers security classification, and the SDOH field map have no consumer anywhere in the repo outside the omnibus itself and the case-authoring kit embedding. Internally consistent, referenced by nothing live.
+  blocks: consult conversation tagging (intake metadata capture); machine-readable patient-data-minimisation classification
+  safety_class: none
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE (OMNI-3, 2026-07-11) — verification/consult-tagger.js: deterministic FreeText_Taxonomy tagging (vocabulary read from the pinned omnibus) on audit-channel provenance nodes; sensitive_field_tiers wired: tier >=2 default-deny (withheld marker) on the new path, warn-only observability (sensitivityWarnings) on existing paths; contract-tested (test/contract-consult-tagger.js, in npm test). Warn-to-block promotion = later gated step
+  gap_register_link: none (pending omnibus-incorporation plan approval)
+  status: resolved
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: history-granularity-blob-fact
+  path: verification/context-allowlist.js (injectableFacts) · mcp/schemas/context-packet.schema.json (facts)
+  component_type: sanitiser
+  state: PARTIAL
+  evidence: HIST scan 2026-07-11 — self-disclosed history (past_medical_history[], medications, allergies, family/social history) reached the packet as ONE serialised-JSON past_history fact: captured, not lost, but no per-item categories, no per-item provenance stamp, and no per-condition omnibus anchoring/tagging. The fact vocabulary (past_history/medication/allergy/family_history/social_history) already existed unexercised.
+  blocks: standardised history-taking structure for Trunk 3.0; per-condition provenance/tags; the AUCDI encounter summary
+  safety_class: none (coarse, not unsafe)
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE (HIST-1/2, 2026-07-11) — facts gained optional provenance + verified (additive schema + zod); history_as_reported now splits per item into correctly-categorised patient-voice facts, each stamped patient_reported/verified:false; unknown history sub-fields default-deny by name; factProvenance/consult-tags now per item. NEW mechanical bar: patient-provenance ≠ lab_result. NOTE: deliberately changes the LLM-visible packet (operator-approved). Contract-tested.
+  gap_register_link: none (Medium — below promotion threshold)
+  status: resolved
+  last_scanned: 2026-07-11
+```
+
+```md
+- id: patient-history-summary-unbuilt
+  path: mcp/schemas/patient-history-summary.schema.json · verification/history-summary.js
+  component_type: schema
+  state: UNBUILT
+  evidence: HIST scan 2026-07-11 — no AUCDI-aligned encounter summary artifact existed: nothing assembled the patient's self-disclosed history + offered vitals into a standardised, provenance-stamped, clinician-facing digest for the portal reviewer; disclosures reached the clinician only as raw packet facts in the evidence tree.
+  blocks: the Clinician Verification Portal reviewer's standardised history view; the "(AU)-aligned Doctor Summary" capability
+  safety_class: none
+  invariant_exposure: none
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DONE (HIST-3, 2026-07-11) — schema + deterministic builder: sections per standardised history-taking sequence, every entry {as_stated verbatim, provenance, verified:false const, omnibus fhir_path, taxonomy_tags}, schema-const unverified disclaimer, pinned omnibus dataset receipt, summary_sha256 audit anchor; AU Core structural conformance recorded ADVISORY on condition/medication/allergy entries (vendored 2.0.1-ci snapshot). Clinician-facing only (never packet-injected — contract-tested), encounter-scoped, memory-only (persistence stays gated). Rides result.history_summary + evidence_tree.md.
+  gap_register_link: none (Medium — below promotion threshold)
+  status: resolved
+  last_scanned: 2026-07-11
 ```
 
 ---

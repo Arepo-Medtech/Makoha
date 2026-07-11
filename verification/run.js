@@ -89,6 +89,44 @@ function buildEvidenceTreeMd(result) {
     lines.push("### Missing receipts");
     result.verification.missing_receipts.forEach((m) => lines.push(`- ${m}`));
   }
+  // Audit-channel omnibus enrichment (present only on case-driven runs):
+  // fact provenance + consult tags live on the result, never in the packet —
+  // rendered here so the step-5 audit artifact carries them.
+  if (result.fact_provenance) {
+    lines.push("");
+    lines.push("## Case fact provenance (Digital Tablet omnibus)");
+    lines.push("");
+    lines.push(`Dataset: \`${result.fact_provenance.dataset_receipt.ref}\` (sha256 \`${result.fact_provenance.dataset_receipt.sha256.slice(0, 12)}…\`)`);
+    lines.push("");
+    for (const node of result.fact_provenance.evidence || []) {
+      lines.push(`- **${node.claim}**`);
+      if (node.taxonomy_tags?.length) {
+        node.taxonomy_tags.forEach((t) => lines.push(`  - tag: ${t.group}.${t.tag}${t.matched ? ` (“${t.matched}”)` : ""}`));
+      }
+    }
+    for (const w of result.fact_provenance.tag_withheld || []) {
+      lines.push(`- ${w.fact_id}: taxonomy tagging withheld — ${w.tier}`);
+    }
+  }
+  // Clinician-facing encounter history summary (HIST-3) — rendered into the
+  // step-5 audit artifact; the portal reviewer's standardised history view.
+  if (result.history_summary) {
+    const hs = result.history_summary;
+    lines.push("");
+    lines.push("## Encounter history summary (patient-reported, unverified)");
+    lines.push("");
+    lines.push(`> ${hs.disclaimer}`);
+    lines.push("");
+    lines.push(`Summary hash: \`${hs.summary_sha256.slice(0, 16)}…\` · omnibus: \`${hs.dataset_receipt.ref}\``);
+    for (const [section, entries] of Object.entries(hs.sections)) {
+      if (!entries.length) continue;
+      lines.push("");
+      lines.push(`### ${section.replace(/_/g, " ")}`);
+      for (const e of entries) {
+        lines.push(`- “${e.as_stated}” — ${e.provenance}, unverified${e.au_core ? ` (AU Core structural: ${e.au_core.status})` : ""}`);
+      }
+    }
+  }
   return lines.join("\n");
 }
 
