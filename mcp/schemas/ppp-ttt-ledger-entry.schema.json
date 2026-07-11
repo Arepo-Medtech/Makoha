@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "heydoc-grounding:ppp-ttt-ledger-entry",
+  "title": "PPP-TTT Ledger Entry (PHI-free, hash-chained, parallel to the main audit ledger)",
+  "description": "One append-only record in the PPP-TTT parallel audit trail (verification/ppp-ttt/ledger.js). PHI-FREE BY CONSTRUCTION: discriminator IDs, tier codes, caveat codes, safety-net IDs, and a patient-decision enum — never free-text patient narrative (additionalProperties:false makes an extra field unrepresentable). Cross-links to the main medicolegal ledger by { run_id, candidate_output_hash, trunk_id }. entry_hash = sha256(canonical(entry-without-entry_hash) + prev_hash), same chain algorithm as audit-ledger-entry. Zod mirror: verification/ppp-ttt/ledger-schema.js (this JSON schema is the source of truth).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "entry_id",
+    "recorded_at_utc",
+    "prev_hash",
+    "run_id",
+    "candidate_output_hash",
+    "tier",
+    "fail_closed",
+    "discriminator_ids",
+    "caveat_codes",
+    "safety_net_ids",
+    "patient_decision",
+    "mode",
+    "entry_hash"
+  ],
+  "properties": {
+    "seq": { "type": "integer", "minimum": 0 },
+    "entry_id": { "type": "string", "minLength": 8 },
+    "recorded_at_utc": { "type": "string", "format": "date-time" },
+    "prev_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "run_id": { "type": "string", "minLength": 8, "description": "Join key to the main audit ledger." },
+    "trunk_id": { "type": "string" },
+    "candidate_output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Cross-link anchor: the exact verified output bytes the frozen verifier already hashed."
+    },
+    "tier": { "type": "string", "enum": ["GO", "CAUTION", "STOP"] },
+    "fail_closed": { "type": "boolean" },
+    "discriminator_ids": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "caveat_codes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "safety_net_ids": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "patient_decision": { "type": "string", "enum": ["proceed", "decline", "undecided", "n/a"] },
+    "mode": {
+      "type": "string",
+      "enum": ["mock", "dry_run", "live"],
+      "description": "Normalised via verification/mode.js — mock is never presented as live."
+    },
+    "entry_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}
