@@ -154,19 +154,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: clinician-verification-portal-unbuilt
-  path: portal/verification-gate.js + mcp/schemas/verification-portal-decision.schema.json (gate + contract built); UI/workflow absent
+  path: portal/{verification-gate.js (frozen), server.js, review-bundle.js, gate-record-store.js} + mcp/schemas/{verification-portal-decision,portal-review-bundle}.schema.json
   component_type: other
   state: PARTIAL
-  evidence: GATE BUILT 2026-07-03 (M5) — the server-side HITL release gate and its contract exist: VerificationGateRecord (JSON Schema + zod mirror, lockstep-tested) binds a clinician decision (approved/rejected/amended, clinician_id, decided_at_utc, signature_ref) to the EXACT candidate_output_hash; releaseToPatient() is fail-closed — refuses without a gate record, refuses 'rejected', releases ONLY text that re-hashes to the attested hash (approved→candidate hash; amended→amended_output_hash — the amendment is its own medicolegal artifact), and refuses ANY release in mock/dry_run (mode-normaliser guard). Latest decision wins (re-review); records append, never mutate. Contract-tested (test/contract-verification-gate.js, npm test + CI). messaging-geo remains UNWIRED (M13). REMAINING for COMPLETE: clinician review UI/workflow, authenticated clinician identity + signature capture, durable (WORM) gate-record storage (M8 substrate) — the portal is NOT done; the release-blocking checkpoint contract is.
-  blocks: patient-facing readiness (UI/workflow + durable storage still open; the mechanical gate now exists for every future patient path to call)
-  safety_class: degrades_safe (fail-closed; dev modes never release)
-  invariant_exposure: prime_directive human-in-the-loop — now mechanically enforceable at the release boundary
+  evidence: GATE BUILT 2026-07-03 (M5); **UI/WORKFLOW + DURABLE RECORDS BUILT 2026-07-11 (LIVE_PLAN L1)** — portal/server.js is the dependency-free (node:http, server-rendered) clinician review console: queue (live submitForReview + ledger/content-store items), review workspace rendering the schema-gated ReviewBundle (exact output bytes, five checks + surfaced detector/triage findings, receipts, evidence claims, firewall status, PPP-TTT verdict + ABCDE record, safety-net), and the decision form (approve/reject/amend + signature_ref). ReviewBundle (portal/review-bundle.js + portal-review-bundle.schema.json) hashes WHAT THE REVIEWER WAS SHOWN (bundle_sha256, tamper-evident). portal/gate-record-store.js persists decisions DURABLE-FIRST to an append-only hash-chained trail (gate-records.jsonl; substrate seam mirrors M8 — non-local unregistered REFUSES) recording bundle_sha256 per decision, then hydrates the FROZEN gate's in-memory registry (idempotent replay across restarts). Auth fail-closed: a live-enforced portal refuses to start without HEYDOC_PORTAL_TOKEN (via the L2 secrets seam); bearer required on every console route. verification-gate.js BYTE-UNCHANGED (CI-pinned). Proven end-to-end by test/contract-portal-review.js: decision→durable chain→hydrate→releaseToPatient round-trip (mock refuses even approved; live releases ONLY exact attested bytes; amend switches to amended text; reject kills; tamper breaks chain; XSS escaped; 401 without token; no patient_eligible reference).
+  blocks: patient-facing readiness — REMAINING: WORM substrate registration for gate records (R-39, operator backend choice), authenticated clinician identity federation (deploy/L11), and the patient path itself (none exists, correctly)
+  safety_class: degrades_safe (fail-closed; dev modes never release; portal never sends — it permits the gate to permit)
+  invariant_exposure: prime_directive human-in-the-loop — now mechanically enforceable AND operable at the release boundary
   risk: Critical
   blocks_patient_facing: true
-  build_action: build the clinician review UI/workflow + authenticated identity/signature capture on top of the gate contract; move gate records to the M8 WORM substrate. Every patient-facing path MUST call releaseToPatient() (adoption rule, portal/README.md).
+  build_action: register the WORM adapter for gate records at deploy (R-39); wire real clinician identity/signature federation; keep every future patient path calling releaseToPatient() (adoption rule, portal/README.md).
   gap_register_link: gap-verification-portal
-  status: open (gate resolved; UI/workflow + durable storage remain)
-  last_scanned: 2026-07-03
+  status: open (gate + UI/workflow + durable chained storage resolved; WORM registration + identity federation remain)
+  last_scanned: 2026-07-11
 ```
 
 ```md
@@ -192,69 +192,69 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: deployment-runtime-unbuilt
-  path: (absent) Dockerfile / compose / process entrypoints / deploy pipeline
+  path: Dockerfile · .dockerignore · docker-compose.yml · deploy/{README.md,register-substrates.example.mjs} · portal/server.js startPortal() (entrypoint) · npm run portal
   component_type: other (runtime/deploy)
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — CI is test-only; nothing in the tree can run as a deployed service.
-  blocks: staging environment; every live connect (L5–L8); L14
+  state: PARTIAL
+  evidence: L2 BUILD 2026-07-11 — runtime image (node:20-alpine, npm ci lockfile-only, mock default, HEYDOC_DATA_DIR volume so ledgers outlive containers), compose (portal role; staging must supply HEYDOC_PORTAL_TOKEN — fail-closed startup), deploy bootstrap example (registers WORM + gate-record + secrets backends BEFORE server start; example.invalid placeholders that the secrets seam refuses). Was: nothing in the tree could run as a deployed service.
+  blocks: L14 — REMAINING: cloud account/target + staging deploy CI job (operator input); production infra
   safety_class: none
-  invariant_exposure: none (three-environment one-way promotion must be config-enforced when built)
+  invariant_exposure: none — three-environment one-way promotion is config-enforced (mode.js mapping + compose defaults)
   risk: High
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L2 — entrypoints, Dockerfile/compose, three-env config via HEYDOC_MODE_DEFAULT (mode.js already maps), staging deploy job. Cloud account/backend = operator input.
+  build_action: REMAINING — operator supplies cloud target; add the staging deploy job; wire the deploy bootstrap against real backends.
   gap_register_link: R-35
-  status: open
+  status: open (runtime + config built; cloud deploy input-gated)
   last_scanned: 2026-07-11
 ```
 
 ```md
 - id: secrets-manager-integration-unbuilt
-  path: integration/secrets.js (absent)
+  path: integration/secrets.js
   component_type: other (secrets)
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — env templates assume deploy-time injection; no resolver/rotation seam exists; `example.invalid` placeholders are the only convention.
-  blocks: every live credentialed connect (L3, L5–L8)
+  state: PARTIAL
+  evidence: L2 BUILD 2026-07-11 — fail-closed resolver seam built + contract-tested (test/contract-live-ops.js): refs are "<scheme>:<name>"; env backend is the dev/CI default; an UNREGISTERED scheme REFUSES (no silent fallback); missing/empty values REFUSE; `example.invalid` placeholder values REFUSE (a template placeholder is never a credential); values never logged. Portal auth resolves through it.
+  blocks: live credentialed connects (L3, L5–L8) — REMAINING: the real secrets-manager backend registered at deploy (operator infra) + rotation policy
   safety_class: none
-  invariant_exposure: security_and_secrets — agent never handles real values; placeholders must be refused as secrets
+  invariant_exposure: security_and_secrets — enforced mechanically at the seam
   risk: High
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L2 — fail-closed resolver seam (env backend default; named backends registered at deploy; unregistered scheme refuses; placeholder values refused).
+  build_action: REMAINING — deploy registers the real backend (deploy/register-substrates.example.mjs shape); rotation policy = operator infra.
   gap_register_link: R-36
-  status: open
+  status: open (seam built; real backend deploy-gated)
   last_scanned: 2026-07-11
 ```
 
 ```md
 - id: observability-metrics-unbuilt
-  path: verification/metrics.js (absent)
+  path: verification/metrics.js · portal /metrics endpoint · both report writers
   component_type: other (observability)
   state: PARTIAL
-  evidence: LIVE scan 2026-07-11 — structured logs exist in places (sensitivity warnings, correlation via run_id) but the charter-required monitored metrics (pipeline pass/fail rate, HARD_FAIL count, BLOCKED_NO_PROOF rate, ALARMED critical under-triage) are unbuilt.
-  blocks: L14 alarm drills; production operability
+  evidence: L2 BUILD 2026-07-11 — charter metrics built + contract-tested: counters (runs/pass/fail, HARD_FAIL, BLOCKED_NO_PROOF, PPP-TTT GO/CAUTION/STOP) with derived rates, recorded by BOTH report writers (observability only — never a gate change); alarm seam (onAlarm subscribers + structured stderr line, never throws) — HARD_FAIL raises pharmacology_hard_fail; critical_under_triage channel exposed for the evaluation layer; /metrics JSON on the portal (auth-gated). PPP-TTT STOP deliberately counted, not paged (over-triage is the system working).
+  blocks: L14 alarm drills — REMAINING: dashboards/pager wiring (deploy infra); under-triage alarm CALL SITE in the eval gate (L10)
   safety_class: none
   invariant_exposure: observability_and_audit
   risk: High
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L2 — counters + snapshot endpoint + alarm seam, wired into both report writers; under-triage alarm wired to the eval gate.
+  build_action: REMAINING — deploy wires onAlarm to the pager; L10 calls raiseAlarm("critical_under_triage") from eval-case-gate on any critical under-triage.
   gap_register_link: R-37
-  status: open
+  status: open (counters + alarm seam built; pager/dashboards deploy-gated)
   last_scanned: 2026-07-11
 ```
 
 ```md
 - id: ci-secret-scanning-sast-missing
-  path: .github/workflows/ci.yml
+  path: .github/workflows/ci.yml · scripts/check-secrets.mjs
   component_type: ci
   state: PARTIAL
-  evidence: LIVE scan 2026-07-11 — npm audit is blocking; no secret-scanning, no SAST. Charter: add both before any production path.
-  blocks: production path (charter requirement)
+  evidence: L2 BUILD 2026-07-11 — first-party deterministic secret scan built and BLOCKING in CI (`npm run security:secrets`, after npm audit): high-confidence credential shapes only (private-key blocks, AWS/GitHub/Anthropic/Slack/Google tokens, signed JWTs) over TRACKED files; never echoes a matched value; pattern teeth self-tested in contract-live-ops.js; PASS on the tree (2669 files, 0 findings). Was: npm audit only.
+  blocks: production path — REMAINING: org-grade SAST tool selection (CodeQL requires GHAS on private repos; semgrep licence/noise trade-off) = operator infra decision
   safety_class: none
   invariant_exposure: security_and_secrets
   risk: High
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L2 — first-party blocking secret-scan now; org-grade SAST tool choice (CodeQL/semgrep licence + repo-visibility dependent) = operator infra input.
+  build_action: REMAINING — operator picks the SAST tool; wire it blocking; keep the first-party scan as the deterministic floor.
   gap_register_link: R-38
-  status: open
+  status: open (secret-scan blocking; SAST choice operator-gated)
   last_scanned: 2026-07-11
 ```
 
@@ -263,7 +263,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: verification/audit-store.js registerAuditSubstrate() (seam only) · portal gate records · ppp-ttt ledger
   component_type: repository-store
   state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — the M8 seam exists and refuses unregistered non-local substrates; no production WORM adapter (S3 Object Lock / immudb / operator choice) implemented for the main ledger, the PPP-TTT ledger, or gate records; retention unset.
+  evidence: LIVE scan 2026-07-11 — the M8 seam exists and refuses unregistered non-local substrates; no production WORM adapter (S3 Object Lock / immudb / operator choice) implemented for the main ledger, the PPP-TTT ledger, or gate records; retention unset. L1 (same day) added the matching two-op seam for gate records (registerGateRecordSubstrate, same refuse-if-unregistered semantics) and deploy/register-substrates.example.mjs documents the boot wiring — the seams are ready; only the adapter (backend choice) is missing.
   blocks: production medicolegal storage; L14
   safety_class: none (seam fail-closed)
   invariant_exposure: observability_and_audit (append-only, tamper-evident, retention)
@@ -1228,14 +1228,14 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   component_type: verifier
   state: PARTIAL
   evidence: LIVE scan 2026-07-11 — the PPP-TTT parallel ledger is a contract-tested library capability; the report writers do not append it, so a flagged run's triage record is not yet durably recorded alongside recordRun().
-  blocks: complete PPP-TTT audit trail on real runs
+  blocks: (cleared)
   safety_class: none
   invariant_exposure: observability_and_audit (traceability)
   risk: Medium
   blocks_patient_facing: false
-  build_action: LIVE_PLAN L1 — append ledgerCoreFromRecord(result.abcde_record) in both writers alongside recordRun().
+  build_action: DONE (L1, 2026-07-11) — both report writers (verification/run.js, integration/trunk-pipeline.js) append ledgerCoreFromRecord(result.abcde_record) alongside recordRun(); trunk-pipeline passes raisedFlags/patientAnswers/abcdeInput through; proven by test/contract-live-ops.js (graded run → entry appended, chain verifies).
   gap_register_link: none (Medium)
-  status: open
+  status: resolved
   last_scanned: 2026-07-11
 ```
 
