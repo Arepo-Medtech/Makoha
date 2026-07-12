@@ -27,7 +27,10 @@ const check = (cond, msg) => { if (!cond) errors.push(msg); };
 const rejects = async (p, msg) => { try { await p; errors.push(msg); } catch { /* expected */ } };
 
 const SECRET_ID = "aws.sm/heydoc/anthropic.key"; // the operator's real SecretId shape
-const SECRET_VALUE = "sk-ant-EXAMPLE-not-a-real-key-000000000000";
+// A deliberately NON-credential-shaped fixture value: the point is that the seam
+// returns whatever the fetcher returned, not that it looks like a real key.
+// (Must not match the secret-scan patterns — that gate scans this tracked file.)
+const SECRET_VALUE = "fixture-resolved-secret-value-000";
 
 try {
   // ── boot-preload with an injected fetcher (no SDK, no AWS) ──────────────────
