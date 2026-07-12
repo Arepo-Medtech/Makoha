@@ -33,9 +33,10 @@ fi
 # 2) Log docker in to ECR.
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
 
-# 3) Build with the AWS Secrets Manager SDK baked into the image (INSTALL_AWS_SM),
-#    then push. (Run from the repo root so the Dockerfile context is correct.)
-docker build --build-arg INSTALL_AWS_SM=true -t "$IMAGE" .
+# 3) Build with the AWS Secrets Manager SDK (INSTALL_AWS_SM) and the AWS CLI
+#    (INSTALL_AWS_S3, for the S3 Object Lock WORM audit substrate) baked into the
+#    image, then push. (Run from the repo root so the Dockerfile context is correct.)
+docker build --build-arg INSTALL_AWS_SM=true --build-arg INSTALL_AWS_S3=true -t "$IMAGE" .
 docker push "$IMAGE"
 
 echo ""

@@ -21,6 +21,15 @@ RUN npm ci --omit=dev
 ARG INSTALL_AWS_SM=false
 RUN if [ "$INSTALL_AWS_SM" = "true" ]; then npm install --no-save "@aws-sdk/client-secrets-manager@^3"; fi
 
+# AWS deploy: add the AWS CLI to the IMAGE only, for the S3 Object Lock WORM audit
+# substrate (§9 B1). The substrate writes the medicolegal ledger with the CLI
+# (execFileSync) because the audit-store seam is SYNCHRONOUS and the AWS SDK is
+# async — a blocking CLI call is the only way to get synchronous, durable, WORM
+# writes from a frozen sync seam. The CLI is intentionally NOT a repo dependency.
+# `docker build --build-arg INSTALL_AWS_S3=true` turns it on; default stays AWS-free.
+ARG INSTALL_AWS_S3=false
+RUN if [ "$INSTALL_AWS_S3" = "true" ]; then apk add --no-cache aws-cli; fi
+
 COPY . .
 
 # Dev-safe defaults; deploy overrides. HEYDOC_DATA_DIR is a volume in every

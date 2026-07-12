@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## B1 — S3 Object Lock WORM audit substrate (§9 B1 / R-39) (2026-07-12)
+
+**Status:** `npm test` **50/50** green (+`contract-audit-worm-s3`); all gates green; **RETAIN core byte-unchanged** (`audit-store.js` sha256 pin holds — registered *through* its seam, never edited); **no new repo dependency**; secret-scan 0 findings. Operator decision: **S3 Object Lock, COMPLIANCE mode, 7-year retention.**
+
+**Plain language.** The medicolegal trail (verification ledger + clinician gate records) can now be written to storage that cannot be altered or deleted — even by the account root — for 7 years. This is the last in-repo blocker for production-grade, tamper-evident audit retention.
+
+### Change
+- **`integration/audit-substrates/s3-object-lock.js` [NEW]** — `registerWormAudit({bucket, region, retentionYears, mode="COMPLIANCE", prefix, exec})` registers `s3-object-lock` on **both** medicolegal seams (`registerAuditSubstrate` four-op + `registerGateRecordSubstrate` two-op). One immutable S3 object per chain line (`${prefix}/{ledger|gate-records}/${padded(seq)}.json`); content-addressed drafts at `content/${hex}.txt`. Every write: `s3api put-object --object-lock-mode COMPLIANCE --object-lock-retain-until-date <now+7y> --if-none-match "*"`. **Why AWS CLI + execFileSync, not the SDK:** the store seams are SYNCHRONOUS (`audit-store.js` is frozen/byte-pinned; `appendEntry`/`readLedger` call the ops inline) and the SDK is async — a blocking CLI call is the only way to get a synchronous, awaited, durable WORM write; a fire-and-forget SDK PutObject would silently drop a medicolegal record. Reads are served from **boot-seeded in-memory caches**, so only writes spawn a subprocess (fine at medicolegal volumes). AWS CLI is a **deploy-time dependency** (Dockerfile `INSTALL_AWS_S3`), NOT a repo one — same discipline as the aws-sm backend. **Fail-closed:** missing bucket/region/retentionYears or a bad mode throws at registration; a ledger seq collision (append-only violated) throws; an absent CLI → an actionable error. Retention **period is not hardcoded** (`retentionYears` is required — charter "surface, don't decide"). No logging (record values never reach a log).
+- **`test/contract-audit-worm-s3.js` [NEW]** — drives the WORM substrate **through the real frozen stores** with an injected fake CLI: audit + gate hash-chains round-trip and **verify**; every write asserted COMPLIANCE + retain-until≈now+7y + write-once; content write-once/idempotent + read/null; fail-closed (seq collision, missing args, bad mode, absent CLI); pure helpers; no-log source scan. Wired into `npm test` + CI.
+- **Deploy wiring [~]** — `deploy/bootstrap.mjs` registers the WORM substrate at boot when `HEYDOC_AUDIT_SUBSTRATE=s3-object-lock` (fail-closed on unset bucket/retention); `deploy/register-substrates.example.mjs` now shows the concrete `registerWormAudit` call; `Dockerfile` `INSTALL_AWS_S3` build arg (`apk add aws-cli`, image only); `deploy/build-and-push.sh` passes it; `deploy/apprunner-create.sh` sets `HEYDOC_WORM_*` + `HEYDOC_AUDIT_RETENTION=7y`; `deploy/README.md` adds bucket-provisioning (Object Lock + versioning) + IAM (`s3:PutObject/PutObjectRetention/GetObject/ListBucket`) + the COMPLIANCE-is-irreversible warning.
+
+### Invariant check
+Hashing preserved (chain algorithms untouched; adapter is pure I/O behind existing seams); append-only/write-once enforced at the S3 layer + COMPLIANCE lock (immutable even to root, 7y); no frozen file edited (`audit-store.js` pin holds); fail-closed on misconfig/collision/absent-CLI; no PHI/record values logged; no new repo dependency. ✔
+
+### Register
+R-39 `worm-substrate-adapter-unbuilt` **UNBUILT → PARTIAL** (adapter built + tested; live bucket connect operator-side); mirrored into the gap-register. **Opens one follow-up:** `verification/ppp-ttt/ledger.js` has no substrate seam (writes local JSONL directly) — register one so it can be WORM-backed too (out of B1 scope by design; flagged, not silently expanded).
+
+---
+
 ## B3-HARDEN — JSON-tolerant `aws-sm` secrets backend (2026-07-12)
 
 **Status:** `npm test` **49/49** green; all gates green; RETAIN core byte-unchanged; **no new repo dependency**; secret-scan `0 findings`. Shared seam `integration/secrets.js` deliberately **untouched** (all new logic in the aws-sm backend module).

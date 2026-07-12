@@ -52,7 +52,13 @@ read -r -d '' SOURCE_CONFIG <<JSON || true
         "HEYDOC_AWS_SECRET_NAMES": "aws.sm/heydoc/anthropic.key",
         "HEYDOC_LLM_LIVE": "1",
         "HEYDOC_LLM_BACKEND": "claude",
-        "HEYDOC_LLM_KEY_REF": "aws-sm:aws.sm/heydoc/anthropic.key"
+        "HEYDOC_LLM_KEY_REF": "aws-sm:aws.sm/heydoc/anthropic.key",
+        "HEYDOC_AUDIT_SUBSTRATE": "s3-object-lock",
+        "HEYDOC_GATE_RECORD_SUBSTRATE": "s3-object-lock",
+        "HEYDOC_WORM_BUCKET": "${HEYDOC_WORM_BUCKET:-heydoc-medicolegal-audit}",
+        "HEYDOC_WORM_RETENTION_YEARS": "7",
+        "HEYDOC_WORM_MODE": "COMPLIANCE",
+        "HEYDOC_AUDIT_RETENTION": "7y"
       },
       "RuntimeEnvironmentSecrets": {
         "HEYDOC_PORTAL_TOKEN": "${PORTAL_TOKEN_SECRET_ARN}"
