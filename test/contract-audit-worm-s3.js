@@ -1,186 +1,173 @@
 /**
- * Contract test: the concrete `s3-object-lock` WORM substrate adapter (LIVE_PLAN
- * L2 / §9 B1, R-39). Proves — with an INJECTED in-memory transport, no real AWS —
- * that:
- *   1. resolveRetainUntil parses ISO-8601 durations + absolute dates, rounds
- *      duration UP (minimum-keep), and REFUSES empty/garbage (fail-closed).
- *   2. WORM semantics hold: putObjectOnce is write-once (overwrite throws),
- *      reads are ordered, the content store is idempotent write-once + round-trips,
- *      and EVERY write carries COMPLIANCE mode + a future RetainUntilDate.
- *   3. registerWormAudit() registers ONE adapter on ALL THREE medicolegal seams,
- *      and the three FROZEN hash-chains (audit ledger, gate records, PPP-TTT
- *      ledger) each verify end-to-end THROUGH the S3 adapter, in DISTINCT prefixes.
- *   4. Fail-closed: registering without retention refuses; and the new PPP-TTT
- *      seam still refuses an unregistered non-local substrate.
+ * Contract test: the S3 Object Lock WORM substrate (LIVE_PLAN §9 B1 / R-39;
+ * integration/audit-substrates/s3-object-lock.js).
  *
- * Uses a throwaway HEYDOC_DATA_DIR (unused by the S3 path, but keeps any local
- * fallback off the real .heydoc-data) and restores all env at the end.
+ * Proves — WITHOUT the AWS CLI and WITHOUT any AWS call (injected `exec`):
+ *  - one call registers the `s3-object-lock` substrate on ALL THREE medicolegal
+ *    seams (audit ledger + clinician gate records + PPP-TTT triage ledger);
+ *  - driven THROUGH the real frozen stores (appendEntry/readLedger/verifyChain,
+ *    recordDecisionDurable/verifyGateRecordChain, and appendPppTttEntry/
+ *    verifyPppTttChain), the hash-chains round-trip and verify — i.e. the WORM
+ *    adapter honours the append-only / write-once contract;
+ *  - every write is `put-object --object-lock-mode COMPLIANCE
+ *    --object-lock-retain-until-date <now+7y> --if-none-match "*"` (WORM enforced);
+ *  - content-addressed writes are write-once & idempotent; readContent round-trips
+ *    and returns null when absent;
+ *  - fail-closed: a ledger seq collision (append-only violated) THROWS; missing
+ *    bucket/region/retentionYears or a bad mode THROWS at registration; an absent
+ *    CLI (ENOENT) → an actionable error naming the AWS CLI;
+ *  - pure helpers (objectKeyForSeq / retainUntilDate / extractSeq);
+ *  - the module never logs (source scan) — record VALUES must never reach a log.
+ *
  * Run from repo root: node test/contract-audit-worm-s3.js
  */
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import {
+  registerWormAudit, objectKeyForSeq, retainUntilDate, extractSeq,
+} from "../integration/audit-substrates/s3-object-lock.js";
+import { appendEntry, readLedger, verifyChain, persistContent, readContent } from "../verification/audit-store.js";
+import { recordDecisionDurable, readGateRecordEntries, verifyGateRecordChain } from "../portal/gate-record-store.js";
+import { appendPppTttEntry, readPppTttLedger, verifyPppTttChain } from "../verification/ppp-ttt/ledger.js";
 
 const errors = [];
 const check = (cond, msg) => { if (!cond) errors.push(msg); };
+const rejects = async (p, msg) => { try { await p; errors.push(msg); } catch { /* expected */ } };
+const throwsSync = (fn, msg) => { try { fn(); errors.push(msg); } catch { /* expected */ } };
+const argVal = (args, flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
 
-/** In-memory stand-in for S3 Object Lock: a write-once key/value store that
- *  records the lock metadata it was handed, so the test can assert WORM flags. */
-function memTransport() {
-  const store = new Map(); // key -> { body, retainUntil, mode }
-  return {
-    store,
-    putObjectOnce(key, body, { retainUntil, mode }) {
-      if (store.has(key)) throw new Error(`mem S3: object "${key}" already exists (write-once / Object Lock)`);
-      if (!retainUntil || !mode) throw new Error("mem S3: a WORM put must carry retainUntil + mode");
-      store.set(key, { body, retainUntil, mode });
-    },
-    listKeys(prefix) {
-      return [...store.keys()].filter((k) => k.startsWith(prefix));
-    },
-    getObject(key) {
-      return store.has(key) ? store.get(key).body : null;
-    },
-  };
-}
-
-const FIXED_NOW = () => new Date("2026-07-12T00:00:00.000Z");
-
-async function run() {
-  const savedEnv = {
-    data: process.env.HEYDOC_DATA_DIR,
-    audit: process.env.HEYDOC_AUDIT_SUBSTRATE,
-    gate: process.env.HEYDOC_GATE_RECORD_SUBSTRATE,
-    ppp: process.env.HEYDOC_PPP_TTT_SUBSTRATE,
-    ret: process.env.HEYDOC_AUDIT_RETENTION,
-  };
-  process.env.HEYDOC_DATA_DIR = mkdtempSync(join(tmpdir(), "worm-s3-"));
-
-  const { resolveRetainUntil, makeSeamAdapters, registerWormAudit } = await import("../integration/audit-substrates/s3-object-lock.js");
-
-  try {
-    // ── 1. resolveRetainUntil ────────────────────────────────────────────────
-    const until = resolveRetainUntil("P7Y", FIXED_NOW());
-    check(new Date(until).getTime() > FIXED_NOW().getTime(), "P7Y must resolve to a future date");
-    check(new Date(until).getUTCFullYear() >= 2033, "P7Y from 2026 must reach at least 2033 (round-up, minimum-keep)");
-    check(resolveRetainUntil("2040-01-01T00:00:00Z") === new Date("2040-01-01T00:00:00Z").toISOString(), "absolute ISO date must pass through");
-    for (const bad of ["", "   ", "7 years", "P", "banana"]) {
-      let threw = false;
-      try { resolveRetainUntil(bad, FIXED_NOW()); } catch { threw = true; }
-      check(threw, `retention "${bad}" must be refused (fail-closed)`);
-    }
-
-    // ── 2. WORM semantics via makeSeamAdapters (unit) ────────────────────────
-    let noRet = false;
-    try { makeSeamAdapters({ transport: memTransport(), retention: "", now: FIXED_NOW }); } catch { noRet = true; }
-    check(noRet, "makeSeamAdapters without retention must refuse (COMPLIANCE Object Lock needs a RetainUntilDate)");
-
-    {
-      const t = memTransport();
-      const a = makeSeamAdapters({ transport: t, prefix: "unit/", retention: "P7Y", now: FIXED_NOW });
-      // ordered append/read on the ppp-ttt seam
-      a.pppTtt.appendLine("line-0");
-      a.pppTtt.appendLine("line-1");
-      a.pppTtt.appendLine("line-2");
-      check(JSON.stringify(a.pppTtt.readLines()) === JSON.stringify(["line-0", "line-1", "line-2"]), "reads must be in append order (zero-padded seq)");
-      // write-once: the underlying objects cannot be overwritten
-      const firstKey = t.listKeys("unit/ppp-ttt-ledger/").sort()[0];
-      let overwrote = false;
-      try { t.putObjectOnce(firstKey, "TAMPER", { retainUntil: until, mode: "COMPLIANCE" }); } catch { overwrote = true; }
-      check(overwrote, "an existing object must be write-once (overwrite throws) — WORM");
-      // every stored object carries COMPLIANCE + a future retain date
-      for (const [k, meta] of t.store) {
-        check(meta.mode === "COMPLIANCE", `object ${k} must be locked in COMPLIANCE mode`);
-        check(new Date(meta.retainUntil).getTime() > FIXED_NOW().getTime(), `object ${k} must carry a future RetainUntilDate`);
+/** A fake AWS CLI over an in-memory S3 with Object Lock + If-None-Match. */
+function makeFakeS3() {
+  const store = new Map(); // key → { body, mode, retain }
+  const puts = [];         // every put-object, for assertions
+  const exec = (args, input) => {
+    const [svc, op] = args;
+    if (svc === "s3api" && op === "put-object") {
+      const key = argVal(args, "--key");
+      const ifNoneMatch = args.includes("--if-none-match");
+      if (ifNoneMatch && store.has(key)) {
+        const e = new Error("PreconditionFailed"); e.stderr = "An error occurred (PreconditionFailed) when calling the PutObject operation"; e.status = 1;
+        throw e;
       }
-      // content store: idempotent write-once + round-trip
-      const hex = "a".repeat(64);
-      const key1 = a.audit.writeContentOnce(hex, "synthetic output text");
-      const key2 = a.audit.writeContentOnce(hex, "synthetic output text"); // idempotent, no throw
-      check(key1 === key2, "writeContentOnce must be idempotent for the same content id");
-      check(a.audit.readContentByHex(hex) === "synthetic output text", "content must round-trip by hex");
-      check(a.audit.readContentByHex("z".repeat(64)) === null, "absent content must read as null");
-      check(t.listKeys("unit/content/").length === 1, "idempotent content write must not create a second object");
+      const rec = { body: input, mode: argVal(args, "--object-lock-mode"), retain: argVal(args, "--object-lock-retain-until-date") };
+      store.set(key, rec);
+      puts.push({ key, ...rec, ifNoneMatch });
+      return JSON.stringify({ ETag: '"fake"' });
     }
-
-    // ── 3. Three-seam end-to-end through registerWormAudit ───────────────────
-    const t = memTransport();
-    const reg = registerWormAudit({ transport: t, prefix: "prod/", retention: "P7Y", name: "s3-object-lock", now: FIXED_NOW });
-    check(reg.registered === "s3-object-lock", "registerWormAudit must register under the s3-object-lock name");
-    check(JSON.stringify(reg.seams) === JSON.stringify(["audit", "gate-records", "ppp-ttt"]), "registerWormAudit must cover all three seams");
-    check(reg.mode === "COMPLIANCE" && new Date(reg.retain_until).getTime() > FIXED_NOW().getTime(), "registerWormAudit must report COMPLIANCE + a future retain date");
-
-    process.env.HEYDOC_AUDIT_SUBSTRATE = "s3-object-lock";
-    process.env.HEYDOC_GATE_RECORD_SUBSTRATE = "s3-object-lock";
-    process.env.HEYDOC_PPP_TTT_SUBSTRATE = "s3-object-lock";
-
-    const HASH = "sha256:" + "b".repeat(64);
-
-    // (a) medicolegal audit ledger
-    const { appendEntry, verifyChain, persistContent, readContent, readLedger } = await import("../verification/audit-store.js");
-    persistContent(HASH, "synthetic through S3 WORM", { synthetic: true });
-    appendEntry({ run_id: "run-worm-0-aaaaaaa", candidate_output_hash: HASH, pass: true, check_results: [{ check: "no_invented_codes", passed: true }], receipts: [], mode: "mock", content_persisted: true });
-    appendEntry({ run_id: "run-worm-1-aaaaaaa", candidate_output_hash: HASH, pass: true, check_results: [{ check: "no_invented_codes", passed: true }], receipts: [], mode: "mock", content_persisted: false });
-    check(readLedger().length === 2, "audit ledger must have 2 entries through the S3 adapter");
-    check(verifyChain().valid, "audit-store verifyChain must be valid through the S3 WORM adapter");
-    check(readContent(HASH) === "synthetic through S3 WORM", "audit content store must round-trip through the S3 adapter");
-
-    // (b) PPP-TTT triage ledger
-    const { appendPppTttEntry, verifyPppTttChain, readPppTttLedger } = await import("../verification/ppp-ttt/ledger.js");
-    appendPppTttEntry({ run_id: "run-ppp-0001", candidate_output_hash: HASH, tier: "CAUTION", fail_closed: false, discriminator_ids: ["uhao-1"], caveat_codes: [], safety_net_ids: [], patient_decision: "proceed" });
-    appendPppTttEntry({ run_id: "run-ppp-0002", candidate_output_hash: HASH, tier: "STOP", fail_closed: true, discriminator_ids: [], caveat_codes: [], safety_net_ids: [], patient_decision: "n/a" });
-    check(readPppTttLedger().length === 2, "ppp-ttt ledger must have 2 entries through the S3 adapter");
-    check(verifyPppTttChain().valid, "verifyPppTttChain must be valid through the S3 WORM adapter");
-
-    // (c) clinician gate records
-    const { recordDecisionDurable, verifyGateRecordChain, readGateRecordEntries } = await import("../portal/gate-record-store.js");
-    recordDecisionDurable(
-      { run_id: "run-gate-0001", candidate_output_hash: HASH, clinician_id: "pharm-KL", decision: "approved", decided_at_utc: FIXED_NOW().toISOString(), signature_ref: "sig:worm-test-1" },
-      { bundle_sha256: "sha256:" + "c".repeat(64) }
-    );
-    check(readGateRecordEntries().length === 1, "gate-record chain must have 1 entry through the S3 adapter");
-    check(verifyGateRecordChain().valid, "verifyGateRecordChain must be valid through the S3 WORM adapter");
-
-    // Three chains, three DISTINCT prefixes — no collision in one bucket.
-    check(t.listKeys("prod/audit-ledger/").length === 2, "audit chain must live under its own prefix");
-    check(t.listKeys("prod/ppp-ttt-ledger/").length === 2, "ppp-ttt chain must live under its own prefix");
-    check(t.listKeys("prod/gate-records/").length === 1, "gate-record chain must live under its own prefix");
-    check(t.listKeys("prod/content/").length === 1, "audit content must live under its own prefix");
-    // Every persisted object is genuinely WORM-locked.
-    for (const [k, meta] of t.store) {
-      check(meta.mode === "COMPLIANCE" && new Date(meta.retainUntil).getTime() > FIXED_NOW().getTime(), `stored object ${k} must be COMPLIANCE-locked with a future retain date`);
+    if (svc === "s3api" && op === "list-objects-v2") {
+      const prefix = argVal(args, "--prefix");
+      const keys = [...store.keys()].filter((k) => k.startsWith(prefix)).sort();
+      return keys.length ? keys.join("\n") : "None";
     }
-
-    // ── 4. Fail-closed guards ────────────────────────────────────────────────
-    // (a) registerWormAudit without retention refuses.
-    delete process.env.HEYDOC_AUDIT_RETENTION;
-    let noRetReg = false;
-    try { registerWormAudit({ transport: memTransport(), retention: undefined, now: FIXED_NOW }); } catch { noRetReg = true; }
-    check(noRetReg, "registerWormAudit without retention must refuse (no unlocked pseudo-WORM writes)");
-
-    // (b) the new PPP-TTT seam refuses an unregistered non-local substrate.
-    process.env.HEYDOC_PPP_TTT_SUBSTRATE = "not-registered-xyz";
-    let pppRefused = false;
-    try { appendPppTttEntry({ run_id: "run-refuse-1", candidate_output_hash: HASH, tier: "STOP", fail_closed: true, discriminator_ids: [], caveat_codes: [], safety_net_ids: [], patient_decision: "n/a" }); } catch { pppRefused = true; }
-    check(pppRefused, "an unregistered non-local ppp-ttt substrate must REFUSE (never a non-WORM triage ledger)");
-  } finally {
-    for (const [k, v] of Object.entries({
-      HEYDOC_DATA_DIR: savedEnv.data,
-      HEYDOC_AUDIT_SUBSTRATE: savedEnv.audit,
-      HEYDOC_GATE_RECORD_SUBSTRATE: savedEnv.gate,
-      HEYDOC_PPP_TTT_SUBSTRATE: savedEnv.ppp,
-      HEYDOC_AUDIT_RETENTION: savedEnv.ret,
-    })) {
-      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    if (svc === "s3" && op === "cp") {
+      const key = String(args[2]).replace(/^s3:\/\/[^/]+\//, "");
+      if (!store.has(key)) { const e = new Error("NoSuchKey"); e.stderr = "fatal error: An error occurred (404) ... NoSuchKey"; e.status = 1; throw e; }
+      return store.get(key).body;
     }
-  }
-
-  if (errors.length) {
-    console.error("Contract failures:");
-    for (const e of errors) console.error("  - " + e);
-    process.exit(1);
-  }
-  console.log("contract-audit-worm-s3: OK");
+    throw new Error("fake exec: unhandled " + args.join(" "));
+  };
+  return { exec, store, puts };
 }
 
-run().catch((e) => { console.error(e); process.exit(1); });
+const HASH_A = "sha256:" + "a".repeat(64);
+const HASH_B = "sha256:" + "b".repeat(64);
+const coreFor = (hash) => ({
+  run_id: `run-worm-${hash.slice(7, 15)}`,
+  candidate_output_hash: hash,
+  pass: true,
+  check_results: [{ check: "no_invented_codes", passed: true }],
+  receipts: [{ request_id: "r-1", upstream: "docs", mode: "mock" }],
+  mode: "mock",
+  content_persisted: false,
+});
+
+try {
+  // ── pure helpers ────────────────────────────────────────────────────────────
+  check(objectKeyForSeq("heydoc-audit", "ledger", 42) === "heydoc-audit/ledger/000000000042.json", "objectKeyForSeq zero-pads seq into a sort-ordered key");
+  check(retainUntilDate(7, new Date("2026-07-12T00:00:00Z")).getUTCFullYear() === 2033, "retainUntilDate adds the retention years (calendar-accurate)");
+  check(extractSeq('{"seq":5,"x":1}') === 5, "extractSeq reads the top-level seq");
+  throwsSync(() => extractSeq('{"seq":-1}'), "extractSeq refuses a negative seq");
+  throwsSync(() => extractSeq("not json"), "extractSeq refuses a non-JSON line");
+
+  // ── register on both seams, select via env ──────────────────────────────────
+  process.env.HEYDOC_AUDIT_SUBSTRATE = "s3-object-lock";
+  process.env.HEYDOC_GATE_RECORD_SUBSTRATE = "s3-object-lock";
+  process.env.HEYDOC_PPP_TTT_SUBSTRATE = "s3-object-lock";
+  const fake = makeFakeS3();
+  const res = await registerWormAudit({ bucket: "heydoc-audit-test", region: "ap-southeast-2", retentionYears: 7, exec: fake.exec });
+  check(res.registered === "s3-object-lock" && res.mode === "COMPLIANCE" && res.retentionYears === 7, "registerWormAudit registers s3-object-lock (COMPLIANCE, 7y)");
+  check(res.ledger_entries === 0 && res.gate_records === 0 && res.ppp_ttt_entries === 0, "an empty bucket boots to empty caches (all three seams)");
+
+  // ── audit ledger through the FROZEN store: append → read → verify ───────────
+  appendEntry(coreFor(HASH_A));
+  appendEntry(coreFor(HASH_B));
+  const ledger = readLedger();
+  check(ledger.length === 2, "two appendEntry calls land two ledger entries via the WORM substrate");
+  check(verifyChain().valid === true, "the audit hash-chain verifies end-to-end over the WORM substrate");
+
+  // ── every ledger write carries the Object Lock (COMPLIANCE, now+7y, write-once)
+  const ledgerPuts = fake.puts.filter((p) => p.key.includes("/ledger/"));
+  const thisYear = new Date().getUTCFullYear();
+  check(ledgerPuts.length === 2, "each ledger append is exactly one put-object");
+  check(ledgerPuts.every((p) => p.mode === "COMPLIANCE"), "every ledger write sets --object-lock-mode COMPLIANCE");
+  check(ledgerPuts.every((p) => p.ifNoneMatch === true), "every ledger write is write-once (--if-none-match *)");
+  check(ledgerPuts.every((p) => Number(String(p.retain).slice(0, 4)) === thisYear + 7), "every ledger write sets a retain-until ~7 years out");
+  check(ledgerPuts[0].key === "heydoc-audit/ledger/000000000000.json" && ledgerPuts[1].key === "heydoc-audit/ledger/000000000001.json", "ledger object keys are zero-padded seq, in chain order");
+
+  // ── content-addressed write-once + read round-trip ──────────────────────────
+  persistContent(HASH_A, "provisional draft for clinician review — no diagnosis or dosages.", { synthetic: true });
+  check(readContent(HASH_A) === "provisional draft for clinician review — no diagnosis or dosages.", "persistContent → readContent round-trips through the WORM substrate");
+  const before = fake.puts.length;
+  persistContent(HASH_A, "provisional draft for clinician review — no diagnosis or dosages.", { synthetic: true }); // idempotent
+  check(readContent(HASH_A) !== null, "a repeat persistContent is idempotent (write-once), still resolvable");
+  check(readContent("sha256:" + "c".repeat(64)) === null, "readContent returns null for content that was never written");
+  check(fake.puts.length >= before, "idempotent re-persist did not corrupt the store");
+
+  // ── clinician gate records through the durable store ────────────────────────
+  const gateRecord = { run_id: "run-gate-0001", candidate_output_hash: HASH_A, clinician_id: "clin-77", decision: "approved", decided_at_utc: "2026-07-12T04:00:00.000Z", signature_ref: "sig:ref:1" };
+  recordDecisionDurable(gateRecord, { bundle_sha256: "sha256:" + "d".repeat(64) });
+  check(readGateRecordEntries().length === 1, "a clinician decision is durably recorded via the WORM substrate");
+  check(verifyGateRecordChain().valid === true, "the gate-record hash-chain verifies over the WORM substrate");
+  const gatePuts = fake.puts.filter((p) => p.key.includes("/gate-records/"));
+  check(gatePuts.length === 1 && gatePuts[0].mode === "COMPLIANCE" && gatePuts[0].ifNoneMatch === true, "the gate-record write is COMPLIANCE + write-once");
+
+  // ── PPP-TTT triage ledger through its store: append → read → verify ─────────
+  appendPppTttEntry({ run_id: "run-ppp-0001", candidate_output_hash: HASH_A, tier: "CAUTION", fail_closed: false, discriminator_ids: ["uhao-1"], caveat_codes: [], safety_net_ids: [], patient_decision: "proceed" });
+  appendPppTttEntry({ run_id: "run-ppp-0002", candidate_output_hash: HASH_A, tier: "STOP", fail_closed: true, discriminator_ids: [], caveat_codes: [], safety_net_ids: [], patient_decision: "n/a" });
+  check(readPppTttLedger().length === 2, "two appendPppTttEntry calls land two triage entries via the WORM substrate");
+  check(verifyPppTttChain().valid === true, "the PPP-TTT hash-chain verifies end-to-end over the WORM substrate");
+  const pppPuts = fake.puts.filter((p) => p.key.includes("/ppp-ttt-ledger/"));
+  check(pppPuts.length === 2, "each triage append is exactly one put-object");
+  check(pppPuts.every((p) => p.mode === "COMPLIANCE" && p.ifNoneMatch === true), "every triage write is COMPLIANCE + write-once (--if-none-match *)");
+  check(pppPuts[0].key === "heydoc-audit/ppp-ttt-ledger/000000000000.json" && pppPuts[1].key === "heydoc-audit/ppp-ttt-ledger/000000000001.json", "triage object keys are zero-padded seq, in chain order");
+  throwsSync(() => res.pppTtt.appendLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing triage seq REFUSES (immutable WORM record, append-only violated)");
+
+  // ── fail-closed: a ledger seq COLLISION (append-only violated) throws ───────
+  throwsSync(() => res.audit.appendLedgerLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing ledger seq REFUSES (immutable WORM record, append-only violated)");
+
+  // ── fail-closed: registration guards ────────────────────────────────────────
+  await rejects(registerWormAudit({ region: "ap-southeast-2", retentionYears: 7, exec: fake.exec }), "missing bucket must throw");
+  await rejects(registerWormAudit({ bucket: "b", retentionYears: 7, exec: fake.exec }), "missing region must throw");
+  await rejects(registerWormAudit({ bucket: "b", region: "ap-southeast-2", exec: fake.exec }), "missing retentionYears must throw (no period defaulted in code)");
+  await rejects(registerWormAudit({ bucket: "b", region: "ap-southeast-2", retentionYears: 0, exec: fake.exec }), "non-positive retentionYears must throw");
+  await rejects(registerWormAudit({ bucket: "b", region: "ap-southeast-2", retentionYears: 7, mode: "LENIENT", exec: fake.exec }), "an invalid lock mode must throw");
+
+  // ── absent CLI (ENOENT) → actionable install error ─────────────────────────
+  let cliErr = null;
+  try {
+    await registerWormAudit({ bucket: "b", region: "ap-southeast-2", retentionYears: 7, exec: () => { const e = new Error("spawn aws ENOENT"); e.code = "ENOENT"; throw e; } });
+  } catch (e) { cliErr = e; }
+  check(cliErr && /AWS CLI/.test(cliErr.message) && /deploy host/.test(cliErr.message), "an absent AWS CLI → an actionable error naming the AWS CLI + deploy host");
+
+  // ── the module never logs (record values must never reach a log) ────────────
+  const src = readFileSync(new URL("../integration/audit-substrates/s3-object-lock.js", import.meta.url), "utf8");
+  check(!/console\.(log|info|warn|error)|process\.stdout|process\.stderr/.test(src), "the WORM adapter module must not log anything (record values never reach a log)");
+} catch (e) {
+  errors.push("unexpected throw: " + (e && e.stack ? e.stack : e));
+}
+
+if (errors.length) {
+  console.error("Contract failures:");
+  for (const e of errors) console.error("  - " + e);
+  process.exit(1);
+}
+console.log("contract-audit-worm-s3: OK");

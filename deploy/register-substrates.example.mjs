@@ -8,45 +8,26 @@
  * Placeholders below use example.invalid by design — the secrets seam REFUSES
  * placeholder values, so copying this file unedited cannot go live.
  */
-import { registerAuditSubstrate } from "../verification/audit-store.js";
-import { registerGateRecordSubstrate } from "../portal/gate-record-store.js";
-import { registerPppTttLedgerSubstrate } from "../verification/ppp-ttt/ledger.js";
-import { registerWormAudit } from "../integration/audit-substrates/s3-object-lock.js";
 import { registerSecretsBackend } from "../integration/secrets.js";
 import { registerAwsSecretsManager } from "../integration/secrets-backends/aws-secrets-manager.js";
+import { registerWormAudit } from "../integration/audit-substrates/s3-object-lock.js";
 
-// 1) CONCRETE WORM: S3 Object Lock on ALL THREE medicolegal seams in one call —
-//    the audit ledger (4-op), clinician gate records (2-op), and the PPP-TTT
-//    triage ledger (2-op). Requires an Object-Lock-enabled bucket + a retention
-//    period (COMPLIANCE mode); refuses if either is missing. AWS creds come from
-//    the deploy host's IAM role, never the repo. Uncomment on an AWS deploy host
-//    that has the AWS CLI installed, then select on all three seams:
-//      HEYDOC_AUDIT_SUBSTRATE=s3-object-lock
-//      HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock
-//      HEYDOC_PPP_TTT_SUBSTRATE=s3-object-lock
-//
-//    registerWormAudit({
-//      bucket: process.env.HEYDOC_S3_OBJECT_LOCK_BUCKET,   // Object-Lock-enabled
-//      region: "ap-southeast-2",
-//      retention: process.env.HEYDOC_AUDIT_RETENTION,      // e.g. "P7Y" (minimum-keep)
-//    });
-
-// 1b) Non-AWS template: the same three seams wired to placeholder adapters that
-//    throw by design (example.invalid), so copying this file unedited cannot go
-//    live. Replace with your own WORM backend, or use registerWormAudit() above.
-registerAuditSubstrate("worm-example", {
-  appendLedgerLine(_line) { throw new Error("example adapter — implement against your WORM backend (https://worm.example.invalid)"); },
-  readLedgerLines() { throw new Error("example adapter"); },
-  writeContentOnce(_hex, _text) { throw new Error("example adapter"); },
-  readContentByHex(_hex) { throw new Error("example adapter"); },
-});
-registerGateRecordSubstrate("worm-example", {
-  appendLine(_line) { throw new Error("example adapter"); },
-  readLines() { throw new Error("example adapter"); },
-});
-registerPppTttLedgerSubstrate("worm-example", {
-  appendLine(_line) { throw new Error("example adapter"); },
-  readLines() { throw new Error("example adapter"); },
+// 1) WORM substrate for ALL THREE medicolegal seams (audit ledger + clinician
+//    gate records + PPP-TTT triage ledger) — AWS S3 Object Lock, COMPLIANCE mode,
+//    7-year retention (§9 B1). CONCRETE and runnable on a deploy host that has the
+//    AWS CLI installed and an IAM role with s3:PutObject / s3:PutObjectRetention /
+//    s3:GetObject / s3:ListBucket on the bucket. The bucket MUST be created with
+//    Object Lock (and versioning) ENABLED — the adapter sets per-object retention;
+//    it cannot enable the feature. Registers "s3-object-lock" on all three seams;
+//    select it with HEYDOC_AUDIT_SUBSTRATE=s3-object-lock,
+//    HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock, and
+//    HEYDOC_PPP_TTT_SUBSTRATE=s3-object-lock.
+//    AWAIT it before starting the server (the boot read caches are seeded here).
+await registerWormAudit({
+  bucket: "heydoc-medicolegal-audit",   // ← your Object-Lock-enabled bucket
+  region: "ap-southeast-2",
+  retentionYears: 7,                     // operator-set; no period is defaulted in code
+  mode: "COMPLIANCE",                    // immutable even to root until retain date
 });
 
 // 3) Secrets backend — AWS Secrets Manager (operator choice, region
