@@ -13,6 +13,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
+# AWS deploy: add the Secrets Manager SDK to the IMAGE only (not a repo
+# dependency — the core stays cloud-agnostic; the aws-sm backend dynamic-imports
+# it). `docker build --build-arg INSTALL_AWS_SM=true` (see deploy/build-and-push.sh)
+# turns it on; the default image stays AWS-free. --no-save keeps package.json
+# untouched; pin the major so the image is reproducible.
+ARG INSTALL_AWS_SM=false
+RUN if [ "$INSTALL_AWS_SM" = "true" ]; then npm install --no-save "@aws-sdk/client-secrets-manager@^3"; fi
+
 COPY . .
 
 # Dev-safe defaults; deploy overrides. HEYDOC_DATA_DIR is a volume in every

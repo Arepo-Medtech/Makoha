@@ -29,6 +29,27 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## SMOKE+B2 — one-command live-LLM smoke + AWS App Runner deploy scaffolding (2026-07-11)
+
+**Status:** `npm test` **49/49** green (48 prior + `contract-smoke-llm`); all gates green; RETAIN core byte-unchanged; **no new repo dependency**. LIVE_PLAN §9 A1 (smoke) + B2 (staging deploy). Operator on AWS / ap-southeast-2.
+
+### Option A — `npm run smoke:llm` (§9 A1)
+- **`scripts/smoke-llm.mjs` [NEW]** — runs ONE pipeline turn through the selected Step-4 backend (Claude|MedGemma per `HEYDOC_LLM_BACKEND`) and prints backend / mode (mock vs live, never conflated) / model / verification PASS / continuation-blocked / blocked-reason / latency / prompt hash. Synthetic packet only (safe against the live API); all bars hold (packet-only, fail-closed, frozen verifier); never handles a secret value; exit 0 iff the run completed and generation wasn't blocked. A mock run prints an explicit "MOCK — set HEYDOC_LLM_LIVE=1…" hint.
+- **`test/contract-smoke-llm.js` [NEW]** — mock run, injected live-success (Claude → model `claude-sonnet-5`), injected blocked (timeout → surfaced, not fabricated), MedGemma backend, dose-leak still blocked by the composed gate, no `patient_eligible`. Injected transports — no network, no key. `package.json` [~] test line + `smoke:llm` script.
+
+### Option B — AWS App Runner deploy scaffolding (§9 B2)
+- **`deploy/bootstrap.mjs` [NEW]** — the AWS StartCommand: registers the `aws-sm` key backend at boot (fetches `aws.sm/heydoc/anthropic.key` into the fail-closed seam) BEFORE starting the chosen server (`HEYDOC_SERVICE=portal|consult`). So `HEYDOC_LLM_KEY_REF=aws-sm:…` resolves at runtime via the instance role; the value never appears in config.
+- **`Dockerfile` [~]** — `INSTALL_AWS_SM` build arg adds `@aws-sdk/client-secrets-manager` to the IMAGE only (`--no-save`, pinned major) — the repo core stays cloud-agnostic and CI still exercises the absent-SDK branch.
+- **`deploy/build-and-push.sh` [NEW]** — ECR repo ensure + build (with the SDK) + push; prints the image URI. **`deploy/apprunner-create.sh` [NEW]** — creates the App Runner service (ECR image, port 8787, StartCommand bootstrap, instance role [HeydocSecretsRead] + access role [ECR pull], portal token via `RuntimeEnvironmentSecrets`, `/healthz`). **`deploy/README.md` [~]** — the B2 runbook (two IAM roles, deploy steps, key-resolution flow, and the ephemeral-storage caveat: B1 WORM required before production).
+
+**Register [~]:** `deployment-runtime-unbuilt` narrowed (App Runner scaffolding built; R-35 updated — operator runs the scripts; B1 WORM before production).
+
+**Invariants held:** the smoke's bars are the pipeline's (packet-only, fail-closed, frozen verifier); no secret value handled; no new repo dependency (the AWS SDK is image-only); staging fail-closed (portal token required, non-local audit substrate without a WORM adapter refuses); frozen core byte-unchanged; no `patient_eligible`.
+
+**Your side:** run `smoke:llm` on a host with the role + SDK to prove Sonnet 5 live; or run the two B2 scripts (create ECR + two roles + portal-token secret) to stand up a staging App Runner service.
+
+---
+
 ## L11 — Patient consult surface (mock-gated; PPP-TTT Step 3): no clinical draft escapes the release gate (2026-07-11)
 
 **Status:** `npm test` **47/47** green (46 prior + `contract-patient-consult`); all gates green; RETAIN core + `pipeline.js` byte-unchanged. Plan: `.planning/LIVE_PLAN.md` L11 (+ PPP-TTT plan Step 3). **NO patient path opened — the surface is mock-gated and releases nothing; nothing sets the patient-eligibility flag.**

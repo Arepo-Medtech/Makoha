@@ -192,18 +192,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: deployment-runtime-unbuilt
-  path: Dockerfile · .dockerignore · docker-compose.yml · deploy/{README.md,register-substrates.example.mjs} · portal/server.js startPortal() (entrypoint) · npm run portal
+  path: Dockerfile (+ INSTALL_AWS_SM build arg) · .dockerignore · docker-compose.yml · deploy/{README.md, bootstrap.mjs, build-and-push.sh, apprunner-create.sh, register-substrates.example.mjs} · portal/server.js startPortal() · npm run portal
   component_type: other (runtime/deploy)
   state: PARTIAL
-  evidence: L2 BUILD 2026-07-11 — runtime image (node:20-alpine, npm ci lockfile-only, mock default, HEYDOC_DATA_DIR volume so ledgers outlive containers), compose (portal role; staging must supply HEYDOC_PORTAL_TOKEN — fail-closed startup), deploy bootstrap example (registers WORM + gate-record + secrets backends BEFORE server start; example.invalid placeholders that the secrets seam refuses). Was: nothing in the tree could run as a deployed service.
-  blocks: L14 — REMAINING: cloud account/target + staging deploy CI job (operator input); production infra
+  evidence: L2 BUILD 2026-07-11 — runtime image (node:20-alpine, npm ci lockfile-only, mock default, HEYDOC_DATA_DIR volume), compose (portal; staging must supply HEYDOC_PORTAL_TOKEN — fail-closed startup). **B2 App Runner scaffolding BUILT 2026-07-11 (operator on AWS/ap-southeast-2):** deploy/bootstrap.mjs (the AWS StartCommand — registers the aws-sm key backend at boot, then starts portal|consult per HEYDOC_SERVICE); Dockerfile INSTALL_AWS_SM build arg adds @aws-sdk/client-secrets-manager to the IMAGE only (core stays cloud-agnostic; not a repo dep); deploy/build-and-push.sh (ECR ensure + build-with-SDK + push); deploy/apprunner-create.sh (App Runner service: ECR image, port 8787, StartCommand bootstrap, instance role [HeydocSecretsRead] + access role [ECR pull], portal token via RuntimeEnvironmentSecrets, /healthz check); deploy/README B2 runbook. Shell + node syntax-checked. Was: nothing could run as a deployed service.
+  blocks: L14 — REMAINING: operator runs the B2 scripts (create ECR + roles + portal-token secret + service); staging App Runner storage is EPHEMERAL so the local audit ledger isn't durable — B1 (WORM) required before production; a CI-driven deploy (GH Actions→App Runner via OIDC) is a later step (operator OIDC role)
   safety_class: none
-  invariant_exposure: none — three-environment one-way promotion is config-enforced (mode.js mapping + compose defaults)
+  invariant_exposure: none — three-environment one-way promotion config-enforced (mode.js); staging fail-closed (portal token required; non-local audit substrate without a WORM adapter refuses)
   risk: High
   blocks_patient_facing: false
-  build_action: REMAINING — operator supplies cloud target; add the staging deploy job; wire the deploy bootstrap against real backends.
+  build_action: REMAINING — operator runs build-and-push.sh + apprunner-create.sh with the two role ARNs + portal-token secret; B1 WORM before production; optional CI deploy job (OIDC).
   gap_register_link: R-35
-  status: open (runtime + config built; cloud deploy input-gated)
+  status: open (runtime + App Runner scaffolding built; operator runs the deploy + B1 WORM for production)
   last_scanned: 2026-07-11
 ```
 
