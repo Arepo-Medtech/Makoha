@@ -36,7 +36,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
 - secrets-manager-integration-unbuilt · integration/secrets.js BUILT (fail-closed seam) · PARTIAL (real backend at deploy) · High · pf:false (R-36)
 - observability-metrics-unbuilt · verification/metrics.js BUILT (counters + alarm seam + /metrics) · PARTIAL (pager/dashboards deploy; eval under-triage call-site L10) · High · pf:false (R-37)
 - ci-secret-scanning-sast-missing · security:secrets BLOCKING in CI (first-party) · PARTIAL (SAST tool = operator choice) · High · pf:false (R-38)
-- worm-substrate-adapter-unbuilt · seams ready (audit-store M8 + gate-record-store L1); adapter = operator backend choice + retention · UNBUILT · High · pf:true (R-39)
+- worm-substrate-adapter-unbuilt · 3 seams ready (audit 4-op + gate 2-op + ppp-ttt 2-op) + CONCRETE integration/audit-substrates/s3-object-lock.js registerWormAudit() (COMPLIANCE Object Lock, fail-closed retention, sync AWS-CLI transport, contract-tested); REMAINING = operator bucket + retention + env selection · PARTIAL · High · pf:true (R-39)
 - consent-capture-unbuilt · consent record schema + capture flow · UNBUILT (nothing persists meanwhile — safe direction) · High · pf:true (R-40, LIVE_PLAN L12)
 - ~~context-injection-allowlist · verification/context-allowlist.js~~ · **resolved 2026-07-03 (M3)** — default-deny mirror of the ingest firewall enforced in contextInjection(); sealed nodes throw; contract-tested (R-26 resolved)
 - ~~routing-plan-next-trunks-dead-end · integration/trunk-sequencer.js~~ · **resolved 2026-07-03 (M2)** — sequencer built + contract-tested; HARD_FAIL/escalate/verify-fail halt the sequence unconditionally; behind HEYDOC_SEQUENCER (default off = rollback) (R-24 resolved)

@@ -260,19 +260,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: worm-substrate-adapter-unbuilt
-  path: verification/audit-store.js registerAuditSubstrate() (seam only) · portal gate records · ppp-ttt ledger
+  path: integration/audit-substrates/s3-object-lock.js (concrete adapter) · verification/audit-store.js (4-op seam) · portal/gate-record-store.js (2-op seam) · verification/ppp-ttt/ledger.js (2-op seam)
   component_type: repository-store
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — the M8 seam exists and refuses unregistered non-local substrates; no production WORM adapter (S3 Object Lock / immudb / operator choice) implemented for the main ledger, the PPP-TTT ledger, or gate records; retention unset. L1 (same day) added the matching two-op seam for gate records (registerGateRecordSubstrate, same refuse-if-unregistered semantics) and deploy/register-substrates.example.mjs documents the boot wiring — the seams are ready; only the adapter (backend choice) is missing.
+  state: PARTIAL
+  evidence: §9 B1 scan+build 2026-07-12 — all THREE seams now exist and refuse unregistered non-local substrates: the M8 audit seam (registerAuditSubstrate, 4-op), the L1 gate-record seam (registerGateRecordSubstrate, 2-op), and — added this change — the PPP-TTT triage-ledger seam (registerPppTttLedgerSubstrate, 2-op; ledger.js previously wrote fs directly). NEW `integration/audit-substrates/s3-object-lock.js`: a CONCRETE S3 Object Lock adapter — `registerWormAudit()` registers ONE `s3-object-lock` adapter on all three seams in a single call; WORM model is one immutable object per entry keyed by zero-padded seq (the only append model compatible with Object Lock), content-addressed synthetic store keyed by hash, per-seam prefixes so the three chains never collide. COMPLIANCE mode + RetainUntilDate on every write; fail-closed if no retention configured (never an unlocked pseudo-WORM object). Transport injectable: production shells to the AWS CLI via execFileSync (durable-first SYNCHRONOUS I/O — the seams are sync and the async SDK cannot be awaited inside them); the contract test injects an in-memory transport (no AWS). All three FROZEN chains verify end-to-end through the adapter. Contract-tested (test/contract-audit-worm-s3.js; npm test + CI). RETAIN core byte-unchanged; ppp-ttt/ledger.js NOT byte-pinned (seam add is pure I/O indirection, chain algorithm unchanged). REMAINING is operator/deploy only: an Object-Lock-enabled bucket + a retention period + selecting s3-object-lock on the three HEYDOC_*_SUBSTRATE env vars, then verify:rehash --integrity in staging.
   blocks: production medicolegal storage; L14
-  safety_class: none (seam fail-closed)
+  safety_class: none (seam + adapter fail-closed)
   invariant_exposure: observability_and_audit (append-only, tamper-evident, retention)
   risk: High
   blocks_patient_facing: true
-  build_action: LIVE_PLAN L2 — adapter for the operator-chosen backend + HEYDOC_AUDIT_RETENTION (minimum-keep) + verify:rehash --integrity against it in staging. Backend choice + retention period = operator input.
+  build_action: operator input only — provide an Object-Lock-enabled S3 bucket + HEYDOC_AUDIT_RETENTION (minimum-keep), uncomment registerWormAudit() in deploy/register-substrates.example.mjs, set HEYDOC_{AUDIT,GATE_RECORD,PPP_TTT}_SUBSTRATE=s3-object-lock, and run verify:rehash --integrity in staging.
   gap_register_link: R-39
-  status: open
-  last_scanned: 2026-07-11
+  status: in-progress
+  last_scanned: 2026-07-12
 ```
 
 ```md

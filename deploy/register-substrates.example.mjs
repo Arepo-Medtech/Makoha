@@ -10,21 +10,41 @@
  */
 import { registerAuditSubstrate } from "../verification/audit-store.js";
 import { registerGateRecordSubstrate } from "../portal/gate-record-store.js";
+import { registerPppTttLedgerSubstrate } from "../verification/ppp-ttt/ledger.js";
+import { registerWormAudit } from "../integration/audit-substrates/s3-object-lock.js";
 import { registerSecretsBackend } from "../integration/secrets.js";
 import { registerAwsSecretsManager } from "../integration/secrets-backends/aws-secrets-manager.js";
 
-// 1) WORM adapter for the main medicolegal ledger (four-op seam).
-//    Selected by HEYDOC_AUDIT_SUBSTRATE=worm-example. Append-only/write-once
-//    semantics are the backend's job (e.g. S3 Object Lock compliance mode).
+// 1) CONCRETE WORM: S3 Object Lock on ALL THREE medicolegal seams in one call —
+//    the audit ledger (4-op), clinician gate records (2-op), and the PPP-TTT
+//    triage ledger (2-op). Requires an Object-Lock-enabled bucket + a retention
+//    period (COMPLIANCE mode); refuses if either is missing. AWS creds come from
+//    the deploy host's IAM role, never the repo. Uncomment on an AWS deploy host
+//    that has the AWS CLI installed, then select on all three seams:
+//      HEYDOC_AUDIT_SUBSTRATE=s3-object-lock
+//      HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock
+//      HEYDOC_PPP_TTT_SUBSTRATE=s3-object-lock
+//
+//    registerWormAudit({
+//      bucket: process.env.HEYDOC_S3_OBJECT_LOCK_BUCKET,   // Object-Lock-enabled
+//      region: "ap-southeast-2",
+//      retention: process.env.HEYDOC_AUDIT_RETENTION,      // e.g. "P7Y" (minimum-keep)
+//    });
+
+// 1b) Non-AWS template: the same three seams wired to placeholder adapters that
+//    throw by design (example.invalid), so copying this file unedited cannot go
+//    live. Replace with your own WORM backend, or use registerWormAudit() above.
 registerAuditSubstrate("worm-example", {
   appendLedgerLine(_line) { throw new Error("example adapter — implement against your WORM backend (https://worm.example.invalid)"); },
   readLedgerLines() { throw new Error("example adapter"); },
   writeContentOnce(_hex, _text) { throw new Error("example adapter"); },
   readContentByHex(_hex) { throw new Error("example adapter"); },
 });
-
-// 2) WORM adapter for clinician gate records (two-op seam).
 registerGateRecordSubstrate("worm-example", {
+  appendLine(_line) { throw new Error("example adapter"); },
+  readLines() { throw new Error("example adapter"); },
+});
+registerPppTttLedgerSubstrate("worm-example", {
   appendLine(_line) { throw new Error("example adapter"); },
   readLines() { throw new Error("example adapter"); },
 });

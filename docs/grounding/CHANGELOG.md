@@ -4,6 +4,26 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## §9 B1 — Concrete S3 Object Lock WORM adapter + PPP-TTT ledger substrate seam (2026-07-12)
+
+**Status:** `npm test` **50/50** green; all gates green (verification + trunk:stub:all); RETAIN core byte-unchanged (`verifier.js` / `portal/verification-gate.js` / `audit-store.js` sha256 pins hold); **no new repo dependency** (the AWS CLI is a deploy-host tool, not an npm package). Plan-gated (operator approved Option B).
+
+**Why:** the PPP-TTT triage ledger (`verification/ppp-ttt/ledger.js`) wrote its hash-chained JSONL directly via `appendFileSync`/`readFileSync` — it had NO pluggable substrate seam, unlike the medicolegal audit ledger (`registerAuditSubstrate`, M8) and clinician gate records (`registerGateRecordSubstrate`, L1), both of which can be backed by a WORM store. So the triage ledger could not be made durable/tamper-evident in production even when the other two chains were WORM-backed — a medicolegal inconsistency (R-39). §9 B1 also lacked the concrete WORM adapter both existing seams were waiting on.
+
+### Change
+- **`verification/ppp-ttt/ledger.js` [~]** — added the third substrate seam `registerPppTttLedgerSubstrate(name, adapter)` (two-op `{ appendLine, readLines }`, mirroring `portal/gate-record-store.js`) with a built-in `local` backend (current dev JSONL behaviour, byte-for-byte) and a fail-closed `substrate()` resolver: selecting a non-`local` `HEYDOC_PPP_TTT_SUBSTRATE` with no registered adapter REFUSES — the triage ledger is never silently written to a non-WORM backend. `readPppTttLedger`/`appendPppTttEntry` now route through the seam; the hash-chain algorithm (canonical JSON, `entry_hash`, genesis, `verifyPppTttChain`) is UNCHANGED — pure I/O indirection. `ppp-ttt/ledger.js` is not byte-pinned, so no pin moved; the monotone-test firewall walk (no sealed-node paths, no `patient_eligible`) still passes.
+- **`integration/audit-substrates/s3-object-lock.js` [NEW]** — a CONCRETE S3 Object Lock WORM adapter. `registerWormAudit(opts)` registers ONE `s3-object-lock` adapter on ALL THREE seams (audit 4-op, gate records 2-op, PPP-TTT 2-op) in a single call. WORM model: one immutable object per entry keyed by zero-padded seq (`<prefix>/<seam>/000000000042.jsonl`) — the only append model compatible with Object Lock (a growing single object cannot be overwritten); reads list+sort+concat; the synthetic content store is content-addressed by hash, idempotent write-once. Every write carries COMPLIANCE mode + a RetainUntilDate; **fail-closed if no retention is configured** (never an unlocked pseudo-WORM object); duration→date rounds UP (minimum-keep). **Sync-seam design:** the seams are synchronous, so the production transport shells to the AWS CLI via `execFileSync` (durable-first synchronous I/O — the async SDK cannot be awaited inside a sync seam op); the transport is injectable so the semantics are testable with no AWS. AWS creds come from the deploy host's IAM role — never the repo.
+- **`test/contract-audit-worm-s3.js` [NEW]** — injects an in-memory transport (no AWS) and proves: `resolveRetainUntil` parses ISO durations + absolute dates and refuses empty/garbage; WORM write-once (overwrite throws), ordered reads, idempotent content round-trip, COMPLIANCE + future retain on every object; `registerWormAudit()` wires all three seams; the three FROZEN chains (audit ledger, gate records, PPP-TTT ledger) each verify end-to-end THROUGH the adapter in distinct prefixes; and fail-closed guards (no-retention registration refuses; the new PPP-TTT seam refuses an unregistered non-local substrate). Wired into `npm test` + CI.
+- **`deploy/register-substrates.example.mjs` [~]** — `registerWormAudit()` documented as the one-call concrete wiring for all three seams (commented, operator uncomments on an AWS host); the `worm-example` throwing placeholders now also cover the third (PPP-TTT) seam so the template stays symmetric and copying it unedited still cannot go live.
+
+### Invariant check
+Hashing untouched (all three `entry_hash` chains unchanged); PHI-free `.strict()` validation still runs BEFORE the durable write; mock-never-as-live unchanged; fail-closed default EXTENDED to the third seam (unregistered non-local ⇒ refuse); no scoring-store path (firewall walk green); RETAIN core byte-unchanged. Production remains blocked on the other three patient-facing blockers. ✔
+
+### Register / gap move
+`worm-substrate-adapter-unbuilt` **UNBUILT → PARTIAL** (concrete adapter + all three seams built and contract-tested; REMAINING is operator input: Object-Lock bucket + retention + env selection). R-39 narrowed to "In progress — adapter built + tested; operator provides bucket + retention." Completeness Register + `.claude/completeness-index.md` updated.
+
+---
+
 ## B3-HARDEN — JSON-tolerant `aws-sm` secrets backend (2026-07-12)
 
 **Status:** `npm test` **49/49** green; all gates green; RETAIN core byte-unchanged; **no new repo dependency**; secret-scan `0 findings`. Shared seam `integration/secrets.js` deliberately **untouched** (all new logic in the aws-sm backend module).

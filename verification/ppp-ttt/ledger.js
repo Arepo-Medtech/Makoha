@@ -18,9 +18,16 @@
  * staging/production/unknown environment is recorded as "live" (mock is never
  * presented as live; no new mock-as-live seam).
  *
- * Dev substrate caveat: like audit-store's `local` substrate, the JSONL file
- * is NOT WORM and not multi-process safe; live WORM + retention ride the same
- * deploy/regulatory decision as the M8 substrate (surface, don't decide).
+ * SUBSTRATE SEAM (mirrors audit-store M8 + portal/gate-record-store.js): the
+ * hash-chain logic sits on a two-op { appendLine, readLines } storage seam — it
+ * never touches the filesystem directly. The built-in `local` substrate is the
+ * dev JSONL file (NOT WORM, NOT multi-process safe). Production registers a WORM
+ * adapter (e.g. S3 Object Lock) via registerPppTttLedgerSubstrate() at deploy;
+ * the chain algorithm is frozen and unchanged (pure I/O indirection). FAIL-SAFE:
+ * selecting a non-local substrate (HEYDOC_PPP_TTT_SUBSTRATE) with no adapter
+ * registered REFUSES — the triage ledger is never silently written to a non-WORM
+ * backend. Live WORM + retention ride the same deploy/regulatory decision (R-39)
+ * as the M8 audit substrate (surface, don't decide).
  */
 import { existsSync, mkdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -41,6 +48,59 @@ function dataDir() {
 }
 function ledgerPath() {
   return join(dataDir(), "ppp-ttt-ledger.jsonl");
+}
+
+// --- substrate seam (mirrors verification/audit-store.js M8 + portal/gate-record-store.js) ---
+// The chain algorithm calls { appendLine, readLines } only; it never touches
+// `fs` directly. A production WORM adapter implements the same two ops. Default:
+// `local` (dev JSONL, NOT WORM). Paths resolve per call so HEYDOC_DATA_DIR keeps
+// working.
+const substrates = new Map([
+  [
+    "local",
+    {
+      appendLine(line) {
+        const dir = dataDir();
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        appendFileSync(ledgerPath(), line + "\n");
+      },
+      readLines() {
+        const p = ledgerPath();
+        if (!existsSync(p)) return [];
+        return readFileSync(p, "utf8").split("\n").filter((l) => l.trim().length > 0);
+      },
+    },
+  ],
+]);
+
+/**
+ * Register a production (WORM) PPP-TTT ledger substrate at deploy time. The
+ * adapter MUST implement { appendLine, readLines } and MUST be append-only /
+ * write-once — the chain's tamper-evidence assumes the backend never rewrites or
+ * reorders. Selected by HEYDOC_PPP_TTT_SUBSTRATE.
+ * @param {string} name
+ * @param {{ appendLine: Function, readLines: Function }} adapter
+ */
+export function registerPppTttLedgerSubstrate(name, adapter) {
+  for (const op of ["appendLine", "readLines"]) {
+    if (typeof (adapter || {})[op] !== "function") throw new Error(`ppp-ttt ledger substrate "${name}" missing required op: ${op}()`);
+  }
+  substrates.set(name, adapter);
+}
+
+/** Resolve the active substrate. FAIL-CLOSED: a non-local name with no
+ *  registered adapter REFUSES — the triage ledger is never silently written to
+ *  a non-WORM backend (same discipline as the medicolegal audit ledger). */
+function substrate() {
+  const name = (process.env.HEYDOC_PPP_TTT_SUBSTRATE || "local").trim() || "local";
+  const s = substrates.get(name);
+  if (!s) {
+    throw new Error(
+      `ppp-ttt ledger substrate "${name}" is not configured — register a WORM adapter at deploy via registerPppTttLedgerSubstrate(). ` +
+      `Refusing to write the PPP-TTT triage ledger to an unconfigured/non-WORM backend.`
+    );
+  }
+  return s;
 }
 
 /** Deterministic JSON: object keys sorted recursively, so hashing is stable. */
@@ -65,14 +125,11 @@ function computeEntryHash(entryWithoutHash, prevHash) {
   return sha256Prefixed(canonical(entryWithoutHash) + prevHash);
 }
 
-/** Read and parse every PPP-TTT ledger entry in order ([] if none yet). */
+/** Read and parse every PPP-TTT ledger entry in order ([] if none yet). Reads
+ *  through the active substrate (local JSONL by default; a WORM adapter in
+ *  production). */
 export function readPppTttLedger() {
-  const p = ledgerPath();
-  if (!existsSync(p)) return [];
-  return readFileSync(p, "utf8")
-    .split("\n")
-    .filter((l) => l.trim().length > 0)
-    .map((l) => JSON.parse(l));
+  return substrate().readLines().map((l) => JSON.parse(l));
 }
 
 /**
@@ -112,9 +169,11 @@ export function appendPppTttEntry(core) {
   // Gate BEFORE the durable log — never append a malformed or PHI-bearing entry.
   validatePppTttLedgerEntry(entry);
 
-  const dir = dataDir();
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  appendFileSync(ledgerPath(), JSON.stringify(entry) + "\n");
+  // Append via the active substrate (local JSONL by default; a WORM adapter in
+  // production). substrate() refuses if a non-local backend is selected but not
+  // registered, so a misconfigured production run never writes the triage ledger
+  // to a non-WORM file.
+  substrate().appendLine(JSON.stringify(entry));
   return entry;
 }
 
