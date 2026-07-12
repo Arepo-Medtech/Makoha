@@ -4,6 +4,14 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## MODEL — Default Claude model set to Sonnet 5 (operator selection) (2026-07-11)
+
+**Status:** `npm test` **48/48** green; all gates green; RETAIN core byte-unchanged. Operator decision.
+
+- **`integration/llm-adapter.js` [~]** — `DEFAULT_LLM_MODEL` = `claude-sonnet-5` (was `claude-opus-4-8`). Clean model-ID swap: Sonnet 5 takes the SAME request surface the adapter already uses (adaptive thinking; no `budget_tokens`/sampling params), so nothing else changes. Still overridable per-deploy via `HEYDOC_LLM_MODEL`; all L3 bars (packet-only, fail-closed, mock-by-default, audit) unchanged. `contract-llm-adapter.js` follows the constant (`model === DEFAULT_LLM_MODEL`) — green. The MedGemma backend's own model is unaffected. Register evidence for `live-llm-generation-adapter-unbuilt` updated.
+
+---
+
 ## B3 — AWS Secrets Manager backend for the fail-closed secrets seam (§9 operator handback) (2026-07-11)
 
 **Status:** `npm test` **48/48** green (47 prior + `contract-secrets-aws`); all gates green; RETAIN core byte-unchanged; **no new repo dependency** (`npm audit` unchanged). Operator handback: chose AWS Secrets Manager, region `ap-southeast-2`, secret `aws.sm/heydoc/anthropic.key` (name + region given — **never the value**).
