@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## B3-HARDEN — JSON-tolerant `aws-sm` secrets backend (2026-07-12)
+
+**Status:** `npm test` **49/49** green; all gates green; RETAIN core byte-unchanged; **no new repo dependency**; secret-scan `0 findings`. Shared seam `integration/secrets.js` deliberately **untouched** (all new logic in the aws-sm backend module).
+
+**Why:** the live AWS smoke reached `mode: live, model: claude-sonnet-5` but generation returned `BLOCKED_NO_PROOF — 401 invalid x-api-key`. Root cause: the secret was stored as a JSON key/value object (`{"ANTHROPIC_API_KEY":"sk-ant-…"}`, the Secrets Manager console default), and the seam correctly returned that whole blob verbatim as the API key. The code behaved correctly throughout (fail-closed, never a fabrication); the fix is to make the backend tolerate the common JSON shape rather than only plaintext. The end-to-end live path (IAM → SDK → aws-sm → seam → adapter → Sonnet 5 → verifier PASS) is validated.
+
+### Change
+- **`integration/secrets-backends/aws-secrets-manager.js` [~]** — new exported pure helper `extractSecret(raw, field, refLabel)` + JSON-tolerant resolver. Ref grammar gains an OPTIONAL field selector `aws-sm:<SecretId>#<field>` (`#` is safe — AWS secret names cannot contain it; cache is keyed on the base SecretId). Policy, **fail-closed throughout**: (1) plaintext (not `{`-leading) → returned **verbatim, unchanged** — no behaviour change, no trimming; (2) `#field` given → `JSON.parse`, return `obj[field]` iff a non-empty string, else THROW actionable; (3) JSON object, no `#field` → auto-extract iff **exactly one** key with a non-empty string value (the console-default case), else THROW actionable naming the `#field` remedy. Ambiguous/malformed JSON (zero/several keys, missing/empty/non-string field, non-object) is **REFUSED** — never guesses, never returns the raw blob. The seam's existing empty + `example.invalid` checks still run on the final extracted value as a second net. No logging added (value never reaches a log; source-scan test still green).
+- **`test/contract-secrets-aws.js` [~]** — extended: plaintext passthrough (unchanged); single-key auto-extract; `#field` extraction; and fail-closed REFUSE for multi-key-without-field, missing field, empty field, non-string field, malformed JSON, and `#field`-against-plaintext — plus end-to-end resolution of both a single-key JSON secret and a `#field` ref through `getSecret()`/`hasSecret()`.
+- **Docs [~]** — `deploy/README.md` (store plaintext; `#field` for JSON) + `scripts/smoke-llm.mjs` header.
+
+### Invariant check
+Fail-closed seam un-weakened (secrets.js unchanged); ambiguous JSON → REFUSE (consistent with "ambiguous safety = unsafe"); secret values never logged; plaintext passthrough unchanged so no live path regresses. ✔
+
+### Register
+B3 `aws-sm` backend row (R-36 area) stays `COMPLETE`, now JSON-tolerant + additionally tested. No gap opened or moved.
+
+---
+
 ## MODEL — Default Claude model set to Sonnet 5 (operator selection) (2026-07-11)
 
 **Status:** `npm test` **48/48** green; all gates green; RETAIN core byte-unchanged. Operator decision.
