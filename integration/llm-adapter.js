@@ -43,8 +43,11 @@ import { getSecret, hasSecret } from "./secrets.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROMPTS_DIR = join(__dirname, "..", "trunk", "prompts");
 
-/** Pinned default model (LIVE_PLAN L3; override via HEYDOC_LLM_MODEL). */
-export const DEFAULT_LLM_MODEL = "claude-opus-4-8";
+/** Pinned default model (operator selection 2026-07-11; override via
+ *  HEYDOC_LLM_MODEL). Claude Sonnet 5 — near-Opus quality on the short,
+ *  structured clinical drafts the trunks produce, at Sonnet cost. Same request
+ *  surface the adapter already uses: adaptive thinking, no sampling params. */
+export const DEFAULT_LLM_MODEL = "claude-sonnet-5";
 /** Secrets-seam ref for the API key (override via HEYDOC_LLM_KEY_REF). */
 export const DEFAULT_KEY_REF = "env:ANTHROPIC_API_KEY";
 
