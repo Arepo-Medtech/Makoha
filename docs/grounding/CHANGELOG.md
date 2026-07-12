@@ -29,6 +29,15 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## SMOKE-AWS — aws-sm opt-in for the standalone live smoke (2026-07-12)
+
+**Status:** `npm test` **49/49** green; all gates green; RETAIN core byte-unchanged; no new repo dependency. LIVE_PLAN §9 A1 follow-up.
+
+- **`scripts/smoke-llm.mjs` [~]** — when `HEYDOC_AWS_SECRET_NAMES` is set, `runSmoke()` registers the `aws-sm` secrets backend at start (the same fetch-at-boot the deployed container does via `deploy/bootstrap.mjs`), so `npm run smoke:llm` can validate the **production** key path (IAM → AWS SDK → aws-sm backend → adapter → Sonnet 5) from a standalone host, not just the `env:` shortcut. **Fail-closed:** a missing/empty secret, absent SDK, or IAM denial THROWS — the CLI surfaces it with an actionable hint and exits 2; it NEVER silently falls back to a mock run. The mock-run hint now shows both the `env:` and `aws-sm` recipes.
+- **`test/contract-smoke-llm.js` [~]** — the aws-sm path with an injected fetcher (no SDK/no AWS): registers → `getSecret('aws-sm:…')` resolves → `isLlmLiveEnabled()` true; and empty-secret → throws (fail-closed). Why this matters: a standalone `npm run smoke:llm` does NOT run the deploy bootstrap, so without this opt-in an `aws-sm:` ref would fail to resolve and the smoke would (correctly, but confusingly) report a MOCK run.
+
+---
+
 ## SMOKE+B2 — one-command live-LLM smoke + AWS App Runner deploy scaffolding (2026-07-11)
 
 **Status:** `npm test` **49/49** green (48 prior + `contract-smoke-llm`); all gates green; RETAIN core byte-unchanged; **no new repo dependency**. LIVE_PLAN §9 A1 (smoke) + B2 (staging deploy). Operator on AWS / ap-southeast-2.

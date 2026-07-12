@@ -49,6 +49,29 @@ try {
   const leaky = await runSmoke({ backend: "claude", client: fakeClaude({ text: "Advisory: give amoxicillin 500 mg three times daily." }) });
   check(leaky.verification_pass === false, "a dose-leaking generated draft fails the composed gate (bars hold in the smoke too)");
 
+  // ── aws-sm opt-in: HEYDOC_AWS_SECRET_NAMES registers the backend (injected
+  //    fetcher — no SDK, no AWS) so an aws-sm:<SecretId> key ref resolves ──────
+  const AWS_KEY = "fixture-key-resolved-from-aws-sm-000"; // non-credential-shaped fixture
+  process.env.HEYDOC_AWS_SECRET_NAMES = "aws.sm/heydoc/anthropic.key";
+  process.env.HEYDOC_LLM_KEY_REF = "aws-sm:aws.sm/heydoc/anthropic.key";
+  process.env.HEYDOC_LLM_LIVE = "1";
+  const awsRun = await runSmoke({ backend: "claude", client: fakeClaude({ text: CLEAN }), awsFetchSecret: async () => AWS_KEY });
+  check(awsRun.mode === "live" && awsRun.generation_ok === true, "aws-sm opt-in smoke registers the backend and runs live");
+  const { getSecret } = await import("../integration/secrets.js");
+  check(getSecret("aws-sm:aws.sm/heydoc/anthropic.key") === AWS_KEY,
+    "the aws-sm key ref resolves through the fail-closed seam after the smoke registered it");
+  const { isLlmLiveEnabled } = await import("../integration/llm-adapter.js");
+  check(isLlmLiveEnabled() === true,
+    "after aws-sm registration, isLlmLiveEnabled() is true — a real deploy would call the live API (proves the whole key path)");
+
+  // Fail-closed: an empty/missing secret THROWS at registration — NEVER a silent mock fallback.
+  let awsThrew = false;
+  try { await runSmoke({ backend: "claude", awsFetchSecret: async () => "" }); } catch { awsThrew = true; }
+  check(awsThrew, "aws-sm registration with an empty secret THROWS (fail-closed; the smoke never silently mocks)");
+  delete process.env.HEYDOC_AWS_SECRET_NAMES;
+  delete process.env.HEYDOC_LLM_KEY_REF;
+  delete process.env.HEYDOC_LLM_LIVE;
+
   // ── The script never references forbidden surfaces ──────────────────────────
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../scripts/smoke-llm.mjs", import.meta.url), "utf8");

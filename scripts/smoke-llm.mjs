@@ -20,6 +20,16 @@
  *   #   HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key (needs the aws-sm
  *   #   backend registered — see deploy/bootstrap.mjs) OR env:ANTHROPIC_API_KEY.
  *   # backend: HEYDOC_LLM_BACKEND=claude|medgemma
+ *
+ *   # validate the PRODUCTION aws-sm key path from a standalone host (needs the
+ *   # instance role/creds + `npm install @aws-sdk/client-secrets-manager`):
+ *   #   HEYDOC_AWS_SECRET_NAMES=aws.sm/heydoc/anthropic.key \
+ *   #   HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key \
+ *   #   HEYDOC_MODE_DEFAULT=staging HEYDOC_LLM_LIVE=1 npm run smoke:llm
+ *   # (Opt-in: when HEYDOC_AWS_SECRET_NAMES is set the smoke registers the
+ *   #  aws-sm backend at start — same fetch-at-boot the deployed container does
+ *   #  via deploy/bootstrap.mjs. Fail-closed: a fetch/IAM/SDK failure throws;
+ *   #  it never silently falls back to a mock run.)
  * Exit 0 when the run completed and generation was NOT blocked; 1 otherwise.
  */
 import { runPipeline } from "../verification/pipeline.js";
@@ -27,10 +37,24 @@ import { makeSelectedGenerator, resolveBackendName } from "../integration/genera
 
 /**
  * Run one smoke turn. Pure enough to unit-test: pass a transport override
- * (client for Claude, fetchImpl for MedGemma) to exercise without the network.
- * @param {{ backend?: string, trunk?: string, user_input?: string, client?: object, fetchImpl?: Function }} [opts]
+ * (client for Claude, fetchImpl for MedGemma) to exercise without the network,
+ * or awsFetchSecret to exercise the aws-sm registration without AWS.
+ * @param {{ backend?: string, trunk?: string, user_input?: string, client?: object, fetchImpl?: Function, awsFetchSecret?: Function }} [opts]
  */
 export async function runSmoke(opts = {}) {
+  // Opt-in aws-sm registration (LIVE_PLAN §9 A1): resolve an aws-sm:<SecretId>
+  // key ref for a standalone smoke. Fail-closed — registration throws on a
+  // missing/empty secret, absent SDK, or IAM denial; never a silent mock.
+  if (process.env.HEYDOC_AWS_SECRET_NAMES) {
+    const { registerAwsSecretsManager } = await import("../integration/secrets-backends/aws-secrets-manager.js");
+    const secretNames = String(process.env.HEYDOC_AWS_SECRET_NAMES).split(",").map((s) => s.trim()).filter(Boolean);
+    await registerAwsSecretsManager({
+      region: process.env.AWS_REGION || "ap-southeast-2",
+      secretNames,
+      ...(opts.awsFetchSecret ? { fetchSecret: opts.awsFetchSecret } : {}),
+    });
+  }
+
   const backend = opts.backend || resolveBackendName();
   const trunk = opts.trunk || "5.0";
   const generate = makeSelectedGenerator(trunk, opts); // routes client→claude, fetchImpl→medgemma
@@ -76,8 +100,11 @@ function render(r) {
     lines.push(
       "NOTE: this was a MOCK run — no live model was called. To smoke the live API:",
       "  HEYDOC_MODE_DEFAULT=staging HEYDOC_LLM_LIVE=1 \\",
-      "  HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key npm run smoke:llm",
-      "  (aws-sm needs the backend registered — run via deploy/bootstrap.mjs — or use env:ANTHROPIC_API_KEY.)",
+      "  HEYDOC_LLM_KEY_REF=env:ANTHROPIC_API_KEY npm run smoke:llm",
+      "  # ...or the production aws-sm path (needs @aws-sdk/client-secrets-manager + the role):",
+      "  HEYDOC_AWS_SECRET_NAMES=aws.sm/heydoc/anthropic.key \\",
+      "  HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key \\",
+      "  HEYDOC_MODE_DEFAULT=staging HEYDOC_LLM_LIVE=1 npm run smoke:llm",
       ""
     );
   }
@@ -85,7 +112,22 @@ function render(r) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const r = await runSmoke();
+  let r;
+  try {
+    r = await runSmoke();
+  } catch (err) {
+    // Fail-closed: an aws-sm registration failure (missing/empty secret, absent
+    // SDK, IAM denial) surfaces here — NEVER a silent mock fallback.
+    const msg = err && err.message ? err.message : String(err);
+    process.stderr.write(`\nsmoke:llm could not start: ${msg}\n`);
+    if (/@aws-sdk\/client-secrets-manager/.test(msg)) {
+      process.stderr.write("  → on this host: npm install @aws-sdk/client-secrets-manager\n");
+    } else if (/aws-sm|SecretString|GetSecretValue/i.test(msg)) {
+      process.stderr.write("  → check HEYDOC_AWS_SECRET_NAMES / AWS_REGION and the role's secretsmanager:GetSecretValue on the secret.\n");
+    }
+    process.stderr.write("\n");
+    process.exit(2);
+  }
   process.stdout.write(render(r) + "\n");
   // Success = the run completed and generation was not blocked.
   process.exit(r.generation_ok && r.verification_pass && !r.continuation_blocked ? 0 : 1);
