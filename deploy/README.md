@@ -67,6 +67,16 @@ Then `GET https://<ServiceUrl>/healthz` should return `{"ok":true,"mode":"live"}
 the server — so `HEYDOC_LLM_KEY_REF=aws-sm:…` resolves at runtime via the
 **instance role**, and the value never appears in the service config.
 
+> **Secret format — store the Anthropic key as PLAINTEXT.** The Secrets Manager
+> console "key/value pairs" default stores a JSON object
+> (`{"ANTHROPIC_API_KEY":"sk-ant-…"}`); handing that whole blob to the API as a
+> key yields `401 invalid x-api-key`. Prefer the **Plaintext** option (a raw
+> `sk-ant-…` string). If the secret *is* JSON, the `aws-sm` backend auto-extracts
+> a **single-key** object; for a **multi-key** object, name the field in the ref:
+> `HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key#ANTHROPIC_API_KEY`.
+> Fail-closed: an ambiguous JSON secret (several keys, no `#field`) is REFUSED,
+> never guessed.
+
 **Run the consult surface instead of the portal:** set `HEYDOC_SERVICE=consult`
 (a second service on the same image), or run both.
 

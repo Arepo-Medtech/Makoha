@@ -20,6 +20,11 @@
  *   #   HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key (needs the aws-sm
  *   #   backend registered — see deploy/bootstrap.mjs) OR env:ANTHROPIC_API_KEY.
  *   # backend: HEYDOC_LLM_BACKEND=claude|medgemma
+ *   #
+ *   # SECRET FORMAT: store the AWS secret as a PLAINTEXT key. If it is a JSON
+ *   # object (the console "key/value" default), the aws-sm backend auto-extracts
+ *   # a SINGLE-key object; for a multi-key object select the field explicitly:
+ *   #   HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key#ANTHROPIC_API_KEY
  *
  *   # validate the PRODUCTION aws-sm key path from a standalone host (needs the
  *   # instance role/creds + `npm install @aws-sdk/client-secrets-manager`):
