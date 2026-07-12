@@ -209,18 +209,18 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: secrets-manager-integration-unbuilt
-  path: integration/secrets.js
+  path: integration/secrets.js · integration/secrets-backends/aws-secrets-manager.js · deploy/register-substrates.example.mjs · test/contract-secrets-aws.js
   component_type: other (secrets)
   state: PARTIAL
-  evidence: L2 BUILD 2026-07-11 — fail-closed resolver seam built + contract-tested (test/contract-live-ops.js): refs are "<scheme>:<name>"; env backend is the dev/CI default; an UNREGISTERED scheme REFUSES (no silent fallback); missing/empty values REFUSE; `example.invalid` placeholder values REFUSE (a template placeholder is never a credential); values never logged. Portal auth resolves through it.
-  blocks: live credentialed connects (L3, L5–L8) — REMAINING: the real secrets-manager backend registered at deploy (operator infra) + rotation policy
+  evidence: L2 BUILD 2026-07-11 — fail-closed resolver seam (refs "<scheme>:<name>"; env default; UNREGISTERED scheme/missing/empty/`example.invalid` all REFUSE; values never logged; contract-live-ops.js). **AWS Secrets Manager backend BUILT 2026-07-11 (§9 B3; operator chose AWS SM, region ap-southeast-2, secret aws.sm/heydoc/anthropic.key):** `registerAwsSecretsManager({region, secretNames})` fetches each secret ONCE at boot (async) into an in-memory cache, then registers a SYNCHRONOUS `aws-sm` backend (the seam is sync — the Claude client reads getSecret() inline). AWS SDK is DEPLOY-TIME dynamic-import (NOT a repo dependency — core stays cloud-agnostic; absent SDK → actionable install error). Fail-closed at boot (empty/missing SecretString throws — never registers a blank credential); un-preloaded name refuses; value never logged. Contract-tested with an injected fetcher (no SDK, no AWS call) incl. the real absent-SDK branch. Concrete bootstrap in deploy/register-substrates.example.mjs.
+  blocks: live credentialed connects — REMAINING: deploy host installs @aws-sdk/client-secrets-manager + IAM secretsmanager:GetSecretValue; other managers (Vault/GCP) = a same-seam resolver when named; rotation = restart (TTL refresh a later option)
   safety_class: none
-  invariant_exposure: security_and_secrets — enforced mechanically at the seam
+  invariant_exposure: security_and_secrets — enforced mechanically at the seam; secret value never handled by the agent
   risk: High
   blocks_patient_facing: false
-  build_action: REMAINING — deploy registers the real backend (deploy/register-substrates.example.mjs shape); rotation policy = operator infra.
+  build_action: REMAINING — deploy host installs the AWS SDK + IAM grant; then A1 live smoke. Vault/GCP resolver on request.
   gap_register_link: R-36
-  status: open (seam built; real backend deploy-gated)
+  status: open (seam + AWS SM backend built; deploy-host SDK install + IAM input-gated)
   last_scanned: 2026-07-11
 ```
 

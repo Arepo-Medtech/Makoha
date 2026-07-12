@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## B3 — AWS Secrets Manager backend for the fail-closed secrets seam (§9 operator handback) (2026-07-11)
+
+**Status:** `npm test` **48/48** green (47 prior + `contract-secrets-aws`); all gates green; RETAIN core byte-unchanged; **no new repo dependency** (`npm audit` unchanged). Operator handback: chose AWS Secrets Manager, region `ap-southeast-2`, secret `aws.sm/heydoc/anthropic.key` (name + region given — **never the value**).
+
+### Change
+- **`integration/secrets-backends/aws-secrets-manager.js` [NEW]** — `registerAwsSecretsManager({region, secretNames})` fetches each named secret ONCE at boot (async) into an in-memory cache, then registers a SYNCHRONOUS `aws-sm` backend on the fail-closed seam. **Why fetch-at-boot:** the seam is synchronous (the Claude client reads `getSecret(ref)` inline) but AWS SM's GetSecretValue is async — so pull at startup, read synchronously thereafter (rotation → restart; TTL a later option). **Why the AWS SDK is a deploy-time dependency (dynamic import), NOT a repo dependency:** the core stays cloud-agnostic and mock-by-default; the AWS deploy image installs `@aws-sdk/client-secrets-manager`, the module dynamic-imports it only when the backend is registered, and an absent SDK yields an actionable install error. **Secret discipline:** the value lives only in the boot cache on the deploy host and flows only to the `getSecret()` caller — never logged, never returned to the agent, never on disk. Fail-closed at boot: an empty/missing SecretString THROWS at registration (never registers a blank credential); an un-preloaded name refuses.
+- **`deploy/register-substrates.example.mjs` [~]** — concrete AWS SM bootstrap (region ap-southeast-2, `aws.sm/heydoc/anthropic.key`), awaited before server start; the generic placeholder backend stays (throws by design).
+- **`test/contract-secrets-aws.js` [NEW]** — proves boot-preload → synchronous resolve via `getSecret('aws-sm:<SecretId>')`, verbatim SecretId passthrough (first-colon ref split), fail-closed-at-boot on empty/missing, un-preloaded-name refusal, required-arg guards, the **real absent-SDK branch** (the SDK is intentionally not installed → the actionable error fires), and that the module logs nothing. Injected fetcher — no SDK, no AWS call. `package.json` [~] test line.
+
+**Register [~]:** `secrets-manager-integration-unbuilt` narrowed (AWS SM backend built + contract-proven; R-36 updated). Checklist B3 marked done; the credential-channel note corrected (env + aws-sm ready today; a *deployed* staging env is B2).
+
+**Deploy handoff (your side):** on the AWS deploy host, `npm install @aws-sdk/client-secrets-manager`; grant the runtime role `secretsmanager:GetSecretValue` on the secret ARN; set `HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key` + `HEYDOC_LLM_LIVE=1` + `HEYDOC_MODE_DEFAULT=staging`. Then A1 live smoke — the agent never handles the value.
+
+**Invariants held:** security_and_secrets — the value is never handled by the agent, never logged, never in the repo; fail-closed at the seam AND at boot; no new repo dependency (supply chain unchanged); frozen core byte-unchanged; no `patient_eligible`.
+
+---
+
 ## L11 — Patient consult surface (mock-gated; PPP-TTT Step 3): no clinical draft escapes the release gate (2026-07-11)
 
 **Status:** `npm test` **47/47** green (46 prior + `contract-patient-consult`); all gates green; RETAIN core + `pipeline.js` byte-unchanged. Plan: `.planning/LIVE_PLAN.md` L11 (+ PPP-TTT plan Step 3). **NO patient path opened — the surface is mock-gated and releases nothing; nothing sets the patient-eligibility flag.**
