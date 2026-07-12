@@ -3,11 +3,12 @@
  * integration/audit-substrates/s3-object-lock.js).
  *
  * Proves — WITHOUT the AWS CLI and WITHOUT any AWS call (injected `exec`):
- *  - one call registers the `s3-object-lock` substrate on BOTH medicolegal seams
- *    (audit ledger + clinician gate records);
- *  - driven THROUGH the real frozen stores (appendEntry/readLedger/verifyChain and
- *    recordDecisionDurable/verifyGateRecordChain), the hash-chains round-trip and
- *    verify — i.e. the WORM adapter honours the append-only / write-once contract;
+ *  - one call registers the `s3-object-lock` substrate on ALL THREE medicolegal
+ *    seams (audit ledger + clinician gate records + PPP-TTT triage ledger);
+ *  - driven THROUGH the real frozen stores (appendEntry/readLedger/verifyChain,
+ *    recordDecisionDurable/verifyGateRecordChain, and appendPppTttEntry/
+ *    verifyPppTttChain), the hash-chains round-trip and verify — i.e. the WORM
+ *    adapter honours the append-only / write-once contract;
  *  - every write is `put-object --object-lock-mode COMPLIANCE
  *    --object-lock-retain-until-date <now+7y> --if-none-match "*"` (WORM enforced);
  *  - content-addressed writes are write-once & idempotent; readContent round-trips
@@ -26,6 +27,7 @@ import {
 } from "../integration/audit-substrates/s3-object-lock.js";
 import { appendEntry, readLedger, verifyChain, persistContent, readContent } from "../verification/audit-store.js";
 import { recordDecisionDurable, readGateRecordEntries, verifyGateRecordChain } from "../portal/gate-record-store.js";
+import { appendPppTttEntry, readPppTttLedger, verifyPppTttChain } from "../verification/ppp-ttt/ledger.js";
 
 const errors = [];
 const check = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -89,10 +91,11 @@ try {
   // ── register on both seams, select via env ──────────────────────────────────
   process.env.HEYDOC_AUDIT_SUBSTRATE = "s3-object-lock";
   process.env.HEYDOC_GATE_RECORD_SUBSTRATE = "s3-object-lock";
+  process.env.HEYDOC_PPP_TTT_SUBSTRATE = "s3-object-lock";
   const fake = makeFakeS3();
   const res = await registerWormAudit({ bucket: "heydoc-audit-test", region: "ap-southeast-2", retentionYears: 7, exec: fake.exec });
   check(res.registered === "s3-object-lock" && res.mode === "COMPLIANCE" && res.retentionYears === 7, "registerWormAudit registers s3-object-lock (COMPLIANCE, 7y)");
-  check(res.ledger_entries === 0 && res.gate_records === 0, "an empty bucket boots to empty caches");
+  check(res.ledger_entries === 0 && res.gate_records === 0 && res.ppp_ttt_entries === 0, "an empty bucket boots to empty caches (all three seams)");
 
   // ── audit ledger through the FROZEN store: append → read → verify ───────────
   appendEntry(coreFor(HASH_A));
@@ -126,6 +129,17 @@ try {
   check(verifyGateRecordChain().valid === true, "the gate-record hash-chain verifies over the WORM substrate");
   const gatePuts = fake.puts.filter((p) => p.key.includes("/gate-records/"));
   check(gatePuts.length === 1 && gatePuts[0].mode === "COMPLIANCE" && gatePuts[0].ifNoneMatch === true, "the gate-record write is COMPLIANCE + write-once");
+
+  // ── PPP-TTT triage ledger through its store: append → read → verify ─────────
+  appendPppTttEntry({ run_id: "run-ppp-0001", candidate_output_hash: HASH_A, tier: "CAUTION", fail_closed: false, discriminator_ids: ["uhao-1"], caveat_codes: [], safety_net_ids: [], patient_decision: "proceed" });
+  appendPppTttEntry({ run_id: "run-ppp-0002", candidate_output_hash: HASH_A, tier: "STOP", fail_closed: true, discriminator_ids: [], caveat_codes: [], safety_net_ids: [], patient_decision: "n/a" });
+  check(readPppTttLedger().length === 2, "two appendPppTttEntry calls land two triage entries via the WORM substrate");
+  check(verifyPppTttChain().valid === true, "the PPP-TTT hash-chain verifies end-to-end over the WORM substrate");
+  const pppPuts = fake.puts.filter((p) => p.key.includes("/ppp-ttt-ledger/"));
+  check(pppPuts.length === 2, "each triage append is exactly one put-object");
+  check(pppPuts.every((p) => p.mode === "COMPLIANCE" && p.ifNoneMatch === true), "every triage write is COMPLIANCE + write-once (--if-none-match *)");
+  check(pppPuts[0].key === "heydoc-audit/ppp-ttt-ledger/000000000000.json" && pppPuts[1].key === "heydoc-audit/ppp-ttt-ledger/000000000001.json", "triage object keys are zero-padded seq, in chain order");
+  throwsSync(() => res.pppTtt.appendLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing triage seq REFUSES (immutable WORM record, append-only violated)");
 
   // ── fail-closed: a ledger seq COLLISION (append-only violated) throws ───────
   throwsSync(() => res.audit.appendLedgerLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing ledger seq REFUSES (immutable WORM record, append-only violated)");

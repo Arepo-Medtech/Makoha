@@ -12,14 +12,16 @@ import { registerSecretsBackend } from "../integration/secrets.js";
 import { registerAwsSecretsManager } from "../integration/secrets-backends/aws-secrets-manager.js";
 import { registerWormAudit } from "../integration/audit-substrates/s3-object-lock.js";
 
-// 1) WORM substrate for BOTH medicolegal seams (audit ledger + clinician gate
-//    records) — AWS S3 Object Lock, COMPLIANCE mode, 7-year retention (§9 B1).
-//    CONCRETE and runnable on a deploy host that has the AWS CLI installed and an
-//    IAM role with s3:PutObject / s3:PutObjectRetention / s3:GetObject /
-//    s3:ListBucket on the bucket. The bucket MUST be created with Object Lock (and
-//    versioning) ENABLED — the adapter sets per-object retention; it cannot enable
-//    the feature. Registers "s3-object-lock" on both seams; select it with
-//    HEYDOC_AUDIT_SUBSTRATE=s3-object-lock and HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock.
+// 1) WORM substrate for ALL THREE medicolegal seams (audit ledger + clinician
+//    gate records + PPP-TTT triage ledger) — AWS S3 Object Lock, COMPLIANCE mode,
+//    7-year retention (§9 B1). CONCRETE and runnable on a deploy host that has the
+//    AWS CLI installed and an IAM role with s3:PutObject / s3:PutObjectRetention /
+//    s3:GetObject / s3:ListBucket on the bucket. The bucket MUST be created with
+//    Object Lock (and versioning) ENABLED — the adapter sets per-object retention;
+//    it cannot enable the feature. Registers "s3-object-lock" on all three seams;
+//    select it with HEYDOC_AUDIT_SUBSTRATE=s3-object-lock,
+//    HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock, and
+//    HEYDOC_PPP_TTT_SUBSTRATE=s3-object-lock.
 //    AWAIT it before starting the server (the boot read caches are seeded here).
 await registerWormAudit({
   bucket: "heydoc-medicolegal-audit",   // ← your Object-Lock-enabled bucket

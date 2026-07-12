@@ -4,6 +4,26 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## B1-PPP — PPP-TTT ledger substrate seam + third-seam WORM registration (§9 B1 follow-on) (2026-07-12)
+
+**Status:** `npm test` **50/50** green; all gates green (verification + trunk:stub:all); **RETAIN core byte-unchanged** (`verifier.js` / `portal/verification-gate.js` / `audit-store.js` sha256 pins hold); **no new repo dependency**. Follows the B1 S3 Object Lock adapter (PR #45), which wired only the audit + gate seams and explicitly opened the follow-up this entry closes.
+
+**Plain language.** The PPP-TTT triage ledger — the third medicolegal hash-chain — could not be WORM-backed because it wrote straight to a local file with no pluggable storage seam. It now has the same seam as the audit ledger and gate records, and the S3 Object Lock adapter now makes all three chains immutable-for-7-years in one call.
+
+### Change
+- **`verification/ppp-ttt/ledger.js` [~]** — added `registerPppTttLedgerSubstrate(name, adapter)` (two-op `{ appendLine, readLines }`, mirroring `portal/gate-record-store.js`) with a built-in `local` backend (current dev JSONL behaviour, byte-for-byte) and a fail-closed `substrate()` resolver: a non-`local` `HEYDOC_PPP_TTT_SUBSTRATE` with no registered adapter REFUSES. `readPppTttLedger`/`appendPppTttEntry` route through the seam; the hash-chain algorithm (canonical JSON, `entry_hash`, genesis, `verifyPppTttChain`) is UNCHANGED — pure I/O indirection. `ppp-ttt/ledger.js` is not byte-pinned, so no pin moved; the monotone-test firewall walk (no sealed-node paths, no `patient_eligible`) still passes.
+- **`integration/audit-substrates/s3-object-lock.js` [~]** — `registerWormAudit()` now registers `s3-object-lock` on ALL THREE seams (added the PPP-TTT two-op adapter alongside the existing audit + gate ones); one immutable object per entry keyed by the entry's own `seq` (`extractSeq`, which PPP-TTT entries also carry), COMPLIANCE + retain-until + `--if-none-match "*"` on every write, boot-seeded read cache. Returns `ppp_ttt_entries` + exposes `pppTtt`.
+- **`test/contract-audit-worm-s3.js` [~]** — extended to drive the PPP-TTT chain through the WORM substrate (`appendPppTttEntry` ×2 → `verifyPppTttChain` valid; COMPLIANCE + write-once asserted on the triage puts; seq-collision refusal). Selects `s3-object-lock` on all three `HEYDOC_*_SUBSTRATE` vars.
+- **`deploy/register-substrates.example.mjs` [~]** — the one-call `registerWormAudit()` note updated to name all three seams + `HEYDOC_PPP_TTT_SUBSTRATE=s3-object-lock`.
+
+### Invariant check
+Hashing untouched (all three `entry_hash` chains unchanged); PHI-free `.strict()` validation still runs BEFORE the durable write; fail-closed default extended to the third seam; no scoring-store path (firewall walk green); RETAIN core byte-unchanged. ✔
+
+### Register / gap move
+`worm-substrate-adapter-unbuilt` stays **PARTIAL** but now spans all three seams; the "PPP-TTT ledger has no substrate seam" follow-up #45 opened is **closed**. R-39 updated. Remaining is operator/deploy only (bucket + retention + env selection).
+
+---
+
 ## B1 — S3 Object Lock WORM audit substrate (§9 B1 / R-39) (2026-07-12)
 
 **Status:** `npm test` **50/50** green (+`contract-audit-worm-s3`); all gates green; **RETAIN core byte-unchanged** (`audit-store.js` sha256 pin holds — registered *through* its seam, never edited); **no new repo dependency**; secret-scan 0 findings. Operator decision: **S3 Object Lock, COMPLIANCE mode, 7-year retention.**

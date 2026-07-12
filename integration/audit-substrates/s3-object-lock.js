@@ -1,13 +1,15 @@
 /**
- * s3-object-lock — a WORM (write-once, read-many) substrate for the two
- * medicolegal hash-chained stores (LIVE_PLAN §9 B1 / R-39). Operator choice:
+ * s3-object-lock — a WORM (write-once, read-many) substrate for the THREE
+ * medicolegal hash-chained stores (LIVE_PLAN §9 B1 / R-39): the audit ledger,
+ * the clinician gate records, and the PPP-TTT triage ledger. Operator choice:
  * AWS S3 Object Lock, COMPLIANCE mode, 7-year retention, region ap-southeast-2.
  *
  * WHY THE AWS CLI + execFileSync, NOT THE AWS SDK: the substrate seams are
  * SYNCHRONOUS by contract — verification/audit-store.js `appendEntry()` and
  * `readLedger()` call `appendLedgerLine`/`readLedgerLines` inline (that file is
- * FROZEN/byte-pinned, so it cannot be made async), and portal/gate-record-store.js
- * does the same. The AWS SDK is async (`client.send()` returns a Promise), so a
+ * FROZEN/byte-pinned, so it cannot be made async); portal/gate-record-store.js
+ * and verification/ppp-ttt/ledger.js do the same on their two-op seams. The AWS
+ * SDK is async (`client.send()` returns a Promise), so a
  * straight PutObject from a sync op could only be fire-and-forget — which would
  * SILENTLY DROP a medicolegal record on failure. `execFileSync("aws", …)` BLOCKS
  * until S3 durably acknowledges the write-once, Object-Lock object, then returns;
@@ -39,6 +41,7 @@
 import { execFileSync } from "node:child_process";
 import { registerAuditSubstrate } from "../../verification/audit-store.js";
 import { registerGateRecordSubstrate } from "../../portal/gate-record-store.js";
+import { registerPppTttLedgerSubstrate } from "../../verification/ppp-ttt/ledger.js";
 
 const SEQ_PAD = 12; // zero-pad the seq so object keys sort in chain order
 
@@ -103,10 +106,10 @@ const isPreconditionFailed = (err) => /PreconditionFailed|pre-conditions|\b412\b
 const is404 = (err) => /NoSuchKey|Not ?Found|does not exist|\b404\b/i.test(stderrOf(err));
 
 /**
- * Register the `s3-object-lock` WORM substrate on BOTH medicolegal seams
- * (audit ledger + clinician gate records), sharing one bucket/config. Call from
- * the deploy bootstrap BEFORE starting the server (await it — the boot read
- * caches are seeded here).
+ * Register the `s3-object-lock` WORM substrate on ALL THREE medicolegal seams
+ * (audit ledger + clinician gate records + PPP-TTT triage ledger), sharing one
+ * bucket/config. Call from the deploy bootstrap BEFORE starting the server
+ * (await it — the boot read caches are seeded here).
  *
  * @param {{ bucket: string, region: string, retentionYears: number,
  *           mode?: "COMPLIANCE"|"GOVERNANCE", prefix?: string,
@@ -115,7 +118,7 @@ const is404 = (err) => /NoSuchKey|Not ?Found|does not exist|\b404\b/i.test(stder
  *   mode           — default COMPLIANCE (operator choice); GOVERNANCE allowed.
  *   exec           — test/override: (args, input) => stdout. Default: the AWS CLI.
  * @returns {Promise<{ registered: "s3-object-lock", bucket, region, mode,
- *   retentionYears, ledger_entries, gate_records, audit, gate }>}
+ *   retentionYears, ledger_entries, gate_records, ppp_ttt_entries, audit, gate, pppTtt }>}
  */
 export async function registerWormAudit({ bucket, region, retentionYears, mode = "COMPLIANCE", prefix = "heydoc-audit", exec } = {}) {
   if (!bucket || typeof bucket !== "string") throw new Error('registerWormAudit: `bucket` is required (an Object-Lock-enabled S3 bucket)');
@@ -166,8 +169,10 @@ export async function registerWormAudit({ bucket, region, retentionYears, mode =
   // --- boot-seed the synchronous read caches --------------------------------
   const ledgerKind = "ledger";
   const gateKind = "gate-records";
+  const pppKind = "ppp-ttt-ledger";
   const ledgerCache = loadLines(`${prefix}/${ledgerKind}/`);
   const gateCache = loadLines(`${prefix}/${gateKind}/`);
+  const pppCache = loadLines(`${prefix}/${pppKind}/`);
   const contentCache = new Map(); // hex → text (lazy; content is not boot-loaded)
 
   // --- the two adapters (synchronous ops; cache read, execFileSync write) ----
@@ -203,17 +208,31 @@ export async function registerWormAudit({ bucket, region, retentionYears, mode =
       return gateCache.slice();
     },
   };
+  // PPP-TTT triage ledger — same two-op seam as gate records; entries carry a
+  // top-level `seq` (extractSeq) so the same WORM object-keying applies.
+  const pppTtt = {
+    appendLine(line) {
+      const seq = extractSeq(line);
+      putOnce(objectKeyForSeq(prefix, pppKind, seq), line, { throwOnExists: true });
+      pppCache.push(line);
+    },
+    readLines() {
+      return pppCache.slice();
+    },
+  };
 
   registerAuditSubstrate("s3-object-lock", audit);
   registerGateRecordSubstrate("s3-object-lock", gate);
+  registerPppTttLedgerSubstrate("s3-object-lock", pppTtt);
 
   return {
     registered: "s3-object-lock",
     bucket, region, mode, retentionYears,
     ledger_entries: ledgerCache.length,
     gate_records: gateCache.length,
+    ppp_ttt_entries: pppCache.length,
     // Exposed so callers/tests can drive the ops directly; the same objects are
     // what the seams call. Not required for normal operation.
-    audit, gate,
+    audit, gate, pppTtt,
   };
 }
