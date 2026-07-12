@@ -2,7 +2,7 @@
 
 **Purpose:** every remaining item that cannot be closed from inside the repo — what it is, what YOU do on your side, what you hand back, and what I do with it. As of `main @ de99ab8` (PRs #35–#39 merged; LIVE_PLAN Track A complete through the product surface).
 
-> **Reconciled 2026-07-13 to `main @ de91f81` (PRs #40–#45 merged).** Since the original baseline: B3 aws-sm backend built + JSON-tolerant (#40/#44), default model → `claude-sonnet-5` (#41), B2 App Runner deploy scaffolding built (#42), `smoke:llm` aws-sm opt-in (#43), B1 S3 Object Lock WORM adapter built (#45). The A1 Sonnet-5 live path was validated green end-to-end on AWS (2026-07-12). Items below are amended in place; the registers remain the current-state source of truth.
+> **Reconciled 2026-07-13 to `main @ 4f354a8` (PRs #40–#46 merged).** Since the original baseline: B3 aws-sm backend built + JSON-tolerant (#40/#44), default model → `claude-sonnet-5` (#41), B2 App Runner deploy scaffolding built (#42), `smoke:llm` aws-sm opt-in (#43), B1 S3 Object Lock WORM adapter built (#45) + extended to the PPP-TTT ledger seam so all three medicolegal chains are WORM-coverable (#46). The A1 Sonnet-5 live path was validated green end-to-end on AWS (2026-07-12). Items below are amended in place; the registers remain the current-state source of truth.
 
 ---
 
@@ -58,7 +58,7 @@ These flip already-merged, contract-tested adapters from mock to live. All run i
 
 ### B1 — Production WORM substrate + retention (R-39) · **[DECIDE] + [CRED]** — ✅ **adapter BUILT (2026-07-12, PR #45); operator provisioning remains**
 - **Blocks:** production medicolegal storage for both ledgers + the gate records; L14.
-- **Done:** operator chose **S3 Object Lock, COMPLIANCE mode, 7-year retention**. Built `integration/audit-substrates/s3-object-lock.js` (`registerWormAudit()`) against the existing four-op / two-op seams; contract-tested (`contract-audit-worm-s3.js`); deploy-wired (Dockerfile `INSTALL_AWS_S3`, `apprunner-create.sh` `HEYDOC_WORM_*`). Follow-up registered: the PPP-TTT ledger (`verification/ppp-ttt/ledger.js`) has no substrate seam yet — separate plan-gated item.
+- **Done:** operator chose **S3 Object Lock, COMPLIANCE mode, 7-year retention**. Built `integration/audit-substrates/s3-object-lock.js` (`registerWormAudit()`) against the existing four-op / two-op seams; contract-tested (`contract-audit-worm-s3.js`); deploy-wired (Dockerfile `INSTALL_AWS_S3`, `apprunner-create.sh` `HEYDOC_WORM_*`). The PPP-TTT ledger seam follow-up is closed (PR #46): `registerPppTttLedgerSubstrate()` built and `registerWormAudit()` now covers **all three** medicolegal chains.
 - **You still do:** create the Object-Lock + versioning bucket; grant the instance role `s3:PutObject/PutObjectRetention/GetObject/ListBucket`; confirm the retention period stands.
 - **Hand back:** bucket name + region + "role granted."
 - **Then I:** prove `verify:rehash --integrity` against it in staging.
