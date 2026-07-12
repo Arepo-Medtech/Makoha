@@ -8,25 +8,24 @@
  * Placeholders below use example.invalid by design — the secrets seam REFUSES
  * placeholder values, so copying this file unedited cannot go live.
  */
-import { registerAuditSubstrate } from "../verification/audit-store.js";
-import { registerGateRecordSubstrate } from "../portal/gate-record-store.js";
 import { registerSecretsBackend } from "../integration/secrets.js";
 import { registerAwsSecretsManager } from "../integration/secrets-backends/aws-secrets-manager.js";
+import { registerWormAudit } from "../integration/audit-substrates/s3-object-lock.js";
 
-// 1) WORM adapter for the main medicolegal ledger (four-op seam).
-//    Selected by HEYDOC_AUDIT_SUBSTRATE=worm-example. Append-only/write-once
-//    semantics are the backend's job (e.g. S3 Object Lock compliance mode).
-registerAuditSubstrate("worm-example", {
-  appendLedgerLine(_line) { throw new Error("example adapter — implement against your WORM backend (https://worm.example.invalid)"); },
-  readLedgerLines() { throw new Error("example adapter"); },
-  writeContentOnce(_hex, _text) { throw new Error("example adapter"); },
-  readContentByHex(_hex) { throw new Error("example adapter"); },
-});
-
-// 2) WORM adapter for clinician gate records (two-op seam).
-registerGateRecordSubstrate("worm-example", {
-  appendLine(_line) { throw new Error("example adapter"); },
-  readLines() { throw new Error("example adapter"); },
+// 1) WORM substrate for BOTH medicolegal seams (audit ledger + clinician gate
+//    records) — AWS S3 Object Lock, COMPLIANCE mode, 7-year retention (§9 B1).
+//    CONCRETE and runnable on a deploy host that has the AWS CLI installed and an
+//    IAM role with s3:PutObject / s3:PutObjectRetention / s3:GetObject /
+//    s3:ListBucket on the bucket. The bucket MUST be created with Object Lock (and
+//    versioning) ENABLED — the adapter sets per-object retention; it cannot enable
+//    the feature. Registers "s3-object-lock" on both seams; select it with
+//    HEYDOC_AUDIT_SUBSTRATE=s3-object-lock and HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock.
+//    AWAIT it before starting the server (the boot read caches are seeded here).
+await registerWormAudit({
+  bucket: "heydoc-medicolegal-audit",   // ← your Object-Lock-enabled bucket
+  region: "ap-southeast-2",
+  retentionYears: 7,                     // operator-set; no period is defaulted in code
+  mode: "COMPLIANCE",                    // immutable even to root until retain date
 });
 
 // 3) Secrets backend — AWS Secrets Manager (operator choice, region

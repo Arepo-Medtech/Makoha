@@ -260,19 +260,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: worm-substrate-adapter-unbuilt
-  path: verification/audit-store.js registerAuditSubstrate() (seam only) · portal gate records · ppp-ttt ledger
+  path: integration/audit-substrates/s3-object-lock.js · verification/audit-store.js registerAuditSubstrate() seam · portal/gate-record-store.js registerGateRecordSubstrate() seam · test/contract-audit-worm-s3.js
   component_type: repository-store
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — the M8 seam exists and refuses unregistered non-local substrates; no production WORM adapter (S3 Object Lock / immudb / operator choice) implemented for the main ledger, the PPP-TTT ledger, or gate records; retention unset. L1 (same day) added the matching two-op seam for gate records (registerGateRecordSubstrate, same refuse-if-unregistered semantics) and deploy/register-substrates.example.mjs documents the boot wiring — the seams are ready; only the adapter (backend choice) is missing.
-  blocks: production medicolegal storage; L14
-  safety_class: none (seam fail-closed)
-  invariant_exposure: observability_and_audit (append-only, tamper-evident, retention)
+  state: PARTIAL
+  evidence: B1 built 2026-07-12 (operator chose S3 Object Lock, COMPLIANCE, 7y). `integration/audit-substrates/s3-object-lock.js` registers `s3-object-lock` on BOTH medicolegal seams (audit four-op + gate two-op) — one immutable S3 object per chain line, every write `put-object --object-lock-mode COMPLIANCE --object-lock-retain-until-date now+7y --if-none-match "*"`; boot-seeded sync read caches so only writes spawn a subprocess. AWS CLI + execFileSync (NOT the SDK) because the seams are SYNCHRONOUS and the SDK is async — a blocking CLI call is the only synchronous-durable write; AWS CLI is a deploy-time dependency (Dockerfile INSTALL_AWS_S3), not a repo one. Contract-tested through the real frozen stores (appendEntry/readLedger/verifyChain + recordDecisionDurable/verifyGateRecordChain round-trip + verify; COMPLIANCE/retain-until/write-once args asserted; collision + missing-arg + absent-CLI fail-closed). 50 suites green; audit-store.js byte-unchanged. REMAINING (operator/live): provision the Object-Lock bucket + IAM (s3:PutObject/PutObjectRetention/GetObject/ListBucket) and validate live in staging.
+  blocks: production medicolegal storage; L14 (adapter built; live bucket connect operator-side)
+  safety_class: none (seam fail-closed; write-once + COMPLIANCE lock)
+  invariant_exposure: observability_and_audit (append-only, tamper-evident, retention) — enforced at the S3 layer
   risk: High
   blocks_patient_facing: true
-  build_action: LIVE_PLAN L2 — adapter for the operator-chosen backend + HEYDOC_AUDIT_RETENTION (minimum-keep) + verify:rehash --integrity against it in staging. Backend choice + retention period = operator input.
+  build_action: OPERATOR — create the Object-Lock+versioning bucket, grant the instance role S3 perms, set HEYDOC_WORM_* env (apprunner-create.sh does), run verify:rehash --integrity in staging against it. Follow-up (separate): the PPP-TTT ledger (verification/ppp-ttt/ledger.js) has NO substrate seam yet — register one so it can also be WORM-backed.
   gap_register_link: R-39
-  status: open
-  last_scanned: 2026-07-11
+  status: in-progress
+  last_scanned: 2026-07-12
 ```
 
 ```md
