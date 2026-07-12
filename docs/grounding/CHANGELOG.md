@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## DOCS-RECON — planning-doc review reconciliation + R-43 registered-and-resolved (2026-07-13)
+
+**Status:** documentation + register reconciliation, operator-approved after a read-only review of all seven `.planning/` docs against `main @ de91f81`. One code change: a stale comment. No behaviour change; no contract change; RETAIN core untouched.
+
+**Plain language.** The planning documents were audited against the repo. Nothing any plan claimed as built was missing — but the repo had moved well past the docs, and two operator-facing facts were wrong or missing. Every plan now carries a dated banner saying what actually happened to it. The one open gap the audit surfaced (the PPP-TTT ledger's missing storage seam) was formally registered — and turned out to have been closed independently by the B1-PPP work (below) merged in the same window, so it enters the register already resolved.
+
+### Change
+- **`.planning/*` [~ all seven]** — dated status-reconciliation banners: ARCH_PLAN + FLOW_PLAN marked EXECUTED/historical (registers are current state; FLOW deviations #18/#20/evidence-cms named); M9–M14 corrections (M10 sanitiser input closed; M13 portal-gate wording outdated; M11 P1 + fhir live backend already built); PPP-TTT marked EXECUTED Steps 1–3 (+ vendored `data/scope-registry.json` path note); LIVE_PLAN marked Track-A largely executed (+ note that commit tags "§9 A1/B1…" resolve to the handback checklist, not LIVE_PLAN §9); MEDGEMMA plan marked executed with **A3, not the recommended A1** (fallback never built, by decision).
+- **`.planning/OPERATOR-HANDBACK-CHECKLIST.md` [~]** — reconciled to #40–#45: **default-model claim corrected** (`claude-opus-4-8` → `claude-sonnet-5`, PR #41); B1 marked adapter-BUILT (PR #45) with operator provisioning remaining; B2 marked scaffolding-BUILT (PR #42) with operator deploy remaining; B3 gains the **plaintext-not-JSON secret-format warning** (PR #44 lesson; `aws-sm:<id>#<field>` escape hatch).
+- **`docs/grounding/completeness-register.md` [~]** — H4 scan line's "~52 attested" **corrected in place**: it counted the envelope's `clinician_reviewed` field (false by design); attestation lives in `case_manifest.json` — 301/301 attested per R-23, re-verified via `eval:cases` PASS. New docs-reconciliation scan note added.
+- **`integration/trunk-pipeline.js` [~ comment only]** — sequencer re-export comment said "default off → rollback"; corrected to graduated default-ON (L4) with `HEYDOC_SEQUENCER=0` as rollback.
+
+**Register [~]:** NEW `ppp-ttt-ledger-substrate-seam-missing` (**High**, pf:true) — formalised the B1 follow-up: at scan time `verification/ppp-ttt/ledger.js` wrote local JSONL directly with no substrate seam, the only medicolegal chain `registerWormAudit()` could not reach. Promoted one-way → gap-register **R-43**. **Registered-and-resolved in the same window:** the B1-PPP entry below (PR #46) landed independently while this reconciliation was in review and built the exact seam this item specified (M8 pattern; register THROUGH the seam, store logic untouched) — item recorded COMPLETE/resolved; R-43 closed on arrival; remaining live validation rides R-39. `.claude/completeness-index.md` re-synced (also fixed two drifted lines: R-39 state UNBUILT→PARTIAL; portal remaining-work wording).
+
+---
+
 ## B1-PPP — PPP-TTT ledger substrate seam + third-seam WORM registration (§9 B1 follow-on) (2026-07-12)
 
 **Status:** `npm test` **50/50** green; all gates green (verification + trunk:stub:all); **RETAIN core byte-unchanged** (`verifier.js` / `portal/verification-gate.js` / `audit-store.js` sha256 pins hold); **no new repo dependency**. Follows the B1 S3 Object Lock adapter (PR #45), which wired only the audit + gate seams and explicitly opened the follow-up this entry closes.

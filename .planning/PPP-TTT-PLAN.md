@@ -1,6 +1,6 @@
 # PPP-TTT-PLAN.md — Graded-Triage Enhancement to the AI Doctor Consult
 
-**Status:** Design (Phase 2 plan). No code in this phase.
+**Status:** ⛳ **EXECUTED Steps 1–3** (reconciled 2026-07-13): Step 1 PR #35, Step 2 PR #37 (sequencer graduated → HALT RULE 5), Step 3 PR #39 (mock-gated consult surface). Step 4 (`discriminator_status` clinician attestation) remains conditional/open — absence correctly fails closed to STOP. Note: the runtime reads the vendored `data/scope-registry.json`, not the `Projects/…` path named in §3.2/Appendix B. Original status line for the record: Design (Phase 2 plan). No code in this phase.
 **Author role:** Breath-Ezy principal architect.
 **Scope class:** Additive, fail-closed safety layer over the existing five-step grounding pipeline.
 **Frozen (RETAIN, byte-unchanged) core it must never edit:** `verification/verifier.js`, `portal/verification-gate.js`, `verification/audit-store.js`.

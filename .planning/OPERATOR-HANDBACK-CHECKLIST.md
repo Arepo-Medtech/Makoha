@@ -2,6 +2,8 @@
 
 **Purpose:** every remaining item that cannot be closed from inside the repo — what it is, what YOU do on your side, what you hand back, and what I do with it. As of `main @ de99ab8` (PRs #35–#39 merged; LIVE_PLAN Track A complete through the product surface).
 
+> **Reconciled 2026-07-13 to `main @ 4f354a8` (PRs #40–#46 merged).** Since the original baseline: B3 aws-sm backend built + JSON-tolerant (#40/#44), default model → `claude-sonnet-5` (#41), B2 App Runner deploy scaffolding built (#42), `smoke:llm` aws-sm opt-in (#43), B1 S3 Object Lock WORM adapter built (#45) + extended to the PPP-TTT ledger seam so all three medicolegal chains are WORM-coverable (#46). The A1 Sonnet-5 live path was validated green end-to-end on AWS (2026-07-12). Items below are amended in place; the registers remain the current-state source of truth.
+
 ---
 
 ## 0. The three handback channels (read first)
@@ -34,7 +36,7 @@ These flip already-merged, contract-tested adapters from mock to live. All run i
 
 ### A1 — Claude live generation (R-32) · **[CRED]**
 - **Blocks:** the L14 staging soak; a real end-to-end consult.
-- **You do:** put `ANTHROPIC_API_KEY` in the secrets manager; set `HEYDOC_MODE_DEFAULT=staging` and `HEYDOC_LLM_LIVE=1` on the staging deploy. (Backend defaults to Claude; `HEYDOC_LLM_MODEL` overrides the pinned `claude-opus-4-8`.)
+- **You do:** put `ANTHROPIC_API_KEY` in the secrets manager; set `HEYDOC_MODE_DEFAULT=staging` and `HEYDOC_LLM_LIVE=1` on the staging deploy. (Backend defaults to Claude; `HEYDOC_LLM_MODEL` overrides the pinned `claude-sonnet-5` — operator selection 2026-07-11, PR #41.)
 - **Hand back:** "key set at `<ref>`, staging up."
 - **Then I:** run the live smoke on synthetic packets, confirm the packet-only bar + fail-closed behaviour hold against the real API, and validate through `eval:cases`.
 
@@ -54,22 +56,25 @@ These flip already-merged, contract-tested adapters from mock to live. All run i
 
 ## B. Infrastructure decisions + the wiring they unblock
 
-### B1 — Production WORM substrate + retention (R-39) · **[DECIDE] + [CRED]**
+### B1 — Production WORM substrate + retention (R-39) · **[DECIDE] + [CRED]** — ✅ **adapter BUILT (2026-07-12, PR #45); operator provisioning remains**
 - **Blocks:** production medicolegal storage for both ledgers + the gate records; L14.
-- **You do:** choose a WORM backend (e.g. **S3 Object Lock**, **immudb**, or your standard); provision it; put its creds in the secrets manager; decide `HEYDOC_AUDIT_RETENTION` (a minimum-keep period — a regulatory decision, ledgers are never auto-deleted).
-- **Hand back:** the backend choice + retention period + creds ref.
-- **Then I:** write the WORM adapter against the **existing four-op / two-op seams** (`registerAuditSubstrate`, `registerGateRecordSubstrate` — already built), set `HEYDOC_AUDIT_SUBSTRATE`/`HEYDOC_GATE_RECORD_SUBSTRATE`, and prove `verify:rehash --integrity` on it in staging. (Plan-gated — it's a stack change; I bring the plan first.)
+- **Done:** operator chose **S3 Object Lock, COMPLIANCE mode, 7-year retention**. Built `integration/audit-substrates/s3-object-lock.js` (`registerWormAudit()`) against the existing four-op / two-op seams; contract-tested (`contract-audit-worm-s3.js`); deploy-wired (Dockerfile `INSTALL_AWS_S3`, `apprunner-create.sh` `HEYDOC_WORM_*`). The PPP-TTT ledger seam follow-up is closed (PR #46): `registerPppTttLedgerSubstrate()` built and `registerWormAudit()` now covers **all three** medicolegal chains.
+- **You still do:** create the Object-Lock + versioning bucket; grant the instance role `s3:PutObject/PutObjectRetention/GetObject/ListBucket`; confirm the retention period stands.
+- **Hand back:** bucket name + region + "role granted."
+- **Then I:** prove `verify:rehash --integrity` against it in staging.
 
-### B2 — Cloud target + staging deploy job (R-35) · **[DECIDE] + [CRED]**
-- **Blocks:** an actual staging environment (today the runtime image/compose exist but nothing is deployed).
-- **You do:** choose the cloud/target + container registry; put registry/deploy creds in the secrets manager.
-- **Hand back:** the target + registry + creds ref.
-- **Then I:** add the staging deploy CI job and wire `deploy/register-substrates.example.mjs` against the real backends. (Buildable now as scaffolding even before you pick — say the word.)
+### B2 — Cloud target + staging deploy job (R-35) · **[DECIDE] + [CRED]** — ✅ **scaffolding BUILT (2026-07-11, PR #42); operator deploy remains**
+- **Blocks:** an actual, running staging environment.
+- **Done:** operator chose **AWS App Runner / ap-southeast-2**. Built `deploy/bootstrap.mjs` (StartCommand: registers the aws-sm backend at boot, then starts portal|consult), `deploy/build-and-push.sh` (ECR ensure+build+push), `deploy/apprunner-create.sh`, and the B2 runbook in `deploy/README.md`.
+- **You still do:** run the B2 scripts against your account (registry + service creation); confirm the service is up.
+- **Hand back:** "staging service up at `<url>`."
+- **Then I:** add the staging deploy CI job. (Note: App Runner storage is ephemeral — fine for synthetic staging only; B1 WORM must be registered before anything production-grade.)
 
 ### B3 — Secrets-manager backend (R-36) · **[DECIDE]** — ✅ **AWS Secrets Manager DONE (2026-07-11)**
 - **Blocks:** resolving credentials from a non-env backend at deploy.
 - **Done:** operator chose **AWS Secrets Manager** (region `ap-southeast-2`) and created `aws.sm/heydoc/anthropic.key`. Built `integration/secrets-backends/aws-secrets-manager.js` — fetch-at-boot → synchronous cache read on the fail-closed seam; AWS SDK dynamic-imported at deploy (NOT a repo dependency); contract-tested (`contract-secrets-aws.js`) with an injected fetcher (no SDK, no AWS call). Concrete bootstrap in `deploy/register-substrates.example.mjs` (region + `aws.sm/heydoc/anthropic.key`).
 - **You still do (deploy host):** `npm install @aws-sdk/client-secrets-manager`; give the runtime role `secretsmanager:GetSecretValue` on the secret ARN; set `HEYDOC_LLM_KEY_REF=aws-sm:aws.sm/heydoc/anthropic.key` + `HEYDOC_LLM_LIVE=1` + `HEYDOC_MODE_DEFAULT=staging`.
+- **⚠️ Secret format (lesson from the 2026-07-12 live smoke, PR #44):** store the API key as a **plaintext** secret, not the console-default JSON key/value object. A plaintext secret resolves verbatim; a JSON blob without a field selector is **REFUSED fail-closed** (never guessed). If you must use JSON, name the field in the ref: `aws-sm:<SecretId>#<field>`.
 - **Then I:** run the live smoke (A1) — I never handle the value; the resolver fetches it on your host at boot.
 - **Other managers (Vault / GCP):** name one and I add its resolver on the same seam (~20 lines).
 
