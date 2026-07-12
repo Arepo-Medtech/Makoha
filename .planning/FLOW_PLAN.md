@@ -1,5 +1,7 @@
 # FLOW_PLAN.md — Breath-Ezy · External Build-Element Harvest & Integration Blueprint
 
+> **⛳ EXECUTED — historical blueprint (status reconciliation 2026-07-13).** Milestones H0–H7 all merged (PRs #24–#32) substantially as written. Deviations recorded in the registers, not here: **#18 evidence-graded deferred-on-licence** (never wrapped; licence gate refuses it), **#20 gzxiong/MedRAG flipped ADOPT → REFERENCE-only** (MIRAGE gate built first-party clean-room), **evidence-cms not built** (US-only, deprioritised), PrimeKG/graph optional path not pursued. Current state: `docs/grounding/completeness-register.md` + `integration-register.md`.
+
 > **Read this first, every session, before writing any code** — together with `.planning/ARCH_PLAN.md`.
 > Principal Integration Architect blueprint for harvesting maintained open-source healthcare-AI
 > components into `kenleefreo/breath-ezy`. It plugs into the Build-Elements Register (Input R) and is

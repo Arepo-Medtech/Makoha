@@ -1,5 +1,7 @@
 # M9–M14 Master Plan — the input-gated milestones · Breath-Ezy AI Doctor
 
+> **⛳ STILL LIVE, partially overtaken (status reconciliation 2026-07-13).** The six milestones remain input-gated as written, with these corrections: the **M10 sanitiser-policy input is CLOSED** (operator ruling HIST-2, 2026-07-11 — string-preserving, implemented); **M13's "Portal UI remains / not started" is outdated** (review console + durable gate records built at LIVE_PLAN L1, PR #36 — M13 stays gated because WORM registration + identity federation remain); **M11 P1 terminology live adapter and the H1 fhir live backend are already built** against sandbox/pinned targets (AU-content/credential connect still input-gated); the `eval:cases` gate this plan assumed now exists (L10, PR #38); case count is 303 dirs / 301 attested. Current state: `docs/grounding/completeness-register.md`.
+
 > **Bootstrap-mode master plan** (per `CLAUDE.md <bootstrap_mode>`). It covers the six ARCH_PLAN §3.7
 > input-gated milestones — the ones that **cannot start until an operator/org supplies a named external
 > input** (vendor contract, credential, clinical/regulatory sign-off, or a standards decision).

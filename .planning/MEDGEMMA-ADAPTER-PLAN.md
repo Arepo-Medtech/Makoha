@@ -1,6 +1,6 @@
 # MEDGEMMA-ADAPTER-PLAN.md — MedGemma as an alternative / fallback Step-4 generation backend
 
-**Status:** Phase-2 plan (design). **No code until approved.** Sibling to LIVE_PLAN L3.
+**Status:** ⛳ **EXECUTED with Decision A3, not the recommended A1** (reconciled 2026-07-13). Operator approved and PR #37 shipped the adapter as **A3 — selectable-only, NO failover** (`integration/generation-backend.js`; a refusal stays BLOCKED, never rerouted — contract-proven); this plan's §2 A1 recommendation (availability fallback) and the §4/§6 fallback tests were therefore **not built, by decision**. Decision B (licence/regulatory use) was cleared by clinician attestation (KL, 2026-07-11; manifest `#medgemma`). Open: staging live smoke + endpoint-shape confirmation. Original status line for the record: Phase-2 plan (design). **No code until approved.** Sibling to LIVE_PLAN L3.
 **Author role:** Breath-Ezy AI Architect.
 **Baseline:** `main` after PRs #35–#37 (L3 live-LLM adapter merged/queued).
 

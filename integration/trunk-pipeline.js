@@ -147,7 +147,7 @@ export function verifyTrunkOutput(output, evidence) {
 }
 
 // Cross-trunk sequencer (C6) — the one integration surface trunk agents import.
-// Behind HEYDOC_SEQUENCER (default off → rollback is the single-trunk status quo).
+// Graduated default-ON (LIVE_PLAN L4); HEYDOC_SEQUENCER=0 is the single-trunk rollback.
 export { runTrunkSequence, isSequencerEnabled } from "./trunk-sequencer.js";
 
 /**
