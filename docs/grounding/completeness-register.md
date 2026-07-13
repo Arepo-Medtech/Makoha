@@ -29,6 +29,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Docs-reconciliation scoped re-scan** _(2026-07-13, planning-doc review remediation — read-only review + register/doc reconciliation, operator-approved)_ — All seven `.planning/` docs verified against the live tree: **zero UNFULFILLED claims** (nothing any plan presents as built is missing); the uniform defect was staleness (repo ahead of the docs). Each plan now carries a dated status-reconciliation banner; the handback checklist's wrong default-model claim (`claude-opus-4-8` → `claude-sonnet-5`, PR #41) and missing plaintext-secret note (PR #44 lesson) corrected; the H4 line's "~52 attested" figure corrected in place (it counted the envelope field; manifests showed 301/301 attested — re-verified via `eval:cases` PASS). One stale code comment fixed (`integration/trunk-pipeline.js` sequencer default). **NEW: `ppp-ttt-ledger-substrate-seam-missing`** (High, pf:true → promoted R-43) — formalised the B1 follow-up: at scan time the PPP-TTT ledger was the only medicolegal chain without a substrate seam. **Registered-and-resolved in the same window:** PR #46 (§9 B1 follow-on) landed independently and built the seam (`registerPppTttLedgerSubstrate()` + `registerWormAudit()` on all three chains, contract-tested) — item recorded COMPLETE/resolved; R-43 closed on arrival. No BLIND_STUB/DEAD_END opened; no code paths changed by this scan beyond the one comment.
 
+**L12 scoped re-scan** _(2026-07-13, LIVE_PLAN L12 consent capture — FL-01, operator-approved plan `.planning/CONSENT-PLAN.md`)_ — Built consent capture as a **recording mechanism, not a permission unlock** (contract-proven both ways: the no-unlock assertion on `persistContent()`, and a zero-consent-reference static scan over the packet path). NEW: `consent-record` schema + zod `.strict()` (PHI-free by construction), `verification/consent.js` (capture/revoke/status + the fail-closed `requireActiveConsent()` seam future persistence MUST call), `verification/consent-store.js` (FOURTH append-only hash chain, substrate seam built day one — R-43 lesson — and `registerWormAudit()` now covers all four chains), session-store close-hook registry (session-bound expiry mechanical; destruction survives a throwing hook), bounded consult-intake consent step (silence records nothing; decline pre-selected + never affects care; SUPPRESSED on STOP/T5), `docs/grounding/privacy-app-mapping.md` (APP 1–13 + data-flow register; org items flagged not decided). `consent-capture-unbuilt` → **COMPLETE/resolved** (R-40 capture half). **No BLIND_STUB/DEAD_END opened**: the store has real producers (consult intake, close hook) and consumers (seam, chain verify, WORM test); `content-store-production-gated` deliberately stays open. 52 suites + verification + trunk:stub:all + licence:check + security:secrets green; RETAIN core byte-unchanged (CI pin).
+
 **M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — _(case count SUPERSEDED by the H4 line above — 303 as of 2026-07-06.)_ Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
 
 ---
@@ -313,19 +315,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: consent-capture-unbuilt
-  path: (absent) consent capture/record mechanism
+  path: verification/consent.js · verification/consent-store.js · verification/consent-schema.js · mcp/schemas/consent-record.schema.json · docs/grounding/privacy-app-mapping.md
   component_type: other (consent)
-  state: UNBUILT
-  evidence: LIVE scan 2026-07-11 — "no persistence beyond session without explicit consent" is enforced negatively (session-store destroys; content store synthetic-only) but no mechanism exists to CAPTURE and RECORD a consent (omnibus Consent conventions unused at runtime).
-  blocks: any consented persistence; L11 product flows; L12
-  safety_class: none (absence = nothing persists, the safe direction)
-  invariant_exposure: data_handling / Privacy Act APP
+  state: COMPLETE
+  evidence: BUILT 2026-07-13 (LIVE_PLAN L12 / FL-01; operator-approved plan .planning/CONSENT-PLAN.md). Consent capture is a RECORDING mechanism, NOT a permission unlock — contract-proven: persistContent() still refuses non-synthetic content with an ACTIVE consent (no-unlock assertion), and the packet path carries zero consent references (static scan of pipeline/context-allowlist/trunk files). NEW consent-record schema + zod .strict() (PHI-free by construction: session_ref + enums + proven omnibus bindings + hashes; free text unrepresentable); verification/consent.js captureConsent/revokeConsent/consentStatus + requireActiveConsent() — the FAIL-CLOSED seam every future persistence path MUST call (BLOCKED_NO_CONSENT on every branch: no record / declined / revoked / session-ended / unknown type / malformed / store failure); consent types NEVER minted (omnibus types carry provenPath() + pinned dataset receipt; session_persistence explicitly heydoc-first-party); FOURTH append-only hash chain (consent-records.jsonl) with its substrate seam built DAY ONE (registerConsentStoreSubstrate, fail-closed non-local refusal — the R-43 lesson) and registerWormAudit() extended to all four chains; session-bound expiry MECHANICAL (session-store close-hook registry inactivates active consents on closeEncounter; destruction survives a throwing hook); consult intake gains BOUNDED consent choices (silence records nothing; decline is the pre-selected safe default and never affects care; capture SUPPRESSED on STOP/T5 emergency). test/contract-consent.js in npm test + CI (52 suites). RETAIN core byte-unchanged (CI pin holds). v1 scope: session_persistence + RECORD-ONLY mhr_data_sharing/telehealth_consent.
+  blocks: nothing — consented persistence IMPLEMENTATION remains deliberately unbuilt (content-store-production-gated open; any future path must call the seam + clear the release blockers)
+  safety_class: degrades_safe (default-deny seam; declining/failing to record leaves nothing-persists in force)
+  invariant_exposure: none (data_handling "no persistence without explicit consent" now has both halves — negative enforcement + capture/require mechanism)
   risk: High
   blocks_patient_facing: true
-  build_action: LIVE_PLAN L12 — consent record schema + capture flow + APP mapping doc.
+  build_action: RESOLVED — capture + record + seam + APP mapping built. Remaining L12 siblings tracked separately: SAST (R-38/FL-13), pen-test + formal privacy review (FL-51), org APP documents (privacy-app-mapping.md §4).
   gap_register_link: R-40
-  status: open
-  last_scanned: 2026-07-11
+  status: resolved
+  last_scanned: 2026-07-13
 ```
 
 ```md

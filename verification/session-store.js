@@ -41,6 +41,20 @@ const encounters = new Map();
 /** Refs that have been closed — they refuse forever (no resurrection). */
 const closed = new Set();
 
+/**
+ * Close-hook registry (L12 consent capture): callbacks run when an encounter
+ * closes, BEFORE its state is destroyed. WHY a registry and not an import:
+ * consent.js already imports this module (isOpen), so importing consent here
+ * would be a cycle; and destruction must never depend on a consumer. Hooks are
+ * best-effort — a throwing hook is recorded, never allowed to block
+ * destruction (destroying working state is the safety-critical half).
+ */
+const closeHooks = [];
+export function registerCloseHook(fn) {
+  if (typeof fn !== "function") throw new Error("session-store: registerCloseHook requires a function");
+  closeHooks.push(fn);
+}
+
 /** Demographic-looking keys are refused wherever they appear in a value. */
 const DEMOGRAPHIC_KEY_RE =
   /(^|[_.-])(name|given_names?|family_name|surname|first_name|last_name|full_name|dob|date_of_birth|birth_date|address|street|suburb|postcode|medicare(_number)?|ihi|phone|mobile|email|demographics)([_.-]|$)/i;
@@ -134,11 +148,21 @@ export function listWorkingState(sessionRef) {
  */
 export function closeEncounter(sessionRef) {
   const store = requireOpen(sessionRef, "close");
+  // Run close hooks (e.g. consent inactivation) while the ref still resolves.
+  // A hook failure is surfaced in the return value but NEVER blocks destruction.
+  const hook_errors = [];
+  for (const hook of closeHooks) {
+    try {
+      hook(sessionRef);
+    } catch (err) {
+      hook_errors.push(String(err && err.message ? err.message.slice(0, 160) : "unknown hook error"));
+    }
+  }
   const keys_destroyed = store.size;
   store.clear();
   encounters.delete(sessionRef);
   closed.add(sessionRef);
-  return { session_ref: sessionRef, keys_destroyed };
+  return { session_ref: sessionRef, keys_destroyed, ...(hook_errors.length ? { hook_errors } : {}) };
 }
 
 /** Destroy every open encounter (process shutdown / test hygiene). */

@@ -19,7 +19,9 @@
 import { createServer } from "node:http";
 import { normaliseMode } from "../verification/mode.js";
 import { runPipeline } from "../verification/pipeline.js";
-import { decidePatientScreen, SCREENS } from "./consult-flow.js";
+import { openEncounter, closeEncounter, isOpen } from "../verification/session-store.js";
+import { CONSENT_TYPES } from "../verification/consent.js";
+import { decidePatientScreen, parseConsentIntake, captureIntakeConsents, SCREENS } from "./consult-flow.js";
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -44,13 +46,29 @@ ${body}</body></html>`;
 }
 
 function intakePage(mode) {
+  // Consent step (L12): BOUNDED choices, plain language, decline is the safe
+  // default (pre-selected). Declining never affects the consult — everything
+  // stays session-only either way in this environment.
   return page("Start a consult", `<h1>Tell us what's going on</h1>
 <form class="intake" method="POST" action="/consult">
  <label>What's the main problem today?<br><textarea name="symptoms" rows="4" required></textarea></label>
  <label>Your age <input name="age" type="number" min="0" max="120"></label>
  <label><input type="checkbox" name="interpreter_required" value="1"> I need an interpreter</label>
+ <fieldset><legend>Your information choices (either answer is fine — care is the same)</legend>
+  <label><input type="radio" name="consent_session" value="no" checked> ${esc(CONSENT_TYPES.session_persistence.plain_language)} — <strong>No</strong> (nothing is kept beyond this session)</label>
+  <label><input type="radio" name="consent_session" value="yes"> Yes, I consent (recorded; expires when this session ends)</label>
+  <label><input type="checkbox" name="consent_telehealth" value="1"> ${esc(CONSENT_TYPES.telehealth_consent.plain_language)}</label>
+ </fieldset>
  <button type="submit">Continue</button>
 </form>`, mode);
+}
+
+/** One-line consent acknowledgement for the rendered screen (never clinical). */
+function consentNote(cap) {
+  if (!cap || cap.suppressed) return "";
+  if (!cap.captured.length) return "";
+  const parts = cap.captured.map((c) => `${esc(c.consent_type.replace(/_/g, " "))}: ${c.status === "active" ? "consented" : "declined"}`).join(" · ");
+  return `<p class="pending">Your information choices were recorded (${parts}). They expire when this session ends, and declining never changes your care.</p>`;
 }
 
 function renderScreen(s, mode) {
@@ -106,13 +124,24 @@ export function createConsultServer() {
         // The intake never becomes a fabricated flag: for this demo surface we
         // run the pipeline with no raised_flags (a real intake→flag mapping is
         // Trunk 1.0's job, plan-gated). The gate + screens are what we exercise.
-        const result = await runPipeline({ user_input: String(body.symptoms || "").slice(0, 2000) });
-        const patient_context = {
-          ...(body.age ? { age: Number(body.age) } : {}),
-          ...(body.interpreter_required ? { interpreter_required: true } : {}),
-        };
-        const screen = decidePatientScreen({ result, patient_context });
-        return send(200, renderScreen(screen, mode));
+        // One POST = one encounter: consents captured here are mechanically
+        // session-bound — closeEncounter (finally) inactivates them via the
+        // close hook, so nothing ever outlives the request in this demo surface.
+        const session_ref = openEncounter();
+        try {
+          const result = await runPipeline({ user_input: String(body.symptoms || "").slice(0, 2000) });
+          // Consent capture is SUPPRESSED on an emergency (never a step on a
+          // STOP/T5 path) and a capture failure never blocks the screen.
+          const cap = captureIntakeConsents({ session_ref, result, decisions: parseConsentIntake(body) });
+          const patient_context = {
+            ...(body.age ? { age: Number(body.age) } : {}),
+            ...(body.interpreter_required ? { interpreter_required: true } : {}),
+          };
+          const screen = decidePatientScreen({ result, patient_context });
+          return send(200, renderScreen(screen, mode).replace("</body>", `${consentNote(cap)}</body>`));
+        } finally {
+          if (isOpen(session_ref)) closeEncounter(session_ref);
+        }
       }
 
       if (url.pathname === "/decision" && req.method === "POST") {

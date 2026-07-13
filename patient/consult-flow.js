@@ -31,6 +31,7 @@
  *      else "pending clinician sign-off, not available in this environment."
  */
 import { releaseToPatient as realReleaseToPatient } from "../portal/verification-gate.js";
+import { captureConsent as realCaptureConsent } from "../verification/consent.js";
 
 /** Screen kinds (a closed set — the renderer maps each to a template). */
 export const SCREENS = Object.freeze({
@@ -69,6 +70,47 @@ function cautionContent(result) {
     : [];
   const caveats = abcde && abcde.C_caveats ? abcde.C_caveats : { no_diagnosis: true, no_decisions: true, plain_language: "This is a suggestion for a clinician to review, not a diagnosis or a decision." };
   return { safety_net, caveats };
+}
+
+/**
+ * Parse the BOUNDED consent choices from the intake form (L12 / FL-01).
+ * Only the known v1 types, only explicit answers: consent_session is a yes/no
+ * radio (an explicit decline is evidence too); consent_telehealth is a
+ * checkbox that records a grant ONLY when ticked — an untouched control
+ * records NOTHING (consent is never assumed, in either direction, from
+ * silence). Free text never becomes a consent.
+ * @returns {Array<{ consent_type: string, decision: "granted"|"declined" }>}
+ */
+export function parseConsentIntake(body = {}) {
+  const decisions = [];
+  if (body.consent_session === "yes") decisions.push({ consent_type: "session_persistence", decision: "granted" });
+  if (body.consent_session === "no") decisions.push({ consent_type: "session_persistence", decision: "declined" });
+  if (body.consent_telehealth === "1") decisions.push({ consent_type: "telehealth_consent", decision: "granted" });
+  return decisions;
+}
+
+/**
+ * Record the intake consent decisions for an open encounter — SUPPRESSED on an
+ * emergency (consent capture is never a step on a STOP/T5 path; the 000 screen
+ * takes absolute precedence). Fail-safe: a capture error never blocks the
+ * patient screen — declining or failing to record leaves the safe default
+ * (nothing persists) in force.
+ * @returns {{ suppressed: boolean, captured: Array<{consent_type,status}>, errors: string[] }}
+ */
+export function captureIntakeConsents({ session_ref, result, decisions } = {}, opts = {}) {
+  const capture = opts.capture || realCaptureConsent;
+  if (isEmergency(result)) return { suppressed: true, captured: [], errors: [] };
+  const captured = [];
+  const errors = [];
+  for (const d of decisions || []) {
+    try {
+      const rec = capture({ session_ref, consent_type: d.consent_type, decision: d.decision });
+      captured.push({ consent_type: rec.consent_type, status: rec.status });
+    } catch (err) {
+      errors.push(String(err && err.message ? err.message.slice(0, 160) : "consent capture error"));
+    }
+  }
+  return { suppressed: false, captured, errors };
 }
 
 /**

@@ -28,6 +28,7 @@ import {
 import { appendEntry, readLedger, verifyChain, persistContent, readContent } from "../verification/audit-store.js";
 import { recordDecisionDurable, readGateRecordEntries, verifyGateRecordChain } from "../portal/gate-record-store.js";
 import { appendPppTttEntry, readPppTttLedger, verifyPppTttChain } from "../verification/ppp-ttt/ledger.js";
+import { appendConsentEntry, readConsentLedger, verifyConsentChain } from "../verification/consent-store.js";
 
 const errors = [];
 const check = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -92,10 +93,11 @@ try {
   process.env.HEYDOC_AUDIT_SUBSTRATE = "s3-object-lock";
   process.env.HEYDOC_GATE_RECORD_SUBSTRATE = "s3-object-lock";
   process.env.HEYDOC_PPP_TTT_SUBSTRATE = "s3-object-lock";
+  process.env.HEYDOC_CONSENT_SUBSTRATE = "s3-object-lock";
   const fake = makeFakeS3();
   const res = await registerWormAudit({ bucket: "heydoc-audit-test", region: "ap-southeast-2", retentionYears: 7, exec: fake.exec });
   check(res.registered === "s3-object-lock" && res.mode === "COMPLIANCE" && res.retentionYears === 7, "registerWormAudit registers s3-object-lock (COMPLIANCE, 7y)");
-  check(res.ledger_entries === 0 && res.gate_records === 0 && res.ppp_ttt_entries === 0, "an empty bucket boots to empty caches (all three seams)");
+  check(res.ledger_entries === 0 && res.gate_records === 0 && res.ppp_ttt_entries === 0 && res.consent_records === 0, "an empty bucket boots to empty caches (all four seams)");
 
   // ── audit ledger through the FROZEN store: append → read → verify ───────────
   appendEntry(coreFor(HASH_A));
@@ -140,6 +142,21 @@ try {
   check(pppPuts.every((p) => p.mode === "COMPLIANCE" && p.ifNoneMatch === true), "every triage write is COMPLIANCE + write-once (--if-none-match *)");
   check(pppPuts[0].key === "heydoc-audit/ppp-ttt-ledger/000000000000.json" && pppPuts[1].key === "heydoc-audit/ppp-ttt-ledger/000000000001.json", "triage object keys are zero-padded seq, in chain order");
   throwsSync(() => res.pppTtt.appendLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing triage seq REFUSES (immutable WORM record, append-only violated)");
+
+  // ── consent records through their store: append → read → verify (L12) ───────
+  const consentCore = (status, reason) => ({
+    session_ref: "enc-worm-consent-1", consent_type: "session_persistence", type_source: "heydoc-first-party",
+    omnibus_binding: null, status, reason, scope: "patient-privacy", provision_actions: ["collect", "use", "destroy"],
+  });
+  appendConsentEntry(consentCore("active", "patient_granted"));
+  appendConsentEntry(consentCore("inactive", "session_end"));
+  check(readConsentLedger().length === 2, "two appendConsentEntry calls land two consent records via the WORM substrate");
+  check(verifyConsentChain().valid === true, "the consent hash-chain verifies end-to-end over the WORM substrate");
+  const consentPuts = fake.puts.filter((p) => p.key.includes("/consent-records/"));
+  check(consentPuts.length === 2, "each consent append is exactly one put-object");
+  check(consentPuts.every((p) => p.mode === "COMPLIANCE" && p.ifNoneMatch === true), "every consent write is COMPLIANCE + write-once (--if-none-match *)");
+  check(consentPuts[0].key === "heydoc-audit/consent-records/000000000000.json" && consentPuts[1].key === "heydoc-audit/consent-records/000000000001.json", "consent object keys are zero-padded seq, in chain order");
+  throwsSync(() => res.consent.appendLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing consent seq REFUSES (immutable WORM record, append-only violated)");
 
   // ── fail-closed: a ledger seq COLLISION (append-only violated) throws ───────
   throwsSync(() => res.audit.appendLedgerLine(JSON.stringify({ seq: 0, tampered: true })), "re-writing an existing ledger seq REFUSES (immutable WORM record, append-only violated)");
