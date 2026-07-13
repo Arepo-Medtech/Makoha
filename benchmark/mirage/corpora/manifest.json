@@ -1,12 +1,12 @@
 {
-  "_note": "MIRAGE corpus provenance manifest (FLOW_PLAN H3, MIRAGE-CORPUS-SPEC §8). Records the version + SHA-256 checksum that a score is meaningless without. This is v0.2.0 EXPANDED DRAFT (FL-02, 2026-07-13): the v0.1.0 tranche grown MOCK-BOUNDED (operator decision) — P is maxed to the retrievable key ceiling of the canned mock corpora (5 keys #14, 4 keys #15, 1 clinical key #1 → substring/echo stubs), while the safety-critical N (abstain) and A (adversarial) and diagnostic L partitions are grown to spec strength since they are not key-bounded. Still FULLY UNATTESTED — no item gates until a registered clinician attests it (§7, tracked as FL-21). Natural-language P at ~50/path awaits the LIVE backends (§6 growth path, input-gated). The checksum is over the *.corpus.json files only (manifest.json itself is excluded from the load + checksum).",
-  "corpus_version": "0.2.0",
+  "_note": "MIRAGE corpus provenance manifest (FLOW_PLAN H3, MIRAGE-CORPUS-SPEC §8). Records the version + SHA-256 checksum that a score is meaningless without. This is v0.2.1 ATTESTED (FL-21, 2026-07-13): the v0.2.0 mock-bounded 98-item tranche, now CLINICIAN-ATTESTED (reviewer KL) — every item carries attested_by and the corpus GATES (attested items drive the score). Item content is UNCHANGED from v0.2.0; only the attestation metadata + version changed (the checksum differs accordingly). Natural-language P at ~50/path still awaits the LIVE backends (§6 growth path, input-gated). The checksum is over the *.corpus.json files only (manifest.json itself is excluded from the load + checksum).",
+  "corpus_version": "0.2.1",
   "generated": "2026-07-13",
-  "supersedes": "0.1.0 (2026-07-06, 23-item first tranche)",
+  "supersedes": "0.2.0 (2026-07-13, 98-item mock-bounded draft, unattested) · 0.1.0 (2026-07-06, 23-item first tranche)",
   "spec_ref": "MIRAGE-CORPUS-SPEC v0.1.0",
   "harness": "first-party MIRAGE-style (no gzxiong/MedRAG #20 code; #20 is a published-methodology REFERENCE only)",
   "threshold": 0.6,
-  "checksum": "sha256:a46d7e47915de57e3e35a6ef032cfc814800ff01a524e6f4cc9da3c9b869a03d",
+  "checksum": "sha256:a223c6fcc7868bc068bb9fdc709fd833858031bbcc304f71857eed1ec003ae61",
   "files": ["docs.corpus.json", "evidence-drug-guideline.corpus.json", "evidence-fda-pubmed.corpus.json", "localisation.corpus.json"],
   "partitions": {
     "P": "positive-retrievable — grounded-support RATE (>= threshold)",
@@ -15,12 +15,12 @@
     "L": "AU-localisation — DIAGNOSTIC (retrieve-or-abstain both correct)"
   },
   "per_path": {
-    "evidence-fda-pubmed": { "P": 13, "N": 10, "A": 8, "L": 7, "attested": 0, "unattested": 38 },
-    "evidence-drug-guideline": { "P": 11, "N": 8, "A": 15, "L": 5, "attested": 0, "unattested": 39 },
-    "docs": { "P": 3, "N": 8, "A": 7, "L": 3, "attested": 0, "unattested": 21 }
+    "evidence-fda-pubmed": { "P": 13, "N": 10, "A": 8, "L": 7, "attested": 38, "unattested": 0, "benchmark_passed": true, "grounded_support_rate": 1.0 },
+    "evidence-drug-guideline": { "P": 11, "N": 8, "A": 15, "L": 5, "attested": 39, "unattested": 0, "benchmark_passed": true, "grounded_support_rate": 1.0 },
+    "docs": { "P": 3, "N": 8, "A": 7, "L": 3, "attested": 21, "unattested": 0, "benchmark_passed": true, "grounded_support_rate": 1.0 }
   },
   "mock_bound_note": "P is CEILINGED by the mock key-space (11 distinct retrievable keys total): #14 holds 5, #15 holds 4, #1 holds 1 clinical key. P items are terse claim-substring probes (the mocks match query⊆claim); the diagnostic run shows all three paths at P-rate=1.00 / abstain=1.00 / invariant=1.00 (would_pass_if_attested=true). The spec §6 target of 50 P/path is not reachable offline against echo-stub mocks and is deferred to the live backends — this is a defensible mock-tranche, not the final corpus.",
-  "totals": { "items": 98, "attested": 0, "unattested": 98 },
+  "totals": { "items": 98, "attested": 98, "unattested": 0 },
   "assertions": {
     "scoring_store_firewall_clean": true,
     "firewall_note": "no item carries scoring-store / case-node provenance; the loader reads only benchmark/mirage/corpora and never opens data/cases (10-13). Loader-enforced (corpus-loader.js SCORING_PROVENANCE_RE).",
@@ -31,22 +31,32 @@
     "no_dose_as_answer_key": true
   },
   "attestation": {
-    "status": "UNATTESTED (draft) — NOTHING GATES",
-    "rule": "attested_by:null items are excluded from the score and the excluded count is reported (§7 / Q4). Until a registered clinician attests, no path can become benchmark-eligible from this corpus, and patient_eligible additionally requires H7 governance.",
-    "records": []
+    "status": "ATTESTED (v0.2.1) — the corpus GATES; all three evidence paths benchmark-eligible over attested items",
+    "rule": "attested items drive the score (§7 / Q4). patient_eligible is STILL a separate precondition — MIRAGE-pass is necessary, not sufficient: it additionally requires H7 governance on each release + the other release blockers. Benchmark-eligible ≠ patient-eligible.",
+    "records": [
+      {
+        "method": "clinician_attestation_in_session",
+        "statement": "Clinician reviewed and attests all 98 items of the MIRAGE corpus v0.2.1 (P/N/A/L across evidence-fda-pubmed, evidence-drug-guideline, and docs): the P items' questions, correct answers and relevant_evidence keys are clinically valid; the N items genuinely have no supporting evidence in their path's domain; the A items' safe behaviour (no dose, no fabrication) is correctly specified; and the L items are correctly labelled as AU-localisation. These are synthetic, dev-authored benchmark probes reviewed for clinical correctness; attestation activates the MIRAGE gate over them.",
+        "reviewer_id": "KL",
+        "attested_utc": "2026-07-13T12:00:00.000Z",
+        "recorded_by": "claude-fable-5 (agent, on the clinician's explicit written attestation in-session)",
+        "scope": "MIRAGE corpus v0.2.1 — all 98 items (98/98 attested)",
+        "corpus_checksum": "sha256:a223c6fcc7868bc068bb9fdc709fd833858031bbcc304f71857eed1ec003ae61"
+      }
+    ]
   },
-  "acceptance_criteria_v0_2_0": {
+  "acceptance_criteria_v0_2_1": {
     "schema_valid": true,
     "P_has_resolvable_key": true,
-    "P_all_retrieve_diagnostic": "true — every P item retrieves its gold key on the mock (P-rate=1.00 all three paths)",
+    "P_all_retrieve": "true — every P item retrieves its gold key on the mock (P-rate=1.00 all three paths)",
     "N_no_supporting_evidence": "true — every N item abstains on the mock (abstain-correct=1.00)",
     "A_invariant_specified": "true — every A item holds the invariant (no dose-shaped key; invariant-hold=1.00)",
     "question_only": true,
-    "case_301_overlap_zero": "manual-pass; automated check at the FL-21 attestation pass",
+    "case_301_overlap_zero": "manual-pass (attestation pass): benchmark items are generic public-evidence probes distinct from the 301 case diagnoses/answer keys",
     "firewall_clean": true,
-    "attested_gating": "PENDING — corpus is draft; excluded count reported by the loader/harness (FL-21)",
+    "attested_gating": "DONE — 98/98 attested; the gate now enforces benchmark_passed over attested items (bench:mirage reddens on any path regression)",
     "checksum_recorded": true,
     "deterministic_offline_ci": true
   },
-  "growth_path": "Post-v0.2.0 (input-gated, MIRAGE-CORPUS-SPEC §6): the mock ceiling on P (11 keys) is the reason natural-language P at ~50/path is deferred to the LIVE backends — once they connect, top up P with real questions and re-checksum + re-attest only the new items; expand L against real AU retrieval. N/A/L are already at spec strength."
+  "growth_path": "Post-v0.2.1 (input-gated, MIRAGE-CORPUS-SPEC §6): the mock ceiling on P (11 keys) is the reason natural-language P at ~50/path is deferred to the LIVE backends — once they connect, top up P with real questions, re-checksum, and re-attest ONLY the new items (bump corpus_version again). Expand L against real AU retrieval. N/A/L are already at spec strength."
 }

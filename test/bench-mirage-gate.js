@@ -8,16 +8,19 @@
  *     answer-leaking item — the loader throws (proved by the question-only fixture);
  *   - a SAFETY hard-gate breach over ATTESTED items: an attested N item fabricated
  *     on, or an attested A item that leaks a dose (proved by fixtures);
+ *   - an ATTESTED evidence path FAILING (FL-21, 2026-07-13): the corpus is now
+ *     clinician-attested and GATES, so a path dropping below the grounded-support
+ *     threshold (or breaching a hard gate) over its attested items reddens CI;
  *   - a path silently claiming a pass with zero attested evidence;
  *   - an upstream-tagging mismatch (a path not identifying via its Receipt upstream);
  *   - a harness/loader error.
  *
- * It is GREEN when the corpus is clean and no safety gate is breached — REGARDLESS
- * of grounded-support rate. `patient_eligible` is a SEPARATE recorded property
- * (benchmark/mirage/scores/latest.json + registers), gated by threshold + clinician
- * attestation (§7) + H7 governance. The three real paths run on MOCK (default);
- * their draft corpus is unattested, so none is eligible today — the correct,
- * invariant-safe state.
+ * SINCE FL-21 the three real MOCK paths run over the CLINICIAN-ATTESTED corpus
+ * (v0.2.1, reviewer KL) and must each PASS (grounded-support ≥ threshold + N/A
+ * hard gates = 1.00). `patient_eligible` remains a SEPARATE recorded property
+ * (benchmark/mirage/scores/latest.json + registers): benchmark-pass is NECESSARY,
+ * NOT SUFFICIENT — a patient release additionally requires H7 governance and the
+ * other release blockers. Benchmark-eligible ≠ patient-eligible.
  *
  * The gate's TEETH (sub-threshold blocked, N-fabrication fails, A dose-leak fails,
  * unattested excluded) are proved by in-memory FIXTURE paths + attested fixture
@@ -91,9 +94,13 @@ async function run() {
   if (loaded) {
     check("corpus: three paths present", Object.keys(loaded.corpora).length === 3);
     check("corpus: checksum recorded", /^sha256:[0-9a-f]{64}$/.test(loaded.checksum));
-    // Every draft item is unattested → nothing gates yet (§7).
+    // FL-21 (2026-07-13): the corpus is CLINICIAN-ATTESTED (reviewer KL) → it now
+    // GATES. Every item carries attested_by, so the score is driven by attested
+    // evidence (was: draft, 0 attested, nothing gated). The gate reddens if the
+    // corpus ever regresses to a partly-unattested state without a fresh pass.
     const totalAttested = Object.values(loaded.counts).reduce((a, c) => a + c.attested, 0);
-    check("corpus: draft is fully unattested (nothing gates until clinician attestation)", totalAttested === 0);
+    const totalUnattested = Object.values(loaded.counts).reduce((a, c) => a + c.unattested, 0);
+    check("corpus: clinician-attested (FL-21) — the corpus gates over attested items", totalAttested > 0 && totalUnattested === 0);
   }
 
   // ══ 2. Real paths on MOCK — safety, tagging, no silent pass ════════════════════
@@ -119,8 +126,14 @@ async function run() {
       `real ${path.upstream}: deterministic`,
       JSON.stringify(r.per_question.map((q) => q.passed)) === JSON.stringify(r2.per_question.map((q) => q.passed))
     );
-    // No silent pass: a draft (0 attested) path is NEVER benchmark-eligible.
-    check(`real ${path.upstream}: not eligible while unattested`, r.counts.attested === 0 && r.passed === false);
+    // FL-21: the corpus is attested → this BLOCKING gate now enforces that each
+    // evidence path PASSES over its attested items (grounded-support ≥ threshold
+    // AND the N-abstain + A-invariant hard gates = 1.00). A regression — a path
+    // dropping below threshold, an attested N fabricating, or an attested A
+    // leaking a dose — flips r.passed to false and REDDENS CI. patient_eligible
+    // stays a separate precondition (H7 governance per-release); benchmark-pass
+    // is necessary, not sufficient.
+    check(`real ${path.upstream}: attested + benchmark-eligible (gate enforces pass)`, r.counts.attested > 0 && r.passed === true);
     summary.push(r);
   }
 

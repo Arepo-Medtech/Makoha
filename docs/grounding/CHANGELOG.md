@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-21 — MIRAGE corpus clinician attestation: v0.2.0 draft → v0.2.1 attested (the bench now GATES) (2026-07-13)
+
+**Status:** `npm test` green; **`bench:mirage` OK — now GATING** (all three evidence paths `benchmark_passed=true`); `verification` Pass:true; `eval:cases` PASS; `licence:check` + `security:secrets` PASS. RETAIN core untouched; no new dependency. This records a **clinician attestation** (reviewer KL, in-session) — data + one blocking-gate test flip; no product code changed.
+
+**Plain language.** The 98-item MIRAGE benchmark corpus was a draft that *measured* the three evidence-retrieval paths but *gated* nothing. The clinician has now reviewed and attested all 98 items, so the benchmark becomes a real safety gate: every evidence path must pass it over the attested items, and CI reddens if any path regresses (drops below the grounding threshold, fabricates on a negative item, or leaks a dose on an adversarial item). This is one of the four preconditions for a path to ever become patient-eligible — but **not** patient-eligibility itself: a patient release still needs clinician sign-off through the portal gate (H7) and the other release blockers. Nothing became patient-facing.
+
+### Change
+- **`benchmark/mirage/corpora/*.corpus.json` [~]** — every item stamped `attested_by: "KL"`, `corpus_version` 0.2.0 → **0.2.1**. **Item content is unchanged** (questions, answers, keys, partitions identical) — only the attestation metadata + version, so the checksum differs accordingly.
+- **`benchmark/mirage/corpora/manifest.json` [~]** — `corpus_version` → 0.2.1; recomputed SHA-256; `per_path`/`totals` all-attested (98/98) with `benchmark_passed:true`; `attestation.status` → ATTESTED with a faithful `records[]` entry (method `clinician_attestation_in_session`, reviewer KL, statement covering P/N/A/L clinical validity, `recorded_by` the agent on the clinician's explicit in-session attestation, scope = all 98 items, corpus checksum).
+- **`test/bench-mirage-gate.js` [~ the flip]** — the BLOCKING gate flipped from asserting-**draft** (`totalAttested === 0`; each path `attested === 0 && passed === false`) to asserting-**gating** (`98/98 attested, 0 unattested`; each path `attested > 0 && passed === true`). The gate now enforces that every attested evidence path passes and **reddens on any regression** below threshold or a hard-gate breach. Header comment updated.
+- **`benchmark/mirage/scores/latest.json` [~]** — regenerated: `corpus_version 0.2.1`, `corpus_pass: true`, all paths `benchmark_passed:true / patient_eligible:false`.
+
+### Invariant check
+`patient_eligible` STILL false on every path (MIRAGE-pass necessary, not sufficient — H7 governance per-release + release blockers remain) · attested-A dose-elicitation items all hold the no-dose invariant (verified by the gate) · firewall clean / question-only / no dose as answer key (unchanged) · no attestation fabricated — recorded on the clinician's explicit in-session statement, faithfully, same footing as the 301-case bulk attestations · RETAIN core byte-unchanged. ✔
+
+### Register / gap
+`mirage-benchmark-gate` (R-29) updated (corpus attested & gating); the three evidence-server items (`evidence-fda-pubmed-server`, `evidence-drug-guideline-server`, `docs-override-live`) noted `benchmark_passed=true / patient_eligible:false`. **Two of the four-part patient-eligibility precondition arms now met** (MIRAGE-passed-on-attested-corpus + corpus-attested); the other two (H7 governance per-release ✅ built + real portal WORM gate records, FL-11) and the four release blockers remain. FINISH-LINE FL-21 → checked by the finish-line agent. Plan: `.planning/CORPUS-PLAN.md` (authoring, FL-02) + this attestation.
+
 ## FL-42 — Clinician identity federation: verified attestation + signature binding (portal remainder) (2026-07-13)
 
 **Status:** `npm test` **53/53** green (+`contract-portal-identity`); `verification` Pass:true; `trunk:stub:all` 9/9; `licence:check` + `security:secrets` PASS; **RETAIN core byte-unchanged** (`verification-gate.js`/`verifier.js`/`audit-store.js` — `git diff --stat` empty, CI pin holds); no new dependency. Plan: `.planning/IDENTITY-FEDERATION-PLAN.md`.
