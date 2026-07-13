@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## MKT-P1 — Marketplace integration Phase 1: the receipts ring (Evidence Broker + Ontoserver terminology + MOSTLY AI harness) (2026-07-13)
+
+**Status:** `npm test` green (exit 0; 8 new contract suites); `eval:cases` PASS. RETAIN core, `audit-store.js`, `verification-gate.js`, `portal/harvested-release.js` byte-unchanged; no new dependency (Node 20 built-ins + existing zod/ajv). Executes Phase 1 (only) of `.planning/marketplace_integration_execution_plan.md` — the "inside the boundary / receipts" ring. **Nothing patient-facing:** every new module is a library the pipeline wires in Phase 2 (MI-14); no patient path opened.
+
+**Plain language.** The grounding promise — every clinical claim carries a resolvable receipt or returns `unknown` — is now enforceable in code. The Evidence Broker resolves a claim against ranked evidence sources and returns a schema-valid receipt or `unknown`; preprints, US-regulatory context (openFDA), and any receipt-less claim are barred from a patient in code, not just docs. The terminology layer gains an AU-capable Ontoserver client (SNOMED CT-AU + AMT) so a code writes only after a `$validate-code` pass and an unresolved term is quarantined as free-text. The MOSTLY AI harness lets the eval corpus grow, with every synthetic case inert until a clinician attests it.
+
+### Change (by Build-Elements Register element_id)
+- **MI-23** `mcp/servers/knowledge/cache/index.js` [NEW] — `ResponseCache` (freshness-labelling only), `RateGovernor` (min-interval spacer), `withRetry` (429/5xx backoff; non-status errors non-retryable). Backs the E1 fail-safe. `test:knowledge-cache`.
+- **MI-02** `mcp/schemas/receipt.schema.json` + `verification/pipeline-schemas.js` mirror [REFINE, additive-monotone] — optional `jurisdiction_tag`/`confidence`/`source_rank`; `required[]` and `additionalProperties:false` untouched; exported `JURISDICTION_TAGS`/`CONFIDENCE_BANDS`. `test:receipt`.
+- **MI-03** `mcp/servers/knowledge/source-ranker.js` [NEW] — §5 ranking as executable policy; E9 (preprints) + E10 (openFDA) barred in code; unknown source fails safe. `test:source-ranker`.
+- **MI-20** `config/jurisdiction.js` [NEW] — E6 STOP: `US_context` barred from the AU patient path → `unknown`; US source never `AU_endorsed`. `test:jurisdiction`.
+- **MI-01** `mcp/servers/knowledge/{broker,receipt-normaliser}.js` + `taps/index.js` [NEW / INTEGRATE] — composes MI-23/03/20; returns a `ReceiptSchema`-valid receipt or `{result:"unknown"}`; taps mock-backed now, live seams (evidence-* servers) deferred. `test:evidence-broker`.
+- **MI-05** `mcp/servers/terminology/{ontoserver-client.js,value-sets.json}` [REFINE, PARTIAL] — AU-capable `$validate-code` + `$lookup` (SNOMED CT-AU + AMT, injected transport); AMT live path wired in `index.js` (previously nulled); `live-adapter.js` untouched. Live resolution deploy-gated (B6). `test:terminology-ontoserver`.
+- **MI-06 / MI-07** `mcp/servers/terminology/coding-gate.js` [PRESERVE, confirmed] — single `codeOrQuarantine` gate: code writes only on validate-pass, unresolved → free-text quarantine; proven end-to-end through the existing verifier. `test:terminology-quarantine`.
+- **MI-18 / MI-19** `eval/synthetic/mostly-ai/run-mostly-ai.js` [INTEGRATE / PRESERVE] — input-gated fail-safe generator behind the case-factory; every case `synthetic:true` + `clinician_reviewed:false` (inert until attested); the eval:cases gate (`:139`/`:159`) is the enforcer. `test:mostly-ai`.
+
+### Invariant check
+Grounding invariant enforced in code (receipt-or-`unknown`) · E1/E2/E6/E9/E10 all fail closed · no code without a `$validate-code` pass (coding-gate) · no US-regulatory source as an AU patient receipt · hashing / audit / release seams untouched · mock-never-as-live preserved (mock receipts carry `mode:"mock"`; live terminology fail-safe) · no synthetic case gates a release before clinician attestation. ✔
+
+### Register / gap
+`terminology-contract-incomplete` NARROWS (AU AMT/SNOMED CT-AU client built to PARTIAL; live NCTS/self-host resolution + AMT ValueSet binding remain, B6). Evidence Broker is a new capability over the `knowledge` server (mock-backed; live taps deferred). No blocker closed — Phase 1 delivers receipts/gates, not a patient path (B1–B7 stand). Phases 2–3 (models/ingestion gates; governance confirm) not started per the plan's gating.
+
 ## FL-21 — MIRAGE corpus clinician attestation: v0.2.0 draft → v0.2.1 attested (the bench now GATES) (2026-07-13)
 
 **Status:** `npm test` green; **`bench:mirage` OK — now GATING** (all three evidence paths `benchmark_passed=true`); `verification` Pass:true; `eval:cases` PASS; `licence:check` + `security:secrets` PASS. RETAIN core untouched; no new dependency. This records a **clinician attestation** (reviewer KL, in-session) — data + one blocking-gate test flip; no product code changed.

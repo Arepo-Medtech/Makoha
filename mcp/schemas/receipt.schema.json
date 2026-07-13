@@ -41,6 +41,22 @@
       "enum": ["live", "dry_run", "mock"],
       "description": "Operating mode of the server that produced this receipt. The verification layer (verifier.js) MUST flag any receipt with mode='mock' in a production context. 'live' = real upstream call made. 'dry_run' = query validated but upstream not called. 'mock' = canned stub response, no upstream involved."
     },
+    "jurisdiction_tag": {
+      "type": "string",
+      "enum": ["AU_endorsed", "US_context", "non_AU"],
+      "description": "Optional (MI-02). Jurisdictional provenance of the answering source, set by the Evidence Broker's jurisdiction guard (config/jurisdiction.js). Drives the E6 mismatch STOP: a source that is not 'AU_endorsed' is barred from an AU patient receipt and the claim downgrades to 'unknown'. 'US_context' marks US-provenance data (e.g. openFDA) that may inform context but is NEVER an AU patient receipt; 'non_AU' marks other non-endorsed provenance. Absent on plain MCP-call receipts that carry no jurisdictional claim."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "moderate", "low", "provisional"],
+      "description": "Optional (MI-02). Trust band assigned by the Evidence Broker source ranker (execution plan §5). 'high'/'moderate' = ranks 1-2 (peer-reviewed / registered trials); 'low' = rank 3 (mechanism/target/compound); 'provisional' = rank 4 (preprints, excluded from patient receipts). Absent on plain MCP-call receipts."
+    },
+    "source_rank": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Optional (MI-02). Fixed source-ranking tier from the Evidence Broker (execution plan §5): 1=peer-reviewed/guideline, 2=registered trials, 3=mechanism/target/compound, 4=provisional/preprint (never a patient receipt), 5=context-only (openFDA; never a receipt). Absent on plain MCP-call receipts."
+    },
     "tool": {
       "type": "string",
       "description": "Optional. The MCP tool name that was called, for audit trail clarity. Examples: 'docs_cite', 'terminology_lookup', 'identity_lookup_ihi', 'pharm_check'.",
