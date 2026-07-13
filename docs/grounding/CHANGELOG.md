@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-03 — Low-risk hygiene batch: reference-case manifest retrofit + repo-digest firewall fixture (2026-07-13)
+
+**Status:** `npm test` green; `verification` Pass:true; **`eval:cases` PASS with named exemptions: 0**; `bench:mirage` OK; `licence:check` + `security:secrets` PASS. RETAIN core untouched; no new dependency. Two Low-risk register items resolved.
+
+**Plain language.** Two bits of housekeeping: the one hand-built reference case that predated the manifest system now has a manifest (so the code no longer needs a special exception for it), and the engineering "repo digest" — which deliberately contains sealed answer-key content — is now guarded by a test proving it can never slip into an AI-Doctor context path. Neither changes the release evidence base: the reference case is recorded as *not* attested (fail-safe), so the attested case count stays 301.
+
+### Change
+- **`scripts/retrofit-reference-manifest.mjs` [NEW]** + **`data/cases/SPEC-CARD-04-00001/case_manifest.json` [NEW]** — a one-shot, firewall-safe retrofit: SHA-256 of the exact on-disk bytes of all 7 nodes (sealed 10_–13_ streamed through the hash only — never parsed, printed, or routed), `firewall_assertion`, `files[]`, an **empty** `codes_manifest` (the reference case is excluded from the code-verification + attested sets — flagged), and a **FAIL-SAFE** review block: `clinician_reviewed: false`. The envelope's `provenance.clinician_reviewed:true` (KL, 2026-06-23) is recorded as a *note*, not treated as a manifest attestation — so the release-gate attested count is **unchanged at 301**. (An operator can admit it to the trusted set 301 → 302 by flipping the flag with an attestation statement.)
+- **`scripts/eval-case-gate.mjs` [~]** — removed the `LEGACY_EXEMPT` set + the named-exemption branch; a missing `case_manifest.json` is now a hard failure (every case dir carries one). `eval:cases` → **named exemptions: 0** (301 attested, 2 unreviewed incl. the ref case, PASS); `verify-case-codes` legacy-skipped: 0.
+- **`test/contract-context-allowlist.js` [~]** — a digest-shaped default-deny fixture block (synthetic content only; no `data/cases` read) proving the M3 allow-list rejects every realistic digest-injection shape with **zero sealed leakage** into `injectable_fields`: (a) a sealed node as a top-level key hard-stops (firewall throw); (b) a case-id-keyed digest node + the digest wrapper are rejected wholesale by default-deny; (c) digest text under an unknown field of an allow-listed node is rejected by name.
+
+### Invariant check
+Scoring-store firewall preserved and strengthened (retrofit byte-hashes sealed nodes only; new fixture guards the digest carve-out); no attestation fabricated (fail-safe reviewed:false; envelope record noted, not claimed); release-gate attested count unchanged (301); RETAIN core byte-unchanged. ✔
+
+### Register / gap
+`reference-case-manifest-missing` → **COMPLETE/resolved**; `repo-digest-sealed-node-carveout` → **COMPLETE/resolved**. Deferred (explicitly optional, not in the FL-03 done-when): the F1 verifier fuzz suite. FINISH-LINE FL-03 → checked by the finish-line agent.
+
 ## FL-02 — MIRAGE corpus expanded v0.1.0 → v0.2.0 (mock-bounded; LIVE_PLAN L9 authoring half) (2026-07-13)
 
 **Status:** `npm test` green; **`bench:mirage` OK**; `verification` Pass:true; `licence:check` PASS. Corpus-only + manifest change — **no server, harness, loader, or gate code touched**; RETAIN core untouched. Operator decision (asked at Phase 1): **mock-bounded** expansion.

@@ -32,9 +32,12 @@
  * printed, never placed in any context. Readable parsing is limited to
  * 00/01/02 + case_manifest.
  *
- * Known named exception: SPEC-CARD-04-00001 (hand-built reference case,
- * pre-ingest — no manifest; register: `reference-case-manifest-missing`).
- * It is reported and EXCLUDED from the attested count, not failed.
+ * No named exemptions: every case dir now carries a case_manifest.json. The
+ * former pre-ingest reference case SPEC-CARD-04-00001 was manifest-retrofitted
+ * (FL-03, scripts/retrofit-reference-manifest.mjs) and is now a normal
+ * manifested-but-unattested case (excluded from the attested count via the
+ * clinician_reviewed check, not via a special case). A missing manifest is now
+ * a hard failure, as it should be.
  *
  * Usage: node scripts/eval-case-gate.mjs
  */
@@ -49,7 +52,6 @@ const REPO_ROOT = join(__dirname, "..");
 const CASES_DIR = join(REPO_ROOT, "data/cases");
 const MIN_ATTESTED_CASES = 45;
 const PENDING = "unverified_pending_terminology_receipt";
-const LEGACY_EXEMPT = new Set(["SPEC-CARD-04-00001"]); // reference-case-manifest-missing
 const READABLE = ["00_case_envelope.json", "01_presentation_layer.json", "02_conversational_policy.json"];
 const SEALED = ["10_ground_truth_node.json", "11_symptom_links_node.json", "12_management_plan_node.json", "13_safety_netting_node.json"];
 
@@ -82,11 +84,6 @@ const caseDirs = readdirSync(CASES_DIR, { withFileTypes: true }).filter((d) => d
 
 for (const caseId of caseDirs) {
   const dir = join(CASES_DIR, caseId);
-
-  if (LEGACY_EXEMPT.has(caseId) && !existsSync(join(dir, "case_manifest.json"))) {
-    exemptions.push(`${caseId}: pre-ingest reference case (no manifest) — excluded from the attested count; retrofit tracked in the register`);
-    continue;
-  }
 
   const manifestPath = join(dir, "case_manifest.json");
   if (!existsSync(manifestPath)) {

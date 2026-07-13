@@ -104,6 +104,44 @@ for (const sealed of ["10_ground_truth_node", "11_symptom_links_node", "12_manag
   check(`sealed ${sealed} throws firewall error`, threw);
 }
 
+// 2b. Repo-digest carve-out (repo-digest-sealed-node-carveout): scripts/export-repo-digest.mjs
+// deliberately embeds the reference case's sealed 10_–13_ nodes for ENGINEERING use.
+// That artifact must NEVER be routed into an AI-Doctor context path — assert the
+// default-deny allow-list rejects every digest-shaped input, with ZERO sealed leakage.
+// All fixtures are synthetic (no data/cases read; dummy marker content only).
+const DIGEST_LEAK = "SCORER-ONLY-DIGEST-LEAK";
+
+// (a) A digest parsed so a sealed node lands as a TOP-LEVEL key → hard-stop throw.
+let digestTopLevelThrew = false;
+try {
+  contextAllowList({ "01_presentation_layer": presentation, "10_ground_truth_node": { primary_diagnosis: DIGEST_LEAK } });
+} catch (e) {
+  digestTopLevelThrew = /SCORING-STORE FIREWALL/.test(e.message);
+}
+check("digest: sealed node as a top-level key hard-stops (firewall)", digestTopLevelThrew);
+
+// (b) A digest keyed BY CASE-ID (its real shape) with sealed content nested under
+// it → the unknown top-level case-id key is rejected wholesale by default-deny;
+// the nested sealed content is never recursed, classified, or injected.
+const digestByCase = contextAllowList({
+  "SPEC-CARD-04-00001": { "10_ground_truth_node": { primary_diagnosis: DIGEST_LEAK }, "13_safety_netting_node": { red_flags: DIGEST_LEAK } },
+  "breath-ezy-repo-digest": { note: DIGEST_LEAK },
+});
+check("digest: case-id-keyed digest node rejected by default-deny",
+  digestByCase.rejected_fields.some((r) => r.node === "SPEC-CARD-04-00001"));
+check("digest: digest wrapper node rejected by default-deny",
+  digestByCase.rejected_fields.some((r) => r.node === "breath-ezy-repo-digest"));
+check("digest: ZERO sealed digest content reaches injectable_fields",
+  !JSON.stringify(digestByCase.injectable_fields).includes(DIGEST_LEAK));
+
+// (c) Digest text stuffed into an allow-listed node under an unknown field →
+// rejected by name (default-deny inside the object); never injected.
+const digestInField = contextAllowList({ "01_presentation_layer": { digest_dump: DIGEST_LEAK } });
+check("digest: unknown field carrying digest text rejected by name",
+  digestInField.rejected_fields.some((r) => r.path === "01_presentation_layer.digest_dump"));
+check("digest: digest text in a rejected field never injected",
+  !JSON.stringify(digestInField.injectable_fields).includes(DIGEST_LEAK));
+
 // 3. Facts conversion — packet channel only; exchange material never becomes facts.
 const facts = injectableFacts(cls);
 check("facts: only packet-channel fields", facts.length === 4);

@@ -29,6 +29,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Docs-reconciliation scoped re-scan** _(2026-07-13, planning-doc review remediation — read-only review + register/doc reconciliation, operator-approved)_ — All seven `.planning/` docs verified against the live tree: **zero UNFULFILLED claims** (nothing any plan presents as built is missing); the uniform defect was staleness (repo ahead of the docs). Each plan now carries a dated status-reconciliation banner; the handback checklist's wrong default-model claim (`claude-opus-4-8` → `claude-sonnet-5`, PR #41) and missing plaintext-secret note (PR #44 lesson) corrected; the H4 line's "~52 attested" figure corrected in place (it counted the envelope field; manifests showed 301/301 attested — re-verified via `eval:cases` PASS). One stale code comment fixed (`integration/trunk-pipeline.js` sequencer default). **NEW: `ppp-ttt-ledger-substrate-seam-missing`** (High, pf:true → promoted R-43) — formalised the B1 follow-up: at scan time the PPP-TTT ledger was the only medicolegal chain without a substrate seam. **Registered-and-resolved in the same window:** PR #46 (§9 B1 follow-on) landed independently and built the seam (`registerPppTttLedgerSubstrate()` + `registerWormAudit()` on all three chains, contract-tested) — item recorded COMPLETE/resolved; R-43 closed on arrival. No BLIND_STUB/DEAD_END opened; no code paths changed by this scan beyond the one comment.
 
+**FL-03 scoped re-scan** _(2026-07-13, low-risk hygiene batch)_ — Two Low-risk items resolved. (1) `reference-case-manifest-missing`: `scripts/retrofit-reference-manifest.mjs` generated the missing `case_manifest.json` for the pre-ingest reference case `SPEC-CARD-04-00001` (byte-hash only — sealed 10_–13_ streamed through sha256, never parsed/routed; empty codes_manifest; FAIL-SAFE `clinician_reviewed:false` so the attested count stays 301, with the envelope's KL/2026-06-23 review recorded as a note). The `LEGACY_EXEMPT` set + exemption branch removed from `eval-case-gate.mjs` (missing manifest is now a hard failure). `eval:cases` → **named exemptions: 0** (301 attested, PASS); verify-codes legacy-skipped 0. (2) `repo-digest-sealed-node-carveout`: added a digest-shaped default-deny fixture block to `test/contract-context-allowlist.js` (synthetic content; no data/cases read) proving the M3 allow-list rejects every realistic digest-injection shape with zero sealed leakage. Deferred (explicitly optional, not in the done-when): F1 verifier fuzz suite. **No BLIND_STUB/DEAD_END opened.** `npm test` + verification + eval:cases + bench:mirage + licence:check + security:secrets green.
+
 **FL-02 scoped re-scan** _(2026-07-13, MIRAGE corpus expansion — LIVE_PLAN L9 authoring half, mock-bounded per operator decision)_ — Grew `benchmark/mirage/corpora/*` from 23 → **98 items** (v0.1.0 → v0.2.0). Corpus-only + manifest; **no server/harness/loader/gate code touched**. Phase-1 finding: P (positive-retrievable) is hard-bounded by the canned mock retrievers (**11 distinct keys total** — #14=5, #15=4, #1=1 clinical), so P was maxed to that ceiling with terse claim-substring questions while the safety-critical **N (abstain) + A (adversarial) + diagnostic L** partitions (not key-bounded) were grown to spec strength. All items `synthetic:true`, `attested_by:null` (still non-gating until FL-21), firewall-clean (loader `SCORING_PROVENANCE_RE`; `data/cases/10–13` never opened), question-only (loader-asserted), no dose as an answer key. Diagnostic: all three paths **P-rate=1.00 / abstain=1.00 / invariant=1.00 / would_pass_if_attested=true**. Manifest carries the recomputed checksum + a `mock_bound_note` (natural-language P at ~50/path deferred to live backends, §6). No register item state change: `mirage-benchmark-gate` (R-29) stays COMPLETE (FL-02 grows the corpus, resolves neither the attestation nor the live-backend P-volume). **No BLIND_STUB/DEAD_END opened.** `npm test` + `bench:mirage` + verification + licence:check green.
 
 **L12 scoped re-scan** _(2026-07-13, LIVE_PLAN L12 consent capture — FL-01, operator-approved plan `.planning/CONSENT-PLAN.md`)_ — Built consent capture as a **recording mechanism, not a permission unlock** (contract-proven both ways: the no-unlock assertion on `persistContent()`, and a zero-consent-reference static scan over the packet path). NEW: `consent-record` schema + zod `.strict()` (PHI-free by construction), `verification/consent.js` (capture/revoke/status + the fail-closed `requireActiveConsent()` seam future persistence MUST call), `verification/consent-store.js` (FOURTH append-only hash chain, substrate seam built day one — R-43 lesson — and `registerWormAudit()` now covers all four chains), session-store close-hook registry (session-bound expiry mechanical; destruction survives a throwing hook), bounded consult-intake consent step (silence records nothing; decline pre-selected + never affects care; SUPPRESSED on STOP/T5), `docs/grounding/privacy-app-mapping.md` (APP 1–13 + data-flow register; org items flagged not decided). `consent-capture-unbuilt` → **COMPLETE/resolved** (R-40 capture half). **No BLIND_STUB/DEAD_END opened**: the store has real producers (consult intake, close hook) and consumers (seam, chain verify, WORM test); `content-store-production-gated` deliberately stays open. 52 suites + verification + trunk:stub:all + licence:check + security:secrets green; RETAIN core byte-unchanged (CI pin).
@@ -1128,19 +1130,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: reference-case-manifest-missing
-  path: data/cases/SPEC-CARD-04-00001/ (7 node files, no case_manifest.json)
+  path: data/cases/SPEC-CARD-04-00001/case_manifest.json · scripts/retrofit-reference-manifest.mjs
   component_type: dataset
-  state: PARTIAL
-  evidence: FOUND M6 2026-07-03 — the hand-built reference/worked case predates the cases:ingest manifest discipline: no case_manifest.json, so no file hashes, no codes_manifest, no attestation record in manifest form. Named-exempt in both cases:verify-codes (skip) and the eval gate (excluded from the attested count — the gate passes at 51 without it).
-  blocks: nothing today (gate exempts it by name); reference-case parity with the ingest discipline
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-13 (FL-03). `scripts/retrofit-reference-manifest.mjs` generated `case_manifest.json` for the pre-ingest reference case — SHA-256 of the exact on-disk bytes of all 7 nodes (firewall-safe: sealed 10_–13_ streamed through sha256 only, never parsed/routed), firewall_assertion, files[], empty codes_manifest (reference case excluded from the code-verification + attested sets — flagged), and a FAIL-SAFE review block: `clinician_reviewed: false` (manifest attestation WITHHELD pending an explicit operator attestation statement; the envelope's `provenance.clinician_reviewed:true` (KL, 2026-06-23) is recorded as a note, not treated as a manifest attestation — so the release-gate attested count is UNCHANGED at 301). The named exemption + `LEGACY_EXEMPT` set removed from `scripts/eval-case-gate.mjs` (a missing manifest is now a hard failure). `eval:cases` → **named exemptions: 0** (301 attested, 2 unreviewed incl. this ref case, PASS); `verify-case-codes` legacy-skipped: 0.
+  blocks: nothing — resolved
   safety_class: none
   invariant_exposure: none
   risk: Low
   blocks_patient_facing: false
-  build_action: retrofit under a gated step — round-trip the reference case through the casebundle → cases:ingest path (or hand-author its manifest to the same contract: file sha256s, codes_manifest, review/attestation, firewall_assertion), then remove the named exemption from scripts/eval-case-gate.mjs.
+  build_action: DONE. To admit the reference case to the trusted set (301 → 302), an operator sets `clinician_reviewed:true` with an attestation statement (one-line change; the envelope already records the KL review).
   gap_register_link: none (Low)
-  status: open
-  last_scanned: 2026-07-03
+  status: resolved
+  last_scanned: 2026-07-13
 ```
 
 ```md
@@ -1336,19 +1338,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: repo-digest-sealed-node-carveout
-  path: scripts/export-repo-digest.mjs, breath-ezy-repo-digest.md (untracked at repo root; also distributed outside the repo)
+  path: scripts/export-repo-digest.mjs, breath-ezy-repo-digest.md (untracked at repo root; also distributed outside the repo) · test/contract-context-allowlist.js (digest fixtures)
   component_type: other (derived engineering artifact)
-  state: PARTIAL
-  evidence: M0 scan 2026-07-03 — the digest exporter deliberately embeds the reference case's sealed 10–13 nodes for engineering use, with an in-file warning (export-repo-digest.mjs ~line 84: "Do not use this context to role-play the AI Doctor"). The digest is LLM-readable context handed to planning agents. No code routes the digest into any trunk/packet path.
-  blocks: nothing (documented carve-out); recorded for guard visibility
-  safety_class: none in code (would be firewall_breach only if the digest were ever injected into an AI-Doctor context path)
-  invariant_exposure: scoring-store firewall — carve-out is safe only while the digest stays out of every AI-Doctor context path
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-13 (FL-03). The carve-out is documented (the digest exporter embeds the reference case's sealed 10–13 for engineering, with an in-file warning; no code routes it into any trunk/packet path) AND now GUARDED BY TEST: `test/contract-context-allowlist.js` gained a digest-shaped default-deny fixture block (synthetic content only, no data/cases read) proving the M3 allow-list rejects every realistic digest-injection shape with ZERO sealed leakage into injectable_fields — (a) a sealed node as a top-level key hard-stops (firewall throw); (b) a case-id-keyed digest node + digest wrapper are rejected wholesale by default-deny; (c) digest text under an unknown field of an allow-listed node is rejected by name. The carve-out remains safe only while the digest stays out of every AI-Doctor context path — now the guard reddens CI if that boundary is ever crossed via the allow-list.
+  blocks: nothing — resolved
+  safety_class: none in code (would be firewall_breach only if the digest were ever injected into an AI-Doctor context path — now test-guarded)
+  invariant_exposure: scoring-store firewall — carve-out safe while the digest stays out of every AI-Doctor context path; the M3 allow-list + this fixture enforce default-deny
   risk: Low
   blocks_patient_facing: false
-  build_action: keep the carve-out documented; the digest MUST never be routed into an AI-Doctor context path; add a digest-shaped fixture to the M3 context-allowlist contract test (assert default-deny rejects it).
+  build_action: DONE — carve-out documented + digest-shaped default-deny fixture added to the M3 contract test.
   gap_register_link: none
-  status: open
-  last_scanned: 2026-07-03
+  status: resolved
+  last_scanned: 2026-07-13
 ```
 
 ```md
