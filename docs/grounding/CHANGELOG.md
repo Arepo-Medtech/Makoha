@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## MKT-P3 — Marketplace integration Phase 3: govern & confirm (consent-scope enforcement + governance-vendor omission) (2026-07-13)
+
+**Status:** `npm test` green (exit 0; 1 new contract suite); `eval:cases` PASS. `consent.js`, the ToolUniverse gateway, `audit-store.js`, and all seams byte-unchanged; no new dependency. Executes Phase 3 (the final ring) of `.planning/marketplace_integration_execution_plan.md`. **Nothing patient-facing.** Completes the increment: receipts (MKT-P1) + gates (MKT-P2) + governance confirmation (MKT-P3).
+
+**Plain language.** Consent is now enforced by SCOPE at the one gateway (a call outside a granted scope is refused and logged before any data moves), and the decision to add NO third-party governance vendor is recorded — the repo's own gateway already governs the boundary.
+
+### Change (by Build-Elements Register element_id)
+- **MI-21** `verification/consent-scope.js` [NEW, PRESERVE + thin wire] — consent enforced AT THE GATEWAY, not per-connector: a boundary-crossing call whose scope isn't covered by an active consent is REFUSED (throws `CONSENT_SCOPE_REFUSED`) and LOGGED before any tap fires (E5). Maps `CONSENT_TYPES[].scope` to a gateway check; reuses `getActiveConsent`; fail-closed on unknown scope / malformed ref / no covering consent; revocation removes scope; audit sink injectable. `consent.js` untouched. `test:consent-scope`.
+- **MI-22** governance-vendor omission [OVERRIDE → OMIT, documented] — Composio + Ataccama/Atlan/Alation are DELIBERATELY NOT WIRED. The governed gateway already exists: ToolUniverse DEFAULT-DENY (H5) + the fail-closed release seam (H7) + `audit-store.js` (append-only, hash-chained) + consent-scope enforcement (MI-21). Adding a third-party catalog/gateway would build a labyrinth against a solved problem. No code, no dependency; recorded here and in the completeness register.
+
+### Invariant check
+Consent enforced at the gateway, fail-closed, out-of-scope refused + logged (E5) · no new governance vendor / no new egress surface · gateway/audit/release seams byte-unchanged · the §1.4 out-of-scope drops (US Census/CMS MCPs, data-eng accelerators, BioPortal-as-primary, Shaip US corpora) confirmed dropped. ✔
+
+### Register / gap
+**Phase-3 exit gate met:** consent + audit + jurisdiction enforced at the one in-place gateway; synthetic corpus grows behind the CI gate (MI-18/19); no new governance vendor added; §1.4 drops confirmed. The increment is complete and opens NO patient path — the patient-eligibility blockers (B1 portal, B4 pharmacology vendor, B5 lab reference-range sign-off, persistence enforcement) and deploy-gated connections (OCR/de-id engines, MedGemma/Jamba endpoints, terminology live B6) remain operator/vendor actions, exactly as the plan states.
+
 ## MKT-P2 — Marketplace integration Phase 2: gate the boundary (models arbiter + OCR ingestion + imaging-dark + pharmacology CDS slot) (2026-07-13)
 
 **Status:** `npm test` green (exit 0; 8 new contract suites); `eval:cases` PASS. RETAIN core, `audit-store.js`, `verification-gate.js`, `portal/harvested-release.js`, the verifier, and `pharmacology/engine.js` (the firewall) byte-unchanged; no new dependency. Executes Phase 2 of `.planning/marketplace_integration_execution_plan.md` — the "on the boundary / gates" ring. **Nothing patient-facing:** all new modules are libraries; no patient path opened. Phase 1 (MKT-P1) is the prerequisite and is landed on main (#60).
