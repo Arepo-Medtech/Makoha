@@ -1,11 +1,12 @@
 {
-  "_note": "MIRAGE corpus provenance manifest (FLOW_PLAN H3, MIRAGE-CORPUS-SPEC §8). Records the version + SHA-256 checksum that a score is meaningless without. This is v0.1.0 FIRST-TRANCHE DRAFT: authored to the spec, sized to the current MOCK retrievers, and FULLY UNATTESTED — no item gates until a registered clinician attests it (§7). The checksum is over the *.corpus.json files only (manifest.json itself is excluded from the load + checksum).",
-  "corpus_version": "0.1.0",
-  "generated": "2026-07-06",
+  "_note": "MIRAGE corpus provenance manifest (FLOW_PLAN H3, MIRAGE-CORPUS-SPEC §8). Records the version + SHA-256 checksum that a score is meaningless without. This is v0.2.0 EXPANDED DRAFT (FL-02, 2026-07-13): the v0.1.0 tranche grown MOCK-BOUNDED (operator decision) — P is maxed to the retrievable key ceiling of the canned mock corpora (5 keys #14, 4 keys #15, 1 clinical key #1 → substring/echo stubs), while the safety-critical N (abstain) and A (adversarial) and diagnostic L partitions are grown to spec strength since they are not key-bounded. Still FULLY UNATTESTED — no item gates until a registered clinician attests it (§7, tracked as FL-21). Natural-language P at ~50/path awaits the LIVE backends (§6 growth path, input-gated). The checksum is over the *.corpus.json files only (manifest.json itself is excluded from the load + checksum).",
+  "corpus_version": "0.2.0",
+  "generated": "2026-07-13",
+  "supersedes": "0.1.0 (2026-07-06, 23-item first tranche)",
   "spec_ref": "MIRAGE-CORPUS-SPEC v0.1.0",
   "harness": "first-party MIRAGE-style (no gzxiong/MedRAG #20 code; #20 is a published-methodology REFERENCE only)",
   "threshold": 0.6,
-  "checksum": "sha256:475d80e2d1ab6c1da9d77d728d3aca6853066dade9a795c4e749d8d4978ac197",
+  "checksum": "sha256:a46d7e47915de57e3e35a6ef032cfc814800ff01a524e6f4cc9da3c9b869a03d",
   "files": ["docs.corpus.json", "evidence-drug-guideline.corpus.json", "evidence-fda-pubmed.corpus.json", "localisation.corpus.json"],
   "partitions": {
     "P": "positive-retrievable — grounded-support RATE (>= threshold)",
@@ -14,11 +15,12 @@
     "L": "AU-localisation — DIAGNOSTIC (retrieve-or-abstain both correct)"
   },
   "per_path": {
-    "evidence-fda-pubmed": { "P": 3, "N": 2, "A": 1, "L": 2, "attested": 0, "unattested": 8 },
-    "evidence-drug-guideline": { "P": 3, "N": 2, "A": 3, "L": 1, "attested": 0, "unattested": 9 },
-    "docs": { "P": 2, "N": 2, "A": 1, "L": 1, "attested": 0, "unattested": 6 }
+    "evidence-fda-pubmed": { "P": 13, "N": 10, "A": 8, "L": 7, "attested": 0, "unattested": 38 },
+    "evidence-drug-guideline": { "P": 11, "N": 8, "A": 15, "L": 5, "attested": 0, "unattested": 39 },
+    "docs": { "P": 3, "N": 8, "A": 7, "L": 3, "attested": 0, "unattested": 21 }
   },
-  "totals": { "items": 23, "attested": 0, "unattested": 23 },
+  "mock_bound_note": "P is CEILINGED by the mock key-space (11 distinct retrievable keys total): #14 holds 5, #15 holds 4, #1 holds 1 clinical key. P items are terse claim-substring probes (the mocks match query⊆claim); the diagnostic run shows all three paths at P-rate=1.00 / abstain=1.00 / invariant=1.00 (would_pass_if_attested=true). The spec §6 target of 50 P/path is not reachable offline against echo-stub mocks and is deferred to the live backends — this is a defensible mock-tranche, not the final corpus.",
+  "totals": { "items": 98, "attested": 0, "unattested": 98 },
   "assertions": {
     "scoring_store_firewall_clean": true,
     "firewall_note": "no item carries scoring-store / case-node provenance; the loader reads only benchmark/mirage/corpora and never opens data/cases (10-13). Loader-enforced (corpus-loader.js SCORING_PROVENANCE_RE).",
@@ -33,17 +35,18 @@
     "rule": "attested_by:null items are excluded from the score and the excluded count is reported (§7 / Q4). Until a registered clinician attests, no path can become benchmark-eligible from this corpus, and patient_eligible additionally requires H7 governance.",
     "records": []
   },
-  "acceptance_criteria_v0_1_0": {
+  "acceptance_criteria_v0_2_0": {
     "schema_valid": true,
     "P_has_resolvable_key": true,
-    "N_no_supporting_evidence": true,
-    "A_invariant_specified": true,
+    "P_all_retrieve_diagnostic": "true — every P item retrieves its gold key on the mock (P-rate=1.00 all three paths)",
+    "N_no_supporting_evidence": "true — every N item abstains on the mock (abstain-correct=1.00)",
+    "A_invariant_specified": "true — every A item holds the invariant (no dose-shaped key; invariant-hold=1.00)",
     "question_only": true,
-    "case_301_overlap_zero": "manual-pass; automated check at attestation",
+    "case_301_overlap_zero": "manual-pass; automated check at the FL-21 attestation pass",
     "firewall_clean": true,
-    "attested_gating": "PENDING — corpus is draft; excluded count reported by the loader/harness",
+    "attested_gating": "PENDING — corpus is draft; excluded count reported by the loader/harness (FL-21)",
     "checksum_recorded": true,
     "deterministic_offline_ci": true
   },
-  "growth_path": "Post-v0.1.0 (input-gated, MIRAGE-CORPUS-SPEC §6): once the live backends connect, top up P toward ~50/path with natural-language questions (the current mock retrievers are canned-corpus substring/echo stubs, so the first tranche is sized to them); expand L against real AU retrieval; each top-up bumps corpus_version + re-attests only the new items."
+  "growth_path": "Post-v0.2.0 (input-gated, MIRAGE-CORPUS-SPEC §6): the mock ceiling on P (11 keys) is the reason natural-language P at ~50/path is deferred to the LIVE backends — once they connect, top up P with real questions and re-checksum + re-attest only the new items; expand L against real AU retrieval. N/A/L are already at spec strength."
 }
