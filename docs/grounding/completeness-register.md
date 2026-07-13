@@ -404,7 +404,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   build_action: REMAINING (input-gated) — connect the external pinned #14 process + keys via secrets manager + egress allow-list; then H3 MIRAGE-gate before patient_eligible. Optional: wire evidence_search into the pipeline retrieval path (a future gated step) — today the consumer is the contract test.
   gap_register_link: R-27
   status: in-progress
-  last_scanned: 2026-07-06
+  last_scanned: 2026-07-13
 ```
 
 ```md
@@ -421,7 +421,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   build_action: REMAINING (input-gated) — connect external pinned #15 process + keys; H3 MIRAGE-gate before patient_eligible. The no-dose bar holds on mock and any future live path.
   gap_register_link: R-27
   status: in-progress
-  last_scanned: 2026-07-06
+  last_scanned: 2026-07-13
 ```
 
 ```md
@@ -438,7 +438,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   build_action: REMAINING (input-gated) — connect the #1 backend + creds; H3 MIRAGE-gate. evidence-cms/ (US CMS/NPI) deliberately NOT built at H2 (low AU priority) — see evidence-cms-deferred.
   gap_register_link: R-27
   status: in-progress
-  last_scanned: 2026-07-06
+  last_scanned: 2026-07-13
 ```
 
 ```md
