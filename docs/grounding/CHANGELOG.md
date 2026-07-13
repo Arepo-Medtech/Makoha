@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## MKT-P2 — Marketplace integration Phase 2: gate the boundary (models arbiter + OCR ingestion + imaging-dark + pharmacology CDS slot) (2026-07-13)
+
+**Status:** `npm test` green (exit 0; 8 new contract suites); `eval:cases` PASS. RETAIN core, `audit-store.js`, `verification-gate.js`, `portal/harvested-release.js`, the verifier, and `pharmacology/engine.js` (the firewall) byte-unchanged; no new dependency. Executes Phase 2 of `.planning/marketplace_integration_execution_plan.md` — the "on the boundary / gates" ring. **Nothing patient-facing:** all new modules are libraries; no patient path opened. Phase 1 (MKT-P1) is the prerequisite and is landed on main (#60).
+
+**Plain language.** Model output is now gated by the Evidence Broker (no receipt → `unknown`), records ingest through a fail-closed de-id edge to AU Core FHIR, imaging pixel interpretation is built but dark, and the pharmacology CDS slot is explicit-and-empty (HARD_FAIL until a vendor is contracted).
+
+### Change (by Build-Elements Register element_id)
+- **MI-17** `config/flags.js` [NEW] — single fail-safe feature-flag registry (IMAGING=OFF, OCR_ENGINE=paddle, PHARM_CDS=EMPTY, STRUCTURED_OCR=OFF); a mis-set flag resolves to the safe value (E8). `test:flags`.
+- **MI-15** `models/jamba/assembler.js` [NEW] — bounds the grounded packet + history to a token budget; never invents/drops-constraints/drops-a-kept-fact's-receipt; logged drops; re-validates through the packet-only bar + firewall. `test:jamba`.
+- **MI-14 / MI-04** `integration/evidence-arbiter.js` [NEW] + `verification/pipeline.js` [additive, monotone-AND] — the Broker arbitrates model claims; a receipt-less claim is stripped to `unknown` and can only ADD a verification failure. No-op when unused (H6). `test:evidence-arbiter`.
+- **MI-16** `models/imaging/multimodal.js` [NEW, dark] — pixel branch present, flag OFF; every path (OFF/mis-set/ON-no-endpoint/lit) resolves to `unknown` — even a lit candidate is stripped by the arbiter (no literature receipt). `test:imaging-dark`.
+- **MI-12** `ingestion/deid/presidio.js` [NEW, fail-closed] — PHI de-id ON by default; no engine → ingestion BLOCKED, raw text never returned (E4). `test:deid`.
+- **MI-13** `ingestion/structuring/json-to-fhir.js` [NEW/INTEGRATE] — StructuredDoc → AU Core FHIR; coded only on a validate-pass, uncoded → free-text quarantine; non-conformant blocked from the store. `test:json-to-fhir`.
+- **MI-10 / MI-11** `ingestion/pipeline.js` + `ingestion/ocr/{paddle,jsl,structured}-adapter.js` + `index.js` [NEW] — 5-stage ordered pipeline (de-id non-skippable, fail-closed E4); OSS PaddleOCR default, JSL/Surya licence-gated, flag switches engine without rebuild, no silent fallback. `test:ingestion`.
+- **MI-08 / MI-09** `pharmacology/amt-underlay.js` + `pharmacology/cds-adapter/index.js` [PRESERVE+REFINE / NEW empty] — AMT coding validated via Terminology (coded only on validate-pass); the CDS slot is explicit-and-empty → HARD_FAIL (B4), never dosing/interaction/contraindication content, folds monotonically so it blocks even a PASS engine (E7). `test:pharmacology-cds`.
+
+### Invariant check
+No model output reaches output without Broker arbitration (receipt-or-`unknown`) · de-id fail-closed, non-skippable (E4) · no fabricated codes (coding-gate through ingestion + FHIR) · imaging pixel path dark, fails to `unknown` (E8) · pharmacology CDS explicit-and-empty, HARD_FAIL blocks unconditionally (E7); firewall engine byte-unchanged · no dosing/interaction/contraindication content emitted · hashing/audit/release seams untouched. ✔
+
+### Register / gap
+Phase-2 exit gate met (models behind the Broker; OCR ingestion end-to-end; imaging dark; CDS explicit-and-empty; E7 holds under test). No blocker closed — deploy-gated connections remain: OCR/de-id engines (external), MedGemma/Jamba serving endpoints, pharmacology CDS vendor (B4), terminology live (B6). Phase 3 (governance confirm) not started per the plan's gate.
+
 ## MKT-P1 — Marketplace integration Phase 1: the receipts ring (Evidence Broker + Ontoserver terminology + MOSTLY AI harness) (2026-07-13)
 
 **Status:** `npm test` green (exit 0; 8 new contract suites); `eval:cases` PASS. RETAIN core, `audit-store.js`, `verification-gate.js`, `portal/harvested-release.js` byte-unchanged; no new dependency (Node 20 built-ins + existing zod/ajv). Executes Phase 1 (only) of `.planning/marketplace_integration_execution_plan.md` — the "inside the boundary / receipts" ring. **Nothing patient-facing:** every new module is a library the pipeline wires in Phase 2 (MI-14); no patient path opened.
