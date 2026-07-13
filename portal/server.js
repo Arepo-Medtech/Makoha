@@ -40,6 +40,7 @@ import { metricsSnapshot } from "../verification/metrics.js";
 import { hasSecret, getSecret } from "../integration/secrets.js";
 import { buildReviewBundle, validateReviewBundle } from "./review-bundle.js";
 import { recordDecisionDurable, hydrateGateRegistry, effectiveDecision } from "./gate-record-store.js";
+import { resolveClinicianIdentity, bindSignature, identityBlock } from "./identity-federation.js";
 
 /** In-memory pending queue: run_id → ReviewBundle (encounter-scoped). */
 const pending = new Map();
@@ -101,7 +102,7 @@ ${abcde ? `<p><strong>Pathway:</strong> ${esc(abcde.B_balance?.pathway)} · <str
 ${sn.length ? `<p><strong>Safety-net:</strong></p><ul>${sn.map((s) => `<li>${esc(s.descriptor)}</li>`).join("")}</ul>` : ""}` : ""}`;
 }
 
-function renderBundle(bundle) {
+function renderBundle(bundle, identity) {
   const decided = effectiveDecision(bundle.candidate_output_hash);
   return `<h1>Review — run ${esc(bundle.run_id)}</h1>
 <p><strong>Trunk:</strong> ${esc(bundle.trunk_id || "—")} · <strong>Mode:</strong> ${esc(bundle.mode)} ·
@@ -121,14 +122,16 @@ ${decided ? `<p><strong>Latest decision on this hash:</strong> ${esc(decided.dec
  <input type="hidden" name="run_id" value="${esc(bundle.run_id)}">
  <input type="hidden" name="candidate_output_hash" value="${esc(bundle.candidate_output_hash)}">
  <input type="hidden" name="bundle_sha256" value="${esc(bundle.bundle_sha256)}">
- <p><label>Clinician ID <input name="clinician_id" required></label></p>
+ <p><strong>Attesting clinician (federation-verified):</strong> ${identity && identity.verified
+    ? `<code>${esc(identity.clinician_id)}</code>${identity.ahpra_registration ? " · " + esc(identity.ahpra_registration) : ""} <em>(via ${esc(identity.idp)})</em>`
+    : `<span class="fail">identity not verified — decisions are refused until a federated clinician identity is established</span>`}</p>
  <p><label><input type="radio" name="decision" value="approved" required> Approve (exact text above)</label><br>
     <label><input type="radio" name="decision" value="rejected"> Reject (nothing releases)</label><br>
     <label><input type="radio" name="decision" value="amended"> Amend (attest the amended text below)</label></p>
  <p><label>Amended text (only for Amend)<br><textarea name="amended_text" rows="6" cols="80"></textarea></label></p>
- <p><label>Signature ref <input name="signature_ref" required placeholder="e.g. sig:AHPRA-…"></label></p>
+ <p class="pending">Signature is bound automatically to your verified identity and the exact output hash — no free-text signature is accepted.</p>
  <p><label>Notes <input name="notes" size="60"></label></p>
- <button type="submit">Record decision</button>
+ <button type="submit"${identity && identity.verified ? "" : " disabled"}>Record decision</button>
 </form>`;
 }
 
@@ -237,7 +240,10 @@ export function createPortalServer(opts = {}) {
         const runId = url.searchParams.get("run") || "";
         const bundle = pending.get(runId) || bundleFromLedger(runId);
         if (!bundle) return send(404, page("Not found", `<h1>No reviewable bundle for run ${esc(runId)}</h1>`));
-        return send(200, page(`Review ${runId}`, renderBundle(bundle)));
+        // Resolve the reviewer's federation-verified identity for display/binding
+        // (fail-closed: an unverified reviewer sees a disabled decision form).
+        const reviewer = resolveClinicianIdentity(req, mode);
+        return send(200, page(`Review ${runId}`, renderBundle(bundle, reviewer)));
       }
 
       if (url.pathname === "/submit" && req.method === "POST") {
@@ -248,24 +254,41 @@ export function createPortalServer(opts = {}) {
 
       if (url.pathname === "/decision" && req.method === "POST") {
         const body = parseBody(await readBody(req), req.headers["content-type"]);
+
+        // FL-42: the attesting clinician is a FEDERATION-VERIFIED identity, not a
+        // free-text form field. Resolve it fail-closed; a live-enforced portal
+        // refuses the dev provider (an unverified attestation is not an
+        // attestation). clinician_id + signature_ref are DERIVED from the
+        // verified identity — a body-supplied clinician_id that disagrees is
+        // rejected (never silently overridden).
+        const identity = resolveClinicianIdentity(req, mode);
+        if (!identity.verified) {
+          return send(403, JSON.stringify({ error: "identity_not_verified", reason: identity.reason }), "application/json");
+        }
+        if (body.clinician_id && body.clinician_id !== identity.clinician_id) {
+          return send(403, JSON.stringify({ error: "identity_mismatch", reason: `form clinician_id "${body.clinician_id}" does not match the verified identity "${identity.clinician_id}"` }), "application/json");
+        }
         const record = {
           run_id: body.run_id,
           candidate_output_hash: body.candidate_output_hash,
-          clinician_id: body.clinician_id,
+          clinician_id: identity.clinician_id, // verified, not typed
           decision: body.decision,
           decided_at_utc: new Date().toISOString(),
-          signature_ref: body.signature_ref,
+          signature_ref: bindSignature(identity, body.candidate_output_hash), // bound to who+what
           ...(body.notes ? { notes: body.notes } : {}),
           ...(body.decision === "amended"
             ? { amended_output_hash: hashCandidateOutput(String(body.amended_text || "")) }
             : {}),
         };
-        const { entry } = recordDecisionDurable(record, { bundle_sha256: body.bundle_sha256 || undefined });
+        const { entry } = recordDecisionDurable(record, {
+          bundle_sha256: body.bundle_sha256 || undefined,
+          identity: identityBlock(identity),
+        });
         pending.delete(body.run_id);
         return send(
           201,
           page("Decision recorded", `<h1>Decision recorded</h1>
-<p><strong>${esc(record.decision)}</strong> by ${esc(record.clinician_id)} on <code>${esc(record.candidate_output_hash)}</code></p>
+<p><strong>${esc(record.decision)}</strong> by verified clinician <code>${esc(record.clinician_id)}</code> (${esc(identity.idp)}${identity.ahpra_registration ? ", " + esc(identity.ahpra_registration) : ""}) on <code>${esc(record.candidate_output_hash)}</code></p>
 <p>Durable entry <code>${esc(entry.entry_id)}</code> (seq ${entry.seq}). This does NOT send anything to a patient —
  it permits the release gate to permit the exact attested text, on a patient path that does not exist yet.</p>
 <p><a href="/queue">Back to queue</a></p>`)

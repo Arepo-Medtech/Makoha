@@ -151,21 +151,34 @@ try {
   check(!reviewHtml.includes("<script>alert(1)</script>") && reviewHtml.includes("&lt;script&gt;"),
     "the console must HTML-escape candidate output (XSS)");
 
-  // Record a decision over HTTP; it must land durably and clear the queue.
+  // FL-42: a decision without a verified clinician identity is REFUSED (the dev
+  // provider needs an explicit dev-clinician header; no self-asserted name).
+  const noId = await fetch(`${base}/decision`, {
+    method: "POST",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({ run_id: xssResult.run_id, candidate_output_hash: xssResult.verification.candidate_output_hash, decision: "approved" }),
+  });
+  check(noId.status === 403, "POST /decision without a verified identity must be refused (got " + noId.status + ")");
+
+  // Record a decision over HTTP with a federation-verified (dev) identity; it must
+  // land durably (with an identity block + bound signature) and clear the queue.
   const before = readGateRecordEntries().length;
   const dec = await fetch(`${base}/decision`, {
     method: "POST",
-    headers: { ...auth, "content-type": "application/json" },
+    headers: { ...auth, "content-type": "application/json", "x-heydoc-dev-clinician": "pharm-KL" },
     body: JSON.stringify({
       run_id: xssResult.run_id,
       candidate_output_hash: xssResult.verification.candidate_output_hash,
-      clinician_id: "pharm-KL",
       decision: "approved",
-      signature_ref: "sig:test-attestation-2",
     }),
   });
-  check(dec.status === 201, "POST /decision must record (got " + dec.status + ")");
+  check(dec.status === 201, "POST /decision must record with a verified identity (got " + dec.status + ")");
   check(readGateRecordEntries().length === before + 1, "the HTTP decision must append to the durable chain");
+  const httpEntry = readGateRecordEntries()[before];
+  check(httpEntry.identity?.subject === "pharm-KL" && httpEntry.identity.verified === true,
+    "the HTTP decision entry carries the verified identity block");
+  check(httpEntry.record.signature_ref.startsWith("sig:federated:dev:"),
+    "the recorded signature is bound to the verified identity, not free-text");
   check(effectiveDecision(xssResult.verification.candidate_output_hash)?.decision === "approved",
     "the HTTP decision must be the effective decision");
 
