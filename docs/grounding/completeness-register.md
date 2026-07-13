@@ -29,6 +29,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **Docs-reconciliation scoped re-scan** _(2026-07-13, planning-doc review remediation — read-only review + register/doc reconciliation, operator-approved)_ — All seven `.planning/` docs verified against the live tree: **zero UNFULFILLED claims** (nothing any plan presents as built is missing); the uniform defect was staleness (repo ahead of the docs). Each plan now carries a dated status-reconciliation banner; the handback checklist's wrong default-model claim (`claude-opus-4-8` → `claude-sonnet-5`, PR #41) and missing plaintext-secret note (PR #44 lesson) corrected; the H4 line's "~52 attested" figure corrected in place (it counted the envelope field; manifests showed 301/301 attested — re-verified via `eval:cases` PASS). One stale code comment fixed (`integration/trunk-pipeline.js` sequencer default). **NEW: `ppp-ttt-ledger-substrate-seam-missing`** (High, pf:true → promoted R-43) — formalised the B1 follow-up: at scan time the PPP-TTT ledger was the only medicolegal chain without a substrate seam. **Registered-and-resolved in the same window:** PR #46 (§9 B1 follow-on) landed independently and built the seam (`registerPppTttLedgerSubstrate()` + `registerWormAudit()` on all three chains, contract-tested) — item recorded COMPLETE/resolved; R-43 closed on arrival. No BLIND_STUB/DEAD_END opened; no code paths changed by this scan beyond the one comment.
 
+**FL-20 + FL-23 scoped re-scan** _(2026-07-13, clinical sign-off on the knowledge datasets + lab reference ranges)_ — The clinician (reviewer KL) attested, in-session, the CLINICAL correctness of the four provisional datasets; recorded faithfully. Each file (`mcp/servers/knowledge/data/{benign-registry,axis-b-templates,redflags-bank}.json` + `verification/data/lab-reference-ranges.json`) gained an `attestation` block (`clinical_sign_off:true`, `regulatory_sign_off:false`, reviewer KL, statement + scope) + updated status. Content assessed substantive before attesting (SNOMED-coded benign criteria; must-not-miss differentials w/ discriminators; tier-appropriate red-flags; standard adult sex-agnostic reference ranges incl. critical thresholds) — not hollow placeholders. **Checksums UNCHANGED** (computed over `records`/`analytes` only; attestation is top-level metadata → `contract-knowledge` + `contract-investigation-parser` green unchanged; no version bump → no `pipeline.js:53` drift). Both register items NARROW: **clinical sign-off DONE** (FL-20 `knowledge-datasets-provisional`, FL-23 `lab-reference-ranges-provisional`); REMAINING = **regulatory (TGA) sign-off (FL-50)** + coverage expansion + live source (knowledge store / FL-32 lab) — so the datasets stay NON-patient-facing (blocked on regulatory + coverage + live, not clinical validity). No version promoted out of `-dev` (would over-claim while regulatory pending). **No BLIND_STUB/DEAD_END opened.** 53 suites + all gates green.
+
 **FL-21 scoped re-scan** _(2026-07-13, MIRAGE corpus CLINICIAN ATTESTATION — LIVE_PLAN L9 attestation half)_ — The clinician (reviewer KL) attested all 98 items of the MIRAGE corpus in-session; recorded faithfully (v0.2.0 draft → **v0.2.1 attested**): every item `attested_by: "KL"`, manifest attestation record + recomputed checksum + all-attested counts. **The corpus now GATES** — the BLOCKING `bench:mirage` (`test/bench-mirage-gate.js`) flipped from asserting-draft (`0 attested / not eligible`) to asserting-**gating** (`98/98 attested`; each evidence path must PASS over attested items — the gate now reddens on any path regression below threshold / attested-N fabrication / attested-A dose-leak). Measured: **all three paths benchmark_passed=true** (P-rate=1.00, abstain=1.00, invariant=1.00; #15's 15 attested dose-elicitation A items all hold the no-dose bar). Item CONTENT unchanged — only attestation metadata + version. **`patient_eligible` STILL false on all three paths** — MIRAGE-pass is necessary, not sufficient: H7 governance (per-release) + the other release blockers remain. Two of the four-part eligibility precondition arms now met (MIRAGE-passed-on-attested + corpus-attested); scores/latest.json corpus_pass=true. R-29 + the three evidence-server items updated. **No BLIND_STUB/DEAD_END opened.** 53 suites + verification + eval:cases + bench:mirage + licence:check + security:secrets green.
 
 **FL-42 scoped re-scan** _(2026-07-13, clinician identity federation — portal remainder, ENG half of the release blocker)_ — Built the **fail-closed clinician-identity-federation seam** + signature binding, narrowing `clinician-verification-portal-unbuilt` (stays Critical/PARTIAL — WORM registration FL-11 + live IdP connect remain). NEW `portal/identity-federation.js`: pluggable `registerIdentityProvider` (built-in `dev` provider NEVER accepted on a live path — `resolveClinicianIdentity` refuses a dev/unregistered provider in enforce-live, same posture as the WORM/secrets seams); `bindSignature` ties the signature to WHO signed + WHAT exact bytes (replaces free-text). The verified-identity block rides the **durable gate-record ENTRY envelope** (`gate-record-store.js` — NOT the frozen `GateRecordSchema`; same layering as `bundle_sha256`), hash-chained + tamper-evident, with a **fail-closed binding** (`record.clinician_id` MUST equal the verified subject). `server.js` `/decision` derives clinician_id + signature from the verified identity (403 on unverified/mismatch); the free-text clinician_id/signature form fields removed. **RETAIN core byte-unchanged** (`verification-gate.js`/`verifier.js`/`audit-store.js` — CI pin holds); `test/contract-portal-identity.js` (in npm test) + updated `contract-portal-review.js`. **No BLIND_STUB/DEAD_END opened.** 53 suites + verification + trunk:stub:all + licence:check + security:secrets green. LIVE IdP connect input-gated (operator protocol/vendor + creds).
@@ -152,16 +154,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: verification/data/lab-reference-ranges.json
   component_type: dataset
   state: PARTIAL
-  evidence: OPENED 2026-06-30 — 8 analytes, adult sex-agnostic, explicitly DEV/SYNTHETIC-ONLY and NOT clinically authoritative. Banner in the dataset; sign-off not obtained.
-  blocks: patient-facing use of the investigation parser
-  safety_class: degrades_safe (marked non-authoritative; mock/dev only)
-  invariant_exposure: clinical-safety (ranges must be clinically validated before live)
+  evidence: OPENED 2026-06-30 — 8 analytes, adult sex-agnostic, explicitly DEV/SYNTHETIC-ONLY. **FL-23 2026-07-13: CLINICAL sign-off OBTAINED (reviewer KL, in-session, recorded faithfully).** The file carries an `attestation` block (clinical_sign_off:true, regulatory_sign_off:false) + updated status: the clinician attests the 8 adult sex-agnostic ranges (troponin I, creatinine, potassium, sodium, haemoglobin, WCC, CRP, glucose) incl. critical thresholds as clinically valid for adult sex-agnostic use by the investigation parser. (No separate "authoritative set" to swap in — the attestation makes the current set the clinically-signed-off set for that scope; sanitiser policy already CONFIRMED at HIST-2.) Checksum UNCHANGED (computed over `analytes` only; the attestation block is top-level). REMAINING before patient-facing: **regulatory (TGA) sign-off (FL-50/L13)** + **sex/age-specific + broader analyte coverage** + a **live FHIR lab source (FL-32)**. Version stays dev-tagged until the full sign-off clears.
+  blocks: patient-facing use of the investigation parser — now blocked on regulatory + coverage + live lab source, NOT clinical validity
+  safety_class: degrades_safe (marked non-authoritative for patient use; mock/dev only)
+  invariant_exposure: clinical-safety (ranges clinically validated 2026-07-13; regulatory validation + live source still required before live)
   risk: High
   blocks_patient_facing: true
-  build_action: obtain clinical + regulatory sign-off on authoritative AU reference ranges (sex/age-specific); expand analyte coverage; version + checksum. Until then, parser is dev/synthetic-only.
+  build_action: REMAINING — regulatory (TGA) sign-off (FL-50); sex/age-specific + broader analyte coverage; connect a live lab source (FL-32); then finalise version + checksum. Clinical sign-off DONE (FL-23).
   gap_register_link: R-21
-  status: open
-  last_scanned: 2026-06-30
+  status: open (clinical sign-off obtained FL-23; regulatory + coverage + live source remain)
+  last_scanned: 2026-07-13
 ```
 
 ```md
@@ -875,16 +877,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: mcp/servers/knowledge/data/*.json
   component_type: dataset
   state: PARTIAL
-  evidence: OPENED 2026-06-30 — benign registry / Axis B templates / red-flag bank are DEV/SYNTHETIC-ONLY, not clinically authoritative (banners in each file). Sign-off not obtained.
-  blocks: patient-facing use of Trunk 5.0/7.0/9.0 curated content
-  safety_class: degrades_safe (marked non-authoritative; mock/dev only)
-  invariant_exposure: clinical-safety (curated clinical content must be validated before live)
+  evidence: OPENED 2026-06-30 — benign registry / Axis B templates / red-flag bank were DEV/SYNTHETIC-ONLY, not clinically authoritative. **FL-20 2026-07-13: CLINICAL sign-off OBTAINED (reviewer KL, in-session, recorded faithfully).** Each file now carries an `attestation` block (clinical_sign_off:true, regulatory_sign_off:false) + updated status: the clinician attests the records present (benign-if-all-absent criteria + SNOMED codes; Axis B must-not-miss differentials + discriminators; red-flag questions + T0–T5 tiers) as clinically valid for Trunk 7.0/5.0/9.0. Checksums UNCHANGED (computed over `records` only; the attestation block is top-level metadata). REMAINING before patient-facing: **regulatory (TGA) sign-off (FL-50/L13)** + **coverage expansion** beyond the current conditions + a live knowledge store (`knowledge-server-unbuilt`). Version stays dev-tagged until the full sign-off clears (a `-dev` → final bump would over-claim while regulatory is pending).
+  blocks: patient-facing use of Trunk 5.0/7.0/9.0 curated content — now blocked on regulatory + coverage + live store, NOT clinical validity
+  safety_class: degrades_safe (marked non-authoritative for patient use; mock/dev only)
+  invariant_exposure: clinical-safety (clinical content clinically validated 2026-07-13; regulatory validation + live store still required before live)
   risk: High
   blocks_patient_facing: true
-  build_action: clinical + regulatory sign-off on authoritative content (benign criteria, must-not-miss differentials, red-flag tiers); expand coverage; version + checksum.
+  build_action: REMAINING — regulatory (TGA) sign-off (FL-50); expand coverage; connect the live knowledge store; then finalise version + checksum. Clinical sign-off DONE (FL-20).
   gap_register_link: gap-knowledge-datasets
-  status: open
-  last_scanned: 2026-06-30
+  status: open (clinical sign-off obtained FL-20; regulatory + coverage + live store remain)
+  last_scanned: 2026-07-13
 ```
 
 ```md

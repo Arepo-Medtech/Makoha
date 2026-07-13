@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-20 + FL-23 — Clinical sign-off on the knowledge datasets + lab reference ranges (2026-07-13)
+
+**Status:** `npm test` green (incl. `contract-knowledge` + `contract-investigation-parser` unchanged); `verification` Pass:true; all gates green. RETAIN core untouched; no code changed; no new dependency. Records a **clinician attestation** (reviewer KL, in-session) — data only.
+
+**Plain language.** The four curated clinical datasets that had been marked "development/synthetic — not clinically signed off" (three knowledge datasets used by the triage trunks, plus the lab reference-range table used by the investigation parser) have now been reviewed and attested by the clinician as clinically correct for the content they contain. This is *clinical* sign-off — the datasets still need regulatory (TGA) sign-off and, for live use, a real data source, so **nothing became patient-facing**.
+
+**Content assessed before attesting** (not hollow placeholders): SNOMED-coded benign-condition criteria (benign registry); must-not-miss differentials with proper discriminators — cauda equina, SAH, giant cell arteritis, etc. (Axis B templates); tier-appropriate red-flag questions T0–T5 (red-flag bank); and 8 standard adult sex-agnostic reference ranges with critical thresholds (troponin/creatinine/K/Na/Hb/WCC/CRP/glucose).
+
+### Change
+- **`mcp/servers/knowledge/data/{benign-registry,axis-b-templates,redflags-bank}.json` [~]** (FL-20) and **`verification/data/lab-reference-ranges.json` [~]** (FL-23) — each gains a top-level `attestation` block (`method: clinician_attestation_in_session`, `clinical_sign_off: true`, `regulatory_sign_off: false`, reviewer KL, statement + scope) and an updated `status` field (clinician-attested clinical sign-off; regulatory + coverage + live source still required). **No version bump** — the datasets stay `-dev`-tagged because full sign-off (incl. regulatory) is not yet obtained, and promoting them would over-claim.
+- **Checksums UNCHANGED** — knowledge checksums are computed over `records`, the lab checksum over `analytes`; the `attestation` block is top-level metadata, so the receipt checksums (and the two contract tests) are unaffected. No consumer version-string drift (no bump, so `pipeline.js:53`'s mock receipt still matches).
+
+### Invariant check
+Clinical content clinically validated (2026-07-13); **regulatory validation NOT claimed** (the clinician provides clinical sign-off only; TGA rides FL-50/L13); datasets remain NON-patient-facing (blocked on regulatory + coverage + live source, not clinical validity); no attestation fabricated — recorded on the clinician's explicit in-session statement, same footing as the case-set + MIRAGE attestations; RETAIN core byte-unchanged; no code touched. ✔
+
+### Register / gap
+`knowledge-datasets-provisional` (FL-20) and `lab-reference-ranges-provisional` (FL-23, R-21) both NARROW: **clinical sign-off DONE**; REMAINING = regulatory (TGA) sign-off (FL-50) + coverage expansion + live source (knowledge store / FL-32 live lab). Both stay PARTIAL/open (regulatory + coverage + live are not clinician acts). FINISH-LINE FL-20/FL-23 → checked by the finish-line agent.
+
 ## MKT-P3 — Marketplace integration Phase 3: govern & confirm (consent-scope enforcement + governance-vendor omission) (2026-07-13)
 
 **Status:** `npm test` green (exit 0; 1 new contract suite); `eval:cases` PASS. `consent.js`, the ToolUniverse gateway, `audit-store.js`, and all seams byte-unchanged; no new dependency. Executes Phase 3 (the final ring) of `.planning/marketplace_integration_execution_plan.md`. **Nothing patient-facing.** Completes the increment: receipts (MKT-P1) + gates (MKT-P2) + governance confirmation (MKT-P3).
