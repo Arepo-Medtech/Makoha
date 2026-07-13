@@ -4,6 +4,14 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-30 — PharmCheck self-build: contract-lock → validated in staging (2026-07-13)
+
+**Status:** `npm test` green (10 new pharm contract suites); `verification` Pass:true; `licence:check` PASS. Frozen `pharm-check`/`pharm-intent` contracts unedited. No new dependency. Records a **clinician sign-off** (reviewer KL, in-session) on the seed datastore + the Step 5 staging validation.
+
+**Plain language.** Built Breath-Ezy's own synthetic pharmacology reference + decision core behind the frozen PharmCheck contract, replacing the direct mock-data read. Steps: (2) contract-lock — fixed a latent engine/schema drift, added the internal domain model + `PharmDataSource` seam + a `SYNTHETIC_SELF_DEVELOPED` flag state; (3) built a curated, provenanced, fail-closed authoring pipeline and seeded a **clinician-signed** datastore (NTI incl. warfarin+DOACs, renal eGFR rules, interactions, allergy groups, AU/SUSMP scheduling) + a cached PBS Public API v3 sync (live pull input-gated on the deploy secrets manager); (4) wired the engine through the seam so the signed datastore now DRIVES PharmCheck, and added the `nti_check` + unknown-drug escalation; (5) staging validation — 20/20 cases pass, 8/8 adversarial fail-safe, A/B parity + gate integrity ✓, **signed by KL** (`eval/pharmacology/validation-signoff.md`).
+
+**Register move.** `pharmacology-server-unbuilt` PARTIAL/Critical → **resolved** (self-build validated). Copyright boundary held (STOPP/START, TDM, DrugBank, AusDI = structure + facts + citation only). **Nothing became patient-facing** — datasets stay `-dev`, receipts stay `mode=mock`; patient-facing still needs regulatory (TGA) sign-off, a live CDS vendor (B4), the live PBS pull, AusDI 3b, and the Clinician Verification Portal.
+
 ## FL-20 + FL-23 — Clinical sign-off on the knowledge datasets + lab reference ranges (2026-07-13)
 
 **Status:** `npm test` green (incl. `contract-knowledge` + `contract-investigation-parser` unchanged); `verification` Pass:true; all gates green. RETAIN core untouched; no code changed; no new dependency. Records a **clinician attestation** (reviewer KL, in-session) — data only.

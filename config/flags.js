@@ -12,10 +12,22 @@
  * interpret image pixels must route its result to `unknown` rather than emit a
  * finding (E8).
  *
- * PHARM_CDS "FILLED" does NOT by itself authorise dosing output — it only selects
- * which pharmacology CDS content path is wired. The pharmacology firewall
- * (Trunk 8.0 / the pharmacology server) remains the sole enforcer of whether a
- * dose may reach output; this flag never bypasses it.
+ * PHARM_CDS selects which pharmacology CDS content path is wired; it NEVER bypasses
+ * the firewall. The pharmacology firewall (Trunk 8.0 / the pharmacology server)
+ * remains the sole enforcer of whether a dose may reach output. Three states:
+ *   - EMPTY (safe default) — no CDS content path; the cds-adapter slot is empty and
+ *     folds a HARD_FAIL (E7). This is the current release-blocker state (B4).
+ *   - FILLED — a contracted COMMERCIAL CDS vendor (MIMS-AU / SafeScript). Still does
+ *     not authorise output by itself: a validated endpoint + validated client are also
+ *     required (see cds-adapter/index.js).
+ *   - SYNTHETIC_SELF_DEVELOPED (FL-30) — Breath-Ezy's own provenanced synthetic source
+ *     feeds the deterministic ENGINE via the PharmDataSource seam. This is DISTINCT from
+ *     FILLED so a self-built source is never conflatable with a commercial vendor, and
+ *     distinct from EMPTY/mock so it is never mistaken for "no source". CRITICAL: this
+ *     state does NOT equal "FILLED", so it does NOT by itself unlock the authoritative
+ *     cds-adapter content slot and does NOT clear the E7 monotone HARD_FAIL — permitting
+ *     the synthetic engine verdict to stand is a Step-5 clinical decision gated on
+ *     staging validation + registered-pharmacist sign-off, never a flag flip.
  *
  * Pure module — no I/O beyond reading the passed-in `env` object (defaults to
  * `process.env`), so callers can inject a fake env in tests.
@@ -42,7 +54,7 @@ export const FLAGS = {
   },
   PHARM_CDS: {
     env: "HEYDOC_PHARM_CDS",
-    allowed: ["EMPTY", "FILLED"],
+    allowed: ["EMPTY", "FILLED", "SYNTHETIC_SELF_DEVELOPED"],
     safeDefault: "EMPTY",
     kind: "enum",
   },
@@ -94,10 +106,19 @@ export function ocrEngine(env = process.env) {
   return readFlag("OCR_ENGINE", env);
 }
 
-/** Resolved pharmacology CDS content state: "EMPTY" | "FILLED". Does not itself
- * authorise dosing output — see module comment. */
+/** Resolved pharmacology CDS content state: "EMPTY" | "FILLED" |
+ * "SYNTHETIC_SELF_DEVELOPED". Does not itself authorise dosing output, and
+ * SYNTHETIC_SELF_DEVELOPED does not unlock the authoritative cds-adapter slot
+ * (it is not "FILLED") — see module comment. */
 export function pharmCdsState(env = process.env) {
   return readFlag("PHARM_CDS", env);
+}
+
+/** True iff the pharmacology content path is the self-developed synthetic source
+ * (FL-30). Selects the SyntheticSelfDevelopedSource for the engine; never bypasses
+ * the firewall or the cds-adapter E7 floor. */
+export function isPharmSyntheticSelfDeveloped(env = process.env) {
+  return readFlag("PHARM_CDS", env) === "SYNTHETIC_SELF_DEVELOPED";
 }
 
 /**

@@ -117,19 +117,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: pharmacology-server-unbuilt
-  path: mcp/servers/pharmacology/{index.js,schemas.js,mock-data.json}, test/contract-pharmacology.js, mcp/mcpServers.template.json
+  path: mcp/servers/pharmacology/{index.js,schemas.js,engine.js,domain/model.js,sources/pharm-data-source.js,data/*.json}, scripts/pharm-{author,pbs-sync,validate}.mjs, eval/pharmacology/, test/contract-pharm-*.js
   component_type: mcp-server
-  state: PARTIAL
-  evidence: MOCK CORE + FIREWALL WIRED 2026-06-30 — deterministic engine (engine.js, all 5 checks) shared by the MCP server and the in-process firewall; dose_guidance ONLY here and ONLY on PASS/WARN, never on HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric→flag, no dose; facts-absent→BLOCKED_NO_PROOF; receipt mode=mock. Wired behind Trunk 8.0 (verification/pipeline.js): firewall_status gates continuation, HARD_FAIL blocks continuation with NO override path and is receipt-backed (verifier check 5 distinguishes legitimate vs invented hard-stops); grounding-pass kept separate. Contract-tested (contract-pharmacology + contract-firewall). PARTIAL: live vendor only.
-  blocks: (mock core + firewall cleared) — only live vendor connection remains
-  safety_class: can_emit_fabrication
-  invariant_exposure: no-autonomous-prescription (doses only here) + no-HARD_FAIL-override — both now enforced mechanically
-  risk: Critical
-  blocks_patient_facing: true
-  build_action: REMAINING — connect live vendor (MIMS-AU/SafeScript) in staging (Appendix A Phase 4) with synthetic-case validation before any patient-facing use. Mock data must never reach patient-facing.
+  state: COMPLETE
+  evidence: SELF-BUILD VALIDATED — FL-30 Steps 2–5 (2026-07-13). Engine output conforms to the frozen pharm-check schema (ajv-gated, contract-pharm-schema-conformance); internal domain model + PharmDataSource seam (SyntheticSelfDevelopedSource + LicensedFeedSource stub); PHARM_CDS third state SYNTHETIC_SELF_DEVELOPED (does NOT unlock the cds-adapter E7 floor). Curated CLINICIAN-SIGNED (KL 2026-07-13) datastore — 16 NTI (incl. warfarin+DOACs, KL-directed), 16 renal, 6 interactions, 3 allergy groups, 13 AU scheduling; fail-closed authoring pipeline; PBS Public API v3 cached-sync adapter (live pull input-gated on the deploy secrets backend). Engine WIRED through the seam (Step 4) — the signed datastore drives PharmCheck (proven: dabigatran/methadone signed-only HARD_FAIL). nti_check + unknown-drug escalation added (FL-30 §4.4). STAGING VALIDATION (Step 5): 20/20 cases pass, 8/8 adversarial fail-safe, A/B parity + gate integrity ✓ (eval/pharmacology/validation-report + validation-signoff.md, signed KL 2026-07-13). Receipts stay mode=mock / heydoc-pharm-synthetic-dev: (no mock-as-live) until regulatory sign-off flips them.
+  blocks: (self-build complete + staging-validated) — patient-facing readiness now tracked by SEPARATE items below, not this one
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription (doses only here) + no-HARD_FAIL-override — enforced mechanically and validated
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: RESOLVED for the self-developed core (FL-30). PATIENT-FACING still requires (separate gates, NOT this item): live CDS vendor B4 (cds-adapter EMPTY→HARD_FAIL), regulatory/TGA sign-off, live PBS pull in deploy, AusDI 3b structure notes, and the Clinician Verification Portal. Datasets stay -dev until regulatory sign-off.
   gap_register_link: R-22
-  status: in-progress
-  last_scanned: 2026-06-30
+  status: resolved
+  last_scanned: 2026-07-13
 ```
 
 ```md

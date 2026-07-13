@@ -1,0 +1,103 @@
+{
+  "_note": "Provenance + licence registry for the pharmacology clinical DATA sources (FL-30 Step 3). Distinct from integration/harvest-manifest.json, which tracks harvested CODE repos. Every clinical fact authored into mcp/servers/pharmacology/data/* MUST cite one of these source ids in its ProvenanceSchema.source_ref. Sources with use_restriction='structure_only' (STOPP/START, TDM, DrugBank, AusDI) supply FACTS + STRUCTURE + CITATION only — no monograph/criteria prose or tables are copied into the datastore (FL-30 Guardrail 1). This file is the backbone of the provenance-coverage report.",
+  "registry_version": "1.0.0",
+  "generated": "2026-07-13",
+  "sources": [
+    {
+      "id": "pbs-api-v3",
+      "name": "PBS Public API v3 (Pharmaceutical Benefits Scheme)",
+      "kind": "open_data",
+      "provider": "Australian Government Department of Health and Aged Care",
+      "licence": "CC BY (Commonwealth open data)",
+      "licence_status": "verified",
+      "use_restriction": "content_ingest",
+      "provides": ["pbs_item_code", "pbs_authority_required", "atc_classification", "prescriber_types", "formulary_restrictions"],
+      "url": "https://data-api-portal.health.gov.au/",
+      "notes": "Cached monthly (API design is download-and-store; rate-limited ~1 req/20s, current + 12 months). Subscription key via the secrets seam. Does NOT provide interactions / NTI / renal dosing / allergy / SUSMP scheduling / PDMP."
+    },
+    {
+      "id": "susmp-poisons-standard",
+      "name": "Standard for the Uniform Scheduling of Medicines and Poisons (SUSMP / Poisons Standard)",
+      "kind": "legislation",
+      "provider": "Therapeutic Goods Administration (TGA)",
+      "licence": "Commonwealth legislation (public)",
+      "licence_status": "verified",
+      "use_restriction": "content_ingest",
+      "provides": ["au_scheduling_S2_S10", "s8_controlled_drug_status"],
+      "url": "https://www.legislation.gov.au/",
+      "notes": "Legally-binding instrument on the Federal Register of Legislation. Authoritative for AU scheduling + the S8 firewall gate. NB: PBS 'schedule codes' are a DIFFERENT concept (subsidy listing), not SUSMP poisons schedules."
+    },
+    {
+      "id": "rxnorm-nlm",
+      "name": "RxNorm (US National Library of Medicine)",
+      "kind": "ontology",
+      "provider": "NLM",
+      "licence": "Public domain (US Government work)",
+      "licence_status": "verified",
+      "use_restriction": "content_ingest",
+      "provides": ["drug_normalisation", "synonyms", "ingredient_identity"],
+      "url": "https://www.nlm.nih.gov/research/umls/rxnorm/",
+      "notes": "Country-agnostic generic-level drug identity/normalisation (most generics common to US/UK/AU)."
+    },
+    {
+      "id": "who-atc-ddd",
+      "name": "WHO ATC/DDD classification",
+      "kind": "ontology",
+      "provider": "WHO Collaborating Centre for Drug Statistics Methodology",
+      "licence": "Usable with attribution",
+      "licence_status": "verified",
+      "use_restriction": "content_ingest",
+      "provides": ["atc_class"],
+      "url": "https://www.whocc.no/atc_ddd_index/",
+      "notes": "Drug classification → domain-model drug_class / atc_code."
+    },
+    {
+      "id": "stopp-start-v3",
+      "name": "STOPP/START criteria version 3 (O'Mahony et al., Age and Ageing 2023)",
+      "kind": "clinical_reference",
+      "provider": "O'Mahony et al. / Oxford University Press",
+      "licence": "Copyrighted academic publication",
+      "licence_status": "copyleft_reference_only",
+      "use_restriction": "structure_only",
+      "provides": ["renal_egfr_thresholds", "drug_condition_edge_cases", "drug_drug_edge_cases"],
+      "url": "https://doi.org/10.1093/ageing/afad012",
+      "notes": "STRUCTURE + THRESHOLD FACTS + CITATION only. Criterion prose NOT copied into the datastore; encoded rules are original authoring corroborated against AMH/TGA. Guardrail 1."
+    },
+    {
+      "id": "tdm-reference",
+      "name": "Therapeutic Drug Monitoring reference (NHS Tayside / Ninewells formulary)",
+      "kind": "clinical_reference",
+      "provider": "Department of Biochemical Medicine, Ninewells Hospital",
+      "licence": "Copyrighted formulary reference",
+      "licence_status": "copyleft_reference_only",
+      "use_restriction": "structure_only",
+      "provides": ["nti_drug_list", "therapeutic_intervals", "monitoring_pathways", "time_to_steady_state"],
+      "url": null,
+      "notes": "STRUCTURE + reference FACTS (therapeutic intervals, sampling timing, steady-state) + CITATION only. Intervals corroborated against AMH; prose/tables not copied. Guardrail 1."
+    },
+    {
+      "id": "drugbank-nti-category",
+      "name": "DrugBank Narrow Therapeutic Index category (DBCAT003972)",
+      "kind": "clinical_reference",
+      "provider": "DrugBank (OMx Personal Health Analytics)",
+      "licence": "Proprietary (academic licence only)",
+      "licence_status": "copyleft_reference_only",
+      "use_restriction": "structure_only",
+      "provides": ["nti_category_concept_pointer"],
+      "url": "https://go.drugbank.com/categories/DBCAT003972",
+      "notes": "STRUCTURE-ONLY POINTER. DrugBank content is proprietary (the page 403s to automated fetch). No list, text, or values captured; the NTI list is authored from open sources (TDM + primary literature) + clinician authoring. Guardrail 1."
+    },
+    {
+      "id": "ausdi-structure",
+      "name": "AusDI (structure/UX scoping only)",
+      "kind": "clinical_reference",
+      "provider": "Health Communication Network (HCN)",
+      "licence": "Proprietary commercial subscription",
+      "licence_status": "copyleft_reference_only",
+      "use_restriction": "structure_only",
+      "provides": ["monograph_field_taxonomy_observation_only"],
+      "url": "https://ausdi.hcn.com.au/",
+      "notes": "STRUCTURE-ONLY, one read-only session (clinician-driven, FL-30 Step 3b). Field taxonomy / record decomposition observed and recorded in docs/structure-notes/ausdi-structure-observations.md as 'structure reference — not content'. NO page text, tables, or record values persisted. Guardrail 1."
+    }
+  ]
+}

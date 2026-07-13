@@ -5,21 +5,30 @@
  *
  * Hard rules (see index.js header): dose guidance ONLY on PASS/WARN and never on
  * HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric (<18) -> flag, no
- * dose; absent facts -> NOT_RUN -> BLOCKED_NO_PROOF; every result mode='mock'.
- * Reference rules are MOCK/SYNTHETIC-ONLY (mock-data.json) — not a clinical source.
+ * dose; absent facts -> NOT_RUN -> BLOCKED_NO_PROOF.
+ *
+ * STEP 4 (FL-30): the engine reads clinical REFERENCE knowledge (allergy cross-reactivity,
+ * interactions, renal rules, AU scheduling, dose guidance) through the PharmDataSource seam
+ * — NOT from mock-data.json directly. The default source is the self-developed synthetic
+ * source, which reads the curated CLINICIAN-SIGNED datastore (data/*.json) and falls back to
+ * mock-data.json for any unpopulated capability. A caller may inject a validated live source
+ * at Step 5 via runPharmCheck's 3rd argument. Provenance stays honest via the source's
+ * receiptMode()/receiptUpstream() — 'mock' until Step-5 validation, never mock-as-live; the
+ * reference content is clinician-signed synthetic, never presented as a licensed vendor.
  */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { validatePharmIntent, validatePharmCheck } from "./schemas.js";
+import { SyntheticSelfDevelopedSource } from "./sources/pharm-data-source.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA = JSON.parse(readFileSync(join(__dirname, "mock-data.json"), "utf8"));
 const PHARM_VENDOR = process.env.PHARM_VENDOR || "stub";
 
-export const DATASET_VERSION = DATA.dataset_version;
+// One shared source instance (reads the datastore once at module load). Callers needing a
+// different source (a validated live source) pass it explicitly to runPharmCheck.
+const DEFAULT_SOURCE = new SyntheticSelfDevelopedSource();
 
-/** Standard Receipt for a pharmacology call (mode='mock' in dev). */
+export const DATASET_VERSION = DEFAULT_SOURCE.datasetVersion();
+
+/** Standard Receipt for a pharmacology call. `mode` is supplied by the caller from the
+ * data source's honest receiptMode() ('mock' until Step-5 validation). */
 export function receipt(mode = "mock") {
   return {
     request_id: `pharmchk-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -31,24 +40,18 @@ export function receipt(mode = "mock") {
   };
 }
 
-/** Which allergy cross-reactivity group (if any) a drug belongs to. */
-function groupOf(name) {
-  const n = String(name || "").toLowerCase();
-  const g = DATA.allergy_cross_reactivity_groups.find((grp) => grp.members.includes(n));
-  return g ? g.group : null;
-}
-
 /**
  * Run the deterministic safety check. Validates the intent and the produced
  * PharmCheck (never emits a malformed safety result). `resolved` carries the
  * patient facts the orchestrator would resolve from patient_facts_ref.
  * @returns {object} a validated PharmCheck
  */
-export function runPharmCheck(intentInput, resolved = {}) {
+export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   const intent = validatePharmIntent(intentInput);
+  const src_ = source || DEFAULT_SOURCE; // reference-knowledge source (seam)
   const drug = String(intent.drug_intent.drug_name || "").toLowerCase();
   const age = intent.clinical_context && intent.clinical_context.patient_age_years;
-  const src = [DATA.dataset_version];
+  const src = [src_.datasetVersion()];
   const checks = [];
   const flags = [];
   const nextData = [];
@@ -57,8 +60,8 @@ export function runPharmCheck(intentInput, resolved = {}) {
 
   // 1. Allergy cross-reactivity
   if (Array.isArray(resolved.allergens)) {
-    const grp = groupOf(drug);
-    const allergenGroups = resolved.allergens.map((a) => groupOf(a)).filter(Boolean);
+    const grp = src_.getAllergyGroup(drug);
+    const allergenGroups = resolved.allergens.map((a) => src_.getAllergyGroup(a)).filter(Boolean);
     if (grp && allergenGroups.includes(grp)) {
       addCheck("allergy_check", "HARD_FAIL", "critical", `cross-reactivity: ${drug} shares allergy group '${grp}' with a documented allergen`);
       flags.push({ flag_id: "flag-allergy", flag_type: "allergy_cross_reactivity", severity: "critical", description: `${drug} cross-reacts with a documented allergy (group ${grp})`, drug_a: drug });
@@ -71,7 +74,7 @@ export function runPharmCheck(intentInput, resolved = {}) {
   // 2. Drug-drug interaction
   if (Array.isArray(resolved.current_medications)) {
     const meds = resolved.current_medications.map((m) => String(m).toLowerCase());
-    const hits = DATA.drug_interactions.filter((ix) => (ix.a === drug && meds.includes(ix.b)) || (ix.b === drug && meds.includes(ix.a)));
+    const hits = src_.getInteractions(drug).filter((ix) => (ix.a === drug && meds.includes(ix.b)) || (ix.b === drug && meds.includes(ix.a)));
     if (hits.length) {
       const critical = hits.some((h) => h.severity === "critical");
       hits.forEach((h, i) => flags.push({ flag_id: `flag-ddi-${i}`, flag_type: h.severity === "critical" ? "interaction_severe" : "interaction_moderate", severity: h.severity === "critical" ? "critical" : "moderate", description: `${h.a} + ${h.b}: ${h.note}`, drug_a: h.a, drug_b: h.b }));
@@ -83,13 +86,19 @@ export function runPharmCheck(intentInput, resolved = {}) {
   }
 
   // 3. Renal dosing
-  const renalRule = DATA.renal_rules.find((r) => r.drug === drug);
+  const renalRule = src_.getRenalRule(drug);
   if (renalRule) {
     if (typeof resolved.egfr_ml_min === "number") {
       if (resolved.egfr_ml_min < renalRule.egfr_threshold_ml_min) {
         const contra = renalRule.action === "renal_contraindicated";
         addCheck("renal_dosing_check", contra ? "HARD_FAIL" : "WARN", contra ? "critical" : "moderate", `${drug}: ${renalRule.action} below eGFR ${renalRule.egfr_threshold_ml_min}`);
-        flags.push({ flag_id: "flag-renal", flag_type: renalRule.action, severity: contra ? "critical" : "moderate", description: `${drug} ${renalRule.action}`, drug_a: drug, renal_threshold: renalRule.egfr_threshold_ml_min });
+        // Frozen schema: renal_threshold is an OBJECT. contraindicated_below for an
+        // absolute-contraindication rule, dose_reduction_below for an adjustment rule;
+        // both carry the patient's actual eGFR so a clinician sees the margin.
+        const renal_threshold = contra
+          ? { patient_egfr: resolved.egfr_ml_min, contraindicated_below: renalRule.egfr_threshold_ml_min }
+          : { patient_egfr: resolved.egfr_ml_min, dose_reduction_below: renalRule.egfr_threshold_ml_min };
+        flags.push({ flag_id: "flag-renal", flag_type: renalRule.action, severity: contra ? "critical" : "moderate", description: `${drug} ${renalRule.action}`, drug_a: drug, renal_threshold });
       } else addCheck("renal_dosing_check", "PASS");
     } else {
       addCheck("renal_dosing_check", "NOT_RUN", undefined, "renal function (eGFR) not provided", ["egfr"]);
@@ -97,22 +106,40 @@ export function runPharmCheck(intentInput, resolved = {}) {
     }
   } else addCheck("renal_dosing_check", "PASS", undefined, "no renal rule for this drug");
 
-  // 4. AU scheduling — treat as S8 if EITHER the mock map OR the intent declares it,
-  // so a map miss (brand/spelling variant) or a map entry can't suppress the PDMP
-  // check for a controlled drug.
-  const mappedSchedule = DATA.schedule_map[drug];
-  const declaredSchedule = intent.drug_intent.schedule;
-  const schedule = mappedSchedule || declaredSchedule || "unknown";
-  const isS8 = mappedSchedule === "S8" || declaredSchedule === "S8";
-  addCheck("schedule_check", "PASS", undefined, `AU schedule: ${schedule}`);
-
-  // 5. S8 PDMP (SafeScript)
+  // 4/5. AU scheduling (SUSMP / Poisons Standard) + S8 PDMP gate.
+  // General (non-S8) scheduling is INFORMATIONAL metadata, not a separately gated
+  // check: the frozen pharm-check check_id enum has no general 'schedule' check and
+  // the contract is frozen (FL-30 ruling 5b — no amendment; the former illegal
+  // "schedule_check" is removed). Only S8 gates, via the PDMP (SafeScript) check.
+  // Treat as S8 if EITHER the mock schedule map OR the intent declares it, so a map
+  // miss (brand/spelling variant) can't suppress the PDMP check for a controlled drug.
+  const isS8 = src_.getSchedule(drug) === "S8" || intent.drug_intent.schedule === "S8";
   if (isS8) {
-    if (resolved.s8_pdmp_checked === true) addCheck("schedule_8_check", "PASS", undefined, "PDMP check recorded");
-    else {
-      addCheck("schedule_8_check", "HARD_FAIL", "critical", "S8 drug requires a PDMP (SafeScript) check — not performed");
-      flags.push({ flag_id: "flag-s8", flag_type: "schedule_8_pdmp_required", severity: "critical", description: `${drug} is S8; PDMP (SafeScript) check required before prescribing`, drug_a: drug, au_reference: "SafeScript" });
+    const s8ref = "SUSMP Poisons Standard — Schedule 8 (Controlled Drug); SafeScript PDMP required";
+    if (resolved.s8_pdmp_checked === true) {
+      addCheck("schedule_8_check", "PASS", undefined, "AU schedule S8 (SUSMP); PDMP (SafeScript) check recorded");
+    } else {
+      addCheck("schedule_8_check", "HARD_FAIL", "critical", "AU schedule S8 (SUSMP): S8 drug requires a PDMP (SafeScript) check — not performed");
+      flags.push({ flag_id: "flag-s8", flag_type: "schedule_8_pdmp_required", severity: "critical", description: `${drug} is S8 (SUSMP Poisons Standard); PDMP (SafeScript) check required before prescribing`, drug_a: drug, au_reference: s8ref });
       nextData.push("Perform S8 PDMP (SafeScript) check.");
+    }
+  }
+
+  // NTI (narrow therapeutic index). Authoritative NTI status comes from the clinician-signed
+  // register (getNti); the intent's is_nti_candidate is a CONSERVATIVE additional trigger
+  // (safety-netting — it can raise the check but never suppress it). Per the frozen contract's
+  // hard_fail_triggers, an NTI drug with NO documented monitoring plan is a HARD_FAIL.
+  // `nti_monitoring_documented` is the resolved fact (mirrors s8_pdmp_checked).
+  const ntiRec = src_.getNti(drug);
+  const isNti = (ntiRec && ntiRec.is_nti === true) || intent.drug_intent.is_nti_candidate === true;
+  if (isNti) {
+    const target = ntiRec && ntiRec.therapeutic_interval ? ` (target ${ntiRec.therapeutic_interval})` : "";
+    if (resolved.nti_monitoring_documented === true) {
+      addCheck("nti_check", "PASS", undefined, `NTI drug: monitoring plan documented${target}`);
+    } else {
+      addCheck("nti_check", "HARD_FAIL", "critical", `NTI drug (${drug}) without a documented monitoring plan${ntiRec && ntiRec.monitoring_hint ? ` — ${ntiRec.monitoring_hint}` : ""}`);
+      flags.push({ flag_id: "flag-nti", flag_type: "nti", severity: "critical", description: `${drug} is a narrow therapeutic index drug; a monitoring plan${target} must be documented before prescribing`, drug_a: drug });
+      nextData.push("Document the NTI monitoring plan (levels / target range).");
     }
   }
 
@@ -142,11 +169,27 @@ export function runPharmCheck(intentInput, resolved = {}) {
   else if (checks.some((c) => c.status === "WARN")) status = "WARN";
   else status = "PASS";
 
+  // Unknown drug → escalate, never a silent pass (FL-30 §4.4). If the drug is not in the
+  // reference set the engine cannot vouch for its safety; a PASS/WARN downgrades to
+  // BLOCKED_NO_PROOF (a HARD_FAIL already blocks and is more severe, so it stands).
+  const known = typeof src_.knownDrug === "function" ? src_.knownDrug(drug) : true;
+  if (!known && status !== "HARD_FAIL") {
+    status = "BLOCKED_NO_PROOF";
+    nextData.push(`Drug '${drug}' is not in the pharmacology reference set — clinician verification required before proceeding.`);
+  }
+
   // Dose guidance ONLY when safe to proceed — never on HARD_FAIL/BLOCKED/paediatric.
   let dose_guidance;
   if ((status === "PASS" || status === "WARN") && !paediatric) {
-    const dg = DATA.dose_guidance_mock[drug];
-    if (dg) dose_guidance = { ...dg, ...(status === "WARN" ? { adjustment_required: true, adjustment_reason: "see flags" } : {}) };
+    const dg = src_.getDoseGuidance(drug);
+    if (dg) {
+      // Defensive: a datastore dose record may carry non-dose fields (ingredient, provenance).
+      // PharmCheck.dose_guidance is strict — pick ONLY the frozen dose keys so extra fields
+      // can never break validation when the dose-guidance dataset is later populated.
+      const DOSE_KEYS = ["safe_dose_range", "adjustment_required", "adjustment_reason", "monitoring_required", "duration_guidance", "pbs_authority_required", "pbs_item_code"];
+      const picked = Object.fromEntries(DOSE_KEYS.filter((k) => k in dg).map((k) => [k, dg[k]]));
+      dose_guidance = { ...picked, ...(status === "WARN" ? { adjustment_required: true, adjustment_reason: "see flags" } : {}) };
+    }
   }
 
   const out = {
@@ -158,9 +201,9 @@ export function runPharmCheck(intentInput, resolved = {}) {
     flags,
     ...(dose_guidance ? { dose_guidance } : {}),
     next_data_requests: [...new Set(nextData)],
-    receipt: receipt("mock"),
-    vendor_reference: `MOCK:${DATA.dataset_version}`,
-    mode: "mock",
+    receipt: receipt(src_.receiptMode()),
+    vendor_reference: src_.receiptUpstream(),
+    mode: src_.receiptMode(),
     checked_at_utc: new Date().toISOString(),
   };
   return validatePharmCheck(out); // never emit a malformed safety result

@@ -27,6 +27,7 @@ const ResolvedFactsSchema = z
     egfr_ml_min: z.number().optional(),
     pregnancy: z.boolean().optional(),
     s8_pdmp_checked: z.boolean().optional(),
+    nti_monitoring_documented: z.boolean().optional(),
   })
   .optional();
 
