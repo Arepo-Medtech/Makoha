@@ -12,6 +12,11 @@ import { z } from "zod";
 
 const MODE = ["live", "dry_run", "mock"];
 const SERVERS = ["docs", "knowledge", "identity-au", "terminology", "fhir-broker", "pharmacology", "messaging-geo"];
+
+// Receipt trust-qualifier vocabularies (MI-02). Exported so the source ranker
+// (MI-03) and jurisdiction guard (MI-20) bind to one definition, not a copy.
+export const JURISDICTION_TAGS = ["AU_endorsed", "US_context", "non_AU"];
+export const CONFIDENCE_BANDS = ["high", "moderate", "low", "provisional"];
 const TRUNK_IDS = ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"];
 
 const FACT_CATEGORIES = [
@@ -27,6 +32,11 @@ export const ReceiptSchema = z
     timestamp_utc: z.string().datetime(),
     upstream: z.string().min(1),
     mode: z.enum(MODE),
+    // MI-02 additive-monotone trust qualifiers — optional, so every legacy
+    // MCP-call receipt still validates unchanged.
+    jurisdiction_tag: z.enum(JURISDICTION_TAGS).optional(),
+    confidence: z.enum(CONFIDENCE_BANDS).optional(),
+    source_rank: z.number().int().min(1).max(5).optional(),
     tool: z.string().optional(),
     server: z.enum(SERVERS).optional(),
     latency_ms: z.number().int().min(0).optional(),

@@ -22,6 +22,22 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveTxEndpoint, validateCodeLive } from "./live-adapter.js";
+import { validateCode as ontoserverValidateCode } from "./ontoserver-client.js";
+
+// AU-specific systems the CSIRO-targeted live-adapter maps to null. When a live
+// endpoint holding AU content (self-host / NCTS, B6) is configured, these route
+// through the Ontoserver client instead (MI-05, PARTIAL). Against the sandbox they
+// simply fail safe. SNOMED_CT keeps the existing live-adapter path (its intl URI
+// resolves AU concepts on an AU-edition server).
+const ONTOSERVER_AU_SYSTEMS = new Set(["AMT"]);
+
+/** One dispatcher so the live tools share identical routing. Fail-safe on every path. */
+async function validateCodeDispatch(baseUrl, system, code) {
+  if (ONTOSERVER_AU_SYSTEMS.has(system)) {
+    return ontoserverValidateCode({ baseUrl, system, code });
+  }
+  return validateCodeLive(baseUrl, system, code);
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODE = process.env.HEYDOC_MODE_DEFAULT || "mock";
@@ -98,7 +114,7 @@ server.registerTool(
     if (LIVE_ENDPOINT) {
       let response;
       if (query.kind === "code") {
-        const v = await validateCodeLive(LIVE_ENDPOINT.url, system, query.value);
+        const v = await validateCodeDispatch(LIVE_ENDPOINT.url, system, query.value);
         response = v.validated
           ? { status: "hit", concept: { system, code: query.value, display: v.display || query.value, version: v.version } }
           : { status: "miss", detail: v.reason };
@@ -146,7 +162,7 @@ server.registerTool(
     }
     // Live path (M11 P1): validate against the configured FHIR server; fail-safe.
     if (LIVE_ENDPOINT) {
-      const v = await validateCodeLive(LIVE_ENDPOINT.url, system, code);
+      const v = await validateCodeDispatch(LIVE_ENDPOINT.url, system, code);
       const payload = { valid: v.validated, display: v.validated ? (v.display || code) : undefined, version: v.version, detail: v.validated ? undefined : v.reason, receipt: receipt("live", requestId, LIVE_ENDPOINT.url) };
       return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
     }
