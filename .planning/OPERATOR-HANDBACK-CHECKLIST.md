@@ -2,7 +2,7 @@
 
 **Purpose:** every remaining item that cannot be closed from inside the repo — what it is, what YOU do on your side, what you hand back, and what I do with it. As of `main @ de99ab8` (PRs #35–#39 merged; LIVE_PLAN Track A complete through the product surface).
 
-> **Reconciled 2026-07-13 to `main @ 4f354a8` (PRs #40–#46 merged).** Since the original baseline: B3 aws-sm backend built + JSON-tolerant (#40/#44), default model → `claude-sonnet-5` (#41), B2 App Runner deploy scaffolding built (#42), `smoke:llm` aws-sm opt-in (#43), B1 S3 Object Lock WORM adapter built (#45) + extended to the PPP-TTT ledger seam so all three medicolegal chains are WORM-coverable (#46). The A1 Sonnet-5 live path was validated green end-to-end on AWS (2026-07-12). Items below are amended in place; the registers remain the current-state source of truth.
+> **Reconciled 2026-07-13 to `main @ b940d94` (PRs #40–#55 merged).** Since the original baseline: B3 aws-sm backend built + JSON-tolerant (#40/#44), default model → `claude-sonnet-5` (#41), B2 App Runner deploy scaffolding built (#42), `smoke:llm` aws-sm opt-in (#43), B1 S3 Object Lock WORM adapter built (#45) + extended to the PPP-TTT ledger seam so all three medicolegal chains are WORM-coverable (#46), and the finish-line engineering wave (FL-01 consent capture #49, FL-02 MIRAGE corpus #51, FL-03 hygiene #53, **FL-42 clinician identity-federation seam #55** — see new **B5**). Remaining engineering is the ENG-half of the operator handbacks below; pure un-gated ENG work is drained. The A1 Sonnet-5 live path was validated green end-to-end on AWS (2026-07-12). Items below are amended in place; the registers remain the current-state source of truth.
 
 ---
 
@@ -50,7 +50,7 @@ These flip already-merged, contract-tested adapters from mock to live. All run i
 - **Blocks:** running the Clinician Verification Portal in a live-enforced context (it refuses to start without a token — by design).
 - **You do:** put `HEYDOC_PORTAL_TOKEN` in the secrets manager for staging/production.
 - **Hand back:** "token set at `<ref>`."
-- **Then I:** nothing to build — the portal consumes it. (Real clinician identity *federation*, vs a shared token, is a later UX build — flag it when you want it.)
+- **Then I:** nothing to build — the portal consumes it. (The shared token is now the coarse *transport* gate only; the attesting clinician's *identity* is separately federation-verified as of FL-42 — see **B5** for the live provider connect.)
 
 ---
 
@@ -83,6 +83,18 @@ These flip already-merged, contract-tested adapters from mock to live. All run i
 - **You do:** choose (**CodeQL** needs GitHub Advanced Security on a private repo; **semgrep** is licence/repo-flexible).
 - **Hand back:** which + any licence/token in the secrets manager.
 - **Then I:** wire it as a blocking CI job alongside the existing secret-scan.
+
+### B5 — Live clinician-identity provider (FL-43; part of the Portal release blocker) · **[DECIDE] + [CRED]** — ⏳ **seam BUILT (2026-07-13, PR #55); live provider connect is yours to choose**
+- **Blocks:** a live-enforced portal recording a *verified*-clinician sign-off. This is one of the two remaining pieces of the Clinician Verification Portal release blocker (the other is B1's WORM registration). **Why it matters:** without a real provider the portal refuses every decision on a live path by design — the built-in `dev` identity provider is fail-closed OUT of any live-enforced context, so a shared token alone can no longer establish *who* attested.
+- **Done (mine):** `portal/identity-federation.js` — a fail-closed federation seam. `registerIdentityProvider(name, adapter)` plugs a provider in behind one contract; `resolveClinicianIdentity()` refuses a `dev`/unregistered provider under `enforce_live`; `bindSignature()` ties each signature to the verified identity + the exact output hash (no free-text signature). The verified identity is hash-chained onto the durable gate record and bound to it (`record.clinician_id` must equal the verified subject, or the append is refused). The verified identity never enters the LLM context packet. Contract-tested (`contract-portal-identity.js`). `HEYDOC_PORTAL_IDP` selects the active provider (default `dev`).
+- **You DECIDE:** the **protocol + provider**:
+  - **OIDC** (recommended — e.g. Okta / Entra ID / Auth0 / an AHPRA-federated broker): hand back the **issuer URL**, **client ID**, **JWKS/discovery URL**, and the **claim name that carries the AHPRA registration number** (so it lands in the medicolegal record). Client secret → secrets manager.
+  - **SAML**: hand back the **IdP metadata URL/XML** + the **assertion attribute** that carries the AHPRA registration.
+  - **Direct AHPRA / other**: name it and I confirm the adapter shape.
+- **You DO (deploy host):** create the app/client registration with your IdP; put the client secret (and any signing cert) in the secrets manager; set `HEYDOC_PORTAL_IDP=<provider-name>` on the staging/production deploy.
+- **Hand back:** the protocol + the config above (issuer/client-id/JWKS **or** SAML metadata) + the **AHPRA claim/attribute name** + "secret set at `<ref>`."
+- **Then I:** write the ~1-file provider adapter behind the seam — it validates the IdP token/assertion itself and maps its verified claims to `{ subject, ahpra_registration, display_name }` — register it at deploy via `registerIdentityProvider()`, and prove end-to-end in staging that a live-enforced `/decision` records a verified, signature-bound clinician (and still refuses an unverified one). I never handle the secret value; the resolver fetches it on your host at boot, same discipline as B3.
+- **⚠️ Note:** the AHPRA registration number is the medicolegal proof of *who* signed off — decide up front which IdP claim carries it, or the gate record's `ahpra_registration` will be null. No dev/mock identity is ever accepted on a live path (fail-closed), so there is no "temporary shared-login" shortcut to production.
 
 ---
 
