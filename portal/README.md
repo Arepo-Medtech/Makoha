@@ -32,8 +32,25 @@ honour `released: false` by escalating to a clinician, never by retrying around
 the gate. A patient path that does not route through this gate is a Critical
 defect (F13, portal bypass).
 
+## Clinician identity (FL-42)
+
+The attesting clinician is a **federation-verified** identity, not a free-text
+field. `identity-federation.js` is a fail-closed seam: `registerIdentityProvider`
+plugs in the production IdP (OIDC/SAML/AHPRA), selected via `HEYDOC_PORTAL_IDP`;
+the built-in `dev` provider is development-only and is **refused on any
+live-enforced path**. The `/decision` route derives `clinician_id` and the
+signature from the verified identity (a body-supplied name that disagrees is
+rejected), and the durable gate-record entry carries a hash-chained, tamper-
+evident identity block bound to the signature (`record.clinician_id` must equal
+the verified subject, or the append is refused). The verified identity never
+enters the LLM context packet — it rides the medicolegal trail only.
+
+**To go live:** register a real provider at deploy and set `HEYDOC_PORTAL_IDP`
+(operator protocol/vendor choice + credentials — input-gated).
+
 ## What remains before "portal built"
 
-Clinician-facing review UI/workflow, authenticated clinician identity +
-signature capture, and durable gate-record storage (M8). Until those exist —
-and the other release blockers are green — **no patient path opens**.
+The **WORM substrate registration** for gate records (R-39, operator backend +
+retention), the **live identity-provider connect** (above), and — gated behind
+those and the other release blockers — the patient path itself. Until all are
+green, **no patient path opens**.

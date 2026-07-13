@@ -89,6 +89,22 @@ function substrate() {
 }
 
 // --- chain --------------------------------------------------------------------
+/** Verified-clinician identity block (FL-42). Rides the durable ENTRY envelope,
+ *  NOT the frozen GateRecordSchema — same layering as bundle_sha256. Proves the
+ *  decision was made by a federation-verified clinician, not a shared-token
+ *  holder typing a name. Optional for backward compatibility (a legacy/mock
+ *  caller may omit it); when present it is hash-chained and bound to the record. */
+const IdentitySchema = z
+  .object({
+    verified: z.boolean(),
+    idp: z.string().min(1),
+    subject: z.string().min(1),
+    ahpra_registration: z.string().nullable().optional(),
+    display_name: z.string().nullable().optional(),
+    session_id: z.string().min(1),
+  })
+  .strict();
+
 const GateEntrySchema = z
   .object({
     seq: z.number().int().nonnegative(),
@@ -96,6 +112,7 @@ const GateEntrySchema = z
     recorded_at_utc: z.string().datetime(),
     prev_hash: z.string().regex(HASH),
     bundle_sha256: z.string().regex(HASH).optional(), // what the reviewer was shown
+    identity: IdentitySchema.optional(), // WHO attested (FL-42 federation)
     record: GateRecordSchema, // the clinician decision (frozen contract)
     entry_hash: z.string().regex(HASH),
   })
@@ -126,11 +143,27 @@ export function readGateRecordEntries() {
 /**
  * Record a clinician decision durably, THEN hydrate the frozen gate registry.
  * @param {object} record - VerificationGateRecord (validated against the frozen contract)
- * @param {{ bundle_sha256?: string }} [opts] - hash of the ReviewBundle shown
+ * @param {{ bundle_sha256?: string, identity?: object }} [opts] - hash of the
+ *   ReviewBundle shown, and (FL-42) the verified-clinician identity block. When
+ *   an identity is supplied its `subject` MUST equal the record's clinician_id —
+ *   the frozen record's clinician can never disagree with the verified identity
+ *   (fail-closed binding).
  * @returns {{ entry: object, record: object }}
  */
 export function recordDecisionDurable(record, opts = {}) {
   const parsed = GateRecordSchema.parse(record); // frozen contract gates first
+
+  let identity;
+  if (opts.identity !== undefined) {
+    identity = IdentitySchema.parse(opts.identity);
+    // BINDING (fail-closed): the attested clinician_id must be the verified one.
+    if (identity.subject !== parsed.clinician_id) {
+      throw new Error(
+        `gate-record identity binding: record.clinician_id="${parsed.clinician_id}" does not match the verified identity subject="${identity.subject}" — refusing to persist a decision whose clinician disagrees with the federated identity`
+      );
+    }
+  }
+
   const entries = readGateRecordEntries();
   const prev = entries[entries.length - 1];
   const prev_hash = prev ? prev.entry_hash : GATE_GENESIS_HASH;
@@ -141,6 +174,7 @@ export function recordDecisionDurable(record, opts = {}) {
     recorded_at_utc: new Date().toISOString(),
     prev_hash,
     bundle_sha256: opts.bundle_sha256,
+    identity,
     record: compact(parsed),
   });
   const entry = { ...withoutHash, entry_hash: computeEntryHash(withoutHash, prev_hash) };

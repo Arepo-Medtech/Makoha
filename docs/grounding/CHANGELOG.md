@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-42 — Clinician identity federation: verified attestation + signature binding (portal remainder) (2026-07-13)
+
+**Status:** `npm test` **53/53** green (+`contract-portal-identity`); `verification` Pass:true; `trunk:stub:all` 9/9; `licence:check` + `security:secrets` PASS; **RETAIN core byte-unchanged** (`verification-gate.js`/`verifier.js`/`audit-store.js` — `git diff --stat` empty, CI pin holds); no new dependency. Plan: `.planning/IDENTITY-FEDERATION-PLAN.md`.
+
+**Plain language.** Until now the review portal trusted a single shared password, and the clinician's name + signature on a sign-off were free-text boxes anyone with the password could type. Now the attesting clinician is a *verified* identity from a trusted provider, and the signature is computed from who they are and exactly what they signed — so a sign-off can't be recorded under someone else's name or moved to different output. This is the ENG half of the Clinician Verification Portal release blocker; the live identity provider (the operator's OIDC/SAML/AHPRA choice) is the remaining input-gated step.
+
+### Change
+- **`portal/identity-federation.js` [NEW]** — the fail-closed federation seam. `registerIdentityProvider(name, adapter)` (pluggable, mirrors the substrate/secrets seams); a built-in **`dev`** provider yields a synthetic identity from an explicit dev header and is **never** accepted on a live path. `resolveClinicianIdentity(req, mode)` REFUSES (fail-closed) a dev or unregistered provider in an enforce-live context — a dev identity can never stand in for a verified clinician (same discipline as the WORM substrate refusing a non-local unregistered backend). `bindSignature(identity, hash)` derives `sig:federated:<idp>:<ahpra>:<proof>` bound to WHO signed and WHAT exact bytes, replacing free-text. The verified identity never enters the LLM packet — it rides the medicolegal trail only.
+- **`portal/gate-record-store.js` [~]** — the durable `GateEntrySchema` gains an optional `identity` block (strict) on the ENTRY envelope — NOT the frozen `GateRecordSchema` (same layering as `bundle_sha256`), hash-chained + tamper-evident. `recordDecisionDurable(record, { bundle_sha256, identity })` adds a **fail-closed binding**: when an identity is supplied, `record.clinician_id` MUST equal `identity.subject` or the append is REFUSED. Backward-compatible (identity optional; legacy/mock callers unchanged).
+- **`portal/server.js` [~]** — `/decision` resolves the reviewer's verified identity and DERIVES `clinician_id` + `signature_ref` from it (403 on an unverified reviewer or a body-supplied `clinician_id` that disagrees); passes the identity block to the durable store. The review form drops the free-text clinician_id/signature inputs (identity shown read-only; signature auto-bound; submit disabled until verified).
+- **`test/contract-portal-identity.js` [NEW]** + **`contract-portal-review.js` [~]** — dev resolves in dev / refuses in live; a registered live provider verifies; signature bound to who+what; clinician_id≠verified-subject REFUSED; tampering the identity block breaks the chain; legacy no-identity path still works; the HTTP `/decision` now requires a verified identity (403 without) and records a bound signature.
+
+### Invariant check
+Human-in-the-loop STRENGTHENED (attesting clinician verified, not self-asserted) · frozen gate + its schema byte-unchanged (identity rides the entry envelope) · medicolegal trail more tamper-evident (identity hash-chained) · fail-closed everywhere (no verified identity in enforce-live → no decision) · verified identity never enters the LLM packet · no patient path opened. ✔
+
+### Register / gap
+`clinician-verification-portal-unbuilt` NARROWS (stays **Critical/PARTIAL/pf:true**): identity-federation seam + signature binding built (mock-gated). REMAINING: WORM registration (R-39/FL-11, operator) + the **live IdP connect** (operator [DECIDE] protocol/vendor + credentials — input-gated) + the patient path (none exists). FINISH-LINE FL-42 → checked by the finish-line agent.
+
 ## FL-03 — Low-risk hygiene batch: reference-case manifest retrofit + repo-digest firewall fixture (2026-07-13)
 
 **Status:** `npm test` green; `verification` Pass:true; **`eval:cases` PASS with named exemptions: 0**; `bench:mirage` OK; `licence:check` + `security:secrets` PASS. RETAIN core untouched; no new dependency. Two Low-risk register items resolved.
