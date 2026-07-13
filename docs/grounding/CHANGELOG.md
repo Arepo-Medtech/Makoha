@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## L12 — Consent capture: recording mechanism + fail-closed persistence seam (FL-01 / R-40) (2026-07-13)
+
+**Status:** `npm test` **52/52** green (+`contract-consent`); `verification` Pass:true; `trunk:stub:all` 9/9; `licence:check` PASS; `security:secrets` PASS; **RETAIN core byte-unchanged** (sha256 CI pin holds); **no new repo dependency**. Plan: `.planning/CONSENT-PLAN.md` (operator-approved as-is 2026-07-13, both defaults accepted).
+
+**Plain language.** A patient can now grant, decline, or revoke narrowly-scoped consents during a consult, and every decision is recorded as tamper-evident evidence. Nothing new is stored about patients: consent capture is proof-keeping, not a storage unlock — the system still destroys everything at session end, and the one gate a future storage feature would have to pass (`requireActiveConsent`) refuses by default.
+
+### Change
+- **`mcp/schemas/consent-record.schema.json` + `verification/consent-schema.js` [NEW]** — PHI-free by construction (`.strict()`; session_ref + closed enums + proven omnibus bindings + hashes; a free-text field is unrepresentable). Current state is DERIVED from the latest event per (session_ref, consent_type) — the store is append-only, never updated in place. v1 types: `session_persistence` (heydoc-first-party) + `mhr_data_sharing`/`telehealth_consent` (omnibus-bound via `provenPath()` + the pinned dataset receipt — a consent type is never minted; MHR is RECORD-ONLY, nothing uploads).
+- **`verification/consent.js` [NEW]** — `captureConsent` (bounded granted/declined, only inside an OPEN encounter; a decline is recorded as evidence and never affects care), `revokeConsent` (refuses a non-active revoke), `consentStatus`/`getActiveConsent`, and **`requireActiveConsent()` — the fail-closed seam every FUTURE persistence path MUST call**: `BLOCKED_NO_CONSENT` on every branch (no record / declined / revoked / session-ended / unknown type / malformed ref / store failure).
+- **`verification/consent-store.js` [NEW]** — the FOURTH append-only hash chain (`consent-records.jsonl`; audit-store pattern: canonical JSON, `entry_hash = sha256(canonical+prev)`, `verifyConsentChain`), with its **substrate seam built on day one** (`registerConsentStoreSubstrate`, two-op; non-local unregistered REFUSES — the R-43 lesson applied at birth). Strict validation BEFORE the durable write.
+- **`integration/audit-substrates/s3-object-lock.js` [~]** — `registerWormAudit()` now registers on **all four** medicolegal seams (`HEYDOC_CONSENT_SUBSTRATE=s3-object-lock`); `test/contract-audit-worm-s3.js` extended (consent chain through the WORM substrate: COMPLIANCE/write-once/seq-collision asserted).
+- **`verification/session-store.js` [~ additive]** — close-hook registry (`registerCloseHook`); `closeEncounter()` runs hooks BEFORE destruction and NEVER lets a throwing hook block it (surfaced as `hook_errors`). consent.js registers the inactivation hook → `expires: session_end` is mechanical.
+- **`patient/consult-flow.js` + `consult-server.js` [~]** — bounded intake consent step: `parseConsentIntake` (silence records NOTHING; free text never becomes a consent), `captureIntakeConsents` (SUPPRESSED on an emergency result — never a step on a STOP/T5 path; capture errors fail-safe, never into the screen path); decline is the pre-selected default; one POST = one encounter, so recorded consents demonstrably expire at session end.
+- **`test/contract-consent.js` [NEW — load-bearing]** — the **no-unlock assertion** (`persistContent` refuses non-synthetic with an ACTIVE consent) + **packet isolation** (static scan: pipeline/context-allowlist/trunk files carry zero consent references) + the default-deny matrix + chain tamper + seam fail-closed + omnibus proof + close-hook resilience + bounded-intake/emergency-suppression.
+- **`docs/grounding/privacy-app-mapping.md` [NEW]** — APP 1–13 → mechanism map + data-flow register (D1–D8); org decisions flagged **[ORG]**, never made; MHR Act touchpoint documented as capture-only.
+
+### Invariant check
+No packet change (statically asserted) · no persistence opened (`persistContent` synthetic-only untouched; destroy-on-close untouched) · patient-data minimisation (session_ref + enums only; no demographics/IHI representable) · no codes/types minted (omnibus receipt-proven) · RETAIN core byte-unchanged · fail-safe default everywhere · consent never a barrier on an emergency path. ✔
+
+### Register / gap move
+`consent-capture-unbuilt` → **COMPLETE/resolved**; R-40 → **capture half resolved** (L12 org/security siblings stay open: SAST R-38/FL-13, pen-test + formal privacy review FL-51, org APP documents). `content-store-production-gated` deliberately unchanged. FINISH-LINE FL-01 to be checked off by the finish-line-review agent against the merged evidence.
+
 ## DOCS-RECON — planning-doc review reconciliation + R-43 registered-and-resolved (2026-07-13)
 
 **Status:** documentation + register reconciliation, operator-approved after a read-only review of all seven `.planning/` docs against `main @ de91f81`. One code change: a stale comment. No behaviour change; no contract change; RETAIN core untouched.

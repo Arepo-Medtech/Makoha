@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "heydoc-grounding:consent-record",
+  "title": "Consent Record (PHI-free, hash-chained consent event — LIVE_PLAN L12 / R-40)",
+  "description": "One append-only consent EVENT in the consent store (verification/consent-store.js). Consent capture is a RECORDING mechanism, not a permission unlock: persistContent() stays synthetic-only and session-store still destroys on close. Records are PHI-FREE BY CONSTRUCTION: an encounter-scoped session_ref (never demographics/IHI — Trust Boundary 4), enums, omnibus path bindings, and hashes only; additionalProperties:false makes a free-text field unrepresentable. The record's current status is derived from the LATEST event per (session_ref, consent_type). Omnibus-sourced consent types carry a proven omnibus binding (provenPath + the pinned dataset receipt) — a consent type is never minted. entry_hash = sha256(canonical(entry-without-entry_hash) + prev_hash), same chain algorithm as the audit ledger; entry_hash IS the plan's record_sha256. Zod mirror: verification/consent-schema.js (this JSON schema is the source of truth).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "consent_id",
+    "recorded_at_utc",
+    "prev_hash",
+    "session_ref",
+    "consent_type",
+    "type_source",
+    "omnibus_binding",
+    "status",
+    "reason",
+    "scope",
+    "provision_actions",
+    "policy_rule",
+    "method",
+    "expires",
+    "mode",
+    "entry_hash"
+  ],
+  "properties": {
+    "seq": { "type": "integer", "minimum": 0 },
+    "consent_id": { "type": "string", "minLength": 8 },
+    "recorded_at_utc": { "type": "string", "format": "date-time" },
+    "prev_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "session_ref": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Encounter-scoped reference only (session-store ref). NEVER demographics, IHI, or any identity artefact — identity stays inside the identity-au boundary."
+    },
+    "consent_type": {
+      "type": "string",
+      "enum": ["session_persistence", "mhr_data_sharing", "telehealth_consent"],
+      "description": "v1 scope per the approved CONSENT-PLAN: session_persistence (first-party) + mhr_data_sharing / telehealth_consent (omnibus-bound, RECORD-ONLY — nothing acts on MHR)."
+    },
+    "type_source": { "type": "string", "enum": ["heydoc-first-party", "omnibus"] },
+    "omnibus_binding": {
+      "description": "Proof for omnibus-sourced types: the proven omnibus path + the pinned dataset receipt fields. null for first-party types. A consent type is never minted.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "dataset_version", "sha256"],
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "dataset_version": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "rejected", "inactive"],
+      "description": "FHIR-aligned (omnibus Consent status subset). granted→active; declined→rejected; revoked/session-end→inactive."
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["patient_granted", "patient_declined", "patient_revoked", "session_end"],
+      "description": "Why this event was recorded — enum only, never narrative."
+    },
+    "scope": { "type": "string", "enum": ["patient-privacy", "treatment"] },
+    "provision_actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["collect", "access", "use", "disclose", "destroy"] },
+      "description": "Omnibus provision_actions subset the consent covers."
+    },
+    "policy_rule": { "type": "string", "const": "OPTIN", "description": "Capture is always opt-in (omnibus policyRule code)." },
+    "method": { "type": "string", "const": "patient_attested_in_session" },
+    "expires": { "type": "string", "const": "session_end", "description": "Session-bound by default — no standing consent in v1; closeEncounter() inactivates mechanically." },
+    "mode": {
+      "type": "string",
+      "enum": ["mock", "dry_run", "live"],
+      "description": "Normalised via verification/mode.js — mock is never presented as live."
+    },
+    "entry_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}
