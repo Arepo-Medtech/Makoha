@@ -5,6 +5,7 @@
  */
 import { verify } from "./verifier.js";
 import { runDetectors, combineVerification } from "./integrity-detectors/index.js";
+import { arbitrateModelClaims, composeArbitration } from "../integration/evidence-arbiter.js";
 import { retrieveViaMcp, retrieveFhirObservations } from "./retrieval-mcp.js";
 import { validateGroundingPlan, validateContextPacket } from "./pipeline-schemas.js";
 import { sanitiseInvestigation } from "./investigation-parser.js";
@@ -298,6 +299,17 @@ export async function runPipeline(options = {}) {
     runDetectors(candidate_output, evidence)
   );
 
+  // MI-14 / MI-04 — Evidence Broker arbitration of model-asserted claims. ADDITIVE +
+  // MONOTONE-AND (same discipline as the detectors above): the Broker resolves every
+  // claim the model asserts; a receipt-less claim is stripped to `unknown` and can
+  // only ADD a verification failure, never rescue one. No claims / no broker → no-op
+  // (byte-identical to prior behaviour, H6). The reasoner never self-asserts.
+  let evidence_arbitration = null;
+  if (options.model_claims && options.model_claims.length && options.evidence_broker) {
+    evidence_arbitration = await arbitrateModelClaims({ claims: options.model_claims, broker: options.evidence_broker });
+    verification = composeArbitration(verification, evidence_arbitration);
+  }
+
   // PPP-TTT graded triage (STOP/CAUTION/GO) — ADDITIVE, MONOTONE-AND, same
   // composition pattern as the detectors above: it can only ADD caution or
   // escalation (a STOP folds into pass:false and carries the escalate_now
@@ -353,6 +365,10 @@ export async function runPipeline(options = {}) {
     // was shown), latency; on failure also status/reason. Medicolegal
     // reproducibility rides the audit channel, like everything else here.
     generation,
+    // Evidence Broker arbitration of model claims (null when no model_claims/broker
+    // passed): grounded vs unknown claims. Audit channel; also folded (monotone) into
+    // verification.pass. The reasoner's receipt-less claims are stripped to `unknown`.
+    evidence_arbitration,
     // Terminology receipts WITH their validated codes — recorded in the ledger so a
     // later verify:rehash --reissue can faithfully re-bind codes (otherwise a
     // previously-passing coded output would be re-recorded as FAIL).
