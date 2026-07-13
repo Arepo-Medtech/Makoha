@@ -2,7 +2,7 @@
 
 **Status:** LIVE tracker (consolidates the 2026-07-13 six-agent planning-doc review + both registers into one path).
 **Owner agent:** `.claude/agents/finish-line-review.md` — the ONLY process that updates this file. Run it to re-verify and advance.
-**Baseline:** `main @ 5d2d3a7` (PRs #1–#47 merged). Last verified: 2026-07-13.
+**Baseline:** `main @ 141b215` (PRs #1–#49 merged). Last verified: 2026-07-13.
 **Authority order:** live repo > `docs/grounding/completeness-register.md` + `gap-register.md` > this file. If this file disagrees with the registers, the registers win and this file is the defect.
 **Checkbox rule:** an item is `[x]` only with repo-verifiable evidence (file/test/register state/attestation record) — never on recall, never on a plan.
 
@@ -29,21 +29,22 @@ Production promotion (LIVE_PLAN L14 GO/NO-GO) requires, mechanically:
 
 | Wave | Theme | Items | Done |
 |---|---|---|---|
-| W0 | Engineering, no external input | 4 | 0/4 |
+| W0 | Engineering, no external input | 4 | 1/4 |
 | W1 | Light operator handbacks → staging exists | 5 | 0/5 |
 | W2 | Clinical attestations | 4 | 0/4 |
 | W3 | Vendor / licence connects (long lead — initiate NOW) | 4 | 0/4 |
 | W4 | Live validation + gates armed | 3 | 0/3 |
 | W5 | Regulatory + release | 4 | 0/4 |
 
-**Next action (ENG):** FL-01 Phase-2 plan for consent capture. **Next action (OPERATOR):** FL-30/FL-31 vendor+licence outreach (longest lead) + the W1 quick wins (FL-10/11/12/13).
+**Next action (ENG):** FL-02 MIRAGE corpus expansion (authoring half) — unblocks FL-21 attestation, which unblocks gating and `patient_eligible` consideration. **Next action (OPERATOR):** FL-30/FL-31 vendor+licence outreach (longest lead) + the W1 quick wins (FL-10/11/12/13).
 
 ---
 
 ## W0 — Engineering, no external input (start immediately)
 
-- [ ] **FL-01 · Consent capture (LIVE_PLAN L12)** `[ENG · plan-gated]` — R-40 / `consent-capture-unbuilt` (UNBUILT, High, pf:true). Build: consent record schema (omnibus Consent conventions) + capture flow + Privacy Act 1988 / APP mapping doc. Until built nothing persists (safe direction).
+- [x] **FL-01 · Consent capture (LIVE_PLAN L12)** `[ENG · plan-gated]` — R-40 / `consent-capture-unbuilt` (UNBUILT, High, pf:true). Build: consent record schema (omnibus Consent conventions) + capture flow + Privacy Act 1988 / APP mapping doc. Until built nothing persists (safe direction).
   *Done when:* schema + zod + flow + contract test in `npm test`; register item resolved.
+  *Done 2026-07-13 (PR #49, `main @ 141b215`).* Evidence: `mcp/schemas/consent-record.schema.json` + `verification/consent-schema.js` (zod `.strict()`) exist; flow in `verification/consent.js` (capture/revoke/status + fail-closed `requireActiveConsent()` seam) + `verification/consent-store.js` (fourth append-only chain, day-one substrate seam) + bounded consult-intake step (`patient/consult-flow.js`); `test/contract-consent.js` wired into `npm test` and run green this verification; `consent-capture-unbuilt` → COMPLETE/`status: resolved` (last_scanned 2026-07-13); R-40 capture half resolved; `.claude/completeness-index.md` synced; APP mapping at `docs/grounding/privacy-app-mapping.md`. Built as RECORDING-not-unlocking — `content-store-production-gated` deliberately stays open; L12 org/security siblings tracked at FL-13/FL-51.
 - [ ] **FL-02 · MIRAGE corpus expansion (LIVE_PLAN L9, authoring half)** `[ENG]` — corpus v0.1.0 is ~23 items, DRAFT/unattested → nothing gates. Author the full tranche to `MIRAGE-CORPUS-SPEC` (synthetic, question-only, checksummed). Attestation itself is FL-21.
   *Done when:* corpus vNEXT committed, loader-valid, `bench:mirage` green over it.
 - [ ] **FL-03 · Low-risk hygiene batch** `[ENG]` — reference-case manifest retrofit (`SPEC-CARD-04-00001` via ingest round-trip); repo-digest default-deny fixture in the M3 allow-list test; optional F1 verifier fuzz suite.
@@ -110,5 +111,6 @@ Production promotion (LIVE_PLAN L14 GO/NO-GO) requires, mechanically:
 
 ## 2. Progress log (append-only; newest first)
 
+- **2026-07-13** — FL-01 checked off (PR #49 `main @ 141b215`, L12 consent capture). Verified against live repo, not the claim: schema + zod files present, `requireActiveConsent()` seam present, `test/contract-consent.js` last in the `npm test` chain and run green directly; `consent-capture-unbuilt` COMPLETE/resolved in the completeness-register (last_scanned 2026-07-13), R-40 capture half resolved in the gap-register, `.claude/completeness-index.md` synced. Regression spot-checks on merge-touched pre-completed items green: `contract-session-store` OK (M4 close-hook addition is additive), `contract-audit-worm-s3` OK (WORM test extended to the fourth chain). Scoreboard W0 → 1/4 (1/24 overall). Next ENG action re-pointed to FL-02. No discrepancies found; no other item evidenced by this merge (FL-51 gains the APP-mapping foundation but its done-when is untouched).
 - **2026-07-13** — First verification pass (finish-line-review agent) at `main @ 5d2d3a7`, no merges since baseline. Verified all 24 open items against live repo + both registers: all 9 register-id links resolve and match claimed state (consent-capture-unbuilt UNBUILT; pharmacology-server-unbuilt PARTIAL/Critical; clinician-verification-portal-unbuilt PARTIAL/Critical; worm-substrate-adapter-unbuilt PARTIAL; knowledge-datasets-provisional/lab-reference-ranges-provisional/terminology-contract-incomplete PARTIAL; aucdi-r3-valueset-binding-unbuilt UNBUILT; mirage-benchmark-gate COMPLETE/resolved). R-rows R-28/34/35/37/38/39/42 confirmed present. Pre-completed context spot-checked: M4 `verification/session-store.js` (+contract test in npm test), L1 `portal/` present, R-43 resolved (PR #46), MIRAGE corpus = exactly 23 items unattested, 301 attested case manifests. Scoreboard (24 items, 0 done) accurate. No checkbox change; no discrepancies found.
 - **2026-07-13** — Tracker created from the six-agent planning-doc review consolidation (PR #47) + registers at `main @ 5d2d3a7`. 24 items, 0 checked. Pre-completed context: M0–M8, H0–H7, PPP-TTT 1–3, L1–L4/L10/L11, §9 A1/B1(eng)/B2(eng)/B3, WORM all-three-seams (#45/#46), R-43 registered-and-resolved.
