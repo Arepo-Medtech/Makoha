@@ -35,6 +35,14 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 **Caught by the repo's own gates:** `contract-pharm-datastore` rejected an invented `licence_status: "documented"` on both new sources. Corrected to the existing vocabulary — `pending` for `tga-pi`, `copyleft_reference_only` for `amass-regulatory`.
 
+**D4 — registration category corrected (2026-07-15).** The repo described Kenneth Lee as a **registered pharmacist** while carrying AHPRA **MED0001857758** — and `MED` is AHPRA's *medical-practitioner* prefix (pharmacists carry `PHA`). Surfaced when the operator supplied the number; **corrected on his own statement: he is a registered MEDICAL PRACTITIONER.** The number was always right; the word was always wrong.
+
+The error originated in `.planning/FL-30_PharmCheck_Self-Build_Prompt.md` ("Author/Owner: Ken Lee — Senior Pharmacist (AU)") and propagated into `eval/pharmacology/signoff/worksheet-signoff.md`, this CHANGELOG, and the `status` gate text of **8 datasets** ("registered-pharmacist sign-off" → "registered-practitioner sign-off"). Tracing that origin is what justified rewording the gates: the phrase meant "the owner, believed to be a pharmacist, signs off" — it was never an independent pharmacist-scope control, so correcting it removes no control. **If an independent pharmacist review of the classically pharmacy-scope datasets (administration_handling, counselling_points, warning_labels/CAL) is wanted, that is a NEW control to specify deliberately.**
+
+**No attestation re-opened.** The 88 + 308 worksheets, signed blocks, attesting person, records and dates all stand — the same clinician attested the same records on the same days. `reviewer_id` was already correct (`Kenneth Lee (MED0001857758)`), so no `records_checksum` moved. This matters as *provenance hygiene*: the datastore's entire clinical sign-off rests on this identity, and an artifact reading "registered pharmacist / MED…" is internally inconsistent in exactly the way a TGA audit notices.
+
+**Still open (operator):** `.planning/FL-30_PharmCheck_Self-Build_Prompt.md:4` retains the "Senior Pharmacist (AU)" self-description. It is a historical planning artifact and was NOT edited — rewriting the founding document's stated authority basis is the operator's call, not the agent's.
+
 **Next:** C1 (AMASS cross-checker, un-gated) → C2 (Channel B, Tier A ~10 drugs) → C3 (drop the mock fallback with the first real dose) → C4 (TGA PI, operator-gated). FL-34 Phase B stays parked; its "no dose KM" conclusion is unchanged and now rests on this licence/authoring reason rather than "nothing is signed".
 
 ---
@@ -82,7 +90,7 @@ Kenneth Lee (MED0001857758) attested all 308 remaining draft records (Attest, 0 
 
 **Status:** all 8 `contract-pharm-*` suites green. Records-only change (provenance). **CLINICAL sign-off only — regulatory NOT given; datasets stay `-dev`, system stays mock/non-patient-facing.**
 
-**Plain language.** Registered pharmacist **Kenneth Lee** completed the per-record sign-off worksheet — **all 88 records Attested, 0 Amend, 0 Reject**, signed 2026-07-14. The signed worksheet is retained as the medicolegal artifact at `eval/pharmacology/signoff/PharmCheck-signoff-worksheet-KL-2026-07-14.xlsx` (+ `worksheet-signoff.md`). Applied in the repo: matching records set `reviewed_by:"Kenneth Lee"`, `review_status:"approved"` — **74 newly approved, 11 already-signed re-affirmed, 3 `warning_labels` PSA_CAL written approved with 3 stale RASML archived** to `superseded[]` (the attested RASML→PSA_CAL scheme correction).
+**Plain language.** Registered medical practitioner **Kenneth Lee** completed the per-record sign-off worksheet — **all 88 records Attested, 0 Amend, 0 Reject**, signed 2026-07-14. The signed worksheet is retained as the medicolegal artifact at `eval/pharmacology/signoff/PharmCheck-signoff-worksheet-KL-2026-07-14.xlsx` (+ `worksheet-signoff.md`). Applied in the repo: matching records set `reviewed_by:"Kenneth Lee"`, `review_status:"approved"` — **74 newly approved, 11 already-signed re-affirmed, 3 `warning_labels` PSA_CAL written approved with 3 stale RASML archived** to `superseded[]` (the attested RASML→PSA_CAL scheme correction).
 
 **Governance.** The three previously dataset-signed capabilities (interactions/contraindications/serious_adverse_effects) are now fully re-consolidated — 0 draft remaining, `has_unsigned_additions` cleared. The reference datasets (admin_handling, tdm, counselling, warning_labels, dose_evidence) keep `clinical_sign_off:false` at dataset level because each still holds unattested drafts outside this worksheet (P1 seeds, the 259-record dose-evidence register); per-record `review_status` is authoritative.
 

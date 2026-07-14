@@ -1030,6 +1030,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: pharm-records-checksum-unverified
+  path: mcp/servers/pharmacology/data/*.json (records_checksum) · scripts/pharm-{author,ingest,pbs-sync}.mjs (writers) · test/contract-pharm-datastore.js (the test that should verify it and does not)
+  component_type: dataset
+  state: PARTIAL
+  evidence: Found 2026-07-15 during the FL dose-guidance C0 scoped re-scan (NOT caused by C0 — verified identical on a pristine `git archive e2b940e` checkout). `records_checksum` is the integrity seal over each dataset's clinician-attested records. **7 of 21 sealed datasets do not match `checksumRecords(records)`: au-scheduling (261), clinical-uses (980), nti-register (53), pharmacodynamics (303), pharmacokinetics (303), precautions (1162), renal-rules (104).** All 7 are `clinical_sign_off:true` with 100% `review_status:"approved"` records. The drift is NOT an append (no record-prefix reproduces the stored seal) — records were **mutated in place** after sealing. Traced to at least `d4fb9a8` (FL-30 APF22 reorg + ingest round); au-scheduling drifts at every commit that touches it. **ROOT CAUSE — the field is WRITE-ONLY: `records_checksum` is written in 3 places (pharm-author.mjs:154, pharm-ingest.mjs:201, pharm-pbs-sync.mjs:181) and VERIFIED IN NONE. The single test that references it (contract-pharm-pbs-sync.js:69) asserts only that it is a string, never that it matches.** So `npm test` is green with 7 broken seals and has always been.
+  blocks: FL dose-guidance C1/C2 — the plan's "provenance layer" asserts the stored seal to prove the datastore has not been edited since clinician sign-off, and that guarantee is currently FALSE for 7 datasets. An export built to that spec would (correctly) abort on all 7.
+  safety_class: degrades_safe
+  invariant_exposure: auditability / traceability (requirement→design→code→test→evidence). NOT a data-correctness finding — the records may be entirely sound and the seals merely stale after a legitimate edit. That is exactly the problem: **a stale seal and an unreviewed mutation are indistinguishable without investigation**, so the datastore cannot presently PROVE the signed records are the records the clinician signed. In a TGA-regulated SaMD that proof is the point of the seal.
+  risk: High
+  blocks_patient_facing: false
+  build_action: DO NOT simply recompute the seals — recomputing would silently BLESS whatever the records currently are, converting an integrity question into a false attestation, which is worse than the broken seal. Sequence: (1) diff each of the 7 datasets' records against the last commit whose seal verified, to establish WHAT changed after sealing; (2) the clinician (KL, MED0001857758) confirms the current records are what he attested — or amends them; (3) re-seal, recording the re-seal and its basis in the attestation block; (4) ADD the missing verification to contract-pharm-datastore.js (assert `checksumRecords(records) === records_checksum` for every sealed dataset) so CI can never again go green on a broken seal; (5) make the writers re-seal on every mutation path. Step (4) is the durable fix — the drift is a symptom, the unverified field is the defect.
+  gap_register_link: pending promotion (High — mirror into gap-register in this phase per the one-way promotion rule)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: knowledge-datasets-provisional
   path: mcp/servers/knowledge/data/*.json
   component_type: dataset
