@@ -16,6 +16,8 @@ import { omnibusDatasetReceipt } from "./omnibus.js";
 import { tagConsultFacts, sensitivityWarnings } from "./consult-tagger.js";
 import { buildEncounterHistorySummary } from "./history-summary.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
+import { queryCds, composeCdsVerdict } from "../mcp/servers/pharmacology/cds-adapter/index.js";
+import { pharmCdsState } from "../config/flags.js";
 import { gradeConcern, composeTriage, buildAbcdeRecord } from "./ppp-ttt/index.js";
 
 /**
@@ -167,9 +169,30 @@ export async function runPipeline(options = {}) {
     const pc = runPharmCheck(options.pharm_intent, options.resolved_facts || {});
     firewall_status = pc.status;
     receipts.push({ kind: "live_data", request_id: pc.receipt.request_id, upstream: pc.receipt.upstream, mode: pc.receipt.mode, receipt: pc.receipt });
+
+    // CDS-slot fold (Track A A3b). The authoritative cds-adapter slot gates the firewall
+    // ONLY where authoritative content is genuinely required: a CDS provider is selected
+    // (FILLED / AU_OSS_CDS), OR the run is patient-facing (context_mode 'live'). In pure
+    // mock/dev with no provider (the default) the deterministic engine verdict stands —
+    // status quo, so mock runs are never force-blocked. The fold is MONOTONE
+    // (composeCdsVerdict): it can only ADD severity, so an empty slot at 'live' forces
+    // HARD_FAIL (the E7 floor finally biting at patient-facing), and a provider verdict can
+    // strengthen but never rescue the engine. Nothing here emits a dose; it only tightens
+    // continuation. The engine's own receipt (pushed above) remains the firewall receipt.
+    let cdsReasons = [];
+    const providerSelected = ["FILLED", "AU_OSS_CDS"].includes(pharmCdsState(process.env));
+    if (providerSelected || context_mode === "live") {
+      const cds = await queryCds(options.pharm_intent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch });
+      const folded = composeCdsVerdict(firewall_status, cds);
+      firewall_status = folded.status;
+      cdsReasons = folded.blocking_reasons || [];
+    }
+
     if (firewall_status === "HARD_FAIL") {
       hardStopReceipt = pc.receipt.request_id;
-      hard_stops = [`HARD_FAIL: pharmacology firewall (${pc.check_id}) blocked continuation — ${pc.flags.map((f) => f.flag_type).join(", ") || "unsafe"}`];
+      hard_stops = cdsReasons.length
+        ? cdsReasons.map((r) => `HARD_FAIL: pharmacology CDS slot — ${r}`)
+        : [`HARD_FAIL: pharmacology firewall (${pc.check_id}) blocked continuation — ${pc.flags.map((f) => f.flag_type).join(", ") || "unsafe"}`];
     }
     continuation_blocked = firewall_status === "HARD_FAIL" || firewall_status === "BLOCKED_NO_PROOF";
   } else if (trunk === "8.0") {
