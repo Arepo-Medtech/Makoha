@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-05 — wire the reserved pregnancy_check + hepatic_check into the engine (2026-07-14)
+
+**Status:** all pharmacology suites green; full `npm test` green. Frozen `pharm-check`/`pharm-intent`/`schemas.js` byte-unchanged (`git diff` = 0). No new dependency. Datasets stay `-dev`/mock-moded.
+
+**Plain language.** The frozen `pharm-check` already RESERVED `pregnancy_check` and `hepatic_check` (and their flag types), and the `pregnancy-risk` (18, TGA-category) and `hepatic` (13, Child-Pugh/action) datasets were already clinician-signed — but the engine never read them, so those two safety checks silently didn't run. FL-05 wires them (engine logic only, no frozen change). The two registers are no longer "engine-isolated" by design.
+
+**Change.**
+- `sources/pharm-data-source.js` — new seam accessors `getPregnancyRisk` / `getHepatic` (base throws; `SyntheticSelfDevelopedSource` reads `data/pregnancy-risk.json` + `data/hepatic.json`; `LicensedFeedSource` fails closed). The two datasets are added to `_store`.
+- `engine.js` — `pregnancy_check`: category X/contraindicated → HARD_FAIL (`pregnancy_category_x`); D → WARN (`pregnancy_category_d`); A/B/C → PASS. Fail-safe (D-FL05-1, operator ruling 2026-07-14): a KNOWN teratogen (X/D) with UNKNOWN pregnancy status → NOT_RUN → BLOCKED_NO_PROOF, **AGE-GATED** to patients of childbearing potential (~12-55 or unknown age) so an elderly patient is not over-triaged. `hepatic_check`: `hepatic_contraindicated` → HARD_FAIL; other actions (e.g. `hepatic_caution`) → WARN; rule + unknown impairment → NOT_RUN.
+- `test/contract-pharm-pregnancy-hepatic.js` (new, wired into `npm test`).
+
+**Invariant check.** No dose from these checks (they only add HARD_FAIL/WARN; dose still only via `getDoseGuidance`) ✔ · frozen contracts untouched ✔ · fail-safe NOT_RUN on missing facts ✔ · uses already-signed data, stays `-dev`/mock ✔.
+
+### Register / gap
+Closes `pregnancy-hepatic-check-unwired` (PR #66 deferral). Still deferred (external deps, out of FL-05 scope): `pregnancy-risk-bulk-sync-pending` (TGA bulk-sync — data access), `warning-labels-cal-verbatim-pending` (PSA_CAL copyright ruling), `dose-evidence-apf-attestation-variant-deferred` (dose invariant — clinician-gated). Nothing patient-facing.
+
 ## FL-30 (addendum) — clinician sign-off pass 2: remaining 308 records, datastore fully attested (KL, 2026-07-14)
 
 **Status:** all 8 `contract-pharm-*` suites green; **ZERO per-record drafts remain**. Records + attestation only. CLINICAL sign-off; regulatory NOT given; `-dev`/non-patient-facing.

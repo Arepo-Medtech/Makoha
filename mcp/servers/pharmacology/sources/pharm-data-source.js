@@ -52,6 +52,10 @@ export class PharmDataSource {
   getSchedule(_drug) { throw new Error(`${this.id}.getSchedule() not implemented`); }
   /** @returns {object|null} dose guidance for a drug (present only for a mock/validated source). */
   getDoseGuidance(_drug) { throw new Error(`${this.id}.getDoseGuidance() not implemented`); }
+  /** @returns {{tga_category:string,contraindicated:boolean,guidance?:string}|null} TGA pregnancy-category record for a drug, or null. */
+  getPregnancyRisk(_drug) { throw new Error(`${this.id}.getPregnancyRisk() not implemented`); }
+  /** @returns {{action:string,guidance?:string,monitoring?:string}|null} hepatic-impairment record for a drug, or null. */
+  getHepatic(_drug) { throw new Error(`${this.id}.getHepatic() not implemented`); }
   /** @returns {boolean} is this drug present anywhere in the reference set? (unknown → escalate) */
   knownDrug(_drug) { throw new Error(`${this.id}.knownDrug() not implemented`); }
   /** Human-readable provenance summary for this source. */
@@ -81,6 +85,10 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       scheduling: read("data/au-scheduling.json"),
       nti: read("data/nti-register.json"),
       dose: read("data/dose-guidance.json"),
+      // FL-05: clinician-signed special-population registers, now engine-wired (were
+      // reference-only). They carry NO dose fields — they only add HARD_FAIL/WARN checks.
+      pregnancy: read("data/pregnancy-risk.json"),
+      hepatic: read("data/hepatic.json"),
     };
     this._mock = JSON.parse(readFileSync(join(__dirname, "..", "mock-data.json"), "utf8"));
     // Datastore-backed iff the four core SAFETY capabilities each carry >=1 signed record.
@@ -161,6 +169,18 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
     if (fromStore) return fromStore;
     return this._mock.dose_guidance_mock[n] || null; // dose-guidance dataset empty → mock fallback
   }
+  /** TGA pregnancy-category record (subject-keyed). No mock fallback — absent → null (check omitted). */
+  getPregnancyRisk(drug) {
+    const n = String(drug || "").toLowerCase();
+    const r = this._records("pregnancy").find((x) => String(x.subject).toLowerCase() === n);
+    return r ? { tga_category: r.tga_category, contraindicated: r.contraindicated === true, guidance: r.guidance } : null;
+  }
+  /** Hepatic-impairment record (ingredient-keyed). No mock fallback — absent → null (check omitted). */
+  getHepatic(drug) {
+    const n = String(drug || "").toLowerCase();
+    const r = this._records("hepatic").find((x) => String(x.ingredient).toLowerCase() === n);
+    return r ? { action: r.action, guidance: r.guidance, monitoring: r.monitoring } : null;
+  }
   provenance() {
     return {
       source: this.id,
@@ -190,6 +210,8 @@ export class LicensedFeedSource extends PharmDataSource {
   getRenalRule() { this._fail(); }
   getSchedule() { this._fail(); }
   getDoseGuidance() { this._fail(); }
+  getPregnancyRisk() { this._fail(); }
+  getHepatic() { this._fail(); }
   knownDrug() { return false; } // fail-safe: an unbuilt feed knows no drug → escalate
   provenance() { return { source: this.id, backing: "unbuilt", available: false }; }
 }
