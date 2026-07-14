@@ -1,6 +1,6 @@
 {
   "_note": "AU patient-record provider directory — a FIRST-PARTY named build (FLOW_PLAN H1 'AU provider metadata must be built'). This is structured metadata only: SMART App Launch endpoints + a REFERENCE (client_id_ref) to a secrets-manager key, NEVER a client secret, token, or credential (<security_and_secrets>). Every provider ships status 'input_gated' until an operator supplies conformance evidence + credentials; live connection is not opened by this file. Endpoints use the sanctioned example.invalid placeholder until real values are injected at deploy time.",
-  "dataset_version": "au-providers:v0.1.0-scaffold:2026-07-06",
+  "dataset_version": "au-providers:v0.2.0-scaffold:2026-07-14",
   "standard": "SMART App Launch 2.0.0",
   "fhir_version": "R4 (4.0.1)",
   "au_core_profile": "0.3.0",
@@ -32,6 +32,20 @@
       "default_scope": "patient/Observation.read patient/Condition.read",
       "conformance": "Generic R4 (not AU Core profiled) — smoke/plumbing verification only, not clinical grounding",
       "notes": "Open synthetic sandbox for proving the wso2 live-backend plumbing end to end without credentials. Data here is synthetic and unprofiled; it validates transport, not AU conformance."
+    },
+    {
+      "id": "au-bahmni",
+      "name": "Bahmni (OpenMRS FHIR2 R4)",
+      "jurisdiction": "AU",
+      "status": "input_gated",
+      "status_reason": "Track B (operator decision 2026-07-14). A live Bahmni connection requires a deployed Bahmni instance, a registered SMART-on-FHIR OAuth2 client, credentials via the secrets manager, and AU Core conformance evidence — none of which this repo holds. Metadata scaffold only; status flips to 'available' only when the operator supplies those.",
+      "fhir_base_url": "https://fhir.example.invalid/openmrs/ws/fhir2/R4",
+      "authorize_endpoint": "https://auth.example.invalid/openmrs/oauth2/authorize",
+      "token_endpoint": "https://auth.example.invalid/openmrs/oauth2/token",
+      "client_id_ref": "secrets://heydoc/bahmni/client_id",
+      "default_scope": "launch/patient patient/Patient.read patient/Observation.read patient/Condition.read patient/MedicationRequest.read patient/AllergyIntolerance.read offline_access openid fhirUser",
+      "conformance": "Native FHIR R4 via the OpenMRS FHIR2 module. Base R4 out of the box — NOT AU Core profiled by default; AU Core conformance is a downstream localisation step (structural validation via fhir-broker fhir_validate against the vendored AU Core SDs; ValueSet binding pending live NCTS).",
+      "notes": "Bahmni = OpenMRS core (FHIR2 R4 module) + OpenELIS (lab) + dcm4chee (imaging) + Odoo (ERP). FHIR is served by the OpenMRS FHIR2 module (OpenMRS Public Licence, MPL-based); bundled components are NOT vendored — this is a network peer over FHIR R4, so no licence infects the runtime. OpenELIS may later serve as a live lab source for the investigation parser (separate track — out of scope here). Real endpoints + client registration are injected at deploy; the base-URL path shape (/openmrs/ws/fhir2/R4) is what the SMART App Launch flow will use."
     }
   ]
 }

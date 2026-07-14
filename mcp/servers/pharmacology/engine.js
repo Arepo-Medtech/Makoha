@@ -106,6 +106,66 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
     }
   } else addCheck("renal_dosing_check", "PASS", undefined, "no renal rule for this drug");
 
+  // Pregnancy (TGA categorisation, FL-05). Runs only when the drug has a pregnancy record.
+  // Category X / contraindicated → HARD_FAIL; D → WARN; A/B/C → PASS. FAIL-SAFE (D-FL05-1):
+  // for a KNOWN teratogen/high-risk drug (X/D/contraindicated) an UNKNOWN pregnancy status
+  // is NOT_RUN → forces BLOCKED_NO_PROOF, demanding confirmation before prescribing. A
+  // low-risk category (A/B/C) with unknown status does not block. No dose is ever emitted here.
+  const pregRec = src_.getPregnancyRisk(drug);
+  if (pregRec) {
+    const cat = String(pregRec.tga_category || "").toUpperCase();
+    const highRisk = cat === "X" || cat === "D" || pregRec.contraindicated === true;
+    const pregStatus = resolved.pregnancy_status; // "pregnant" | "not_pregnant" | undefined
+    const pregRef = "TGA Prescribing Medicines in Pregnancy";
+    if (pregStatus === "pregnant") {
+      if (cat === "X" || pregRec.contraindicated === true) {
+        addCheck("pregnancy_check", "HARD_FAIL", "critical", `TGA pregnancy category ${cat || "X"}: ${pregRec.guidance || "contraindicated in pregnancy"}`);
+        flags.push({ flag_id: "flag-preg", flag_type: "pregnancy_category_x", severity: "critical", description: `${drug} — TGA category ${cat || "X"}: ${pregRec.guidance || "teratogen; contraindicated in pregnancy"}`, drug_a: drug, au_reference: pregRef });
+      } else if (cat === "D") {
+        addCheck("pregnancy_check", "WARN", "moderate", `TGA pregnancy category D: ${pregRec.guidance || "evidence of fetal risk; use only if benefit justifies"}`);
+        flags.push({ flag_id: "flag-preg", flag_type: "pregnancy_category_d", severity: "moderate", description: `${drug} — TGA category D: ${pregRec.guidance || "evidence of fetal risk"}`, drug_a: drug, au_reference: pregRef });
+      } else {
+        addCheck("pregnancy_check", "PASS", undefined, `TGA pregnancy category ${cat || "A/B/C"}`);
+      }
+    } else if (pregStatus === "not_pregnant") {
+      addCheck("pregnancy_check", "PASS", undefined, "not pregnant");
+    } else if (highRisk) {
+      // Fail-closed (D-FL05-1) but AGE-GATED: an unknown pregnancy status blocks a teratogen
+      // ONLY for a patient of childbearing potential (age ~12-55, or unknown age). Outside that
+      // window (e.g. an elderly patient on warfarin) an unknown status does not block — the
+      // pregnancy concern is negligible, and blocking would be over-triage. Paediatric (<18)
+      // is already HARD_FAILed by the age check, which dominates.
+      const childbearingPotential = typeof age !== "number" || (age >= 12 && age <= 55);
+      if (childbearingPotential) {
+        addCheck("pregnancy_check", "NOT_RUN", undefined, `TGA category ${cat}: pregnancy status not provided — must be confirmed before prescribing a teratogenic/high-risk drug to a patient of childbearing potential`, ["pregnancy_status"]);
+        nextData.push("Confirm pregnancy status (teratogenic/high-risk drug).");
+      } else {
+        addCheck("pregnancy_check", "PASS", undefined, `TGA category ${cat}: not of childbearing potential (age ${age}) — pregnancy status not required`);
+      }
+    } else {
+      addCheck("pregnancy_check", "PASS", undefined, `TGA category ${cat || "A/B/C"} (low pregnancy risk)`);
+    }
+  }
+
+  // Hepatic impairment (FL-05). Runs only when the drug has a hepatic record. The dataset is
+  // qualitative (an action + guidance, not a numeric threshold like renal), so it keys on a
+  // resolved hepatic-impairment fact. hepatic_contraindicated → HARD_FAIL; any other action
+  // (e.g. hepatic_caution) → WARN. Unknown impairment status when a rule exists → NOT_RUN.
+  const hepRec = src_.getHepatic(drug);
+  if (hepRec) {
+    const impaired = resolved.hepatic_impairment; // true | false | undefined
+    if (impaired === true) {
+      const contra = hepRec.action === "hepatic_contraindicated";
+      addCheck("hepatic_check", contra ? "HARD_FAIL" : "WARN", contra ? "critical" : "moderate", `${drug}: ${hepRec.action}${hepRec.guidance ? ` — ${hepRec.guidance}` : ""}`);
+      flags.push({ flag_id: "flag-hepatic", flag_type: contra ? "hepatic_contraindicated" : "hepatic_adjustment_required", severity: contra ? "critical" : "moderate", description: `${drug} ${hepRec.action}${hepRec.guidance ? `: ${hepRec.guidance}` : ""}`, drug_a: drug });
+    } else if (impaired === false) {
+      addCheck("hepatic_check", "PASS", undefined, "no hepatic impairment");
+    } else {
+      addCheck("hepatic_check", "NOT_RUN", undefined, "hepatic function (impairment) not provided", ["hepatic_impairment"]);
+      nextData.push("Provide hepatic function (impairment yes/no).");
+    }
+  }
+
   // 4/5. AU scheduling (SUSMP / Poisons Standard) + S8 PDMP gate.
   // General (non-S8) scheduling is INFORMATIONAL metadata, not a separately gated
   // check: the frozen pharm-check check_id enum has no general 'schedule' check and
