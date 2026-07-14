@@ -420,6 +420,113 @@ export const DoseEvidenceReviewQueueSchema = z
   })
   .strict();
 
+/**
+ * Dose-guidance record — an AU dose FACT the engine may emit via PharmCheck.dose_guidance on
+ * PASS/WARN. This is THE sensitive capability: it is the only datastore content that becomes a
+ * dose, so the no-dosages-from-the-LLM hard limit lives or dies here. The dose keys mirror the
+ * FROZEN pharm-check.dose_guidance shape exactly (engine.js picks DOSE_KEYS and drops the rest),
+ * so origin/cross_check/provenance ride along for audit without ever reaching the frozen output.
+ *
+ * WHY THE ORIGIN BLOCK EXISTS (the whole safety argument):
+ * a bare `safe_dose_range: "500 mg every 8 hours"` says nothing about where the number came from.
+ * Two channels — and ONLY two — may supply one:
+ *   - clinician_apf_attestation: a registered practitioner entered an APF22 Section D common-dosage
+ *     FACT from the book they hold. Facts are not copyrightable and APF22 is clinician-attested for
+ *     factual use (data-sources.json:apf22, use_basis "facts_and_citation") — but APF PROSE and
+ *     COMPILED TABLES are never reproduced (Guardrail 1), so a record carries one restructured fact.
+ *   - tga_pi: a TGA Product Information document the pipeline actually fetched and cited.
+ * The agent is not a channel. entered_by on the clinician path must be an AHPRA registration id
+ * (3 letters + 10 digits, e.g. MED0001857758) — an agent string CANNOT match that pattern, so an
+ * agent-authored dose is not merely forbidden by policy, it is UNREPRESENTABLE in this schema.
+ *
+ * WHY cross_check IS REQUIRED AND "diverges" IS NOT IN THE ENUM:
+ * every AU dose is cross-checked against the FDA/EMA label via AMASS (verification only — AMASS is
+ * NOT an AU source and can never be an origin; jurisdiction is an AU-only hard limit). A DIVERGING
+ * candidate is not a dose-guidance record at all: it belongs in the review queue for clinician
+ * adjudication. Omitting "diverges" from the enum makes that a parse error rather than a policy
+ * anyone could forget to apply — the record cannot be expressed, so it cannot be written.
+ */
+const AHPRA_ID = /^[A-Z]{3}\d{10}$/; // AHPRA registration id — the mechanical bar against agent authorship
+
+export const DoseGuidanceSchema = z
+  .object({
+    ingredient: z.string().min(2),
+    context: z.string().min(3), // the indication / population this range applies to
+    // ---- the FROZEN pharm-check.dose_guidance keys (byte-parity with the frozen contract) ----
+    safe_dose_range: z.string().min(3), // THE NUMBER — clinician- or PI-supplied, never agent-authored
+    adjustment_required: z.boolean().optional(),
+    adjustment_reason: z.string().optional(),
+    monitoring_required: z.string().optional(),
+    duration_guidance: z.string().optional(),
+    pbs_authority_required: z.boolean().optional(),
+    pbs_item_code: z.string().optional(),
+    // ---- provenance of the NUMBER itself (never reaches frozen output; audit + gating) ----
+    origin: z
+      .object({
+        channel: z.enum(["tga_pi", "clinician_apf_attestation"]), // no third channel exists
+        reference: z.string().min(3), // "apf22", or the TGA PI document id
+        entered_by: z.string().min(3), // AHPRA id (clinician path) or the fetch job id (PI path)
+        retrieved_utc: z.string().optional(), // a FETCH happened — PI path only
+      })
+      .strict(),
+    cross_check: z
+      .object({
+        status: z.enum(["agrees", "not_available"]), // "diverges" is deliberately absent — see header
+        checked_utc: z.string().min(4), // proves the check actually ran
+        amass_id: z.string().optional(),
+        agency: z.enum(["FDA", "EMA"]).optional(),
+        fda_ema_statement: z.string().optional(),
+        not_available_reason: z.string().optional(), // why no FDA/EMA comparator exists (e.g. AU-only drug)
+      })
+      .strict(),
+    // Links into the clinician-signed dose-evidence citation register (literature backing / caveats).
+    corroborating_evidence: z
+      .array(z.object({ identifier: z.string().min(3), id_type: z.enum(["pmid", "doi"]) }).strict())
+      .optional(),
+    provenance: ProvenanceSchema,
+  })
+  .strict()
+  .superRefine((r, ctx) => {
+    const o = r.origin;
+    if (o.channel === "clinician_apf_attestation") {
+      // The APF path is a CLINICIAN act on a specific attested source. Both halves are pinned:
+      // a wrong reference would launder a non-APF number through the APF attestation, and a
+      // non-AHPRA entered_by would let a non-practitioner (or an agent) supply a dose.
+      if (o.reference !== "apf22") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "reference"], message: 'clinician_apf_attestation must cite reference "apf22" — the attestation covers APF22 facts and nothing else' });
+      }
+      if (!AHPRA_ID.test(o.entered_by)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "entered_by"], message: "clinician_apf_attestation requires an AHPRA registration id (e.g. MED0001857758) — a dose may only be entered by a registered practitioner, never by an agent" });
+      }
+      if (o.retrieved_utc !== undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "retrieved_utc"], message: "retrieved_utc is for the fetched-document (tga_pi) path — a clinician attestation is not a retrieval" });
+      }
+    }
+    if (o.channel === "tga_pi") {
+      // A fetched document must say WHEN it was fetched; PI content is versioned and changes.
+      if (o.reference === "apf22") {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "reference"], message: 'tga_pi must cite a TGA PI document id, not "apf22"' });
+      }
+      if (!o.retrieved_utc) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "retrieved_utc"], message: "tga_pi requires retrieved_utc — a PI citation without a retrieval timestamp cannot be re-verified against a versioned document" });
+      }
+    }
+    const c = r.cross_check;
+    if (c.status === "agrees" && !(c.amass_id && c.agency && c.fda_ema_statement)) {
+      // "agrees" is a claim about a specific comparator — it must name it, or it is unfalsifiable.
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check"], message: 'cross_check "agrees" must name the comparator it agrees with (amass_id + agency + fda_ema_statement)' });
+    }
+    if (c.status === "not_available") {
+      // Closes the obvious loophole: claiming "no comparator" to skip the gate silently.
+      if (!c.not_available_reason) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check", "not_available_reason"], message: 'cross_check "not_available" must state why no FDA/EMA comparator exists — an unexplained skip is indistinguishable from an unrun check' });
+      }
+      if (c.amass_id) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check", "amass_id"], message: '"not_available" cannot carry an amass_id — a comparator was found, so the check must be recorded as agrees (or the record routed to the review queue)' });
+      }
+    }
+  });
+
 /** PBS formulary record (source: PBS Public API v3 — Commonwealth open data). Factual
  * formulary/subsidy data, distinct from the clinical-judgement capabilities; populated by
  * the cached sync (scripts/pharm-pbs-sync.mjs), not the clinician authoring pipeline. */
@@ -488,15 +595,24 @@ export const validateCapabilityGroups = validator(CapabilityGroupsRegistrySchema
 export const validatePregnancyRisk = validator(PregnancyRiskSchema, "PregnancyRisk");
 export const validateHepatic = validator(HepaticSchema, "Hepatic");
 export const validateDoseEvidenceReviewQueue = validator(DoseEvidenceReviewQueueSchema, "DoseEvidenceReviewQueue");
+export const validateDoseGuidance = validator(DoseGuidanceSchema, "DoseGuidance");
 export const validatePbsFormulary = validator(PbsFormularySchema, "PbsFormulary");
 export const validateCdsEnvelope = validator(CdsEnvelopeSchema, "CdsEnvelope");
 
-/** Map a capability key → its record validator, for the authoring pipeline. Capabilities
- * with a bespoke path (dose_guidance, pbs) are intentionally absent here. dose_evidence
- * validates through the authoring pipeline (fail-closed → draft) but is NEVER wired to the
- * engine — it is a citation reference register, not a dose source. */
+/** Map a capability key → its record validator, for the authoring pipeline. `pbs` keeps a
+ * bespoke path (bulk open-data sync, dataset-level governance, no per-record provenance).
+ * dose_evidence validates through the authoring pipeline (fail-closed → draft) but is NEVER
+ * wired to the engine — it is a citation reference register, not a dose source.
+ *
+ * dose_guidance JOINED THIS MAP at FL dose-guidance C0. It was previously absent ("bespoke
+ * path") because no licence-clean AU dose source existed, so nothing could be authored into it
+ * and an unusable validator would have implied otherwise. Its bespoke-ness now lives in the
+ * schema's own refinements (two channels, AHPRA-gated entry, mandatory AMASS cross-check) rather
+ * than in absence from this map — a validator that REFUSES bad records is a stronger guarantee
+ * than no validator at all. It stays engine-readable but EMPTY until C2 authors Tier A. */
 export const CAPABILITY_VALIDATORS = {
   dose_evidence: validateDoseEvidence,
+  dose_guidance: validateDoseGuidance,
   administration_handling: validateAdministrationHandling,
   tdm_parameters: validateTdmParameters,
   warning_labels: validateWarningLabel,

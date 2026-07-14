@@ -4,6 +4,41 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL dose-guidance C0 — schema, source registration, three defect fixes (2026-07-15)
+
+**Status:** operator-approved (`.planning/DOSE-GUIDANCE-PLAN.md`, C0 of C0–C4). **No dose was authored** — `dose-guidance.json` stays `records: []`. Nothing patient-facing; receipts stay `mock`. `npm test` (61 suites) + `npm run verification` (Pass: true) + `npm run trunk:stub:all` all green, EXIT=0.
+
+**Plain language.** `dose-guidance` is the only datastore capability that becomes a *dose*, and it has always been empty. That was never an oversight or a backlog item — it is the collision of two hard rules: the Australian dose authorities are licence-restricted (APF22/AusDI are facts-only, no content licence; AMH isn't a registered source; PBS explicitly doesn't publish dosing), and "no dosages from the LLM" bars the agent from writing one. The empty file was the fail-safe working. This phase does not fill it. It builds the lockable door the doses will one day come through, and proves the lock holds.
+
+**The bar is now mechanical, not conventional.** `DoseGuidanceSchema` (`domain/model.js`) admits exactly two origin channels — `tga_pi` and `clinician_apf_attestation` — and:
+- the clinician channel requires an **AHPRA registration id** (`^[A-Z]{3}\d{10}$`) in `origin.entered_by`. No agent string can match that pattern, so **an agent-authored dose is unrepresentable**, not merely forbidden.
+- **`diverges` is absent from the `cross_check` status enum.** Every AU dose is cross-checked against the FDA/EMA label via AMASS; a diverging candidate cannot be *expressed* as a dose-guidance record, so it cannot be written — it belongs in the review queue (D-DG-3 hard-block, enforced by parse failure rather than by a policy someone could forget).
+- `cross_check` is required, `agrees` must name its comparator, and `not_available` must say why and may not carry an `amass_id` — closing the "claim no comparator to skip the gate" loophole.
+- channels cannot be laundered: APF attestation must cite `apf22`; `tga_pi` must cite a PI document id **and** a `retrieved_utc` (PI is versioned; a citation without a retrieval time is not re-verifiable).
+
+`dose_guidance` **joined `CAPABILITY_VALIDATORS`**, from which it was previously absent as a "bespoke path". A validator that *refuses* bad records is a stronger guarantee than no validator.
+
+**Sources registered** (`data/data-sources.json`, registry_version 1.2.0):
+- `tga-pi` — `pending`/`content_ingest`. The AU primary dose source, sibling of `tga-pregnancy` and `rasml-tga`. **Not connected**: access is an OPERATOR input — the *same* one FL-05's `pregnancy-risk-bulk-sync-pending` already waits on. One action serves both.
+- `amass-regulatory` — `copyleft_reference_only`/`structure_only`. **NOT an Australian source. Verification only. Never an origin.** Probed live 2026-07-15: its agency enum is exactly `[FDA, EMA]` — there is no TGA in it. An FDA package-insert dose is not an AU dose. Its only sanctioned use is the `cross_check` gate. Reached at **authoring time** from `scripts/` tooling (the dose-evidence `get_article_metadata` precedent) — not a runtime dependency, no receipt-mode impact.
+
+**Three defects fixed.**
+- **D1** — `dose-evidence.json`'s attestation `scope` read *"skeleton — no records authored yet"* while the file held **261 KL-signed records** (2 + 259 across the two signed worksheets at `eval/pharmacology/signoff/`). Per-record `review_status` was authoritative and correct, so nothing was unsafe and no test was red — but the dataset-level text materially understated the clinician's sign-off, and **it is what misled FL-34 Phase B Finding 3 into asserting "no signed dose knowledge exists"**. Corrected in place, citing the worksheets; `records_checksum` verified unchanged (the checksum covers `records` only).
+- **D3** — `apf22.provides[]` had no dose-range entry while its own `notes` explicitly sanction *"dosing-range facts"*. The machine-readable list and the prose disagreed; an APF-sourced dose record would have failed source-capability validation. Added `dose_range_facts`.
+- **D2** — opened `dose-guidance-empty-no-au-source` (EMPTY/Medium) and `dose-mock-fallback-mixing` (PARTIAL/Medium — **latent**: `getDoseGuidance()` falls back to 3 self-labelled mock doses, which is safe while *every* dose is mock, but silently mixes signed and mock the moment C2 lands; must be removed in that same increment).
+
+**Register reconciliation.** `dose-evidence-apf-attestation-variant-deferred` → **resolved/SUPERSEDED**. Its deferral condition was *"until a clinician adopts it"* — and that condition was met: KL transcribed all 471 APF22 Section D common-dosage ranges from his own copy and confirmed personal authorship 2026-07-15. The adopted implementation is deliberately different from what that item envisaged: rather than bolting a dose variant onto `dose_evidence` (which is engine-**isolated** by design and must stay a citation register), the APF path became one of two origin channels on the real `dose_guidance` capability, under a stronger bar. `dose_evidence` is unchanged and stays engine-isolated.
+
+**Scope discipline recorded.** KL's 471-row transcription is **not** ingested and is never committed. Individual dose facts aren't copyrightable, but **compilation right protects selection and arrangement even where each element is a bare fact** — extracting ~10 Tier A ingredients as restructured facts is facts-use inside the existing APF22 attestation; ingesting all 471 "exactly as printed" in Section D's own arrangement is not, and rides the **same PSA ruling** `warning-labels-cal-verbatim-pending` already awaits.
+
+**Byte-unchanged (verified vs `e2b940e`, empty diff):** frozen `pharm-intent.schema.json`, `pharm-check.schema.json`, `portal/verification-gate.js`, `engine.js`, and the HIST-2 context path (`verification/context-allowlist.js`, `verification/pipeline-schemas.js`). **No HIST-2 amendment was made or needed** — that policy governs what reaches the *LLM's context packet*; the engine reads a different path.
+
+**Caught by the repo's own gates:** `contract-pharm-datastore` rejected an invented `licence_status: "documented"` on both new sources. Corrected to the existing vocabulary — `pending` for `tga-pi`, `copyleft_reference_only` for `amass-regulatory`.
+
+**Next:** C1 (AMASS cross-checker, un-gated) → C2 (Channel B, Tier A ~10 drugs) → C3 (drop the mock fallback with the first real dose) → C4 (TGA PI, operator-gated). FL-34 Phase B stays parked; its "no dose KM" conclusion is unchanged and now rests on this licence/authoring reason rather than "nothing is signed".
+
+---
+
 ## FL-34 Phase 0 — register-maintenance pass (2026-07-14)
 
 **Status:** report-only reconciliation ahead of the FL-34 OpenCDS-gateway build; NO code touched, no test run affected. Ahead of Phase A.
