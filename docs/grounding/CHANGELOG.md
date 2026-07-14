@@ -4,6 +4,12 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-30 (addendum) — clinician sign-off pass 2: remaining 308 records, datastore fully attested (KL, 2026-07-14)
+
+**Status:** all 8 `contract-pharm-*` suites green; **ZERO per-record drafts remain**. Records + attestation only. CLINICAL sign-off; regulatory NOT given; `-dev`/non-patient-facing.
+
+Kenneth Lee (MED0001857758) attested all 308 remaining draft records (Attest, 0 Amend/Reject) via the follow-on worksheet (retained at `eval/pharmacology/signoff/`): dose_evidence 259, pregnancy_risk 18, hepatic 13, counselling 6, administration_handling 4, tdm_parameters 3, warning_labels 3, review_queue 2. Each affected dataset is now fully clinician-approved, so its dataset-level `clinical_sign_off` flipped to true (regulatory stays false; `-dev` retained; `has_unsigned_additions` cleared). The entire per-record pharmacology datastore is now clinician-signed.
+
 ## FL-30 (addendum) — clinician worksheet sign-off: 88 records attested (KL, 2026-07-14)
 
 **Status:** all 8 `contract-pharm-*` suites green. Records-only change (provenance). **CLINICAL sign-off only — regulatory NOT given; datasets stay `-dev`, system stays mock/non-patient-facing.**
