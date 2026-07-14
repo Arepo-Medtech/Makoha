@@ -53,7 +53,7 @@ expect(throws(() => validateDrugProduct({ ingredient: "warfarin" })), "drug prod
 expect(!!validateNti({ ingredient: "lithium", is_nti: true, rationale: "narrow index; toxicity risk", therapeutic_interval: "0.4-0.8 mmol/L", provenance: goodProv }), "NTI record validates");
 expect(throws(() => validateNti({ ingredient: "lithium", is_nti: true, rationale: "x", provenance: goodProv })), "NTI rationale too short is rejected");
 
-expect(!!validateInteraction({ interaction_kind: "drug_drug", subject: "warfarin", object: "ibuprofen", severity: "critical", mechanism_class: "additive bleeding risk", management_category: "avoid", evidence_tier: "guideline", provenance: goodProv }), "interaction validates");
+expect(!!validateInteraction({ interaction_kind: "drug_drug", mechanism_category: "drug_drug", subject: "warfarin", object: "ibuprofen", severity: "critical", mechanism_class: "additive bleeding risk", management_category: "avoid", evidence_tier: "guideline", provenance: goodProv }), "interaction validates");
 expect(!!validateRenalDosing({ ingredient: "metformin", action: "renal_contraindicated", contraindicated_below_egfr: 30, provenance: goodProv }), "renal dosing validates");
 
 // --- CDS envelope: no auto-cleared gate ---

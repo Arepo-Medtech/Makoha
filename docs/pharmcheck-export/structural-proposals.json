@@ -1,0 +1,93 @@
+{
+  "pharmcheck_dev_package": "v1",
+  "authored_in": "repo-architect (APF22 Section D review)",
+  "author_note": "Structural proposals from APF22 Section D taxonomy: a non-destructive heading-capability overlay + 10 new reference capabilities (incl. 'should not be crushed' and Therapeutic Drug Monitoring with NTI as a bucket). No frozen-contract change; all reference-only. See STRUCTURAL-PROPOSALS.md.",
+  "generated_against_export": "FL-30 2026-07-14",
+  "capabilities": {},
+  "structural_proposals": [
+    {
+      "kind": "other",
+      "title": "Heading-capability overlay (capability-groups.json) — non-destructive",
+      "rationale": "Organise the flat capabilities under APF22 heading capabilities (Counselling, Dispensing considerations, Special populations, TDM, etc.) WITHOUT migrating or merging any dataset — 'the capabilities must not be crushed'. A grouping registry maps headings to member leaf capabilities as metadata.",
+      "detail": "New file mcp/servers/pharmacology/data/capability-groups.json. Per group: group_key:str; title:str; description:str; member_capabilities:string[]; source_ref:str. Groups + members: Indications[clinical_uses]; Clinical pharmacology[pharmacodynamics,pharmacokinetics]; Counselling[warning_labels,counselling_points,precautions]; Dispensing considerations[administration_handling,dispensing_considerations,formulations]; Safety & contraindications[interactions,serious_adverse_effects,strong_contraindications,allergy]; Special populations[renal,hepatic,elderly,pregnancy,breastfeeding]; Therapeutic drug monitoring[nti,tdm_parameters]; Dosing[dose_guidance,dose_evidence]; Regulatory/reference[scheduling,pbs,discolouration]. Invariant impact: NONE — metadata overlay, no dataset touched, frozen contract untouched, reversible."
+    },
+    {
+      "kind": "new_capability",
+      "title": "administration_handling — 'should not be crushed'",
+      "rationale": "APF 'Modification of oral formulation' subheading. Whether a solid oral dose form may be crushed/split/dispersed — a common, safety-relevant dispensing decision absent from PharmCheck.",
+      "detail": "capability key: 'administration_handling'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); formulation:str(opt); can_crush:enum['do_not_crush','crush_with_caution','crushable'](req); can_split:enum['splittable','do_not_split','scored_only','unknown'](opt); can_disperse:enum['dispersible','not_dispersible','unknown'](opt); rationale:str(opt); alternative:str(opt); reference:str(opt). Reference-only, NOT engine-wired (a future crush_safety_check touches the frozen enum — separate proposal). Invariant impact: none (carries no dose). Content from AMH/product information, not APF. Sample: [{\"ingredient\":\"morphine\",\"formulation\":\"modified-release tablet\",\"can_crush\":\"do_not_crush\",\"can_disperse\":\"not_dispersible\",\"rationale\":\"crushing destroys the modified-release matrix -> dose dumping / overdose risk\",\"alternative\":\"use immediate-release liquid under prescriber direction\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "tdm_parameters — Therapeutic Drug Monitoring (NTI becomes a bucket inside)",
+      "rationale": "APF Section B Table B.2 model. TDM is the heading capability; the existing nti dataset is the narrow-therapeutic-index BUCKET under it (via the grouping overlay). This new leaf carries the monitoring parameters (ranges, timing). Frozen nti_check unchanged.",
+      "detail": "capability key: 'tdm_parameters'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); monitored:bool(req); therapeutic_range_low:num(opt); therapeutic_range_high:num(opt); range_unit:str(opt); toxic_threshold:num(opt); toxic_unit:str(opt); sample_timing:enum['trough','peak','either','auc'](opt); biological_fluid:enum['serum','plasma','whole_blood'](opt); time_to_steady_state:str(opt); monitoring_indication:str(opt); active_metabolite_note:str(opt); notes:str(opt). Reference-only. NOT a dose source — target CONCENTRATION ranges are lab-monitoring targets, not dosing instructions (no-LLM-doses invariant untouched). Cross-links to nti by ingredient; nti stays its own dataset (the bucket). Content from AMH/Therapeutic Guidelines, not APF. Sample: [{\"ingredient\":\"vancomycin\",\"monitored\":true,\"therapeutic_range_low\":15,\"therapeutic_range_high\":20,\"range_unit\":\"mg/L\",\"sample_timing\":\"trough\",\"biological_fluid\":\"serum\",\"monitoring_indication\":\"efficacy + nephrotoxicity avoidance in serious MRSA infection\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "warning_labels — Cautionary Advisory Labels (Counselling heading)",
+      "rationale": "APF 'Cautionary advisory labels' subheading. Advisory/cautionary label assignments per medicine.",
+      "detail": "capability key: 'warning_labels'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); label_code:str(req); label_text:str(opt); source_scheme:enum['RASML','PSA_CAL','other'](req); mandatory:bool(opt); reference:str(opt). Reference-only. COPYRIGHT: author from RASML (Required Advisory Statements for Medicine Labels — TGA legal instrument, public), NOT from APF's monograph CAL assignments; source_scheme:'RASML' is the primary path. Invariant impact: none. Sample: [{\"ingredient\":\"doxycycline\",\"label_code\":\"RASML-swallow-whole-upright\",\"label_text\":\"Swallow whole with a full glass of water while sitting or standing\",\"source_scheme\":\"RASML\",\"mandatory\":true}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "counselling_points — Consumer information (Counselling heading)",
+      "rationale": "APF 'Consumer information' subheading. Verbal counselling messages that reinforce/extend the CALs.",
+      "detail": "capability key: 'counselling_points'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); point:str(req); category:enum['administration','storage','missed_dose','side_effect_advice','duration','lifestyle','safety_netting'](opt); priority:enum['essential','recommended'](opt). Reference-only. precautions stays a SEPARATE leaf under the same Counselling heading (not merged). Content from AMH/CMI knowledge, not APF. Sample: [{\"ingredient\":\"amoxicillin\",\"point\":\"Complete the full course even if you feel better\",\"category\":\"duration\",\"priority\":\"essential\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "dispensing_considerations — point-of-dispensing alerts",
+      "rationale": "APF 'Dispensing considerations' general points not covered by a specific leaf.",
+      "detail": "capability key: 'dispensing_considerations'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); consideration:str(req); category:enum['supply_restriction','monitoring_alert','adherence','brand_substitution','storage','quantity','safety'](opt). Reference-only. Sample: [{\"ingredient\":\"clozapine\",\"consideration\":\"Supply only with a current haematological monitoring result (patient monitoring system)\",\"category\":\"monitoring_alert\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "hepatic — hepatic-impairment handling (parallels renal)",
+      "rationale": "APF 'Hepatic impairment' subheading. Mirror of the existing renal capability for liver dysfunction.",
+      "detail": "capability key: 'hepatic'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); action:enum['hepatic_contraindicated','hepatic_caution','dose_adjustment'](req); child_pugh_class:enum['A','B','C'](opt); guidance:str(opt); monitoring:str(opt). Reference-only (no frozen hepatic_check exists; a hepatic_dosing_check is a separate frozen-contract proposal). Invariant impact: none. Sample: [{\"ingredient\":\"atorvastatin\",\"action\":\"hepatic_contraindicated\",\"child_pugh_class\":\"C\",\"guidance\":\"active liver disease or unexplained persistent transaminase elevation\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "pregnancy — AU pregnancy category",
+      "rationale": "APF 'Pregnancy' subheading + Additional information pregnancy categories.",
+      "detail": "capability key: 'pregnancy'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); au_category:enum['A','B1','B2','B3','C','D','X'](req); guidance:str(opt). Reference-only. Author from the TGA Prescribing Medicines in Pregnancy database (public), not APF. Sample: [{\"ingredient\":\"isotretinoin\",\"au_category\":\"X\",\"guidance\":\"high risk of permanent fetal damage; must not be used in pregnancy\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "breastfeeding — lactation compatibility",
+      "rationale": "APF 'Breastfeeding' subheading.",
+      "detail": "capability key: 'breastfeeding'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); compatibility:enum['compatible','caution','avoid','insufficient_data'](req); guidance:str(opt). Reference-only. Sample: [{\"ingredient\":\"codeine\",\"compatibility\":\"avoid\",\"guidance\":\"variable CYP2D6 metabolism -> risk of infant opioid toxicity\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "elderly — older-person considerations",
+      "rationale": "APF 'Elderly' subheading. Age-related sensitivity, deprescribing, anticholinergic burden.",
+      "detail": "capability key: 'elderly'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); consideration:str(req); category:enum['increased_sensitivity','avoid','dose_reduction','deprescribing','anticholinergic_burden'](opt); guidance:str(opt). Reference-only. Sample: [{\"ingredient\":\"diazepam\",\"consideration\":\"increased sedation and fall risk; long half-life prolonged in the elderly\",\"category\":\"avoid\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "discolouration — medicine-induced urine/faeces colour change",
+      "rationale": "APF 'Changes to urinary system' / 'Changes to faeces' subheadings + Section C 'Medicine-induced discolouration'. Prevents false alarm over harmless colour changes.",
+      "detail": "capability key: 'discolouration'. Clinical-judgement (per-record provenance). Fields (.strict): ingredient:str(req); fluid:enum['urine','faeces','other'](req); colour:str(opt); clinically_harmless:bool(opt); note:str(opt). Reference-only. Sample: [{\"ingredient\":\"rifampicin\",\"fluid\":\"urine\",\"colour\":\"orange-red\",\"clinically_harmless\":true,\"note\":\"also discolours tears/sweat; can stain soft contact lenses\"}]"
+    },
+    {
+      "kind": "new_capability",
+      "title": "dose_evidence_pending — APF dosage review queue (don't drop the misses)",
+      "rationale": "APF22 Section D 'Common Dosage Range' facts that fail PubMed verification (DEVELOPMENT-INSTRUMENT §4.3a) are valuable but uncited. Rather than drop them, hold them in a review queue for later elevation to dose_evidence (path 1 re-verification, or path 2 clinician direct-APF attestation). Preserves content; keeps the dose invariant.",
+      "detail": "capability key: 'dose_evidence_pending'. Clinical-judgement (per-record provenance). HELD register — reference-only, ENGINE-ISOLATED (no accessor; never a dose source), NOT dose_evidence, NOT prescribing. Fields (.strict): ingredient:str(req); context:str(req); apf_dosage_range:str(req, faithful to APF22, cited); reason_unverified:str(req); status:enum['pending','elevated_pubmed','elevated_clinician_apf','declined'](req, default 'pending'); provenance(source_ref:'apf22'). Companion (optional, small): a 'dose_evidence_review_queue' section in the dev-package + pharm-ingest.mjs SURFACES it (report-only, like structural_proposals — never writes into dose_evidence) + a dev-package.schema.json entry. Invariant impact: none — holds dose TEXT but isolated, held, clinician-gated for any elevation; safer framing than dose_guidance. Sample: [{\"ingredient\":\"<drug>\",\"context\":\"<indication>\",\"apf_dosage_range\":\"<APF Common Dosage Range fact>\",\"reason_unverified\":\"no supporting primary literature found\",\"status\":\"pending\"}]"
+    },
+    {
+      "kind": "schema_change",
+      "title": "dose_evidence direct-APF-citation variant + clinician-attested elevation (LAST RESORT) — touches the dose invariant",
+      "rationale": "Elevation path 2: when re-verification is unavailable and the medicine is applicable, the registered pharmacist (clinician only) may attest an APF dose fact directly, citing APF22, elevating it from the pending queue (dose_guidance territory) into engine-isolated dose_evidence. Needs a citation-model decision on dose_evidence.",
+      "detail": "Changes to DoseEvidenceSchema: (1) citation.id_type enum add 'apf22' (alongside pmid/doi); (2) for an APF-cited record, citation.identifier must be a STABLE, UNIQUE per-record ref (e.g. 'apf22:<ingredient>:<context-slug>') so the [ingredient, citation.identifier] natural key does NOT collide (all-APF records must not share identifier 'apf22'); provenance.source_ref mirrors it (the .refine still holds). (3) The elevation is CLINICIAN-GATED and does NOT go through the fail-closed authoring pipeline (which forces reviewed_by:null/draft) — it is a separate clinician-attestation action that sets reviewed_by=<clinician>, review_status='approved', citation.verified=true-by-attestation, with an explicit attestation record. NOT chat- or agent-authorable. Invariant impact: this is the ONE path where a dose enters dose_evidence WITHOUT a PubMed citation — permitted ONLY because (a) it is engine-ISOLATED (never surfaces a dose to a patient), (b) the dose is sourced from attested-authoritative APF22 (not LLM-invented), and (c) a registered pharmacist personally attests it. Still NOT patient-facing (dose_evidence never feeds the firewall). Plan-gated; requires Ken's explicit approval before building."
+    },
+    {
+      "kind": "new_check",
+      "title": "(FLAGGED, NOT bundled) optional firewall checks on the new reference data",
+      "rationale": "Once the reference capabilities exist, some could gate the pipeline — but each touches the FROZEN pharm-check check_id enum, so each is its own plan-gated proposal, not part of this reorg.",
+      "detail": "Candidates: crush_safety_check (on administration_handling — e.g. HARD block a 'crush + enteral tube' intent for a do_not_crush modified-release product); hepatic_dosing_check (on hepatic, mirroring renal_dosing_check); tdm_target_check (on tdm_parameters). Each requires: a new value in the frozen pharm-check check_id enum + engine logic + tests. Invariant impact: these ADD firewall protection (safe direction) but change the frozen contract — must go through the frozen-contract change process individually. Listed here only so they are not forgotten."
+    }
+  ]
+}

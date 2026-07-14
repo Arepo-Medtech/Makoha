@@ -63,7 +63,7 @@ const renal = authorDataset({ capability: "renal", provenance_defaults: { ...goo
 expect(renal.accepted.length === 1, "renal record round-trips");
 const sched = authorDataset({ capability: "scheduling", provenance_defaults: { ...goodDefaults, source: "SUSMP Poisons Standard", source_ref: "susmp-poisons-standard" }, records: [{ ingredient: "oxycodone", schedule: "S8", effective_date: "2026-07-13" }] });
 expect(sched.accepted.length === 1, "scheduling record round-trips");
-const inter = authorDataset({ capability: "interactions", provenance_defaults: { ...goodDefaults, source: "STOPP/START v3", source_ref: "stopp-start-v3" }, records: [{ interaction_kind: "drug_drug", subject: "warfarin", object: "ibuprofen", severity: "critical", mechanism_class: "additive bleeding risk", management_category: "avoid", evidence_tier: "guideline" }] });
+const inter = authorDataset({ capability: "interactions", provenance_defaults: { ...goodDefaults, source: "STOPP/START v3", source_ref: "stopp-start-v3" }, records: [{ interaction_kind: "drug_drug", mechanism_category: "drug_drug", subject: "warfarin", object: "ibuprofen", severity: "critical", mechanism_class: "additive bleeding risk", management_category: "avoid", evidence_tier: "guideline" }] });
 expect(inter.accepted.length === 1, "interaction record round-trips");
 const allergy = authorDataset({ capability: "allergy", provenance_defaults: { ...goodDefaults, source: "self-authored", source_ref: "self-authored" }, records: [{ group: "beta_lactam", members: ["penicillin", "amoxicillin", "cephalexin"] }] });
 expect(allergy.accepted.length === 1, "allergy group round-trips");

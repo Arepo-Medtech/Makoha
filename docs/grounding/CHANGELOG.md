@@ -4,6 +4,78 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-30 (addendum) — clinician worksheet sign-off: 88 records attested (KL, 2026-07-14)
+
+**Status:** all 8 `contract-pharm-*` suites green. Records-only change (provenance). **CLINICAL sign-off only — regulatory NOT given; datasets stay `-dev`, system stays mock/non-patient-facing.**
+
+**Plain language.** Registered pharmacist **Kenneth Lee** completed the per-record sign-off worksheet — **all 88 records Attested, 0 Amend, 0 Reject**, signed 2026-07-14. The signed worksheet is retained as the medicolegal artifact at `eval/pharmacology/signoff/PharmCheck-signoff-worksheet-KL-2026-07-14.xlsx` (+ `worksheet-signoff.md`). Applied in the repo: matching records set `reviewed_by:"Kenneth Lee"`, `review_status:"approved"` — **74 newly approved, 11 already-signed re-affirmed, 3 `warning_labels` PSA_CAL written approved with 3 stale RASML archived** to `superseded[]` (the attested RASML→PSA_CAL scheme correction).
+
+**Governance.** The three previously dataset-signed capabilities (interactions/contraindications/serious_adverse_effects) are now fully re-consolidated — 0 draft remaining, `has_unsigned_additions` cleared. The reference datasets (admin_handling, tdm, counselling, warning_labels, dose_evidence) keep `clinical_sign_off:false` at dataset level because each still holds unattested drafts outside this worksheet (P1 seeds, the 259-record dose-evidence register); per-record `review_status` is authoritative.
+
+### Guarded against error
+A worksheet inconsistency was caught first (signed block + summary said 88 attested, but the per-row Decision column was empty) — sign-off was **refused** and re-confirmed only after KL re-supplied the worksheet with all 88 per-row `Attest` decisions genuinely populated.
+
+### Register / gap
+No new capability. Moves 88 reference/safety records from draft → clinician-approved (`-dev`). Patient-facing still blocked (regulatory sign-off, live vendor, Clinician Verification Portal, persistence). Remaining draft: P1 seeds not in the worksheet, the dose-evidence retrieval register, and the P2 registers (pregnancy_risk/hepatic/queue) — future sign-off passes.
+
+## FL-30 (addendum) — APF22 reorg Priority-2: pregnancy_risk + hepatic + dose-evidence review queue (2026-07-14)
+
+**Status:** all 8 `contract-pharm-*` suites green. Frozen `pharm-intent`/`pharm-check` unedited (`git diff` = 0). No new dependency. Datasets `-dev`/draft; records NO sign-off.
+
+**Plain language.** Scaffolded three **reference-only** capabilities (engine-isolated, not a dose source, not wired to a `check_id`) and seeded them: `pregnancy_risk` (18 TGA-category records, cited `tga-pregnancy`), `hepatic` (13 Child-Pugh caution/contraindication records), `dose_evidence_review_queue` (2 — the §4.3b holding area, seeded with the exact APF dose misses that failed PubMed verification: amoxicillin CAP short-course + colchicine paediatric). Added the heading-overlay memberships (`pregnancy_risk`/`hepatic` → Special populations; `review_queue` → Dosing) and a `tga-pregnancy` data source.
+
+**Frozen-contract note.** `pregnancy_check`/`hepatic_check` are already reserved in the frozen `pharm-check`/`pharm-intent` enums but unimplemented; these datasets are **reference-only** and do NOT wire them — engine-wiring is a separate gate (needs engine logic, no frozen change since the slots exist).
+
+### Change
+- **`domain/model.js` [~]** — `PregnancyRiskSchema`, `HepaticSchema`, `DoseEvidenceReviewQueueSchema` (`apf_reference` pinned `"apf22"`, `not_prescribing_guidance` literal `true`) + validators + `CAPABILITY_VALIDATORS`.
+- **3 dataset skeletons + seeds [+]**; `capability-groups.json` [~] (memberships); `pharm-author.mjs`/`pharm-ingest.mjs` [~] (`CAPABILITY_FILE`/`NATURAL_KEYS`); `contract-pharm-datastore.js` [~]; `data-sources.json` [~] (`tga-pregnancy`).
+
+### Invariant check
+No dose from the LLM (review-queue holds APF dose text but engine-isolated + `not_prescribing_guidance:true`; pregnancy/hepatic carry no dose); frozen contracts untouched; engine untouched (no accessor reads the 3 registers); per-record provenance enforced; nothing patient-facing. ✔
+
+### Register / gap
+`pregnancy_risk`, `hepatic`, `dose_evidence_review_queue` UNBUILT→**COMPLETE** (reference-only, `-dev`). `review_queue` closes the §4.3b "misses have nowhere to go" gap. **Deferred:** the direct-APF `dose_evidence` citation variant (touches the dose invariant — separate clinician-gated gate); engine-wiring of `pregnancy_check`/`hepatic_check`; `pregnancy_risk` bulk-sync from TGA (seed is a curated safety-critical subset).
+
+## FL-30 (addendum) — APF22 reorg Priority-1: heading overlay + 4 reference capabilities (2026-07-14)
+
+**Status:** all 8 `contract-pharm-*` suites green (incl. new `contract-pharm-capability-groups`). Frozen `pharm-intent`/`pharm-check` unedited; `nti_check` unchanged. No new dependency. Datasets `-dev`/unsigned; every record `review_status:draft`. Records NO clinical sign-off.
+
+**Plain language.** Mapped PharmCheck onto the APF22 (© PSA) clinical-monograph taxonomy and built Priority-1 of the reorganisation. A **non-destructive heading overlay** (`capability-groups.json`) groups the flat capabilities under APF headings (Counselling, Dispensing considerations, TDM, …) as metadata — **no dataset migrated or merged** ("the capabilities must not be crushed"). Four new **reference-only** capabilities added (same class as `dose_evidence` — provenanced, engine-isolated, not a dose source, not wired to a `check_id`): `administration_handling` ("should not be crushed"), `tdm_parameters` (therapeutic drug monitoring; **NTI becomes the narrow-index bucket** under the TDM heading, frozen `nti_check` untouched), `warning_labels`, `counselling_points`.
+
+**Copyright.** APF22 registered (`data-sources.json`) as an authoritative reference for **facts + citation only** (`copyleft_reference_only`/`structure_only`, clinician-attested KL 2026-07-14, no content licence held); RASML/TGA added as the **primary** source for `warning_labels`. No APF prose/tables reproduced.
+
+### Change
+- **`mcp/servers/pharmacology/domain/model.js` [~]** — `AdministrationHandlingSchema`, `TdmParametersSchema`, `WarningLabelSchema`, `CounsellingPointSchema` + validators + `CAPABILITY_VALIDATORS` registration; `CapabilityGroups*Schema` + `validateCapabilityGroups`.
+- **`mcp/servers/pharmacology/data/capability-groups.json` [+]** — the heading overlay (9 groups, 19 capabilities classified, TDM group = [nti, tdm_parameters]).
+- **4 dataset skeletons + seeds [+]** — `administration-handling` (6), `tdm-parameters` (6), `warning-labels` (4, RASML), `counselling-points` (6). APF22-cited facts / RASML primary; all draft.
+- **`scripts/pharm-author.mjs` [~]** (`CAPABILITY_FILE`), **`scripts/pharm-ingest.mjs` [~]** (`NATURAL_KEYS`), **`test/contract-pharm-datastore.js` [~]** (4 datasets), **`test/contract-pharm-capability-groups.js` [+]**, **`package.json` [~]** (test wired), **`data-sources.json` [~]** (apf22, rasml-tga).
+
+### Invariant check
+No dose from the LLM (TDM ranges are lab CONCENTRATION targets, not doses; nothing here emits a dose); frozen contracts + `nti_check` + HARD_FAIL logic unchanged; per-record provenance enforced; reference-only/engine-isolated; APF facts+cite only (no prose/tables); nothing patient-facing (`-dev`/draft, needs KL sign-off). ✔
+
+### Register / gap
+Opens→closes: `administration_handling`, `tdm_parameters`, `warning_labels`, `counselling_points` UNBUILT→**COMPLETE** (reference-only, `-dev`); `capability-groups` overlay new→**COMPLETE**. No `BLIND_STUB`/`DEAD_END` (each new capability has a producer=authoring pipeline + consumer=heading overlay). No gap-register movement. Priority-2/3 (hepatic, elderly, pregnancy, breastfeeding, dispensing_considerations, discolouration) remain proposed (`docs/pharmcheck-export/STRUCTURAL-PROPOSALS.md`).
+
+## FL-30 (addendum) — dose-evidence citation register: retrieval-grounded, engine-isolated (2026-07-14)
+
+**Status:** `contract-pharm-datastore` + `contract-pharm-author` green; datasets stay `-dev`/unsigned. Frozen contracts unedited. No new dependency (retrieval via existing PubMed MCP). Records NO sign-off — every record enters `review_status:draft`, `reviewed_by:null`; each carries a "requires clinician verification" posture.
+
+**Plain language.** Added a `dose_evidence` capability — a **citation reference register** of dosing FINDINGS reported in the primary research literature (real PubMed PMID/DOI), NOT prescribing guidance and NOT a dose source. It is **structurally isolated from the PharmCheck engine**: no `PharmDataSource` exposes a `getDoseEvidence()` accessor and the engine never reads `dose-evidence.json`, so the no-dosages-from-the-LLM invariant is untouched — the engine's only dose source remains the firewall/vendor PharmCheck path. This was the compliant resolution of the earlier `dose_guidance` conflict (doses cannot be LLM-authored): formulations (PBS public form/strength) + this cited literature register carry dose-*adjacent* reference data, while `dose_guidance` stays held for AMH/vendor.
+
+**Integrity.** Records were produced by a multi-agent retrieve→adversarial-verify workflow over 130 NTI + renal-adjustment candidate drugs: retrieve agents extracted dose findings with the exact identifier from PubMed tool results (never memory); verify agents (high-effort) called `get_article_metadata` on each identifier and confirmed it BOTH resolves AND that the abstract genuinely supports the statement — dropping anything unverifiable or misattributed. A hallucinated PMID was treated as worse than an empty register. Spot-checked ~7 identifiers independently against PubMed; all real and faithful.
+
+### Change
+- **`mcp/servers/pharmacology/domain/model.js` [~]** — new `DoseEvidenceSchema` + `validateDoseEvidence`; registered in `CAPABILITY_VALIDATORS`. Two mechanical bars: a `.refine` forcing `provenance.source_ref === citation.identifier` (record anchored to its real source), and `not_prescribing_guidance: z.literal(true)` (cannot be bypassed).
+- **`scripts/pharm-author.mjs` [~]** — `buildRecord` now lets a record carry its own provenance fields (needed for the per-record `source_ref`↔citation binding) while STILL force-overriding `reviewed_by:null` + `review_status:draft` last (Guardrail 2 intact; a self-attesting record is still forced to draft). Backward-compatible — existing callers pass no per-record provenance. `dose_evidence` added to `CAPABILITY_FILE`.
+- **`mcp/servers/pharmacology/data/dose-evidence.json` [+]** — 259 verified records across 129 drugs; `-dev`/unsigned; labelled non-prescribing + engine-isolated; integrity bar documented.
+- **`test/contract-pharm-datastore.js` [~]** — `dose-evidence.json` registered (per-record provenance enforced).
+
+### Invariant check
+No-dosages-from-the-LLM **untouched** (engine cannot read this register — structural isolation, not just a label); no fabricated citations (every record verified to resolve; `.refine` anchors provenance to the real id); fail-closed authoring (259 accepted / 0 rejected, all forced to draft, no self-attestation); nothing patient-facing (datasets `-dev`, unsigned, each needs clinician verification against source + AMH/TGA). ✔
+
+### Register / gap
+`dose_evidence` capability: absent → **COMPLETE** (built, schema-gated, authored, contract-tested; DEV/unsigned). No gap-register movement — this is dose-*adjacent* reference data; the `dose_guidance` held gap and the pharmacology-vendor/patient-facing blockers are unchanged.
+
 ## FL-30 — PharmCheck self-build: contract-lock → validated in staging (2026-07-13)
 
 **Status:** `npm test` green (10 new pharm contract suites); `verification` Pass:true; `licence:check` PASS. Frozen `pharm-check`/`pharm-intent` contracts unedited. No new dependency. Records a **clinician sign-off** (reviewer KL, in-session) on the seed datastore + the Step 5 staging validation.

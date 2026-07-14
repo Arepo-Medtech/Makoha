@@ -30,12 +30,26 @@ import { CAPABILITY_VALIDATORS } from "../mcp/servers/pharmacology/domain/model.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "mcp", "servers", "pharmacology", "data");
 
-const CAPABILITY_FILE = {
+export const CAPABILITY_FILE = {
   nti: "nti-register.json",
   interactions: "drug-interactions.json",
   renal: "renal-rules.json",
   scheduling: "au-scheduling.json",
   allergy: "allergy-cross-reactivity.json",
+  serious_adverse_effects: "serious-adverse-effects.json",
+  strong_contraindications: "strong-contraindications.json",
+  precautions: "precautions.json",
+  pharmacokinetics: "pharmacokinetics.json",
+  pharmacodynamics: "pharmacodynamics.json",
+  clinical_uses: "clinical-uses.json",
+  dose_evidence: "dose-evidence.json",
+  administration_handling: "administration-handling.json",
+  tdm_parameters: "tdm-parameters.json",
+  warning_labels: "warning-labels.json",
+  counselling_points: "counselling-points.json",
+  pregnancy_risk: "pregnancy-risk.json",
+  hepatic: "hepatic.json",
+  dose_evidence_review_queue: "dose-evidence-review-queue.json",
 };
 
 /** Deterministic sha256 over a records array (stable key order via JSON of sorted keys). */
@@ -56,12 +70,19 @@ export function checksumRecords(records) {
 export function buildRecord(capability, entity, provenanceDefaults) {
   const validate = CAPABILITY_VALIDATORS[capability];
   if (!validate) throw new Error(`pharm-author: no validator for capability '${capability}' (authoring supports: ${Object.keys(CAPABILITY_VALIDATORS).join(", ")})`);
+  // A record MAY carry its own provenance fields (e.g. dose_evidence needs a per-record
+  // source_ref tied to that record's citation identifier — mechanically enforced by the
+  // DoseEvidenceSchema .refine). Layering order matters: defaults first, per-record next,
+  // and the two SAFETY-CRITICAL fields FORCED last so no record can self-attest or promote
+  // itself past draft (Guardrail 2) regardless of what it supplied.
+  const { provenance: entityProvenance, ...entityRest } = entity || {};
   const provenance = {
     ...(provenanceDefaults || {}),
+    ...(entityProvenance || {}),
     reviewed_by: null, // FORCED — authoring never self-attests (Guardrail 2)
     review_status: "draft", // FORCED — always enters as draft
   };
-  return validate({ ...entity, provenance }); // throws on invalid entity OR invalid provenance
+  return validate({ ...entityRest, provenance }); // throws on invalid entity OR invalid provenance
 }
 
 /**
