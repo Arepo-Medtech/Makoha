@@ -1,0 +1,296 @@
+{
+  "case_set_version": "v0.1.0",
+  "summary": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "adversarial_total": 8,
+    "adversarial_fail_safe": 8,
+    "ab_parity_all_contract_valid": true,
+    "gate_integrity_no_bypass": true,
+    "licensed_stub_unavailable": true,
+    "datastore_backed": true,
+    "receipt_mode": "mock",
+    "coverage_by_category": {
+      "pass": 1,
+      "allergy": 1,
+      "interaction": 2,
+      "renal": 2,
+      "scheduling": 2,
+      "nti": 4,
+      "adversarial": 8
+    }
+  },
+  "results": [
+    {
+      "id": "rep-clean-pass",
+      "category": "pass",
+      "adversarial": false,
+      "description": "Common antibiotic, no allergy/interaction/renal/schedule concern",
+      "expected_status": "PASS",
+      "datastore_status": "PASS",
+      "mock_status": "PASS",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-allergy-xreact",
+      "category": "allergy",
+      "adversarial": false,
+      "description": "Amoxicillin in a penicillin-allergic patient (beta-lactam cross-reactivity)",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "allergy_cross_reactivity"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-interaction-critical",
+      "category": "interaction",
+      "adversarial": false,
+      "description": "Warfarin + ibuprofen (severe bleeding-risk interaction)",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "interaction_severe",
+        "nti"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-interaction-moderate",
+      "category": "interaction",
+      "adversarial": false,
+      "description": "Amoxicillin added for a patient on warfarin (moderate INR interaction)",
+      "expected_status": "WARN",
+      "datastore_status": "WARN",
+      "mock_status": "WARN",
+      "flags": [
+        "interaction_moderate"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-renal-contra",
+      "category": "renal",
+      "adversarial": false,
+      "description": "Metformin at eGFR 25 (contraindicated < 30)",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "renal_contraindicated"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-renal-adjust",
+      "category": "renal",
+      "adversarial": false,
+      "description": "Gabapentin at eGFR 50 (dose adjustment < 60)",
+      "expected_status": "WARN",
+      "datastore_status": "WARN",
+      "mock_status": "WARN",
+      "flags": [
+        "renal_adjustment_required"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-s8-no-pdmp",
+      "category": "scheduling",
+      "adversarial": false,
+      "description": "Methadone (S8) without a documented PDMP check",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [
+        "schedule_8_pdmp_required"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-s8-pdmp-ok",
+      "category": "scheduling",
+      "adversarial": false,
+      "description": "Oxycodone (S8) with a documented PDMP check",
+      "expected_status": "PASS",
+      "datastore_status": "PASS",
+      "mock_status": "PASS",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-nti-no-monitoring",
+      "category": "nti",
+      "adversarial": false,
+      "description": "Lithium (NTI) without a documented monitoring plan",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [
+        "nti"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-nti-monitoring-ok",
+      "category": "nti",
+      "adversarial": false,
+      "description": "Digoxin (NTI) with monitoring documented, normal renal function",
+      "expected_status": "PASS",
+      "datastore_status": "PASS",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-nti-warfarin-no-monitoring",
+      "category": "nti",
+      "adversarial": false,
+      "description": "Warfarin (NTI anticoagulant) without a documented INR monitoring plan",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "PASS",
+      "flags": [
+        "nti"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "rep-nti-warfarin-monitoring-ok",
+      "category": "nti",
+      "adversarial": false,
+      "description": "Warfarin (NTI) with INR monitoring documented",
+      "expected_status": "PASS",
+      "datastore_status": "PASS",
+      "mock_status": "PASS",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-unknown-drug",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Drug not in the reference set — must escalate, never silent-pass",
+      "expected_status": "BLOCKED_NO_PROOF",
+      "datastore_status": "BLOCKED_NO_PROOF",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-missing-facts",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Mandatory facts absent (no allergy/medication status)",
+      "expected_status": "BLOCKED_NO_PROOF",
+      "datastore_status": "BLOCKED_NO_PROOF",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-dialysis-anuric",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Metformin at eGFR 5 (anuric/dialysis) — contraindicated",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "renal_contraindicated"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-polypharmacy",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Warfarin added to a polypharmacy stack containing an NSAID",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "interaction_severe",
+        "interaction_moderate",
+        "nti"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-nti-plus-interaction",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Methotrexate (NTI) + trimethoprim-sulfamethoxazole (critical interaction) co-occurring",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "interaction_severe",
+        "nti"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-contradictory-schedule",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Oxycodone declared 'unscheduled' by the caller — the S8 reference must win (conservative)",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "schedule_8_pdmp_required"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-paediatric",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Known under-18 — no remote paediatric dosing",
+      "expected_status": "HARD_FAIL",
+      "datastore_status": "HARD_FAIL",
+      "mock_status": "HARD_FAIL",
+      "flags": [
+        "age_paediatric_weight_based"
+      ],
+      "pass": true,
+      "problems": []
+    },
+    {
+      "id": "adv-unknown-age",
+      "category": "adversarial",
+      "adversarial": true,
+      "description": "Age unknown — cannot confirm not paediatric, must escalate",
+      "expected_status": "BLOCKED_NO_PROOF",
+      "datastore_status": "BLOCKED_NO_PROOF",
+      "mock_status": "BLOCKED_NO_PROOF",
+      "flags": [],
+      "pass": true,
+      "problems": []
+    }
+  ]
+}

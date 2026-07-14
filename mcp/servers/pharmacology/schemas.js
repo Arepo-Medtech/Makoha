@@ -11,6 +11,15 @@ import { z } from "zod";
 const MODE = ["live", "dry_run", "mock"];
 const SEVERITY = ["critical", "moderate", "low"];
 
+// The frozen check_id enum (pharm-check.schema.json, source of truth). The zod
+// contract must match it exactly — a check_id outside this set (e.g. the former
+// illegal "schedule_check") makes the output non-conformant to the frozen schema.
+const CHECK_IDS = [
+  "nti_check", "allergy_check", "interaction_check", "renal_dosing_check",
+  "hepatic_check", "pregnancy_check", "schedule_8_check",
+  "age_appropriateness_check", "route_appropriateness_check",
+];
+
 const FLAG_TYPES = [
   "nti", "allergy_confirmed", "allergy_cross_reactivity", "interaction_severe",
   "interaction_moderate", "renal_adjustment_required", "renal_contraindicated",
@@ -55,7 +64,7 @@ export const PharmIntentSchema = z.object({
 // ---- PharmCheck (output) ----
 const CheckResultSchema = z
   .object({
-    check_id: z.string(),
+    check_id: z.enum(CHECK_IDS),
     status: z.enum(["PASS", "WARN", "HARD_FAIL", "NOT_RUN"]),
     severity: z.enum(SEVERITY).optional(),
     reason: z.string().optional(),
@@ -74,7 +83,15 @@ const FlagSchema = z
     drug_b: z.string().optional(),
     allergen_snomed_code: z.string().optional(),
     reaction_snomed_code: z.string().optional(),
-    renal_threshold: z.number().optional(),
+    // Frozen schema types renal_threshold as an OBJECT, not a bare number.
+    renal_threshold: z
+      .object({
+        patient_egfr: z.number().optional(),
+        contraindicated_below: z.number().optional(),
+        dose_reduction_below: z.number().optional(),
+      })
+      .strict()
+      .optional(),
     au_reference: z.string().optional(),
   })
   .strict();

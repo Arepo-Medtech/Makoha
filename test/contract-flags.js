@@ -13,8 +13,10 @@ import {
   isStructuredOcrEnabled,
   ocrEngine,
   pharmCdsState,
+  isPharmSyntheticSelfDeveloped,
   allFlags,
 } from "../config/flags.js";
+import { cdsVendorAvailable } from "../mcp/servers/pharmacology/cds-adapter/index.js";
 
 const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -44,6 +46,16 @@ expect(ocrEngine({}) === "paddle", "unset engine must fail safe to paddle");
 expect(pharmCdsState({ HEYDOC_PHARM_CDS: "FILLED" }) === "FILLED", '"FILLED" must resolve to FILLED');
 expect(pharmCdsState({ HEYDOC_PHARM_CDS: "bogus" }) === "EMPTY", 'unknown pharmCds value must fail safe to EMPTY');
 expect(pharmCdsState({}) === "EMPTY", "unset pharmCds must fail safe to EMPTY");
+
+// FL-30 third state: SYNTHETIC_SELF_DEVELOPED resolves to itself, still fail-safe on garbage.
+expect(pharmCdsState({ HEYDOC_PHARM_CDS: "SYNTHETIC_SELF_DEVELOPED" }) === "SYNTHETIC_SELF_DEVELOPED", '"SYNTHETIC_SELF_DEVELOPED" must resolve to itself');
+expect(isPharmSyntheticSelfDeveloped({ HEYDOC_PHARM_CDS: "SYNTHETIC_SELF_DEVELOPED" }) === true, "isPharmSyntheticSelfDeveloped true for the third state");
+expect(isPharmSyntheticSelfDeveloped({ HEYDOC_PHARM_CDS: "FILLED" }) === false, "isPharmSyntheticSelfDeveloped false for FILLED");
+expect(isPharmSyntheticSelfDeveloped({}) === false, "isPharmSyntheticSelfDeveloped false when unset");
+// SAFETY FLOOR: the third state must NOT unlock the authoritative cds-adapter content
+// slot — only a contracted "FILLED" vendor may. Synthetic → still unavailable (E7 holds).
+expect(cdsVendorAvailable({ HEYDOC_PHARM_CDS: "SYNTHETIC_SELF_DEVELOPED" }).available === false, "SYNTHETIC_SELF_DEVELOPED must NOT unlock the authoritative CDS slot");
+expect(/self-developed source feeds the engine only/.test(cdsVendorAvailable({ HEYDOC_PHARM_CDS: "SYNTHETIC_SELF_DEVELOPED" }).reason), "synthetic-state reason documents the engine-only boundary");
 
 // structuredOcr: only exact "ON" enables it.
 expect(isStructuredOcrEnabled({ HEYDOC_STRUCTURED_OCR: "ON" }) === true, '"ON" must enable structuredOcr');

@@ -16,8 +16,15 @@ import { pharmCdsState } from "../../../../config/flags.js";
 
 /** Is a contracted, connected CDS vendor available? Default NO (B4 uncontracted). */
 export function cdsVendorAvailable(env = process.env) {
-  if (pharmCdsState(env) !== "FILLED") {
-    return { available: false, reason: "PHARM_CDS is EMPTY (default) — AU CDS vendor not contracted (B4)" };
+  const state = pharmCdsState(env);
+  if (state !== "FILLED") {
+    // SYNTHETIC_SELF_DEVELOPED (FL-30) selects the engine's data source but is NOT a
+    // contracted commercial CDS vendor — it must NOT unlock this authoritative content
+    // slot. Only "FILLED" (a contracted, validated vendor) may. Everything else → empty.
+    const reason = state === "SYNTHETIC_SELF_DEVELOPED"
+      ? "PHARM_CDS=SYNTHETIC_SELF_DEVELOPED — self-developed source feeds the engine only; the authoritative CDS content slot stays EMPTY (not a commercial vendor). E7 HARD_FAIL floor holds pending staging validation + clinical sign-off"
+      : "PHARM_CDS is EMPTY (default) — AU CDS vendor not contracted (B4)";
+    return { available: false, reason };
   }
   const raw = (env.HEYDOC_PHARM_CDS_ENDPOINT || "").trim();
   if (!raw || raw.startsWith("<") || raw.includes("example.invalid")) {
