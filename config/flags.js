@@ -28,6 +28,16 @@
  *     cds-adapter content slot and does NOT clear the E7 monotone HARD_FAIL — permitting
  *     the synthetic engine verdict to stand is a Step-5 clinical decision gated on
  *     staging validation + registered-pharmacist sign-off, never a flag flip.
+ *   - AU_OSS_CDS (Track A) — an open-source, standards-based CDS PROVIDER: the OpenCDS
+ *     engine (Apache-2.0, an external network peer — no source vendored) executing the
+ *     clinician-signed FL-30 knowledge base and returning structured verdicts through the
+ *     cds-adapter. DISTINCT from FILLED (not a contracted COMMERCIAL vendor) and from
+ *     SYNTHETIC_SELF_DEVELOPED (which feeds only the in-process engine). CRITICAL: like the
+ *     other non-FILLED states it does NOT by itself authorise output — a validated OpenCDS
+ *     endpoint + validated client + staging validation are all required (cds-adapter/index.js),
+ *     and the E7 monotone HARD_FAIL floor still holds. OpenCDS supplies EXECUTION + standards
+ *     packaging, never new knowledge, so it never lifts the clinician-signed content to
+ *     regulator-signed: green stays gated on FL-50 (TGA) + FL-52.
  *
  * Pure module — no I/O beyond reading the passed-in `env` object (defaults to
  * `process.env`), so callers can inject a fake env in tests.
@@ -54,7 +64,7 @@ export const FLAGS = {
   },
   PHARM_CDS: {
     env: "HEYDOC_PHARM_CDS",
-    allowed: ["EMPTY", "FILLED", "SYNTHETIC_SELF_DEVELOPED"],
+    allowed: ["EMPTY", "FILLED", "SYNTHETIC_SELF_DEVELOPED", "AU_OSS_CDS"],
     safeDefault: "EMPTY",
     kind: "enum",
   },
@@ -107,11 +117,20 @@ export function ocrEngine(env = process.env) {
 }
 
 /** Resolved pharmacology CDS content state: "EMPTY" | "FILLED" |
- * "SYNTHETIC_SELF_DEVELOPED". Does not itself authorise dosing output, and
- * SYNTHETIC_SELF_DEVELOPED does not unlock the authoritative cds-adapter slot
- * (it is not "FILLED") — see module comment. */
+ * "SYNTHETIC_SELF_DEVELOPED" | "AU_OSS_CDS". Does not itself authorise dosing output;
+ * only "FILLED" (a contracted commercial vendor) targets the authoritative cds-adapter
+ * slot directly — AU_OSS_CDS reaches it only via a validated OpenCDS endpoint + client,
+ * and SYNTHETIC_SELF_DEVELOPED never does. See module comment. */
 export function pharmCdsState(env = process.env) {
   return readFlag("PHARM_CDS", env);
+}
+
+/** True iff the pharmacology content path is the open-source OpenCDS provider (Track A,
+ * AU_OSS_CDS). Selection alone does NOT unlock the cds-adapter slot: a validated OpenCDS
+ * endpoint + client + staging validation are still required, and the E7 HARD_FAIL floor
+ * holds until then (cds-adapter/index.js). */
+export function isPharmAuOssCds(env = process.env) {
+  return readFlag("PHARM_CDS", env) === "AU_OSS_CDS";
 }
 
 /** True iff the pharmacology content path is the self-developed synthetic source
