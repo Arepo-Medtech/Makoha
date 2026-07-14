@@ -4,6 +4,23 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-34 Phase 0 — register-maintenance pass (2026-07-14)
+
+**Status:** report-only reconciliation ahead of the FL-34 OpenCDS-gateway build; NO code touched, no test run affected. Ahead of Phase A.
+
+**Plain language.** Four tracker↔register discrepancies had accumulated. This pass makes the register and gap-register consistent with what the code already does — it does not change any behaviour.
+
+**Reconciled.**
+- `pregnancy-hepatic-check-unwired` — the CHANGELOG (FL-05) recorded it closed but the completeness-register prose still listed it DEFERRED(open). Now a full `- id:` record marked COMPLETE/resolved in MEDIUM.
+- Track A OSS-route artifacts (PR #67) had no register records: added `opencds-cds-adapter-client` + `cds-firewall-fold` (COMPLETE) and the three FL-34 gateway build items (`opencds-gateway-image`, `fl30-kb-km-package`, `opencds-gateway-shim`, UNBUILT/input_gated on the sibling repo `kenleefreo/breath-ezy-cds-gateway`).
+- Track B (PR #68) had no record: added `au-provider-bahmni` (PARTIAL/input_gated).
+- The three remaining PR #66 DEFERRED ids (`pregnancy-risk-bulk-sync-pending`, `warning-labels-cal-verbatim-pending`, `dose-evidence-apf-attestation-variant-deferred`) now have full `- id:` records.
+- gap-register R-22 row + §pharmacology status block reframed from "live vendor pending / do not use" to **FL-30-resolved core + FL-34 patient-facing arm** (commercial vendor OR the AU_OSS_CDS OpenCDS gateway); `SYNTHETIC_SELF_DEVELOPED` noted as engine-only, not a slot unlock.
+
+**Not changed.** No schema, no code, no test; the `cds-adapter` EMPTY→HARD_FAIL floor is unaffected; nothing patient-facing.
+
+---
+
 ## FL-05 — wire the reserved pregnancy_check + hepatic_check into the engine (2026-07-14)
 
 **Status:** all pharmacology suites green; full `npm test` green. Frozen `pharm-check`/`pharm-intent`/`schemas.js` byte-unchanged (`git diff` = 0). No new dependency. Datasets stay `-dev`/mock-moded.
