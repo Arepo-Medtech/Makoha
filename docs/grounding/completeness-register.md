@@ -41,6 +41,8 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 **FL-30 expansion + round-trip + full clinician sign-off scoped re-scan** _(2026-07-14, FL-30 continuation — APF22 capability reorg, chat↔repo round-trip toolkit, per-record worksheet sign-off; PR #66)_ — Built on the resolved `pharmacology-server-unbuilt`. **(a) APF22 (© PSA) reorganisation.** A NON-DESTRUCTIVE heading overlay (`capability-groups.json`, 9 groups, `contract-pharm-capability-groups.js`) + **8 new reference-only capabilities** — all engine-ISOLATED, per-record provenanced, NOT dose sources, NOT wired to any frozen `check_id`: `dose_evidence` (259 retrieval-grounded records, real PubMed PMID/DOI, retrieve→adversarial-verify workflow, independently re-checked), `administration_handling` ("should not be crushed"), `tdm_parameters` (NTI is its bucket under the TDM heading; frozen `nti_check` untouched), `warning_labels` (RASML/PSA_CAL), `counselling_points`, `pregnancy_risk` (TGA categories), `hepatic` (Child-Pugh), `dose_evidence_review_queue` (§4.3b holding area for APF dose facts that fail PubMed verification). NEW COMPLETE: `pharm-capability-groups-overlay`, `pharm-dose-evidence-register`, `pharm-administration-handling`, `pharm-tdm-parameters`, `pharm-warning-labels`, `pharm-counselling-points`, `pharm-pregnancy-risk`, `pharm-hepatic`, `pharm-dose-evidence-review-queue`. **(b) Chat↔repo round-trip toolkit** (`docs/pharmcheck-export/{PHARMCHECK-EXPORT,DEVELOPMENT-INSTRUMENT,STRUCTURAL-PROPOSALS}.md` + `structural-proposals.json` + `dev-package.schema.json`; `scripts/pharm-ingest.mjs`/`pharm-export.mjs`): the ingest adapter is schema-gated, FORCES `review_status:draft`, integrate-not-overwrite by per-capability NATURAL KEY (`superseded[]` archive, never deletes), a **`--supersede-signed` guard** (refuses to downgrade a clinician-signed record for a draft update without explicit override — added after a caught real error), and a **`has_unsigned_additions`** governance flag (a `contract-pharm-datastore` guard makes a signed dataset with draft additions declare it, so `clinical_sign_off` can't silently over-claim). Export publishes the `.strict()` enum vocabularies (introspected, self-syncing). NEW COMPLETE: `pharm-ingest-adapter`, `pharm-export-generator`. **(c) First per-record clinician sign-off.** Registered pharmacist **Kenneth Lee (MED0001857758)** attested the datastore across two signed worksheets (88 + 308 = every per-record clinical fact); **ZERO per-record drafts remain** — each clinical-judgement dataset is now `clinical_sign_off:true` (regulatory_sign_off:false; `-dev` retained; non-patient-facing). Artifacts retained at `eval/pharmacology/signoff/`. First worksheet caught + refused an inconsistent sheet (empty Decision column vs signed summary) before re-supply — the sign-off is genuine per-row. **Sources:** APF22 registered facts+citation ONLY (clinician-attested authoritative, no content licence held), RASML/TGA primary for labels/pregnancy (`data-sources.json` apf22/rasml-tga/tga-pregnancy, all `structure_only`/verified). **DEFERRED (open):** `dose-evidence-apf-attestation-variant-deferred` (Medium — a clinician-only direct-APF citation variant of `dose_evidence`; touches the dose invariant, schema-only, un-seeded, fail-closed against agents; NOT built), `pregnancy-hepatic-check-unwired` (Medium — the reserved frozen `pregnancy_check`/`hepatic_check` are NOT engine-implemented; wiring needs engine logic only, **NO frozen change** since the enum slots already exist), `pregnancy-risk-bulk-sync-pending` (Medium — the 18 seeds are a confident safety-critical subset; the long tail should BULK-sync from the TGA Prescribing-Medicines-in-Pregnancy DB like `pbs`), `warning-labels-cal-verbatim-pending` (Low — exact CAL/RASML numbers + verbatim wording to confirm before ship). **Frozen `pharm-intent`/`pharm-check` byte-unchanged** (`git diff` 0). **No BLIND_STUB/DEAD_END opened** — every new capability is a producer (authoring pipeline) with a consumer (heading overlay + contract tests); reference-only registers never reach a dose-surfacing path (engine isolation asserted, no accessor reads them). All 8 `contract-pharm-*` suites green.
 
+**Register-maintenance pass** _(2026-07-14, FL-34 Phase 0 — reconcile 4 accumulated tracker↔register discrepancies; report-only, no code)_ — Housekeeping ahead of the FL-34 OpenCDS-gateway build. Four items reconciled: **(1)** `pregnancy-hepatic-check-unwired` — CHANGELOG recorded it closed (FL-05/PR #69) but this register's line-42 prose still listed it DEFERRED(open); now carries a full `- id:` record in MEDIUM marked **COMPLETE/resolved** (engine-wired `pregnancy_check`/`hepatic_check`, contract-tested, frozen schemas byte-unchanged). **(2)** Track A OpenCDS OSS-route artifacts (PR #67) had no register records: added `opencds-cds-adapter-client` + `cds-firewall-fold` (both COMPLETE — the AU_OSS_CDS client + monotone firewall fold, contract-tested) and the three FL-34 gateway build items (`opencds-gateway-image`, `fl30-kb-km-package`, `opencds-gateway-shim`) as UNBUILT/input_gated on the sibling repo `kenleefreo/breath-ezy-cds-gateway`. **(3)** Track B (PR #68) had no record: added `au-provider-bahmni` (PARTIAL/input_gated). **(4)** The three remaining PR #66 DEFERRED ids (`pregnancy-risk-bulk-sync-pending`, `warning-labels-cal-verbatim-pending`, `dose-evidence-apf-attestation-variant-deferred`) now have full `- id:` records. The gap-register R-22 row + §pharmacology status block were reframed from "live vendor pending / do not use" to **FL-30-resolved core + FL-34 patient-facing arm (commercial vendor OR the AU_OSS_CDS OpenCDS gateway)**. No BLIND_STUB/DEAD_END touched; nothing patient-facing; the `cds-adapter` EMPTY→HARD_FAIL floor holds throughout.
+
 **L12 scoped re-scan** _(2026-07-13, LIVE_PLAN L12 consent capture — FL-01, operator-approved plan `.planning/CONSENT-PLAN.md`)_ — Built consent capture as a **recording mechanism, not a permission unlock** (contract-proven both ways: the no-unlock assertion on `persistContent()`, and a zero-consent-reference static scan over the packet path). NEW: `consent-record` schema + zod `.strict()` (PHI-free by construction), `verification/consent.js` (capture/revoke/status + the fail-closed `requireActiveConsent()` seam future persistence MUST call), `verification/consent-store.js` (FOURTH append-only hash chain, substrate seam built day one — R-43 lesson — and `registerWormAudit()` now covers all four chains), session-store close-hook registry (session-bound expiry mechanical; destruction survives a throwing hook), bounded consult-intake consent step (silence records nothing; decline pre-selected + never affects care; SUPPRESSED on STOP/T5), `docs/grounding/privacy-app-mapping.md` (APP 1–13 + data-flow register; org items flagged not decided). `consent-capture-unbuilt` → **COMPLETE/resolved** (R-40 capture half). **No BLIND_STUB/DEAD_END opened**: the store has real producers (consult intake, close hook) and consumers (seam, chain verify, WORM test); `content-store-production-gated` deliberately stays open. 52 suites + verification + trunk:stub:all + licence:check + security:secrets green; RETAIN core byte-unchanged (CI pin).
 
 **M0 scoped re-scan** _(2026-07-03, ARCH_PLAN milestone M0)_ — _(case count SUPERSEDED by the H4 line above — 303 as of 2026-07-06.)_ Case set is now **52 cases** (47 difficulty-01 / 5 difficulty-04 incl. reference `SPEC-CARD-04-00001`; 51 clinician-attested AUC bundles, bulk attestation reviewer KL 2026-07-02) — `case-set-underpopulated` row updated (C18/F15 closed). New findings registered: `routing-plan-next-trunks-dead-end` (DEAD_END-1, High), `mode-leakage-enforcelive` (C16/F4, High), `context-injection-allowlist` (recorded in-register — previously index-only — High), `case-dir-duplicate-files` (Medium), `repo-digest-sealed-node-carveout` (Low). Firewall line superseded: JS now reads `data/cases` via `scripts/ingest-case-bundles.mjs` (field-scoped firewall, contract-tested), `scripts/export-repo-digest.mjs` (documented engineering carve-out), `scripts/build-case-transformation-kit.mjs` (schemas only) and `test/contract-case-ingest.js` — **none routes `10`–`13` content into any trunk/packet path; firewall NOT breached.**
@@ -790,6 +792,159 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ## MEDIUM
 
 ```md
+- id: pregnancy-hepatic-check-unwired
+  path: mcp/servers/pharmacology/engine.js, mcp/servers/pharmacology/sources/pharm-data-source.js, mcp/servers/pharmacology/data/{pregnancy-risk,hepatic}.json, test/contract-pharm-pregnancy-hepatic.js
+  component_type: mcp-server
+  state: COMPLETE
+  evidence: RESOLVED 2026-07-14 (FL-05 / PR #69, main @ 28da653). The frozen pharm-check RESERVED pregnancy_check/hepatic_check + their flag types, and the pregnancy-risk (18 TGA-category) + hepatic (13 Child-Pugh) datasets were clinician-signed (KL), but the engine never read them — so both safety checks silently did not run. FL-05 wires them: engine logic only, NO frozen change (enum slots already existed). pregnancy_check: X→HARD_FAIL, D→WARN, A/B/C→PASS; operator-ruled fail-safe D-FL05-1 (known teratogen + unknown pregnancy status → NOT_RUN/BLOCKED_NO_PROOF, AGE-GATED to childbearing potential ~12–55/unknown so elderly are not over-triaged). hepatic_check: contraindicated→HARD_FAIL, caution→WARN, unknown→NOT_RUN. Seam accessors getPregnancyRisk/getHepatic in sources/pharm-data-source.js (LicensedFeedSource fails closed). test/contract-pharm-pregnancy-hepatic.js wired into npm test, run green. Frozen pharm-intent/pharm-check byte-unchanged (git diff edb2c7a..28da653 = 0).
+  blocks: (resolved) — the two reference-only registers are no longer engine-isolated by design
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription + conservative-safety-netting (teratogen fail-safe) — enforced mechanically, contract-tested
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: RESOLVED — both checks engine-implemented + contract-tested. (Parts (2)/(3) of FL-05 — TGA pregnancy-DB bulk-sync, CAL verbatim — are SEPARATE items below, input-gated, not this record.)
+  gap_register_link: none
+  status: resolved
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: opencds-cds-adapter-client
+  path: mcp/servers/pharmacology/cds-adapter/{opencds-client.js,opencds-contract.js,index.js}, config/flags.js (AU_OSS_CDS state), test/contract-opencds-contract.js, test/contract-pharmacology-cds.js
+  component_type: mcp-server
+  state: COMPLETE
+  evidence: BUILT 2026-07-14 (FL-34 Track A A1–A3b / PR #67, main @ b4a06a9). AU_OSS_CDS third PHARM_CDS state + fail-closed client for the cds-adapter slot when a validated OpenCDS gateway endpoint is present. Client speaks the locked A2 JSON wire contract (opencds-contract.js — 9 check_ids / 18 flag_types, lockstep-verified byte-equal to the frozen pharm-check enums by contract-opencds-contract.js). DEFENCE-IN-DEPTH fail-closed: malformed request never leaves; transport failure/non-200/timeout → BLOCKED_NO_PROOF; off-enum/malformed response → BLOCKED_NO_PROOF; KB-version mismatch → BLOCKED_NO_PROOF; hard rules RE-APPLIED locally (no dose unless composed verdict PASS/WARN); receipt mode stays mock until A4 staging validation (no mock-as-live). Selection + a live endpoint do NOT flip mode to live.
+  blocks: FL-34 patient-facing arm of blocker #1 (with opencds-gateway-image/km-package/shim + A4 staging validation)
+  safety_class: degrades_safe
+  invariant_exposure: no-HARD_FAIL-override + no-autonomous-prescription + no-mock-as-live — all enforced fail-closed in the client
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: RESOLVED for the in-repo client. Patient-facing still requires the deployed gateway (opencds-gateway-image), the KB→KM package, the shim, and A4 staging validation — separate items below.
+  gap_register_link: R-22
+  status: resolved
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: cds-firewall-fold
+  path: verification/pipeline.js (monotone CDS fold), test/contract-cds-firewall-fold.js
+  component_type: verifier
+  state: COMPLETE
+  evidence: BUILT 2026-07-14 (FL-34 Track A / PR #67). MONOTONE fold of the cds-adapter verdict into the Trunk 8.0 firewall: CDS can only ADD severity, never rescue. contract-cds-firewall-fold.js green across four cases: mock+EMPTY no-fold · live+EMPTY → E7 HARD_FAIL · provider fold · monotonicity. EMPTY→HARD_FAIL floor holds; SYNTHETIC_SELF_DEVELOPED still does NOT unlock the slot; AU_OSS_CDS requires a real endpoint AND staging validation before any content flows.
+  blocks: (resolved) — the firewall composition seam for the CDS provider path
+  safety_class: degrades_safe
+  invariant_exposure: no-HARD_FAIL-override (fold is severity-monotone) — contract-tested
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: RESOLVED — monotone fold built + contract-tested.
+  gap_register_link: R-22
+  status: resolved
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: opencds-gateway-image
+  path: (sibling repo) kenleefreo/breath-ezy-cds-gateway — pinned-commits.env, build.sh (pinned 7-repo clone + TZ=America/Phoenix), Dockerfile (maven:3.9-eclipse-temurin-17 → tomcat:10-jre17), README.md
+  component_type: other
+  state: COMPLETE
+  evidence: FL-34 Phase A DELIVERED + GATE CLOSED 2026-07-14. Pinned reproducible image builds from a CLEAN CHECKOUT and serves CDS Hooks. All 7 OpenCDS repos pinned to exact SHAs in pinned-commits.env (SNAPSHOT-only upstream, no tags — SHA is the only stable pin; all 7 verified resolvable HTTP 200 on Bitbucket). Two build quirks found + handled: (a) TZ — opencds-hooks-model-r4's CdsRequestSpec hardcodes a US-Mountain-rendered date and reddens on any other host TZ; build pins TZ=America/Phoenix (permanent MST, no DST) in both build.sh and the Dockerfile build stage (a container otherwise defaults to UTC). (b) ABSOLUTE BUILD PATHS — the Maven-filtered dot-opencds/opencds-hooks.properties bakes knowledge-repository.path + config.security as /gateway/src/.../target/classes/..., which does not exist in the runtime stage → context startup failed (SEVERE, SIMPLE_FILE k-repo not found); fixed via CATALINA_OPTS -D overrides onto the exploded WAR classpath (beans.xml sets system-properties-mode="OVERRIDE" — the app's intended mechanism), NOT by carrying build paths into runtime. VERIFIED live this phase: docker build from clean checkout OK; container context starts with ZERO SEVERE/startup-failed lines; GET /opencds/r4/hooks/cds-services → HTTP 200 {"services":[example-knowledge-module-r4]}; POST /opencds/r4/hooks/cds-services/example-knowledge-module-r4 → HTTP 200 {"cards":[...]}. Endpoint shape confirmed + fed back to the client contract: path is /<context>/r4/hooks/cds-services and prefetch values are BARE FHIR resources (not {response,resource}-wrapped).
+  blocks: FL-34 A4 staging validation (still needs the KM package + shim)
+  safety_class: degrades_safe
+  invariant_exposure: none — image carries the EXAMPLE knowledge module only, no Breath-Ezy clinical content; the cds-adapter EMPTY→HARD_FAIL floor is untouched (no endpoint wired → no content flows)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: RESOLVED — pinned build + two-stage image built and gate-verified (build → deploy → discovery 200 → evaluation 200). NEXT: Phase B (FL-30 KB → KMs) replaces the example KM with Breath-Ezy's signed knowledge; Phase C adds the shim.
+  gap_register_link: R-22
+  status: resolved
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: fl30-kb-km-package
+  path: (sibling repo) breath-ezy-cds-gateway — export script (reads breath-ezy signed datastore read-only) + Java knowledge modules from the opencds-hooks-r4-km-example template
+  component_type: dataset
+  state: UNBUILT
+  evidence: FL-34 Phase B (planned). The FL-30 clinician-signed datastore exported as a checksummed KM supporting-data package (dataset_version + SHA-256); records with clinical_sign_off:false EXCLUDED at export (fail-closed). One Java KM per frozen check; each returns NOT_RUN when its input fact is absent (never a default PASS). OpenCDS supplies execution + standards packaging only, NEVER new knowledge.
+  blocks: FL-34 A4 staging validation
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription (KMs execute signed knowledge, never mint content) — to be proven by per-KM JUnit mirroring engine.js semantics
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Export script + per-check KMs (two tranches: 5 defaults, then hepatic/pregnancy/schedule_8/route); per-KM tests mirror engine.js (X→HARD_FAIL, D→WARN, missing→NOT_RUN, paediatric→flag-not-dose).
+  gap_register_link: R-22
+  status: open
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: opencds-gateway-shim
+  path: (sibling repo) breath-ezy-cds-gateway — Node sidecar (locked JSON contract ↔ CDS Hooks R4); breath-ezy: test/smoke-opencds-gateway.js (env-gated)
+  component_type: other
+  state: UNBUILT
+  evidence: FL-34 Phase C (planned; operator-approved shim decision 2026-07-14 = Node sidecar, single container). Translates our locked opencds-contract.js JSON ↔ CDS Hooks R4 (path /r4/hooks/cds-services/..., bare-resource prefetch — both confirmed on the dev proof-of-deploy). Echoes km_set=fl30-kb:v1; any KM error → NOT_RUN, never dropped. breath-ezy gains only an env-gated smoke test (skips green in CI, LLM-smoke precedent) — no new npm dependency.
+  blocks: FL-34 A4 staging validation
+  safety_class: degrades_safe
+  invariant_exposure: none (dumb mapper; client re-validates everything fail-closed)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Build the Node sidecar in the gateway image + the env-gated smoke suite in breath-ezy; smoke green against a local docker run; existing contract-opencds-contract/cds-firewall-fold re-run green (no drift).
+  gap_register_link: R-22
+  status: open
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: au-provider-bahmni
+  path: integration/record-sources/au-providers/au-providers.json (bahmni entry), integration/record-sources/au-providers/*, test/contract-au-provider-bahmni.js, .planning/TRACK-B-B1-RESEARCH.md
+  component_type: other
+  state: PARTIAL
+  evidence: BUILT 2026-07-14 (FL-32 Track B B1/B2 / PR #68, main @ f3f8b55). B1 bake-off memo picked Bahmni (OpenMRS, native FHIR R4 via the FHIR2 module) as the OSS EHR peer for the wso2/fhir-broker surface. B2 registered it in au-providers.json as input_gated, placeholders-only, fail-closed authorize (contract-au-provider-bahmni green). REMAINING: B3 live connect — operator supplies a deployed Bahmni endpoint + SMART creds (+ confirms the exact FHIR2 module/config, flagged open in B1); then ENG wires fhir-broker/live-backend.js + Observation→parser in staging.
+  blocks: FL-32 (blocker #3 other half — the parser's live lab source)
+  safety_class: degrades_safe
+  invariant_exposure: no-fabricated-operational-facts (fail-closed authorize; placeholders never present as live) — contract-tested
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: B3 — operator deploys a Bahmni endpoint + SMART creds; ENG connects live-backend.js + record-sources ingest; live Observation→parser green in staging on synthetic patients.
+  gap_register_link: R-28
+  status: open
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: pregnancy-risk-bulk-sync-pending
+  path: mcp/servers/pharmacology/data/pregnancy-risk.json, scripts/pharm-ingest.mjs (TGA cached-sync, pbs-style)
+  component_type: dataset
+  state: PARTIAL
+  evidence: DEFERRED-open from the FL-30 expansion scan (PR #66, 2026-07-14). The 18 seeded TGA-category records are a confident safety-critical subset, clinician-signed (KL); the long tail should BULK-sync from the TGA Prescribing-Medicines-in-Pregnancy database via the pbs-style cached-sync pattern. New records land review_status:draft through scripts/pharm-ingest.mjs and need a KL worksheet pass before signing. INPUT-gated on TGA DB data access (operator/org).
+  blocks: pregnancy_check coverage breadth (the check itself is wired + tested — see pregnancy-hepatic-check-unwired resolved)
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription (draft records inert until signed) — fail-closed ingest
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Obtain TGA pregnancy-DB data access; bulk-sync the tail as review_status:draft; KL worksheet pass + sign; datasets stay -dev until regulatory (FL-50).
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-07-14
+```
+
+```md
+- id: dose-evidence-apf-attestation-variant-deferred
+  path: mcp/servers/pharmacology/ (dose_evidence direct-APF citation variant — schema-only, un-seeded)
+  component_type: dataset
+  state: UNBUILT
+  evidence: DEFERRED-open from the FL-30 expansion scan (PR #66). A clinician-only direct-APF citation variant of dose_evidence that touches the dose invariant; schema-only, un-seeded, fail-closed against agents; NOT built. Deliberately withheld — the existing dose_evidence (259 PubMed-verified, retrieval-grounded, engine-isolated) is the built path; this variant would carry APF-attested dose facts and is out of scope until a clinician adopts it.
+  blocks: nothing on the critical path (the built dose_evidence register is reference-only, engine-isolated)
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription (touches the dose invariant — kept UNBUILT/fail-closed until clinician-adopted)
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: DEFERRED — do not build until a clinician adopts the direct-APF citation variant; stays fail-closed/un-seeded until then.
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-07-14
+```
+
+```md
 - id: conflict-audit-trust-signal
   path: verification/conflict-audit.js, test/contract-conflict-audit.js, integration/harvest-manifest.json (#5), docs/grounding/integration-register.md, package.json
   component_type: verifier
@@ -1327,6 +1482,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ---
 
 ## LOW
+
+```md
+- id: warning-labels-cal-verbatim-pending
+  path: mcp/servers/pharmacology/data/warning-labels.json (RASML/PSA_CAL numbers + verbatim wording)
+  component_type: dataset
+  state: PARTIAL
+  evidence: DEFERRED-open from the FL-30 expansion scan (PR #66, 2026-07-14). The warning_labels register (reference-only, engine-isolated) needs its exact CAL/RASML numbers + verbatim wording confirmed before ship. INPUT-gated on a PSA_CAL verbatim/copyright ruling (operator/org — the repo holds registered facts + citation only, no APF/PSA content licence).
+  blocks: nothing on the critical path (reference-only, not a dose/check source)
+  safety_class: degrades_safe
+  invariant_exposure: none (reference-only register, engine-isolated)
+  risk: Low
+  blocks_patient_facing: false
+  build_action: Obtain the PSA_CAL verbatim/copyright ruling; confirm exact CAL/RASML numbers + wording, or explicitly defer to the ship gate.
+  gap_register_link: none
+  status: open
+  last_scanned: 2026-07-14
+```
 
 ```md
 - id: case-dir-duplicate-files
