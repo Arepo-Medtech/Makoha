@@ -439,12 +439,28 @@ export const DoseEvidenceReviewQueueSchema = z
  * (3 letters + 10 digits, e.g. MED0001857758) — an agent string CANNOT match that pattern, so an
  * agent-authored dose is not merely forbidden by policy, it is UNREPRESENTABLE in this schema.
  *
- * WHY cross_check IS REQUIRED AND "diverges" IS NOT IN THE ENUM:
- * every AU dose is cross-checked against the FDA/EMA label via AMASS (verification only — AMASS is
- * NOT an AU source and can never be an origin; jurisdiction is an AU-only hard limit). A DIVERGING
- * candidate is not a dose-guidance record at all: it belongs in the review queue for clinician
- * adjudication. Omitting "diverges" from the enum makes that a parse error rather than a policy
- * anyone could forget to apply — the record cannot be expressed, so it cannot be written.
+ * WHY au_congruence IS AN APPRAISAL, NOT A GATE (operator ruling 2026-07-15 — supersedes D-DG-3):
+ * this block first shipped as a `cross_check` that OMITTED "diverges" from its enum, so an AU dose
+ * whose FDA/EMA label differed could not be expressed and was binned. That was WRONG, in a way worth
+ * recording so it is not reintroduced:
+ *   1. It INVERTED the jurisdiction rule. An AU dose derives its authority from APF22 / the TGA PI.
+ *      Letting a US or EU label veto it makes AU subordinate to a foreign regulator — the exact
+ *      opposite of the "Australian healthcare context only" hard limit it was meant to serve.
+ *   2. It conflated "different jurisdiction" with "wrong". AU, US and EU labels legitimately differ
+ *      (different approved indications, populations, regulatory histories). Divergence is the NORMAL
+ *      case, not an error signal — binning on it is over-triage, and it would have blocked a large
+ *      share of perfectly good AU doses. (Our own dose-evidence apixaban record turns on FDA
+ *      package-insert criteria that differ from AU practice; the old rule would have binned it.)
+ * So AMASS RegulatoryCore is now stored as what it actually IS — US/EU dose guidance, in the parallel
+ * engine-ISOLATED `international_dose_guidance` register — and this block records an APPRAISAL of the
+ * AU record against it. Non-congruence ANNOTATES; it never vetoes. The clinician sees the AU dose and
+ * the foreign label side by side and decides, which is where the judgement belongs (Guardrail 2:
+ * the engine proposes, a registered practitioner disposes; required_human_review is always true).
+ * The appraisal is still MANDATORY — you must have looked, and "no_comparator" must say why.
+ * NOTE what this deliberately does NOT do: it is not a typo guard. An order-of-magnitude entry error
+ * is a PLAUSIBILITY question, not a congruence one; conflating them is what produced the bad gate.
+ * That check is tracked separately (`dose-plausibility-guard-unbuilt`) and belongs in C1, where the
+ * dose-string parsing lives.
  */
 const AHPRA_ID = /^[A-Z]{3}\d{10}$/; // AHPRA registration id — the mechanical bar against agent authorship
 
@@ -469,14 +485,27 @@ export const DoseGuidanceSchema = z
         retrieved_utc: z.string().optional(), // a FETCH happened — PI path only
       })
       .strict(),
-    cross_check: z
+    // APPRAISAL of this AU dose against the US/EU labels — recorded and surfaced, NEVER a veto.
+    // "non_congruent" is a first-class, expressible, SHIPPABLE state: see the header for why.
+    au_congruence: z
       .object({
-        status: z.enum(["agrees", "not_available"]), // "diverges" is deliberately absent — see header
-        checked_utc: z.string().min(4), // proves the check actually ran
-        amass_id: z.string().optional(),
-        agency: z.enum(["FDA", "EMA"]).optional(),
-        fda_ema_statement: z.string().optional(),
-        not_available_reason: z.string().optional(), // why no FDA/EMA comparator exists (e.g. AU-only drug)
+        status: z.enum(["congruent", "non_congruent", "no_comparator"]),
+        appraised_utc: z.string().min(4), // proves the appraisal actually ran
+        comparators: z
+          .array(
+            z
+              .object({
+                jurisdiction: z.enum(["US", "EU"]),
+                agency: z.enum(["FDA", "EMA"]),
+                amass_id: z.string().min(3),
+                dose_statement: z.string().min(3), // the foreign label's dose, as a cited FACT
+              })
+              .strict()
+          )
+          .default([]),
+        // Required unless congruent: WHY they differ, or why no comparator exists. A bare
+        // "non_congruent" is not useful to the clinician who has to weigh it.
+        appraisal_note: z.string().optional(),
       })
       .strict(),
     // Links into the clinician-signed dose-evidence citation register (literature backing / caveats).
@@ -511,19 +540,73 @@ export const DoseGuidanceSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["origin", "retrieved_utc"], message: "tga_pi requires retrieved_utc — a PI citation without a retrieval timestamp cannot be re-verified against a versioned document" });
       }
     }
-    const c = r.cross_check;
-    if (c.status === "agrees" && !(c.amass_id && c.agency && c.fda_ema_statement)) {
-      // "agrees" is a claim about a specific comparator — it must name it, or it is unfalsifiable.
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check"], message: 'cross_check "agrees" must name the comparator it agrees with (amass_id + agency + fda_ema_statement)' });
+    const c = r.au_congruence;
+    // An appraisal against nothing is not an appraisal — congruent/non_congruent are claims ABOUT
+    // specific foreign labels and must name them, or they are unfalsifiable.
+    if (c.status !== "no_comparator" && c.comparators.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "comparators"], message: `au_congruence "${c.status}" must name the US/EU label(s) it was appraised against — an appraisal with no comparator is unfalsifiable` });
     }
-    if (c.status === "not_available") {
-      // Closes the obvious loophole: claiming "no comparator" to skip the gate silently.
-      if (!c.not_available_reason) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check", "not_available_reason"], message: 'cross_check "not_available" must state why no FDA/EMA comparator exists — an unexplained skip is indistinguishable from an unrun check' });
+    if (c.status === "no_comparator") {
+      // Closes the obvious loophole: claiming "no comparator" to skip the appraisal silently.
+      if (c.comparators.length > 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "comparators"], message: '"no_comparator" cannot carry comparators — a foreign label WAS found, so appraise against it (congruent | non_congruent)' });
       }
-      if (c.amass_id) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["cross_check", "amass_id"], message: '"not_available" cannot carry an amass_id — a comparator was found, so the check must be recorded as agrees (or the record routed to the review queue)' });
+      if (!c.appraisal_note) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "appraisal_note"], message: '"no_comparator" must state why no US/EU label exists (e.g. AU-only product) — an unexplained absence is indistinguishable from an appraisal that never ran' });
       }
+    }
+    if (c.status === "non_congruent" && !c.appraisal_note) {
+      // Non-congruence SHIPS — so the note is the whole point: it is what the clinician weighs.
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "appraisal_note"], message: '"non_congruent" must explain WHY the AU dose differs from the US/EU label (different approved indication, population, regulatory history) — the record ships, so this note is what the clinician weighs at the point of decision' });
+    }
+    for (const [i, cm] of c.comparators.entries()) {
+      // A US jurisdiction with an EMA agency (or vice versa) is a mis-stamped provenance.
+      const want = cm.jurisdiction === "US" ? "FDA" : "EMA";
+      if (cm.agency !== want) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "comparators", i, "agency"], message: `jurisdiction ${cm.jurisdiction} must carry agency ${want}` });
+      }
+    }
+  });
+
+/**
+ * International (US/EU) dose-guidance record — the approved LABEL dose in a foreign jurisdiction,
+ * sourced from AMASS RegulatoryCore (FDA SPL / EMA SmPC). This register exists because AMASS is
+ * NOT a verification oracle to be collapsed into a pass/fail — it is real regulatory knowledge, and
+ * the honest thing is to store it as what it is: US dose guidance, or EU dose guidance, labelled.
+ *
+ * ENGINE-ISOLATED, exactly like dose_evidence: no PharmDataSource exposes an accessor for it and the
+ * engine never reads this file, so a foreign label CANNOT become an AU dose. That structural bar —
+ * not the wording — is what keeps the "Australian healthcare context only" hard limit intact. The
+ * `not_au_dose_guidance` literal mirrors dose_evidence's `not_prescribing_guidance`: a record that
+ * cannot even be expressed without declaring what it is not.
+ *
+ * Its ONLY consumers are (a) a clinician reading it beside the AU dose at the point of decision, and
+ * (b) DoseGuidanceSchema.au_congruence, which appraises against it. Licence: label FACTS + citation
+ * only (amass_id + source_url). FDA SPL is US public domain; EMA SmPC is © EMA — so SmPC/SPL PROSE is
+ * NOT reproduced here, on the same facts-and-citation basis that governs apf22.
+ */
+export const InternationalDoseGuidanceSchema = z
+  .object({
+    ingredient: z.string().min(2),
+    jurisdiction: z.enum(["US", "EU"]),
+    agency: z.enum(["FDA", "EMA"]),
+    context: z.string().min(3), // the APPROVED INDICATION this label dose applies to — the usual reason AU differs
+    dose_statement: z.string().min(3), // the label dose, as a cited fact — never prose
+    amass_id: z.string().min(3),
+    authorisation_name: z.string().optional(), // e.g. "Jylamvo" — the foreign brand, never an AU brand
+    source_url: z.string().optional(),
+    retrieved_utc: z.string().min(4),
+    not_au_dose_guidance: z.literal(true), // structural label — foreign guidance, never an AU dose
+    provenance: ProvenanceSchema,
+  })
+  .strict()
+  .superRefine((r, ctx) => {
+    const want = r.jurisdiction === "US" ? "FDA" : "EMA";
+    if (r.agency !== want) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["agency"], message: `jurisdiction ${r.jurisdiction} must carry agency ${want}` });
+    }
+    if (r.provenance.source_ref !== "amass-regulatory") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["provenance", "source_ref"], message: 'international dose guidance must cite source_ref "amass-regulatory" — the registered, licence-cleared route to FDA/EMA label facts' });
     }
   });
 
@@ -596,6 +679,7 @@ export const validatePregnancyRisk = validator(PregnancyRiskSchema, "PregnancyRi
 export const validateHepatic = validator(HepaticSchema, "Hepatic");
 export const validateDoseEvidenceReviewQueue = validator(DoseEvidenceReviewQueueSchema, "DoseEvidenceReviewQueue");
 export const validateDoseGuidance = validator(DoseGuidanceSchema, "DoseGuidance");
+export const validateInternationalDoseGuidance = validator(InternationalDoseGuidanceSchema, "InternationalDoseGuidance");
 export const validatePbsFormulary = validator(PbsFormularySchema, "PbsFormulary");
 export const validateCdsEnvelope = validator(CdsEnvelopeSchema, "CdsEnvelope");
 
@@ -613,6 +697,8 @@ export const validateCdsEnvelope = validator(CdsEnvelopeSchema, "CdsEnvelope");
 export const CAPABILITY_VALIDATORS = {
   dose_evidence: validateDoseEvidence,
   dose_guidance: validateDoseGuidance,
+  // Engine-isolated like dose_evidence: validated on the way IN, never readable by the engine.
+  international_dose_guidance: validateInternationalDoseGuidance,
   administration_handling: validateAdministrationHandling,
   tdm_parameters: validateTdmParameters,
   warning_labels: validateWarningLabel,

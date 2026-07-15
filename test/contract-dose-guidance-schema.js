@@ -9,13 +9,15 @@
  * The four things proven here:
  *  1. an agent cannot author a dose (entered_by must be an AHPRA id on the clinician channel);
  *  2. a channel cannot be laundered (APF attestation must cite apf22; PI must cite a PI doc + when);
- *  3. a diverging AMASS cross-check is UNREPRESENTABLE (not in the enum) — it cannot be written;
- *  4. the cross-check gate cannot be skipped silently ("not_available" must say why, and may not
- *     carry a comparator it claims not to have found).
+ *  3. a NON-CONGRUENT AU dose SHIPS, carrying its appraisal — because AU, US and EU labels
+ *     legitimately differ, and letting a foreign regulator veto an AU dose would invert the
+ *     jurisdiction rule (operator ruling 2026-07-15, superseding the original binning gate);
+ *  4. the appraisal cannot be skipped silently, faked against nothing, or mis-stamped;
+ *  5. a foreign label cannot masquerade as an AU dose (InternationalDoseGuidanceSchema).
  *
  * Run from repo root: node test/contract-dose-guidance-schema.js
  */
-import { DoseGuidanceSchema, validateDoseGuidance, CAPABILITY_VALIDATORS } from "../mcp/servers/pharmacology/domain/model.js";
+import { DoseGuidanceSchema, validateDoseGuidance, InternationalDoseGuidanceSchema, validateInternationalDoseGuidance, CAPABILITY_VALIDATORS } from "../mcp/servers/pharmacology/domain/model.js";
 
 const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -54,12 +56,10 @@ const base = () => ({
     reference: "apf22",
     entered_by: "MED0001857758",
   },
-  cross_check: {
-    status: "agrees",
-    checked_utc: "2026-07-15T00:00:00Z",
-    amass_id: "AMRC_example",
-    agency: "FDA",
-    fda_ema_statement: "500 mg every 8 hours",
+  au_congruence: {
+    status: "congruent",
+    appraised_utc: "2026-07-15T00:00:00Z",
+    comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_example", dose_statement: "500 mg every 8 hours" }],
   },
   provenance,
 });
@@ -68,8 +68,8 @@ const base = () => ({
 ok(base(), "valid clinician_apf_attestation record");
 ok({ ...base(), origin: { channel: "tga_pi", reference: "PI-AUST-R-12345-v3", entered_by: "tga-pi-fetch-job", retrieved_utc: "2026-07-15T00:00:00Z" } },
   "valid tga_pi record");
-ok({ ...base(), cross_check: { status: "not_available", checked_utc: "2026-07-15T00:00:00Z", not_available_reason: "AU-only product; no FDA/EMA authorisation exists" } },
-  "valid record where no FDA/EMA comparator exists");
+ok({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z", comparators: [], appraisal_note: "AU-only product; no FDA/EMA authorisation exists" } },
+  "valid record where no US/EU comparator exists");
 ok({ ...base(), corroborating_evidence: [{ identifier: "37712551", id_type: "pmid" }] },
   "valid record linking the signed dose-evidence register");
 
@@ -94,26 +94,65 @@ rejects({ ...base(), origin: { ...base().origin, retrieved_utc: "2026-07-15T00:0
 rejects({ ...base(), origin: { channel: "amass", reference: "apf22", entered_by: "MED0001857758" } }, "invalid",
   "a third origin channel must not exist — AMASS can never be an origin");
 
-// ---- 3. A DIVERGING CROSS-CHECK IS UNREPRESENTABLE -----------------------------------------
-// D-DG-3: divergence hard-blocks. "diverges" is absent from the enum, so a diverging candidate
-// cannot be expressed as a dose-guidance record at all — it belongs in the review queue.
-rejects({ ...base(), cross_check: { status: "diverges", checked_utc: "2026-07-15T00:00:00Z", divergence_note: "FDA says 875 mg BD" } }, "invalid",
-  "a diverging cross_check must be unrepresentable (hard-block, not a prompt)");
+// ---- 3. A NON-CONGRUENT AU DOSE SHIPS (the 2026-07-15 reversal) ---------------------------
+// The original schema OMITTED "diverges" so a differing AU dose could not be written. That
+// inverted the jurisdiction rule: an AU dose's authority is APF22/TGA PI, and a US/EU label has
+// no standing to veto it. Divergence is the NORMAL case (different approved indications), so
+// binning on it was over-triage. These tests pin the reversal so it is not silently undone.
+ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }],
+      appraisal_note: "US label is dosed for a different approved indication; the AU range follows the APF22 respiratory-infection entry." } },
+  "a NON-CONGRUENT AU dose must SHIP, carrying its appraisal — a foreign label may not veto an AU dose");
+ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [
+        { jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" },
+        { jurisdiction: "EU", agency: "EMA", amass_id: "AMRC_y", dose_statement: "1 g three times daily" },
+      ],
+      appraisal_note: "AU, US and EU labels all differ; AU follows APF22." } },
+  "non-congruence against BOTH US and EU still ships");
+rejects({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }] } }, "must explain WHY",
+  "non_congruent without an appraisal_note must be rejected — the record ships, so the note is what the clinician weighs");
 
-// ---- 4. THE CROSS-CHECK GATE CANNOT BE SKIPPED SILENTLY ------------------------------------
-rejects({ ...base(), cross_check: undefined }, "required",
-  "cross_check is mandatory — a dose may not be written without the AMASS gate having run");
-rejects({ ...base(), cross_check: { status: "agrees", checked_utc: "2026-07-15T00:00:00Z" } }, "comparator",
-  '"agrees" without naming its comparator must be rejected (an unfalsifiable claim)');
-rejects({ ...base(), cross_check: { status: "not_available", checked_utc: "2026-07-15T00:00:00Z" } }, "must state why",
-  '"not_available" without a reason must be rejected (an unexplained skip reads identically to an unrun check)');
-rejects({ ...base(), cross_check: { status: "not_available", checked_utc: "2026-07-15T00:00:00Z", not_available_reason: "none", amass_id: "AMRC_x" } }, "cannot carry an amass_id",
-  '"not_available" carrying a comparator must be rejected');
+// ---- 4. THE APPRAISAL CANNOT BE SKIPPED, FAKED, OR MIS-STAMPED ------------------------------
+rejects({ ...base(), au_congruence: undefined }, "required",
+  "au_congruence is mandatory — you must have looked, even to record that no comparator exists");
+rejects({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "unfalsifiable",
+  '"congruent" against no comparator must be rejected');
+rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "must state why",
+  '"no_comparator" without a reason must be rejected (an unexplained absence reads identically to an appraisal that never ran)');
+rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg BD" }], appraisal_note: "none" } }, "cannot carry comparators",
+  '"no_comparator" carrying a comparator must be rejected');
+rejects({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "EU", agency: "FDA", amass_id: "AMRC_x", dose_statement: "x" }] } }, "must carry agency EMA",
+  "a jurisdiction/agency mismatch must be rejected (mis-stamped provenance)");
 
 // ---- 5. envelope discipline ----------------------------------------------------------------
 rejects({ ...base(), safe_dose_range: undefined }, "required", "a record without a dose is not a dose record");
 rejects({ ...base(), provenance: undefined }, "required", "Guardrail 5 — an anonymous dose fact cannot sit in the store");
 rejects({ ...base(), amass_says: "500 mg" }, "Unrecognized", "strict(): an unknown key must not ride along");
+
+// ---- 5b. A FOREIGN LABEL CANNOT MASQUERADE AS AN AU DOSE ------------------------------------
+const intl = () => ({
+  ingredient: "methotrexate", jurisdiction: "EU", agency: "EMA",
+  context: "Active rheumatoid arthritis in adults", dose_statement: "7.5 mg once weekly",
+  amass_id: "AMRC_1b7jWbEDFeccd6RkJS01idTnGGk", authorisation_name: "Jylamvo",
+  retrieved_utc: "2026-07-15T00:00:00Z", not_au_dose_guidance: true,
+  provenance: { ...provenance, source: "AMASS RegulatoryCore (EMA SmPC facts, cited)", source_ref: "amass-regulatory" },
+});
+expect(InternationalDoseGuidanceSchema.safeParse(intl()).success, "a valid EU label record must parse");
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), agency: "FDA" }).success, "EU jurisdiction with FDA agency must be rejected");
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), not_au_dose_guidance: undefined }).success,
+  "not_au_dose_guidance is a structural literal — a foreign label must declare it is not an AU dose");
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), not_au_dose_guidance: false }).success,
+  "not_au_dose_guidance:false must be rejected");
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), provenance: { ...intl().provenance, source_ref: "apf22" } }).success,
+  "a foreign label citing apf22 must be rejected — it must cite the registered amass-regulatory route");
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), safe_dose_range: "7.5 mg weekly" }).success,
+  "strict(): a foreign record must not carry safe_dose_range — that key belongs to AU dose_guidance alone");
+expect(CAPABILITY_VALIDATORS.international_dose_guidance === validateInternationalDoseGuidance,
+  "international_dose_guidance must be registered in CAPABILITY_VALIDATORS");
 
 // ---- 6. wiring ------------------------------------------------------------------------------
 expect(CAPABILITY_VALIDATORS.dose_guidance === validateDoseGuidance,

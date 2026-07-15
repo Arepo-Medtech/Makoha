@@ -1,6 +1,6 @@
 {
   "_note": "Provenance + licence registry for the pharmacology clinical DATA sources (FL-30 Step 3). Distinct from integration/harvest-manifest.json, which tracks harvested CODE repos. Every clinical fact authored into mcp/servers/pharmacology/data/* MUST cite one of these source ids in its ProvenanceSchema.source_ref. Sources with use_restriction='structure_only' (STOPP/START, TDM, DrugBank, AusDI, APF22) supply FACTS + STRUCTURE + CITATION only — no monograph/criteria prose or tables are copied into the datastore (FL-30 Guardrail 1). Facts are not copyrightable; the source is cited as where the fact was found. This file is the backbone of the provenance-coverage report.",
-  "registry_version": "1.2.0",
+  "registry_version": "1.3.0",
   "generated": "2026-07-15",
   "sources": [
     {
@@ -208,13 +208,14 @@
       "licence_status": "copyleft_reference_only",
       "use_restriction": "structure_only",
       "provides": [
-        "fda_ema_dose_facts_for_crosscheck",
-        "cross_jurisdiction_divergence_check"
+        "us_label_dose_facts",
+        "eu_label_dose_facts",
+        "au_congruence_appraisal"
       ],
       "url": "https://amass.bio/",
       "use_basis": "facts_and_citation",
       "content_licence_held": false,
-      "notes": "*** NOT AN AUSTRALIAN SOURCE. VERIFICATION ONLY. NEVER AN ORIGIN FOR AN AU DOSE. *** Probed live 2026-07-15: the agency enum is exactly [FDA, EMA] - there is no TGA in it. An FDA package-insert or EMA SmPC dose is NOT an AU dose (AU indications, scheduling and PI diverge), and 'Australian healthcare context only' is a hard limit. Its ONLY sanctioned use is the DoseGuidanceSchema.cross_check gate: an AU-origin dose is compared against the FDA/EMA label; agreement is recorded as corroboration, divergence routes the candidate to the review queue and it is never written. Enforced mechanically - 'diverges' is absent from the cross_check status enum and cross_check can never be promoted into safe_dose_range. Facts + citation (amass_id) only; SPL/SmPC prose is NOT copied. Reached at AUTHORING time from scripts/ tooling (the dose-evidence get_article_metadata precedent) - it is NOT a runtime dependency and does not affect receipt mode."
+      "notes": "*** NOT AN AUSTRALIAN SOURCE. NEVER AN ORIGIN FOR AN AU DOSE. *** Probed live 2026-07-15: the agency enum is exactly [FDA, EMA] - there is no TGA in it. ROLE CORRECTED 2026-07-15 (operator ruling): AMASS is NOT a verification oracle collapsed to pass/fail. It is real regulatory knowledge and is stored as what it IS - US dose guidance / EU dose guidance - in the parallel ENGINE-ISOLATED `international_dose_guidance` register (no accessor; a foreign label cannot become an AU dose by construction, exactly as dose_evidence is isolated). The AU dose record's `au_congruence` block then APPRAISES the AU dose against those labels: congruent | non_congruent | no_comparator. **The appraisal ANNOTATES; it NEVER vetoes.** A non-congruent AU dose SHIPS, carrying the appraisal, and the clinician sees the AU dose and the foreign label side by side (Guardrail 2: the engine proposes, a registered practitioner disposes). This replaces the original design, which omitted a 'diverges' state so a differing AU dose could not be written. That was wrong twice over: it INVERTED the jurisdiction rule (an AU dose's authority is APF22/TGA PI - a US/EU regulator has no standing to veto it, and letting it do so makes AU subordinate to a foreign agency), and it conflated 'different jurisdiction' with 'wrong' (AU/US/EU labels legitimately differ by approved indication, population and regulatory history - divergence is the NORMAL case, so binning on it was over-triage). Licence: label FACTS + citation (amass_id, source_url) only. FDA SPL is US public domain; EMA SmPC is (c) EMA - so no SPL/SmPC prose is copied, on the same facts-and-citation basis that governs apf22. Reached at AUTHORING time from scripts/ tooling (the dose-evidence get_article_metadata precedent) - NOT a runtime dependency, no receipt-mode impact."
     }
   ]
 }

@@ -184,9 +184,19 @@ non-patient-facing dataset — but it belongs on the record before C2 writes its
   APF22 facts; Channel A = TGA PI). This is the plan's spine.
 - **D-DG-2 — Start at C0–C2 (un-gated) without waiting for TGA access?** *Recommend yes* — Channel B
   needs nothing new, and C4 slots in later without rework.
-- **D-DG-3 — Divergence policy: hard-block or clinician-override?** *Recommend hard-block* (a diverging
-  row cannot enter `dose-guidance.json`; it goes to the queue). You can still elevate it from the queue
-  after adjudication — but the default must be refusal, not a prompt.
+- ~~**D-DG-3 — Divergence policy: hard-block or clinician-override?**~~ **REVERSED by operator ruling
+  2026-07-15 — the hard-block was WRONG and is removed.** It (a) INVERTED the jurisdiction rule: an AU
+  dose's authority is APF22/the TGA PI, so letting a US/EU label veto it makes AU subordinate to a
+  foreign regulator — the opposite of the AU-only hard limit it was meant to serve; and (b) conflated
+  "different jurisdiction" with "wrong" — AU/US/EU labels legitimately differ by approved indication,
+  population and regulatory history, so divergence is the NORMAL case and binning on it was over-triage
+  (it would have binned our own apixaban record, which turns on FDA criteria that differ from AU practice).
+  **Replaced by parallel representation + appraisal:** AMASS RegulatoryCore is stored as what it IS —
+  US/EU dose guidance in the new ENGINE-ISOLATED `international_dose_guidance` register — and the AU
+  record's `au_congruence` block appraises against it (`congruent | non_congruent | no_comparator`).
+  **A non-congruent AU dose SHIPS, carrying its appraisal.** The clinician sees the AU dose and the
+  foreign label side by side and decides (Guardrail 2). The appraisal is still mandatory — you must have
+  looked — but it annotates, never vetoes. Landed in the C0 amendment.
 - **D-DG-4 — Tier A scope (~10 drugs) for the first pass.** **Now a licence question, not an effort one
   — see "Compilation right" below.** Recommend Tier A.
 - ~~**D-DG-5 — Your APF22 access.**~~ **ANSWERED 2026-07-15: KL transcribed all 471 Section D adult +

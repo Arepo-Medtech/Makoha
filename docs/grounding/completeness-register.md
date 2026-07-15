@@ -1501,6 +1501,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: dose-plausibility-guard-unbuilt
+  path: scripts/pharm-dose-crosscheck.mjs (C1, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema)
+  component_type: other (authoring guard)
+  state: UNBUILT
+  evidence: Opened 2026-07-15 by the C0 amendment (operator ruling reversing D-DG-3). The original `cross_check` gate binned an AU dose whose FDA/EMA label differed. That gate was removed as wrong (it inverted the jurisdiction rule and conflated "different jurisdiction" with "wrong" — see the DoseGuidanceSchema header). BUT it was incidentally catching one real thing: a TRANSCRIPTION TYPO. A clinician entering "5000 mg" for "500 mg" would have been caught by the foreign-label comparison. Removing the gate removes that catch, and this item exists so that loss is TRACKED rather than silently accepted.
+  blocks: nothing — dose-guidance C2 can proceed without it; this narrows a residual entry-error risk
+  safety_class: degrades_safe
+  invariant_exposure: none directly — but an order-of-magnitude dose entry error is the classic catastrophic med-error class, and Channel B is manual clinician transcription, which is exactly where such an error would enter
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Build in C1, where the dose-string parsing already has to live. It is a PLAUSIBILITY check, NOT a congruence check — conflating the two is precisely what produced the bad gate: an order-of-magnitude discrepancy is a different question from "the EU approved a different indication". Suggested shape: parse the AU and comparator dose magnitudes; a >10x discrepancy is a WARN routed to the clinician for confirmation, never an automatic bin (a genuine 10x difference between jurisdictions is possible — e.g. loading vs maintenance dosing). Must not resurrect a veto.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: dose-guidance-empty-no-au-source
   path: mcp/servers/pharmacology/data/dose-guidance.json · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema) · mcp/servers/pharmacology/data/data-sources.json (tga-pi, amass-regulatory, apf22) · scripts/pharm-dose-{crosscheck,author}.mjs (C1/C2, unbuilt)
   component_type: dataset
@@ -1508,7 +1525,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   evidence: FL dose-guidance C0 (2026-07-15, plan .planning/DOSE-GUIDANCE-PLAN.md). dose-guidance.json holds `records: []` with clinical_sign_off:false — it is the ONLY datastore capability that becomes a dose (engine.js emits it via PharmCheck.dose_guidance on PASS/WARN), and it has never been populated. NOT an oversight and NOT an authoring backlog: it is the collision of two hard constraints — (a) the AU dose authorities are licence-restricted (APF22/AusDI are use_restriction:structure_only, content_licence_held:false; AMH is not a registered source at all; PBS's own registry note says it does NOT provide dosing), and (b) "no dosages from the LLM" bars the agent authoring one. The empty file is the fail-safe working. Research: .planning/DOSE-GUIDANCE-RESEARCH.md. Distinct from dose-evidence (261 KL-signed records) — that is a citation register of literature FINDINGS, engine-isolated by design (no accessor), NOT a dose source; the two are different epistemic categories and dose-evidence cannot be promoted into this file.
   blocks: any dose emitted from the clinician-signed datastore (the engine currently falls back to 3 self-labelled mock doses — see dose-mock-fallback-mixing); FL-34 Phase B's dose-range KM (deliberately not built for this reason)
   safety_class: degrades_safe
-  invariant_exposure: no-dosages-from-the-LLM / no-autonomous-prescription — the invariant this capability exists to protect. C0 makes the bar MECHANICAL rather than conventional: DoseGuidanceSchema admits exactly two origin channels (tga_pi | clinician_apf_attestation), requires an AHPRA registration id on the clinician channel (an agent string cannot match, so an agent-authored dose is UNREPRESENTABLE), and omits "diverges" from the cross_check enum so an AMASS-diverging candidate cannot be written at all.
+  invariant_exposure: no-dosages-from-the-LLM / no-autonomous-prescription — the invariant this capability exists to protect. C0 makes the bar MECHANICAL rather than conventional: DoseGuidanceSchema admits exactly two origin channels (tga_pi | clinician_apf_attestation), requires an AHPRA registration id on the clinician channel (an agent string cannot match, so an agent-authored dose is UNREPRESENTABLE), and (AMENDED 2026-07-15) records an `au_congruence` APPRAISAL against the US/EU labels that is mandatory but ANNOTATES rather than vetoes — the original "omit diverges so a differing dose cannot be written" gate was removed as an inversion of the jurisdiction rule (a foreign regulator has no standing to veto an AU dose) and as over-triage (AU/US/EU labels legitimately differ).
   risk: Medium
   blocks_patient_facing: false
   build_action: C0 DONE (2026-07-15) — DoseGuidanceSchema + validateDoseGuidance authored and registered in CAPABILITY_VALIDATORS (previously absent as a "bespoke path"); tga-pi (pending — access is the SAME operator input FL-05's pregnancy-risk-bulk-sync-pending waits on) and amass-regulatory (copyleft_reference_only, VERIFICATION-ONLY, never an AU origin — probed live 2026-07-15, agency enum is exactly [FDA,EMA], no TGA) registered; D1 (dose-evidence attestation scope) + D3 (apf22.provides[] missing dose_range_facts) fixed; test/contract-dose-guidance-schema.js in npm test. REMAINING: C1 AMASS cross-checker (scripts/, un-gated); C2 Channel B authoring of Tier A (~10 drugs) from KL's own APF22 transcription — clinician-entered, NEVER bulk-ingested (the full 471-row verbatim Section D extract is an org/legal question riding the SAME PSA ruling as warning-labels-cal-verbatim-pending, and compilation right protects selection+arrangement even where each fact is bare); C3 remove the mock fallback; C4 Channel A (TGA PI, operator-gated).
