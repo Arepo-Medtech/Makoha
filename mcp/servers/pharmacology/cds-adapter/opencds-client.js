@@ -1,8 +1,12 @@
 /**
  * AU_OSS_CDS client (Track A, Phase A3) — the validated-vendor client for the cds-adapter
  * slot when PHARM_CDS=AU_OSS_CDS. Speaks the JSON gateway contract (opencds-contract.js) to
- * an external OpenCDS gateway; the gateway speaks native DSS/vMR to OpenCDS internally and
- * loads the clinician-signed FL-30 knowledge base as knowledge modules.
+ * an external OpenCDS gateway; the gateway speaks CDS Hooks R4 to OpenCDS internally (the
+ * Phase C shim maps between the two) and loads the clinician-signed FL-30 knowledge base as
+ * knowledge modules — 9 as of FL-34 Phase B: the 8 accessor-backed checks plus an advisory
+ * dose candidate. (Corrected 2026-07-15, F2: this said "native DSS/vMR", which was the A1
+ * planning assumption; Phase A settled on the CDS Hooks R4 service, and Phase B's KMs
+ * implement CdsHooksExecutionEngine. There is no DSS/vMR path.)
  *
  * FAIL-CLOSED, DEFENCE-IN-DEPTH. This client never trusts the gateway:
  *   - a malformed request never leaves (validateOpenCdsRequest throws → BLOCKED_NO_PROOF);

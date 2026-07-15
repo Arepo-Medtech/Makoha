@@ -861,19 +861,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: fl30-kb-km-package
-  path: (sibling repo) breath-ezy-cds-gateway — export script (reads breath-ezy signed datastore read-only) + Java knowledge modules from the opencds-hooks-r4-km-example template
+  path: (sibling repo) breath-ezy-cds-gateway @ d47eaad — tools/export-fl30-kb.mjs + kb/ (committed bundle, km_set fl30-kb:v1) + km/ (9 Java KMs, k-repo/knowledgeModules.xml)
   component_type: dataset
-  state: UNBUILT
-  evidence: FL-34 Phase B (planned). The FL-30 clinician-signed datastore exported as a checksummed KM supporting-data package (dataset_version + SHA-256); records with clinical_sign_off:false EXCLUDED at export (fail-closed). One Java KM per frozen check; each returns NOT_RUN when its input fact is absent (never a default PASS). OpenCDS supplies execution + standards packaging only, NEVER new knowledge.
-  blocks: FL-34 A4 staging validation
+  state: PARTIAL
+  evidence: FL-34 Phase B BUILT 2026-07-15 (B1–B4). **B1** — the export applies FOUR gates in order, and the ORDER is the safety property: (1) an EXPORTABLE_CAPABILITIES allowlist FIRST — only the 8 capabilities an engine.js accessor reads, excluded regardless of attestation state; (2) dataset clinical_sign_off, necessary but never sufficient; (3) records_checksum re-computed with breath-ezy's OWN checksumRecords (imported, never re-implemented) — drift ABORTS the export, because skipping would let a TAMPER look like a FILTER; (4) per-record review_status === approved. Bundle: 8 capabilities / 1776 signed+approved records / 17 capabilities excluded with a reason each. Real-artifact audit: all 9 file_sha256 match their bytes, ZERO foreign-label bytes, ZERO brand-name leakage, all 1776 records byte-identical to the signed source. **B2–B4** — 9 KMs (allergy, interaction, renal, nti, age, schedule_8, pregnancy, hepatic + the advisory dose candidate), each mirroring its engine.js block case-for-case; Fl30KnowledgeBase verifies file_sha256 BEFORE any check runs and fails closed permanently (every KM then reports NOT_RUN with the cause, never a default PASS). 63/63 JUnit against the REAL committed bundle, and TAMPER-PROVEN by exit code at every safety bar (foreign-label admission, abort→skip, rxcui_active forced true, the renal coalesce, checksum skip, NTI suppression, the D-FL05-1 age gate collapsed both ways, S8 lowering, unknown-age dosing, paediatric dosing, whole-record shipping, dose substitution). NOT COMPLETE: nothing CALLS these yet — the Phase C shim (locked JSON ↔ CDS Hooks R4) is UNBUILT and the cds-adapter slot stays EMPTY→HARD_FAIL until an endpoint is wired AND staging-validated (A4). Built + tested, not wired.
+  blocks: FL-34 Phase C (shim) → Phase D (A/B parity) → A4 staging validation
   safety_class: degrades_safe
-  invariant_exposure: no-autonomous-prescription (KMs execute signed knowledge, never mint content) — to be proven by per-KM JUnit mirroring engine.js semantics
+  invariant_exposure: no-autonomous-prescription — HELD, and now mechanically: the dose KM emits an ADVISORY dose_candidate only; the client drops it unless the composed verdict is PASS/WARN; the KM independently refuses on paediatric AND unknown age; a drug with no signed dose yields none (never a substitute); assertNoAdvisoryInDose() throws if an advisory dose ever reaches PharmCheck.dose_guidance. Australian-context — HELD structurally: the F5 allowlist excludes international-dose-guidance and is tested against a FORCED clinical_sign_off:true fixture, so the exclusion does not depend on the incidental fact that those 12 records are currently unsigned.
   risk: Medium
   blocks_patient_facing: false
-  build_action: Export script + per-check KMs (two tranches: 5 defaults, then hepatic/pregnancy/schedule_8/route); per-KM tests mirror engine.js (X→HARD_FAIL, D→WARN, missing→NOT_RUN, paediatric→flag-not-dose).
+  build_action: REMAINING — Phase C shim (cards → check_verdicts; anything unmappable becomes NOT_RUN, never a drop and never a PASS), then Phase D A/B parity vs the in-process engine. CORRECTED 2026-07-15: (a) no route KM — engine.js implements route_appropriateness_check ZERO times (F4), so a route KM would have nothing to mirror, which would be OpenCDS INTRODUCING knowledge; the earlier "then hepatic/pregnancy/schedule_8/route" build_action was wrong. (b) The dose KM IS built — the earlier refusal (nothing to export / no consumer) is SUPERSEDED: 451 clinician-attested records exist (E1/E2) and the E3 evidence plane consumes a cds_dose_candidate. (c) Tranches landed as 5 / 3 / 1, not 5 / 4.
   gap_register_link: R-22
-  status: open
-  last_scanned: 2026-07-14
+  status: in-progress
+  last_scanned: 2026-07-15
 ```
 
 ```md

@@ -10,10 +10,21 @@
  * content into the strict frozen pharm-check shape. Anything off-enum is dropped, not
  * passed through. A response that fails this schema is fail-closed → BLOCKED_NO_PROOF.
  *
- * Transport model (A1 decision): our client speaks JSON/HTTPS to the gateway; the
- * gateway speaks native DSS/vMR to OpenCDS internally. OpenCDS supplies EXECUTION +
- * standards packaging over the clinician-signed FL-30 KB, never new knowledge — so the
- * receipt mode stays 'mock'/AU_OSS_CDS until staging validation, never mock-as-live.
+ * Transport model: our client speaks this locked JSON/HTTPS contract to the gateway; the
+ * gateway speaks CDS Hooks R4 to OpenCDS internally, and the Phase C shim maps between the
+ * two (cards → check_verdicts; anything it cannot map becomes NOT_RUN — never a drop, never
+ * a PASS). OpenCDS supplies EXECUTION + standards packaging over the clinician-signed FL-30
+ * KB, never new knowledge — so the receipt mode stays 'mock'/AU_OSS_CDS until staging
+ * validation, never mock-as-live.
+ *
+ * CORRECTED 2026-07-15 (FL-34 F2): this header previously said the gateway speaks native
+ * DSS/vMR. That was the A1 planning assumption, and Phase A settled it the other way — the
+ * deployed gateway is the CDS Hooks R4 service (`/<context>/r4/hooks/cds-services`), and the
+ * Phase B knowledge modules implement `CdsHooksExecutionEngine`. There is no DSS/vMR path.
+ * Not a safety defect — this JSON contract is what the client validates, and it is unchanged —
+ * but a comment that misdescribes the transport is how the next engineer builds the wrong shim.
+ * The `engine` field's "opencds-dss" example is likewise historical: it is a free-form string
+ * the client does not interpret.
  *
  * LOCKSTEP: OPENCDS_CHECK_IDS / OPENCDS_FLAG_TYPES mirror the FROZEN source of truth
  * (mcp/schemas/pharm-check.schema.json). schemas.js keeps its copies module-local and is

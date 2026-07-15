@@ -4,6 +4,37 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-34 Phase B — the FL-30 knowledge bundle and its 9 OpenCDS knowledge modules (2026-07-15)
+
+**Status:** `npm test` + `verification` + `trunk:stub:all` green; frozen contracts byte-unchanged. Gateway-side: `mvn -o test` 63/63, `node --test tools/*.test.mjs` 12/12. **Sibling repo `kenleefreo/breath-ezy-cds-gateway` @ `d47eaad`** (B1 `29bebee` · B2 `15ee1f2` · B3 `3d50c6a` · B4 `d47eaad`).
+
+**Register:** `fl30-kb-km-package` UNBUILT → **PARTIAL/in-progress**. Built and tested, **not wired** — nothing calls these until the Phase C shim and the A4 endpoint exist, so PARTIAL is the honest state rather than COMPLETE. **R-22 does not move; blocker #1 stays RED.** Nothing here is patient-facing: the `cds-adapter` slot stays EMPTY → HARD_FAIL and receipts stay `mode=mock`.
+
+**The knowledge bundle (B1).** `kb/` is a committed, versioned artifact (`km_set = fl30-kb:v1`): 8 capabilities, 1776 signed + approved records, 17 capabilities excluded with a reason each. The export applies four gates and **the order is the safety property**:
+
+1. **Allowlist first (F5)** — only the 8 capabilities an `engine.js` accessor reads. `international-dose-guidance` (12 US/EU label doses) is excluded today *only because it happens to be unsigned* — an incidental property, and its own attestation says clinical sign-off "is NOT required". A sign-off-only filter would admit 12 foreign doses into an executable KM the day that flag flips. **The fixture forces `clinical_sign_off:true` and asserts not one byte reaches the bundle.** Australian context is a hard limit; it does not get to depend on an accident.
+2. **Sign-off** — necessary, never sufficient.
+3. **Provenance** — `records_checksum` re-computed with breath-ezy's own `checksumRecords` (imported, never re-implemented: a copy agrees until the day it doesn't). Drift **aborts** rather than skips — skipping would let a **tamper look like a filter**.
+4. **Per-record** — `review_status === "approved"`, authoritative over the dataset flag.
+
+**Identity (B0b/F5).** Records export **byte-pure** and stay keyed exactly as signed — and they are not keyed uniformly (`ingredient`, or a `subject`/`object` pair, or a `group`/`members[]` set). So the RxCUI re-keys nothing: it rides as a separate sidecar mapping code → canonical name, and the KM resolves a code the pipeline already settled rather than resolving identity itself. A second, divergent canonicaliser inside OpenCDS is the E6 defect with extra steps. The sidecar asks the checkout's own `identityCode()` — the same gated authority the pipeline asks — which returns null while the vocabulary is unsigned. **So today the sidecar is empty and `rxcui_active` is false**: the KB is name-keyed, and B0's canonicalisation is what makes that correct. `rxcui_active` is *derived*, never asserted, and tamper-tested so nobody flips it by hand.
+
+**The nine KMs (B2–B4).** Each mirrors its `engine.js` block case-for-case — the engine is the specification, the KM a second implementation, so agreement **corroborates** and divergence is a **defect signal in one of the two executors**. `Fl30KnowledgeBase` verifies `file_sha256` over the bytes before any check runs and fails closed permanently; every KM then reports `NOT_RUN` **with the cause**, never a default PASS. Java deliberately does not re-derive the canonical-JSON form the Node export checksums.
+
+**A real bug this caught, in my own KM, before it shipped:** 63 of the 104 signed renal records carry **only** `dose_reduction_below_egfr`. My first `RenalDosingCheckKm` read only `contraindicated_below_egfr` and would have reported "no threshold → PASS" for the majority of the renal knowledge base — a silent pass on renal adjustment rules, i.e. exactly the failure a second executor exists to *catch* rather than commit. Found by checking the data instead of trusting my reading of `engine.js`.
+
+**The dose KM (B4) — F3 flipped.** Both legs of the earlier refusal were dead: the source exists (451 clinician-attested records) and the consumer exists (E3's evidence plane). The circularity was worth naming — *the dose was discarded because nothing consumed it, and nothing consumed it because it was discarded.* Three independent things keep it advisory: the **client** drops `dose_candidate` unless the composed verdict is PASS/WARN (this KM cannot see the composite — composition belongs to the client); the **KM** refuses on paediatric *and* unknown age (unknown is not "probably an adult" — this dataset is adult-only by construction); the **record** is the only source (no signed dose → no dose, never a substitute).
+
+**Corrections recorded.** **F4:** no route KM — `engine.js` implements `route_appropriateness_check` zero times, so a route KM would have nothing to mirror, which would be OpenCDS *introducing* knowledge; the register's `build_action` said to build one and was wrong. **F2:** `opencds-client.js` / `opencds-contract.js` headers said the gateway speaks native DSS/vMR — the A1 planning assumption, which Phase A settled the other way. Comments corrected and `.planning/TRACK-A-A1-RESEARCH.md` marked superseded; the JSON contract itself is untouched. A1's concern (vMR is structured "unlike CDS Hooks cards") is *answered*, not ignored: each KM emits one card carrying the structured verdict in an extension (D-B-2), so the shim never parses prose.
+
+**Everything above is tamper-proven by exit code**, not merely green: admitting foreign labels to the allowlist, downgrading the abort to a skip, forcing `rxcui_active`, dropping the renal coalesce, skipping checksum verification, letting the intent suppress an NTI finding or lower the S8 gate, collapsing the D-FL05-1 age gate in both directions, dosing on unknown age, dosing a paediatric patient, shipping the whole record, and substituting a neighbouring dose — each turns its suite RED. (One tamper first failed to *apply* because the pattern missed an em-dash; that is an unverified bar, not a passing one, and it was re-run properly.)
+
+**Also fixed:** `.gitignore`'s `src/` was unanchored, so it matched `km/src` at any depth and would have silently swallowed every line of the Java. Now `/src/` — the OpenCDS clone stays ignored, our source is tracked; verified both ways.
+
+**Remaining on this path:** Phase C (the shim), then Phase D (A/B parity vs the in-process engine).
+
+---
+
 ## M4 — fluency is not confidence: the claims were never displayed (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 71 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged.
