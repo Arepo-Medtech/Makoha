@@ -239,7 +239,7 @@ if (existsSync(MAP_PATH)) {
   const seen = [];
   const gateway = async (_url, opts) => {
     seen.push(JSON.parse(opts.body).drug.drug_name);
-    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: "fl30-kb:v1", check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
+    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: DEFAULT_KM_SET, check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
   };
   const run = (drug) => runPipeline({
     trunk: "8.0", cds_fetch: gateway,

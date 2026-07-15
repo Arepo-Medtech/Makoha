@@ -4,6 +4,26 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## fl30-kb:v2 — the identity sidecar goes live (2026-07-15)
+
+**Status:** `npm test` EXIT=0 · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `dd9bfd3`: **68/68** JUnit (was 63) · 12/12 export fixtures.
+
+**Why the version moved.** v1 was exported while the drug vocabulary was unsigned, so `identityCode()` returned null for every drug and the KB matched by **name**. The sign-off (V3) means the same export now yields **522 codes** (`rxcui_active: true`; 415 name-only). That changes *how a KM resolves which drug a request is about* — a knowledge change — so it took a new `km_set` rather than silently riding along inside v1. Three pins moved deliberately: the export's `KM_SET`, the Java `EXPECTED_KM_SET`, and breath-ezy's `DEFAULT_KM_SET`.
+
+**The version is what makes the transition safe, and it was verified end-to-end against the real client rather than asserted:** a gateway still serving **v1 → `BLOCKED_NO_PROOF`**; **v2 → PASS**; a future **v3 → `BLOCKED_NO_PROOF`**. Both directions fail safe, which is why the bump is safe to make before any gateway is deployed. (My first probe showed all three blocking — for an unrelated `request_id` length error. A broken probe is not a result; it was re-run properly.)
+
+**A hazard the bump activated, found before shipping it.** `drugKey`'s code branch was **dead** while the sidecar was empty — `byCode` was always null, so the resolution order never mattered and the code won silently. Turning code-first matching on makes that live: a code and a name that **disagree** would check the *code's* drug while the record, the card and the clinician's screen all say the name's — a wrong-drug check that looks entirely normal.
+
+Today the pipeline sets both from one `canonicaliseDrugName()` call, so they cannot disagree. That is a property of **the current caller**, not of the wire contract, which lets any client populate both fields independently. An accident is not a safeguard. `drugKey` now **refuses** a conflict — it cannot know which of the two is wrong, so it must not choose. Throwing is the fail-safe: the base turns it into `NOT_RUN` (→ `BLOCKED_NO_PROOF`) and the dose KM emits nothing. Returning null would have been far worse — the accessors would find no records and every check would report a placid PASS.
+
+**Five tests pinned the empty sidecar and went red — correctly.** They now test the property: a code reaches the **same record** the name does (a key, not a second opinion); a drug with no code still resolves by name; an unknown code falls back to the name; a conflict refuses; and a conflict yields no dose through the real `evaluate()` path — driven through OpenCDS's own `WritableCdsRequest`/`WritableHookContext`, not a stand-in that could drift from what the engine builds. That is now **three separate times today** that a state-pinning test broke on the state changing; the fix each time was to test the property instead.
+
+**Tamper-proven by exit code:** letting the code win on a conflict, returning null instead of throwing, and accepting a v1 bundle each turn the suite red. **Artifact audit:** all 9 `file_sha256` match; zero foreign-label bytes; **all 522 codes reach a real record**; no name reachable by two codes.
+
+**The 415 name-only subjects are not a gap** — combination products (`trimethoprim with sulfamethoxazole`) and classes (`oestrogens`, `ferrous salts`) that RxNorm models as multi-ingredient concepts. They carry real signed knowledge, which is exactly why a code-only contract fails and the name must still ride.
+
+---
+
 ## V1–V3 — the drug vocabulary is SIGNED (2026-07-15)
 
 **Status:** `npm test` EXIT=0 · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 BROKEN · frozen contracts byte-unchanged.

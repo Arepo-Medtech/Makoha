@@ -31,7 +31,7 @@ const safeFacts = { allergens: ["paracetamol"], current_medications: ["paracetam
 // An S8 intent with no PDMP proof → the ENGINE returns HARD_FAIL.
 const s8Intent = { ...safeIntent, intent_id: "int-fold-s8", drug_intent: { drug_name: "oxycodone", drug_class: "opioid" } };
 
-const KM = "fl30-kb:v1";
+import { DEFAULT_KM_SET as KM } from "../mcp/servers/pharmacology/cds-adapter/opencds-client.js"; // never a literal: a test that breaks on a version bump is not testing the version check
 const gatewayReturning = (respObj) => async () => ({ ok: true, status: 200, json: async () => respObj });
 const passResp = { request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: KM, check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] };
 const hardFailResp = { request_id: "resp-0002", engine: "opencds-dss", knowledge_module_set: KM, check_verdicts: [{ check_id: "interaction_check", status: "HARD_FAIL", severity: "critical", reason: "warfarin + NSAID" }], flags: [] };
