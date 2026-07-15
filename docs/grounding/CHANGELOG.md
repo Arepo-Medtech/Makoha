@@ -4,6 +4,56 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## E8b — "in doubt" means ASK, not refuse (operator ruling) (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 66 suites) + `verification` (Pass: true) + `pharm:seals` (25/25) green. Frozen contracts byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Ruling:** *"Do not harvest RxNorm US Brands — but when a US Generic is only spelling variant or near synonym based on the same INN-RXCUI this should be place in the drug_vocabulary bucket — as the mix of the two still occurs frequently — if the system is ever in doubt — a question should return to patient or doctor — to confirm the exact medication they intended."*
+
+**The correction.** E8's first cut had a boolean bar: `steer` or `refuse`. That made "the system is in doubt" a reason to **dead-end** a name a human could resolve in one answer — the same suppression instinct the show-evidence principle exists to stop, applied to identity instead of evidence. Three states now:
+
+| state | count | meaning |
+|---|---|---|
+| `steer` | 5108 | resolve silently (AU, unambiguous, already ours) |
+| **`confirm`** | **72** | **ASK the patient/doctor** — 70 US generics + 2 ambiguous |
+| `refuse` | 16 | only where asking is nonsense: a manufacturer's name is not a drug |
+
+**US generics are recorded and they ask.** paracetamol/acetaminophen · salbutamol/albuterol · rifampicin/rifampin · aciclovir/acyclovir · mesalazine/mesalamine · leuprorelin/leuprolide · glycerol/glycerin. Verified live on a signed copy:
+
+> `acetaminophen` → **"You entered "acetaminophen", which is the US name for the medicine known in Australia as "paracetamol" (the same ingredient, RxNorm 161). Is "paracetamol" the medication you intend?"** → `BLOCKED_NO_PROOF` pending the answer.
+
+An unanswered identity question **is** missing proof: we do not know which drug this is, so no check below proved anything about it. The name no longer dead-ends, and a US name still never silently becomes an Australian one — `international_generic` + `steer` is **unrepresentable at the schema level**, signed or not.
+
+**US brands are not harvested, and the line comes from RxNorm's own data** rather than a guess about which strings look like brands: admitted only when TTY ∈ {IN, PIN, MIN}. Verified across all 987 resolved concepts — **IN 933 · PIN 51 · MIN 2 · BN 0**. (The first TTY attempt returned empty for all 987 — `allProperties?prop=names+codes` does not carry TTY. Caught and re-fetched from the property endpoint. Had it shipped, every international generic would have been unverifiable and correctly refused: a silent loss of the whole ruling.)
+
+**Ambiguity asks too, and still never picks** — every candidate presented. A `confirm` without a question is unrepresentable: "ask" with nothing to ask is a block wearing a nicer word.
+
+**Unchanged:** `Lasix` still resolves silently → PASS + dose. Still unsigned; sign-off unlocks the 3635 brands and the 70 confirm-prompts.
+
+## E8 — the drug vocabulary: one identity for every name in use (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 66 suites) + `verification` (Pass: true) + `pharm:seals` (25/25) + capability-groups (10 groups / 24 capabilities) green. Frozen contracts byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Operator task:** *"'Drug vocabulary (Using the PBS INN Australian name as Primary authority)': catch and list all the names, synonyms, international variants and minor spelling variants that eventually get used interchangeably — so they link to the unifying identifier… unifying the prevalent use of variants by patients, doctors and systems."*
+
+**What it is.** 1455 drugs · 5197 names — 3635 AU brands, 1455 primaries, 70 international generics, 18 former names, 16 company artifacts, 2 spelling variants. RxCUI on 969, WHO ATC on 1094.
+
+```
+Lasix       (patient)  ┐
+frusemide   (doctor)   ├─→  furosemide · RxCUI 4603 · ATC C03CA01
+furosemide  (system)   ┘
+```
+
+New capability group **`drug_identity`** — cross-cutting, deliberately not an APF22 heading. Every other group answers a clinical question *about* a drug; this one answers **which drug**, the question all the others silently assumed. E6 proved the assumption unsafe.
+
+**The trap.** RxNorm's canonical is the USAN, not the INN: `acetaminophen`, `albuterol`, `epinephrine`. A vocabulary keyed on `rxnorm_name` would have Americanised an Australian clinical system — **invisibly**, since those spellings appear nowhere in our data and no collision report would flag it. So **PBS (the Australian Government's own formulary) is the naming authority; RxNorm supplies the concept id only.** AU brands come from PBS's own `brand_name` field, never RxNorm's US brand table — the jurisdiction hazard closed at the source rather than by a rule.
+
+**Not ingest-routable**, the same bar `dose_guidance` has and for the same reason: a vocabulary entry redirects a lookup, so an agent able to author one could map `amoxicillin` → `warfarin` and steer a dose. Built deterministically, never from prose.
+
+**16 company names caught** — PBS's `brand_name` carries "Pfizer Australia Pty Ltd" and 15 others. They name a manufacturer, not a drug.
+
+**Ships unsigned and steers nothing.** Sign-off is what unlocks the 3635 brands. Honest limit: PBS is the *subsidised* list, so OTC brands (Panadol) are absent — a coverage gap needing a TGA/ARTG source, not a defect.
+
 ## E7 — the INN name is the primary identity (operator ruling) (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Nothing patient-facing.

@@ -237,6 +237,17 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   // recorded-but-not-displayed failure R-47 names, applied to the drug's NAME instead of its dose.
   // It rides in next_data_requests (the frozen PharmCheck has no other clinician-visible channel
   // here) and in the evidence plane, which renders it on the review surface.
+  // The system is IN DOUBT about which medicine was meant — so it ASKS (operator ruling 2026-07-15).
+  // It does not guess (unsafe) and it does not dead-end a name a human could resolve in one answer
+  // (useless). BLOCKED_NO_PROOF is exactly right: we cannot prove which drug this is, so nothing
+  // proceeds — but the clinician/patient gets a real question, not a refusal.
+  if (_canon.confirm) {
+    nextData.push(_canon.confirm.prompt);
+    if (_canon.confirm.candidates?.length > 1) {
+      nextData.push(`Candidates: ${_canon.confirm.candidates.join(" · ")}. The system does not choose between medications.`);
+    }
+  }
+
   if (_canon.from) {
     nextData.push(
       `Identity resolved: '${_canon.from}' → '${drug}' (the datastore's primary INN identity; ` +
@@ -277,6 +288,10 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   // lookup on an unverified identity would dose the wrong drug. Same data, opposite risk, opposite
   // gate — see domain/ingredient-identity.js. A HARD_FAIL already blocks and is more severe, so it
   // stands untouched.
+  // An unanswered identity question is missing proof: we do not know WHICH drug this is, so no check
+  // below proved anything about it. HARD_FAIL is more severe and stands.
+  if (_canon.confirm && status !== "HARD_FAIL") status = "BLOCKED_NO_PROOF";
+
   const split = doseIdentitySplit(drug);
   if (split && status !== "HARD_FAIL") {
     status = "BLOCKED_NO_PROOF";

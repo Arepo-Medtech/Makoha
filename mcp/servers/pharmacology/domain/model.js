@@ -811,24 +811,50 @@ const VocabNameSchema = z
   .object({
     name: z.string().min(2),
     kind: z.enum([
-      "primary",               // the PBS/INN Australian name — the identity
-      "inn",                   // the INN where it differs from the primary string
-      "former_name",           // a superseded AU/BAN name still in wide use (frusemide, lignocaine)
-      "spelling_variant",      // orthographic only (amoxycillin, chlorthalidone)
-      "brand",                 // an AU PBS-listed brand (Lasix) — jurisdiction matters
-      "international_variant", // a US/EU name (acetaminophen) — recorded, NEVER an AU name
-      "company_artifact",      // a sponsor's company name leaking into a brand field — never a drug
+      "primary",                // the PBS/INN Australian name — the identity
+      "inn",                    // the INN where it differs from the primary string
+      "former_name",            // a superseded AU/BAN name still in wide use (frusemide, lignocaine)
+      "spelling_variant",       // orthographic only (amoxycillin, chlorthalidone)
+      "brand",                  // an AU PBS-listed brand (Lasix)
+      "international_generic",  // a US/EU GENERIC sharing the same INN-RxCUI (acetaminophen, albuterol)
+      "company_artifact",       // a sponsor's company name leaking into a brand field — never a drug
     ]),
     jurisdiction: z.enum(["AU", "US", "EU", "INTL"]),
     source: z.string().min(3), // no receipt, no claim
-    /** THE BAR. Recording ≠ resolving. False for ambiguity, foreign variants and artifacts. */
-    usable_for_lookup: z.boolean(),
-    /** Required whenever usable_for_lookup is false — a refusal without a reason is a silent drop. */
-    not_usable_reason: z.string().optional(),
+    /** RxNorm term type. Operator ruling: US GENERICS only (IN/PIN/MIN) — never brands (BN). */
+    rxnorm_tty: z.string().optional(),
+
+    /**
+     * THE BAR — three states, because "recording" and "resolving" are not the only options.
+     *
+     * OPERATOR RULING 2026-07-15: *"when a US Generic is only spelling variant or near synonym based
+     * on the same INN-RXCUI this should be place in the drug_vocabulary bucket — as the mix of the
+     * two still occurs frequently — if the system is ever in doubt — a question should return to
+     * patient or doctor — to confirm the exact medication they intended."*
+     *
+     *   steer   — resolve silently (still reported). AU names, already ours, unambiguous.
+     *   confirm — resolve ONLY after a human confirms. The system is in doubt, so it ASKS rather than
+     *             guessing (unsafe) or dead-ending (useless). This is where a US generic lives:
+     *             paracetamol/acetaminophen are one ingredient and people genuinely mix them, so the
+     *             name must not be a dead end — but a US name must never silently become an AU one.
+     *             Ambiguity lives here too: "you wrote X; it lists under A and B — which?" is more use
+     *             than a flat refusal, and it still never picks.
+     *   refuse  — never resolve, and asking would be nonsense (a manufacturer's name is not a drug).
+     */
+    lookup_disposition: z.enum(["steer", "confirm", "refuse"]),
+    /** Required unless `steer` — an unexplained hesitation is indistinguishable from a bug. */
+    disposition_reason: z.string().optional(),
+    /** For `confirm`: what to put to the patient/doctor. The question, in their words. */
+    confirm_prompt: z.string().optional(),
+    /** For an ambiguous `confirm`: every drug this name reaches. The system never picks among them. */
+    confirm_candidates: z.array(z.string()).optional(),
   })
   .strict()
-  .refine((v) => v.usable_for_lookup || !!v.not_usable_reason, {
-    message: "a name that may not steer a lookup MUST record why — an unexplained refusal is indistinguishable from a bug",
+  .refine((v) => v.lookup_disposition === "steer" || !!v.disposition_reason, {
+    message: "a name that does not steer MUST record why — an unexplained refusal or hesitation is indistinguishable from a bug",
+  })
+  .refine((v) => v.lookup_disposition !== "confirm" || !!v.confirm_prompt, {
+    message: "a 'confirm' disposition MUST carry the question to put to the patient/doctor — 'ask' without a question is just a block",
   });
 
 export const DrugVocabularySchema = z
@@ -848,8 +874,11 @@ export const DrugVocabularySchema = z
   .refine((v) => v.names.some((n) => n.kind === "primary" && n.name.toLowerCase() === v.primary_name.toLowerCase()), {
     message: "the primary_name must appear in names[] as kind 'primary' — the identity must be in its own vocabulary",
   })
-  .refine((v) => v.names.every((n) => n.kind !== "international_variant" || n.usable_for_lookup === false), {
-    message: "an international_variant must NEVER be usable for an AU lookup — that is the jurisdiction inversion the whole subsystem guards against",
+  .refine((v) => v.names.every((n) => n.kind !== "international_generic" || n.lookup_disposition !== "steer"), {
+    message: "a US/EU generic may NEVER steer silently — it is 'confirm' at most. The mix is frequent and the name must not dead-end, but a foreign name must never become an Australian one without a human saying so.",
+  })
+  .refine((v) => v.names.every((n) => n.kind !== "international_generic" || (n.rxnorm_tty && ["IN", "PIN", "MIN"].includes(n.rxnorm_tty))), {
+    message: "an international_generic must be a GENERIC concept (RxNorm TTY IN/PIN/MIN) — operator ruling: US BRANDS are not harvested",
   });
 
 export function validateDrugVocabulary(v) {

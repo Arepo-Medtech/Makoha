@@ -189,28 +189,47 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
     // the vocabulary but excluded here — recording is not resolving.
     const vocab = this._vocabIndex ?? (this._vocabIndex = this._buildVocabIndex());
     const v = vocab.get(n);
-    return v ? { canonical: v.primary, from: n, via: v.via } : { canonical: n, from: null };
+    if (!v) return { canonical: n, from: null };
+
+    // `confirm` — the system is in doubt, so it ASKS rather than guessing or dead-ending (operator
+    // ruling: "if the system is ever in doubt — a question should return to patient or doctor — to
+    // confirm the exact medication they intended"). It does NOT resolve: the caller gets the question
+    // and the candidates, and a human answers. A US generic lives here (paracetamol/acetaminophen are
+    // one ingredient and the mix is frequent — but a US name never silently becomes an Australian
+    // one), as does an ambiguous name (every candidate presented, none chosen).
+    if (v.disposition === "confirm") {
+      return { canonical: n, from: null, confirm: { prompt: v.prompt, candidates: v.candidates, via: v.via } };
+    }
+    return { canonical: v.primary, from: n, via: v.via };
   }
 
   /** Reverse index over the SIGNED vocabulary: usable name → primary. Empty when unsigned/absent. */
   _buildVocabIndex() {
     const ds = this._store?.vocabulary;
     const idx = new Map();
-    if (!ds || ds.attestation?.clinical_sign_off !== true) return idx; // unsigned → does not steer
+    if (!ds || ds.attestation?.clinical_sign_off !== true) return idx; // unsigned → steers nothing, asks nothing
     for (const r of ds.records || []) {
       for (const n of r.names || []) {
-        if (!n.usable_for_lookup) continue;
         const a = String(n.name).toLowerCase();
         if (a === String(r.primary_name).toLowerCase()) continue;
-        // Belt-and-braces: the build already refuses ambiguity, but a name reaching two primaries
-        // here would be a build defect — drop it rather than pick.
-        if (idx.has(a) && idx.get(a).primary !== r.primary_name.toLowerCase()) { idx.set(a, null); continue; }
-        idx.set(a, { primary: r.primary_name.toLowerCase(), via: `drug vocabulary (${n.kind}, ${n.jurisdiction}; ${n.source})` });
+        if (n.lookup_disposition === "refuse") continue; // a manufacturer's name is not a drug
+        const entry = n.lookup_disposition === "confirm"
+          ? { disposition: "confirm", prompt: n.confirm_prompt, candidates: n.confirm_candidates || [r.primary_name], via: `drug vocabulary (${n.kind}, ${n.jurisdiction})` }
+          : { disposition: "steer", primary: r.primary_name.toLowerCase(), via: `drug vocabulary (${n.kind}, ${n.jurisdiction}; ${n.source})` };
+        // Belt-and-braces: the build already dispositions a name reaching two drugs as `confirm`, but
+        // a name that arrived here twice with different primaries would be a build defect. Downgrade
+        // to a question rather than pick — never silently choose one.
+        const prev = idx.get(a);
+        if (prev && prev.disposition === "steer" && entry.disposition === "steer" && prev.primary !== entry.primary) {
+          idx.set(a, { disposition: "confirm", prompt: `You entered "${n.name}". That name is listed for more than one medication (${prev.primary}, ${entry.primary}). Which one do you mean?`, candidates: [prev.primary, entry.primary], via: "drug vocabulary (conflicting entries — never resolved by choosing)" });
+          continue;
+        }
+        if (!prev) idx.set(a, entry);
       }
     }
-    for (const [k, v] of idx) if (!v) idx.delete(k);
     return idx;
   }
+
   getAllergyGroup(drug) {
     const n = String(drug || "").toLowerCase();
     const store = this._records("allergy");

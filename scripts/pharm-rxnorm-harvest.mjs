@@ -130,6 +130,24 @@ export async function conceptDetail(rxcui, fetchImpl = fetch) {
   return { rxnorm_name: pick("RxNorm Name") ?? null };
 }
 
+/**
+ * The concept's TERM TYPE — the operator's generic-vs-brand line, and it must come from RxNorm rather
+ * than from an assumption about which names "look like" brands. IN/PIN/MIN = a generic ingredient
+ * concept (admissible: "when a US Generic is only spelling variant or near synonym based on the same
+ * INN-RXCUI this should be place in the drug_vocabulary bucket"); BN = a brand name (operator ruling:
+ * US brands are NOT harvested).
+ *
+ * A SEPARATE CALL because `allProperties?prop=names+codes` does NOT carry TTY — it returned empty for
+ * all 987 concepts on the first attempt, which would have left every international generic
+ * unverifiable and (correctly) refused by the schema. Verified against the property endpoint instead.
+ */
+export async function conceptTty(rxcui, fetchImpl = fetch) {
+  const res = await fetchImpl(`${RXNAV}/rxcui/${rxcui}/property.json?propName=TTY`, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) return null;
+  const body = await res.json();
+  return body?.propConceptGroup?.propConcept?.[0]?.propValue ?? null;
+}
+
 async function pool(items, n, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -172,6 +190,28 @@ async function main(argv) {
   const http = viaCurl ? curlFetch : fetch;
   if (!utc) { console.error("usage: node scripts/pharm-rxnorm-harvest.mjs --utc <YYYY-MM-DD> [--write] [--limit N] [--concurrency 8] [--via-curl]"); process.exit(2); }
 
+  if (args.includes("--refresh-tty")) {
+    const path = join(DATA_DIR, "ingredient-identity.json");
+    const ds = JSON.parse(readFileSync(path, "utf8"));
+    const need = ds.records.filter((r) => r.resolution === "resolved" && r.rxcui && !r.rxnorm_tty);
+    const seen = new Map();
+    console.log(`\npharm-rxnorm-harvest --refresh-tty: ${need.length} record(s) need a term type`);
+    await pool(need, conc, async (r) => {
+      if (!seen.has(r.rxcui)) {
+        seen.set(r.rxcui, await conceptTty(r.rxcui, http).catch(() => null));
+      }
+      r.rxnorm_tty = seen.get(r.rxcui);
+    });
+    const byTty = {};
+    for (const r of ds.records) if (r.rxnorm_tty) byTty[r.rxnorm_tty] = (byTty[r.rxnorm_tty] || 0) + 1;
+    ds.records_checksum = checksumRecords(ds.records); // R-46
+    if (write) writeFileSync(path, JSON.stringify(ds, null, 2) + "\n");
+    console.log(`  term types: ${JSON.stringify(byTty)}`);
+    console.log(`  (IN/PIN/MIN = generic — admissible per the operator ruling; BN = brand — NOT harvested)`);
+    console.log(write ? "  written + re-sealed.\n" : "  --dry-run. Re-run with --write.\n");
+    return;
+  }
+
   if (args.includes("--refresh-held-in")) {
     const path = join(DATA_DIR, "ingredient-identity.json");
     const ds = JSON.parse(readFileSync(path, "utf8"));
@@ -201,7 +241,7 @@ async function main(argv) {
       else if (r.ambiguous) rec = { name, rxcui: null, resolution: "ambiguous", reason: `RxNorm returned ${r.ambiguous.length} concepts (${r.ambiguous.join(", ")}) — REFUSED; a name that resolves to more than one ingredient must never be auto-picked` };
       else {
         const d = await conceptDetail(r.rxcui, http);
-        rec = { name, rxcui: r.rxcui, rxnorm_name: d.rxnorm_name ?? null, resolution: "resolved" };
+        rec = { name, rxcui: r.rxcui, rxnorm_name: d.rxnorm_name ?? null, rxnorm_tty: d.rxnorm_tty ?? null, resolution: "resolved" };
       }
     } catch (e) {
       rec = { name, rxcui: null, resolution: "error", reason: String(e.message).slice(0, 120) };
