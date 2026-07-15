@@ -20,6 +20,78 @@ And a second reason the operator did not need to give: **who would have written 
 
 ---
 
+## FL dose-guidance C2d — the first clinician-signed AU doses (2026-07-15)
+
+**Status:** operator-attested. **11 AU dose records CLINICALLY SIGNED** by Kenneth Lee (MED0001857758) — all 11 **Attest**, 0 Amend, 0 Reject. `clinical_sign_off:true`, `regulatory_sign_off:false`, dataset stays `-dev`, receipts stay `mock`, **0 drafts remain, 23/23 seals verify.** Six gates EXIT=0.
+
+**`dose_guidance` has been empty since this repo began.** It is the one capability that becomes a *dose*, and it stayed empty because the AU dose authorities are licence-restricted and "no dosages from the LLM" bars the agent writing one. **It now holds 11 doses, and every number is the clinician's own verbatim APF22 Section D text.** The agent segmented and labelled it for display and wrote nothing — the schema's substring bar proves that mechanically, and `origin.entered_by` is an AHPRA id no agent string can match.
+
+**A signed AU dose now flows end-to-end:** amoxicillin → `PASS` → `"Oral, 250–500 mg 8-hourly or 1 g twice daily. IM/IV, 250 mg to 1 g every 6–8 hours."` — receipt still `mode:mock`, correctly, until FL-50.
+
+**What the clinician actually saw** (R-47a — the ruling that a non-congruent dose ships unexplained *assumes* he was alerted, so the surface is what makes that true): his verbatim source, every dose line with indication/route/basis/plausibility, and every US/EU comparator dose verbatim with its authorisation status. Including the two that most needed seeing — **carbamazepine**'s order-of-magnitude flag (AU max 2 g vs US *initial* 200 mg: a max-vs-initial artefact, visible and dismissable on sight) and **metformin**'s only citable US label being **WITHDRAWN**, marked "not a current label" rather than read as current.
+
+### R-46 reproduced live — and caught this time
+
+Applying the attestation set `provenance.reviewed_by`/`review_status` on all 11 records, **which broke the seal immediately** — the exact mechanism that silently invalidated 7 datasets for months. The difference: `contract-pharm-datastore`'s new assertion made it **visible within seconds** instead of decaying quietly, and it was closed deliberately through `pharm-reseal.mjs --reason`, with the basis now living in `attestation.reseal_history[]`. The R-46 fix demonstrated itself on the very next sign-off it had to survive.
+
+**Scope, held:** ADULT doses only. The 232 paediatric rows stay excluded — the paediatric hard limit is unchanged and its plan is parked.
+
+**REMAINING, and none of it is cosmetic:**
+- **R-47b — the RUNTIME clinician surface** (portal blocker #2). **`dose-guidance-empty-no-au-source` MUST NOT be resolved while this is open.** C2 made non-congruent doses real; R-47b is what guarantees a *consulting* clinician sees the divergence the AU-primacy ruling assumes they weighed. R-47a covered attestation only.
+- **C4 — TGA PI (Channel A)**, operator-gated on the same TGA access FL-05 awaits.
+- **Coverage beyond Tier A**, gated on `pharm-ingredient-name-normalisation` (only 71% of APF names match the datastore; `amoxycillin`≠`amoxicillin`).
+- **FL-50 regulatory** before anything is patient-facing.
+
+---
+
+## FL dose-guidance C2b/C3 — the first real AU doses, and the mock fallback removed (2026-07-15)
+
+**Status:** operator-approved. **11 AU dose records authored** (Tier A + amoxicillin), all `review_status:"draft"`, `clinical_sign_off:false` — **KL's attestation (C2d) still required**. Six gates EXIT=0; 23 seals verify; frozen contracts, `engine.js` and the HIST-2 path byte-unchanged.
+
+**The agent originated no dose.** Every `safe_dose_range` is the clinician's verbatim APF22 text, `entered_by: MED0001857758`, and the schema's substring bar proves mechanically that the script only ever cut, never wrote.
+
+**NOTHING WAS BINNED.** Every readable adult dose was written, carrying its plausibility state and its `au_congruence` appraisal. `implausible` is a WARN; `unassessable` states that no claim is made rather than implying an all-clear. Congruence **defaults to `non_congruent` when a comparator exists** — deliberately, because "congruent" is the *stronger* claim ("these agree, look no further") and is a clinical judgement the script has no standing to make. `non_congruent` simply puts both doses in front of the clinician, which is the desired outcome anyway; it ships freely and needs no note (AU primacy). KL may upgrade it at attestation.
+
+### The guard's first real catch was a bug in its own parser
+
+`assessPlausibility` flagged **metformin at 166×**. Investigating instead of dismissing it exposed a **1000× under-read in the parser itself**: the regex treated a comma as a DECIMAL separator, so **"1,000 mg" parsed as 1 mg** and **"3,000 mg" as 3 mg**. Verified against the corpus — **41 comma-groups, every one a thousands separator; ZERO decimal commas** before a unit (Australian orthography: period decimal, comma thousands). A test asserting `"3,75 mg" → 3.75` had encoded the wrong assumption; it was my invention, not from the data, and it is now corrected with the real metformin string as a regression case. **This is the argument for a guard that WARNS a human rather than quietly binning: a bin would have hidden its own defect.** metformin is now correctly `plausible` (3000 vs 2000 = 1.5×).
+
+Carbamazepine remains flagged at exactly 10× — AU *max* 2 g vs the US *initial* 200 mg. A max-vs-initial comparison, not a real discrepancy: the guard's precision depends on how complete the comparator extraction is, and the cost of the false positive is a human glance, not a blocked dose. Working as designed.
+
+### A silent-miss class found: ingredient-name normalisation
+
+**Only 336 of 471 (71%) APF ingredient names match the datastore exactly.** APF22 uses Australian orthography; the datastore uses the INN. Three are pure variants of drugs in BOTH — **amoxycillin/amoxicillin, cyclosporin/ciclosporin, pericyazine/periciazine** — and would be **silent misses**: a dose authored under "amoxycillin" is invisible to an engine looking up "amoxicillin". **The dose exists, is signed, and is never shown** — the same outcome as no dose, reached more expensively. This is the show-evidence failure mode in its purest form, and it surfaced only because amoxicillin is the drug `contract-pharmacology` uses. C2 mitigates with an EXPLICIT three-entry map whose every application is REPORTED (never a fuzzy matcher — fuzzy-matching drug names is how you dose the wrong drug); the remaining 29% needs a real normaliser on the already-registered-but-unbuilt `rxnorm-nlm`. Opened `pharm-ingredient-name-normalisation`.
+
+### C3 — the mock fallback removed, landing with the first real dose exactly as required
+
+`pharm-data-source.js` no longer falls through to `mock-data.json.dose_guidance_mock`. That fallback was honest while EVERY dose was mock (each self-labelled "(MOCK — not clinically validated)"); the moment C2 authored signed doses it would have silently mixed signed and mock on one path, with a string label as the only thing telling them apart. Absent record → null → no dose.
+
+**It made the test suite stronger rather than weaker.** `contract-pharmacology`'s "safe PASS should carry dose_guidance" previously passed on a MOCK amoxicillin dose; it now passes on **KL's verbatim APF22 text**. paracetamol/ibuprofen return NO dose yet remain KNOWN drugs (`knownDrug()` reaches scheduling/renal/nti/interactions/allergy) — the truth, not a regression. `contract-pharm-validation` 20/20 + adversarial 8/8 green.
+
+**Still gated:** C2d (KL's attestation → `clinical_sign_off`) needs **R-47a** — a worksheet showing the appraisal landscape, or he would be attesting blind. **`dose-guidance-empty-no-au-source` must NOT be resolved while R-47 is open.** Nothing patient-facing: datasets stay `-dev`, receipts stay `mock`.
+
+---
+
+## FL dose-guidance C2c — Tier A US/EU label doses retrieved (2026-07-15)
+
+**Status:** operator-approved. 12 records written to `international_dose_guidance`, all `review_status:"draft"`, **engine-isolated (re-proven: nothing reads the file)**. **No AU dose authored.** `npm test` (64) + verification + trunk:stub:all + licence:check + security:secrets + pharm:seals all EXIT=0.
+
+**Every dose is verbatim from a fetched label section. None was written from memory.** Retrieval ran through three agents under one absolute rule: copy from the `content` of a section you actually fetched, or return null and say why. **Returning nulls was defined as success** — and the discipline held under pressure: the rivaroxaban agent refused to reconstruct a dose it plainly knows, because AMASS mis-parses Xarelto's FDA section 2.1 as "Hazard Ratio" (COMPASS trial data) on *both* authorisations and exposes only paediatric dosing at EMA 4.2. **rivaroxaban is therefore absent from the register rather than fabricated into it.**
+
+**A correction I made twice on the way.** I first concluded AMASS "does not carry label doses" — reading the `therapeuticIndication` summary field (which holds sections 11/1/12.1, not dosing) and hitting a truncated EMA 4.2. Wrong: the doses live in `documentSections` (FDA `path:"2"`, EMA `path:"4.2"`), fetched individually. The pipeline works; the summary field is just not it.
+
+**THE STRUCTURAL FINDING — EMA centralised coverage is sparse for old generics.** Only **3 of 10** Tier A drugs have an EU label at all (methotrexate, apixaban, dabigatran). Carbamazepine, metformin, sulfasalazine, phenytoin and alendronate are **nationally authorised** in EU member states (MHRA/BfArM/ANSM) or exist centrally only as fixed-dose combinations — outside RegulatoryCore's scope by design. Result: **9 US doses, 3 EU doses.** This matters for D-SE-4: Case 4's "corroborated (US **and** EU)" rung will fire for a minority of drugs, and most will show as the "single foreign label = bare labelled fact" rung. **The design already anticipates this and is unchanged** — but the ratio is now measured rather than assumed.
+
+**What the labels we CAN cite actually are — surfaced, not laundered:**
+- **metformin**: no ACTIVE FDA monosubstance authorisation exists (Glucophage/Glumetza/Riomet all withdrawn; every active product is a combination). The only citable US label is **WITHDRAWN_VOLUNTARY**. So `authorization_status` is now a REQUIRED, shown field on `InternationalDoseGuidanceSchema` — a dose read as current when its label was withdrawn is precisely the quiet staleness this register exists to make visible.
+- **carbamazepine**: the citable US label is **Equetro — bipolar I mania, not epilepsy** (Tegretol's parsed label has no dosage section at all). The AU entry is epilepsy. Different indications.
+- **phenytoin**: the US dose is the **125 mg/5 mL oral suspension, expressed in mL** — not the capsule.
+- **apixaban EU**: Eliquis's EMA 4.2 holds only paediatric granules, so the citable EU adult text is from **Apixaban Accord**, a generic.
+
+**And the design validated itself.** Comparing AU (KL's APF22) against US shows non-congruence dominated by **indication mismatch**, exactly as predicted: apixaban AU is post-surgical VTE prophylaxis vs US NVAF; carbamazepine AU is epilepsy vs US bipolar. Meanwhile **alendronate is near-identical** (AU "10 mg daily or 70 mg weekly" / US "70 mg once weekly or 10 mg once daily"), and **simvastatin differs by range** (AU 10–40 mg / US 20–40 mg) — non-congruent yet plausible (both max 40 mg). That separation — congruence and plausibility answering different questions — is the whole point of the C0 amendment, and the real data behaves as designed. **The removed veto would have binned most of Tier A.**
+
+---
+
 ## FL dose-guidance C1 — plausibility guard + the international route (2026-07-15)
 
 **Status:** operator-approved. `npm test` (62 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` + `pharm:seals` all EXIT=0. **No dose authored; both dose registers still empty.** Nothing patient-facing; no network code; no new dependency.

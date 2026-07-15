@@ -25,7 +25,15 @@ eq(parseMaxDoseMg("1 g PO every 6 hours, max 4 g/day").mg, 4000, "grams → mg, 
 eq(parseMaxDoseMg("250 microgram once daily").mg, 0.25, "microgram → mg");
 eq(parseMaxDoseMg("250 mcg once daily").mg, 0.25, "mcg → mg");
 eq(parseMaxDoseMg("3.75–7.5 mg before bedtime").mg, 7.5, "a range takes its top");
-eq(parseMaxDoseMg("3,75 mg").mg, 3.75, "comma decimal");
+// THOUSANDS SEPARATORS. This corpus is Australian: period decimal, comma thousands (verified —
+// 41 comma-groups, all thousands; zero decimal commas before a unit). An earlier regex treated the
+// comma as a DECIMAL point, so "1,000 mg" parsed as 1 mg: a silent 1000x UNDER-read on 41 real dose
+// amounts. It was caught only because this guard flagged metformin at 166x and the flag was
+// investigated instead of dismissed — the guard's first real catch was a bug in its own parser.
+eq(parseMaxDoseMg("1,000 mg").mg, 1000, "1,000 mg is ONE THOUSAND mg, not 1 mg");
+eq(parseMaxDoseMg("500\u20131,000 mg daily; maximum 3,000 mg daily").mg, 3000, "the real metformin string: max is 3000 mg, not 3 mg");
+eq(parseMaxDoseMg("1,200 microgram").mg, 1.2, "1,200 microgram = 1.2 mg (thousands separator + unit conversion)");
+eq(parseMaxDoseMg("3.75 mg").mg, 3.75, "period is the decimal separator");
 eq(parseMaxDoseMg("50 mg daily, gradually increasing to 100 mg three times daily. Maximum daily dose 600 mg.").mg, 600,
   "an escalation statement takes the maximum mentioned, not the first");
 // The unit alternation must be longest-first, or "microgram" partially matches as "g" (→ 1000x wrong).

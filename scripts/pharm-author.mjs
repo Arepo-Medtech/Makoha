@@ -118,7 +118,20 @@ export function parseAuthoring(text) {
 }
 
 /** Minimal CSV → flat-record array (controlled authoring files only: no embedded commas/quotes).
- * Booleans/numbers are coerced; everything else stays a string. Caller wraps in an envelope. */
+ * Booleans/numbers are coerced; everything else stays a string. Caller wraps in an envelope.
+ *
+ * @deprecated DO NOT USE FOR CLINICAL CONTENT (FL dose-guidance C2a, 2026-07-15). This splits on
+ * every comma, so ANY real RFC-4180 CSV (quoted fields with embedded commas) is SILENTLY CORRUPTED —
+ * and not merely mangled: THE COLUMNS SHIFT. Verified against the clinician's real 471-row dose
+ * transcription: abacavir's `adult_dose` came out as the string "antiretroviral", and its
+ * PAEDIATRIC dose landed in the ADULT field. The first failure is caught downstream (no mg amount →
+ * the plausibility guard returns unassessable); THE SECOND IS NOT — "300 mg twice daily" is a
+ * perfectly plausible adult dose, so nothing flags it. A paediatric dose presented as an adult range
+ * is precisely what this subsystem exists to prevent.
+ * Nothing currently calls this (parseAuthoring accepts JSON only), which is why it has never bitten.
+ * It is left in place rather than "fixed" because silently changing a shared helper's behaviour is
+ * its own hazard. For the APF transcription use `scripts/lib/apf-md.mjs`. If a CSV path is ever
+ * genuinely needed, write a real RFC-4180 parser — do not reach for this. */
 export function csvToRecords(text) {
   const lines = String(text).split(/\r?\n/).filter((l) => l.trim().length);
   if (lines.length < 2) return [];

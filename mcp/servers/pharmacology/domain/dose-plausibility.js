@@ -31,18 +31,69 @@ const UNIT_MG = {
   microgram: 0.001, micrograms: 0.001, mcg: 0.001, "µg": 0.001, ug: 0.001,
 };
 
-// A dose amount: a number (incl. decimals) followed by a mass unit. The unit alternation is
-// LONGEST-FIRST so "microgram" cannot be partially matched as "g".
-const AMOUNT_RE = /(\d+(?:[.,]\d+)?)\s*(micrograms|microgram|milligrams|milligram|grams|gram|mcg|µg|ug|mg|g)\b/gi;
-
-// A per-weight / per-surface-area basis anywhere in the statement makes flat-mg comparison meaningless.
-const WEIGHT_BASIS_RE = /(?:\/|\s+per\s+)\s*(?:kg|kilogram|m²|m2|m\^2)\b|\bmg\s*\/\s*kg\b|\bmg\s*\/\s*m/i;
+// A dose amount: a number, a mass unit, and OPTIONALLY a per-weight / per-BSA denominator.
+// The unit alternation is LONGEST-FIRST so "microgram" cannot be partially matched as "g".
+// The denominator is captured PER AMOUNT — see parseDoseAmounts for why that matters.
+// THE NUMBER PATTERN IS NOT INCIDENTAL. It tries `1,000`-style groups FIRST (comma = THOUSANDS
+// separator), then a plain/decimal number. An earlier version used `\d+(?:[.,]\d+)?`, treating a
+// comma as a DECIMAL separator — so "1,000 mg" parsed as **1 mg** and "3,000 mg" as **3 mg**: a
+// silent 1000x UNDER-read affecting 41 real dose amounts in the clinician's corpus. It was caught
+// ONLY because the plausibility guard flagged metformin at 166x and the flag was investigated rather
+// than dismissed — the guard's first real catch was a bug in its own parser. That is the argument for
+// a guard that WARNS a human instead of quietly binning: a bin would have hidden its own defect.
+// Verified against the corpus: 41 comma-groups, ALL thousands separators; ZERO decimal commas
+// (`\d,\d{1,2}` before a unit never occurs). Australian orthography: period decimal, comma thousands.
+const AMOUNT_RE = /(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(micrograms|microgram|milligrams|milligram|grams|gram|mcg|µg|ug|mg|g)\b(\s*\/\s*(?:kg|kilogram|m²|m2|m\^2)|\s+per\s+(?:kg|kilogram|m²|m2|m\^2)\b)?/gi;
 
 // "units" (insulin, heparin) are not a mass and cannot be converted to mg.
 const NON_MASS_RE = /\b(?:international\s+)?units?\b|\biu\b|\bmL\b|\b%\b/i;
 
 /**
- * Extract the LARGEST mass amount mentioned, in mg.
+ * Classify EVERY mass amount in a statement as flat or weight/BSA-based, and report BOTH.
+ *
+ * WHY THIS REPLACED A WHOLE-STRING TEST (show-evidence principle, Case 1, 2026-07-15).
+ * This module used to test the whole statement for `/kg` and, on a single hit, discard everything.
+ * That threw away real evidence. phenytoin's adult range, verbatim:
+ *   "Anticonvulsant: Oral, initially 4–5 mg/kg daily … usual maintenance dose 200–500 mg daily.
+ *    Maximum daily dose 600 mg. Status epilepticus: IV, 15–20 mg/kg."
+ * The 200–500 mg and 600 mg are FLAT, comparable, and are exactly where a misplaced zero lands —
+ * and the old rule hid them because the same string also mentioned mg/kg. A bar suppressing the
+ * evidence it exists to check is the failure mode this system keeps rediscovering.
+ * So: classify PER AMOUNT. A statement can be `mixed` — that is a fact to report, not a reason to
+ * go quiet. The clinician sees both methods; plausibility runs on the flat component alone (mg/kg
+ * is a different scale and is NEVER compared to a flat mg dose — that would manufacture a false
+ * alarm or hide a real one).
+ *
+ * @param {string} statement
+ * @returns {{ basis: "flat_mg"|"weight_based"|"mixed"|"none",
+ *             flat_mg: number[], weight_based: string[], max_flat_mg: number|null, reason?: string }}
+ */
+export function parseDoseAmounts(statement) {
+  const s = String(statement || "").trim();
+  if (!s) return { basis: "none", flat_mg: [], weight_based: [], max_flat_mg: null, reason: "empty statement" };
+
+  const flat = [];
+  const weight = [];
+  for (const m of s.matchAll(AMOUNT_RE)) {
+    const n = Number(String(m[1]).replace(/,/g, "")); // commas are THOUSANDS separators here — never decimals
+    const mult = UNIT_MG[m[2].toLowerCase()];
+    if (!Number.isFinite(n) || mult === undefined) continue;
+    if (m[3]) weight.push(m[0].trim()); // carries a /kg or /m² denominator → different scale
+    else flat.push(n * mult);
+  }
+
+  const basis = flat.length && weight.length ? "mixed" : flat.length ? "flat_mg" : weight.length ? "weight_based" : "none";
+  const out = { basis, flat_mg: flat, weight_based: weight, max_flat_mg: flat.length ? Math.max(...flat) : null };
+  if (basis === "none") {
+    out.reason = NON_MASS_RE.test(s) ? "dose expressed in non-mass units (units/IU/mL/%) — not convertible to mg" : "no mass amount found";
+  } else if (basis === "weight_based") {
+    out.reason = "weight- or BSA-based only (mg/kg, mg/m²) — a different scale, never compared to a flat mg dose";
+  }
+  return out;
+}
+
+/**
+ * The LARGEST FLAT mass amount, in mg — the comparable component of a statement.
  *
  * The maximum (not the first) is deliberate: a statement often carries an escalation or a cap
  * ("50 mg daily, increasing to 100 mg three times daily. Maximum daily dose 600 mg"), and for an
@@ -50,23 +101,12 @@ const NON_MASS_RE = /\b(?:international\s+)?units?\b|\biu\b|\bmL\b|\b%\b/i;
  * lands there. This is a coarse instrument by design; it is not a dosing calculator.
  *
  * @param {string} statement
- * @returns {{ mg: number|null, reason?: string, amounts?: number[] }}
+ * @returns {{ mg: number|null, reason?: string, amounts?: number[], basis?: string, weight_based?: string[] }}
  */
 export function parseMaxDoseMg(statement) {
-  const s = String(statement || "").trim();
-  if (!s) return { mg: null, reason: "empty statement" };
-  if (WEIGHT_BASIS_RE.test(s)) return { mg: null, reason: "weight- or BSA-based dose (mg/kg, mg/m²) — not comparable to a flat mg dose" };
-
-  const amounts = [];
-  for (const m of s.matchAll(AMOUNT_RE)) {
-    const n = Number(String(m[1]).replace(",", "."));
-    const mult = UNIT_MG[m[2].toLowerCase()];
-    if (Number.isFinite(n) && mult !== undefined) amounts.push(n * mult);
-  }
-  if (!amounts.length) {
-    return { mg: null, reason: NON_MASS_RE.test(s) ? "dose expressed in non-mass units (units/IU/mL/%) — not convertible to mg" : "no mass amount found" };
-  }
-  return { mg: Math.max(...amounts), amounts };
+  const p = parseDoseAmounts(statement);
+  if (p.max_flat_mg === null) return { mg: null, reason: p.reason, basis: p.basis, weight_based: p.weight_based };
+  return { mg: p.max_flat_mg, amounts: p.flat_mg, basis: p.basis, weight_based: p.weight_based };
 }
 
 /** How far apart two magnitudes are, order-of-magnitude wise (always >= 1). */

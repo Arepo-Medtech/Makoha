@@ -68,3 +68,34 @@ every `npm test` run, so a sign-off that skips the re-seal reddens CI immediatel
 skipped re-sealing) and an unreviewed mutation are indistinguishable from the hash alone — that is the entire
 point of the seal. Establish *what* changed first; `--reason` is required so the answer lands in
 `attestation.reseal_history[]` and not just in someone's memory.
+
+---
+
+## Third pass — AU dose guidance (KL, 2026-07-15)
+
+Registered medical practitioner **Kenneth Lee (MED0001857758)** reviewed the R-47a attestation worksheet
+(`dose-guidance-worksheet-KL-2026-07-15.md`, retained here as the medicolegal artifact): **all 11 records
+Attested, 0 Amend, 0 Reject**.
+
+**This is the first clinician sign-off on AU DOSE GUIDANCE — the one capability that becomes a dose.**
+Applied as `reviewed_by:"Kenneth Lee"` + `review_status:"approved"` on all 11 records;
+`attestation.clinical_sign_off:true`. Regulatory (TGA) sign-off NOT given; the dataset stays
+`pharm-dose-guidance:v0.1.0-dev` and non-patient-facing.
+
+**What was in front of the clinician for each record** (R-47a — the ruling that a non-congruent dose
+ships without explanation assumes the clinician was ALERTED, so the surface is what makes it true):
+his own **verbatim APF22 Section D text**, every segmented dose line with indication / route /
+dosing-basis / plausibility, and **every US/EU comparator label dose verbatim** with its authorisation
+status — including the two that most needed seeing:
+- **carbamazepine** — order-of-magnitude flag: AU max 2 g vs US *initial* 200 mg (10.0x). A
+  max-vs-initial comparison, visible and dismissable on sight.
+- **metformin** — the only citable US label is **WITHDRAWN_VOLUNTARY**, marked *"not a current label"*
+  rather than read as current.
+
+**Scope:** ADULT doses only. The 232 paediatric rows in the transcription are deliberately excluded —
+the paediatric hard limit is unchanged and its plan (`.planning/PAEDIATRIC-DOSING-PLAN.md`) is parked.
+
+**Re-sealed after, per R-46.** Applying a sign-off MUTATES the records (`provenance.reviewed_by` /
+`review_status`), which is exactly how 7 seals were silently invalidated before. This time the break
+was surfaced immediately by the assertion R-46 added, and closed deliberately via
+`pharm-reseal.mjs --reason` — the basis is in `attestation.reseal_history[]`. All 23 seals verify.

@@ -163,11 +163,25 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
     // Present anywhere in the reference set? An unrecognised drug must escalate, not pass.
     return this.getSchedule(n) !== "unknown" || !!this.getRenalRule(n) || !!this.getNti(n) || this.getInteractions(n).length > 0 || !!this.getDoseGuidance(n) || !!this.getAllergyGroup(n);
   }
+  /**
+   * The AU dose for a drug, or null.
+   *
+   * C3 (2026-07-15) REMOVED the mock-data.json fallback that used to sit here. That fallback was
+   * honest while EVERY dose was mock: its three entries (amoxicillin, paracetamol, ibuprofen) each
+   * self-labelled "(MOCK — not clinically validated)" inside the dose string, so nothing could be
+   * mistaken for signed content. C2 authored the first CLINICIAN-SIGNED doses, and at that moment the
+   * fallback became a defect: it would have silently MIXED signed and mock doses on one path, leaving
+   * a string label as the only thing distinguishing them at the point a clinician reads a dose beside
+   * real ones. Absent record → null → no dose. That is the fail-safe default (missing proof → nothing,
+   * never a substitute) and it is strictly safer than what it replaces.
+   *
+   * NOTE this does not make a drug "unknown": knownDrug() reaches scheduling/renal/nti/interactions/
+   * allergy too, so amoxicillin/paracetamol/ibuprofen remain known drugs that simply carry no AU dose
+   * until one is authored — which is the truth.
+   */
   getDoseGuidance(drug) {
     const n = String(drug || "").toLowerCase();
-    const fromStore = this._records("dose").find((x) => String(x.ingredient).toLowerCase() === n);
-    if (fromStore) return fromStore;
-    return this._mock.dose_guidance_mock[n] || null; // dose-guidance dataset empty → mock fallback
+    return this._records("dose").find((x) => String(x.ingredient).toLowerCase() === n) || null;
   }
   /** TGA pregnancy-category record (subject-keyed). No mock fallback — absent → null (check omitted). */
   getPregnancyRisk(drug) {
