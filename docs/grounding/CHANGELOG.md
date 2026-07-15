@@ -4,6 +4,32 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-34 Phase D — A/B parity: the engine vs the gateway (2026-07-15)
+
+**Status:** `npm test` EXIT=0 (81 suites) · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `6b32205`.
+
+**Register:** `opencds-ab-parity` **opened** (Medium, PARTIAL). R-22 does not move; blocker #1 stays RED. The harness writes nothing, emits no dose, changes no verdict.
+
+**Live: 86/86 agree** — composed status, per-check verdicts, findings, and dose text; the dose compared on 77 of them. Both executors read the same clinician-signed records, so agreement is **corroboration**: two independent implementations of one specification landing in the same place.
+
+**Parity was already clean when first measured, and that is the honest headline.** The bugs were found in Phases B and C **by building** — the route could not return PASS for any drug (F-C8), OpenCDS rejected every hook for want of a `patientId` (F-C7), a KM collapsed N interaction findings into one (C1). *None of them would have been found by comparing outputs.* So Phase D is a **regression net**, not a discovery, and dressing 86/86 up as a finding would be the kind of overclaim this project has spent the day removing.
+
+**It catches a real regression, and that was proven rather than asserted.** Rebuilding the container with C1's defect reintroduced — per-hit interaction flags collapsed to one — makes the harness report `warfarin · FLAGS — 1 only the engine reported, 0 only the gateway did`. **It would have caught C1.** A parity harness that has never seen a divergence is decoration.
+
+**The comparison is narrower than the objects, on purpose.** The locked wire is deliberately narrower than the frozen `pharm-check`, so a raw diff would report the **contract shape** as a knowledge divergence on every case — and a harness that cries wolf on its own configuration gets switched off, after which the real drift ships. Three differences are encoded as legitimate: the engine's `flag_id`/`renal_threshold`/`au_reference` (the wire is `.strict()`), the PBS dose keys (F-C1), and checks the gateway was never asked for (F-D2 — the engine runs every *applicable* check; the gateway runs only what was *requested*, and `DEFAULT_CHECKS` is 5 of 8, so the harness asks for all 8).
+
+The rules are **unit-tested without a container** (12 cases), so the live run is only the data — including the sharp edge: an *unrequested* check is the ask, but a *requested-but-unanswered* one is a defect.
+
+**It never says which side is wrong.** Both executors read the same signed records; the harness cannot know which is misreading them, and asserting it would be the fabrication the system exists to prevent. It prints both readings; a human adjudicates.
+
+**Two limits, named rather than implied.** It **skips green in CI** — a green run does not mean parity holds, it means nobody asked; wiring it to a job with a real gateway waits on A4/FL-12. The default is the **full sweep** — and it did not start that way. The plan argued for a sample on cost: *"451 × 8 = 3,608 HTTP calls; a harness too slow to run is a harness nobody runs."* That reasoned about request **count** and never measured wall **clock**. Measured: **15s for all 451, 8s for the sample** (`npm test` is 33s). The sample saved ten seconds and gave up ~90% of the data *shapes* — 7 of 81 renal rules, and **2 of 49 dose-reduction-only** rules, which is the exact shape that caused a real KM bug in B2. Flipped on the operator's ruling; `--sample` remains for iteration. **Coverage is printed on every run** either way, because a silent run reads as exhaustive whether it is or not.
+
+**Also disambiguated:** `pharm-cds-selfbuild` already claimed *"A/B parity ✓"* — that was **FL-30 Step 5: the signed datastore vs the mock source**. It is not this. Two different claims shared one phrase; the register now says which is which.
+
+---
+
+---
+
 ## FL-34 Phase C — the shim, the container, and the first end-to-end call (2026-07-15)
 
 **Status:** `npm test` EXIT=0 (79 suites) · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `6f032d3`.
