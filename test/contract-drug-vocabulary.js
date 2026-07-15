@@ -289,6 +289,40 @@ expect(CAPABILITY_FILE.drug_vocabulary === undefined,
     "the ruling must survive a full rebuild from PBS + RxNorm — RxNorm still says these are one concept, and the clinician's ruling must still win");
 }
 
+// ---- 6. NEVER FUZZY — migrated from contract-ingredient-identity when resolveIngredient was removed
+//
+// These assertions used to guard `resolveIngredient()`. That function is gone (an ORPHAN: superseded
+// by E7's aliases and E8's vocabulary, zero production callers) — but the PROPERTY it guarded did not
+// go with it. `canonicalise()` is the live steerer now, and deleting the orphan's tests would have
+// left "never fuzzy" holding by construction and asserted by NOBODY. That is the M1 shape, and it is
+// exactly how a safety property quietly stops being one.
+//
+// Resolving a drug name to a DIFFERENT drug name is the most dangerous mechanical act in this
+// subsystem: get it wrong and you dose the wrong drug. These are the classic confusion pairs.
+{
+  const { SyntheticSelfDevelopedSource } = await import("../mcp/servers/pharmacology/sources/pharm-data-source.js");
+  const src = new SyntheticSelfDevelopedSource();
+  const steersTo = (n) => { const r = src.canonicalise(n); return r.from ? r.canonical : null; };
+
+  // The wrong-drug pairs. Similar spelling, different concept, catastrophic swap.
+  for (const [a, b] of [["amlodipine", "amiodarone"], ["amiodarone", "amlodipine"], ["hydralazine", "hydroxyzine"], ["clonidine", "clonazepam"]]) {
+    const to = steersTo(a);
+    expect(to === null || to !== b, `${a} must NEVER steer to ${b} — different RxNorm concepts are different drugs, and the whole reason there is no similarity matching anywhere on this path`);
+  }
+
+  // A typo resolves to NOTHING. There is no fuzzy match, no "did you mean", no nearest neighbour.
+  for (const typo of ["amlodipin", "amoxicilin", "clonidin", "warfarn"]) {
+    expect(steersTo(typo) === null, `a typo ("${typo}") must steer to NOTHING — it resolves to itself and the caller's fail-safe (BLOCKED_NO_PROOF) stands. A resolver that guesses at a misspelling is a resolver that doses the wrong drug.`);
+  }
+
+  // An unknown name resolves to nothing — never invented.
+  expect(steersTo("totally-made-up-drug") === null, "an unknown name must resolve to nothing");
+  expect(steersTo("") === null, "empty → nothing");
+
+  // The common path does no work: an already-canonical name is not "resolved" to itself.
+  expect(steersTo("furosemide") === null, "an ALREADY-canonical name must report no redirection — the ordinary lookup is untouched");
+}
+
 if (errors.length) {
   errors.forEach((e) => console.error("FAIL:", e));
   console.error(`contract-drug-vocabulary FAIL (${errors.length})`);

@@ -17,87 +17,90 @@
  * Run from repo root: node test/contract-ingredient-identity.js
  */
 import { existsSync, readFileSync } from "node:fs";
-import { resolveIngredient, loadIdentityMap, identityCollisions, _resetIdentityCache } from "../mcp/servers/pharmacology/domain/ingredient-identity.js";
+import { loadIdentityMap, identityCollisions, _resetIdentityCache, doseIdentitySplit, SAFETY_CAPABILITIES } from "../mcp/servers/pharmacology/domain/ingredient-identity.js";
 
 const errors = [];
 const expect = (c, m) => { if (!c) errors.push(m); };
 
 const MAP_PATH = "mcp/servers/pharmacology/data/ingredient-identity.json";
 
-/** A fixture map — the tests must not depend on a live harvest. */
-function fixture({ signed }) {
-  const recs = [
-    { name: "amoxicillin", rxcui: "723", resolution: "resolved", held_in: ["dose-guidance.json", "drug-interactions.json"] },
-    { name: "amoxycillin", rxcui: "723", resolution: "resolved", held_in: ["apf"] },
-    { name: "amlodipine", rxcui: "17767", resolution: "resolved", held_in: ["drug-interactions.json"] },
-    { name: "amiodarone", rxcui: "703", resolution: "resolved", held_in: ["drug-interactions.json"] },
-    { name: "clomiphene", rxcui: "2596", resolution: "resolved", held_in: ["dose-guidance.json"] },
-    { name: "clomifene", rxcui: "2596", resolution: "resolved", held_in: ["pbs-formulary.json"] },
-    // an ambiguous case: TWO canonical datastore names share one concept → must be REFUSED
-    { name: "twinA", rxcui: "999", resolution: "resolved", held_in: ["dose-guidance.json"] },
-    { name: "twinB", rxcui: "999", resolution: "resolved", held_in: ["dose-guidance.json"] },
-    { name: "ambiguous-name", rxcui: "999", resolution: "resolved", held_in: ["apf"] },
-    // never usable, whatever happens
-    { name: "unresolvable-thing", rxcui: null, resolution: "unresolved", held_in: ["apf"] },
-    { name: "two-concepts", rxcui: null, resolution: "ambiguous", held_in: ["apf"] },
-  ];
-  const byName = new Map(), byRxcui = new Map();
-  for (const r of recs) {
-    if (r.resolution !== "resolved" || !r.rxcui) continue;
-    byName.set(r.name.toLowerCase(), r.rxcui);
-    if (!byRxcui.has(r.rxcui)) byRxcui.set(r.rxcui, []);
-    byRxcui.get(r.rxcui).push(r);
-  }
-  return { path: "fixture", present: true, signed, dataset_version: "fixture:v1", byName, byRxcui };
+// ══ SECTIONS 1-6 REMOVED 2026-07-15 — resolveIngredient() is gone ══
+//
+// They tested `resolveIngredient()`: the E6 fix, superseded by E7's aliases and E8's signed
+// vocabulary, and by removal it had ZERO production callers. It was removed rather than wired,
+// because wiring it would have created a SECOND canonicaliser beside the vocabulary's — which is the
+// E6 defect itself, and the reason B0/B0b settle identity ONCE before either executor runs.
+//
+// THE TESTS WERE MIGRATED, NOT DELETED. "Never fuzzy" (amlodipine/amiodarone, hydralazine/hydroxyzine,
+// a typo resolving to nothing, an already-canonical name doing no work) is a property of whatever
+// STEERS TODAY — and that is `canonicalise()`. Those assertions now live in
+// `contract-drug-vocabulary` §6, aimed at the live steerer, and they were proven to bite there (a
+// prefix-matching canonicalise turns that suite red) BEFORE this code was cut.
+//
+// Deleting a safety test along with the orphan it happened to be attached to would have left the
+// property holding by construction and asserted by nobody. That is the M1 shape, and it is exactly how
+// a safety property quietly stops being one.
+
+// ---- 6b. doseIdentitySplit — THE LIVE GUARD, AND IT WAS ASSERTED BY NOBODY -------------------
+//
+// Found while removing resolveIngredient: disabling `doseIdentitySplit` in engine.js reddened NOTHING.
+// It fires ZERO times across all 451 dose ingredients — because E7 fixed the root (the INN is the
+// primary identity and old spellings are recorded aliases, canonicalised once at the engine boundary),
+// so no split EXISTS to detect. The guard is live, correct, and unexercised.
+//
+// That is the M1 shape exactly: "the property holds TODAY, BY CONSTRUCTION — and nothing asserts it."
+// A guard that has never fired, and that no test can make fire, is indistinguishable from a guard that
+// does not work. Its whole purpose is the split nobody has created YET — so it is proven on a FIXTURE
+// that has one, rather than waiting for a real one to appear on a live path.
+{
+  // A split: two names, ONE RxNorm concept, and the dose is filed under one while a SAFETY capability
+  // is filed under the other. This is the E1 defect in miniature — the check runs, looks up the wrong
+  // string, finds nothing, and PASSES.
+  const split = {
+    present: true, dataset_version: "fixture:v1",
+    byName: new Map([["aliasdrug", "999"], ["primarydrug", "999"]]),
+    byRxcui: new Map([["999", [
+      { name: "aliasdrug", rxcui: "999", held_in: ["dose-guidance.json"] },
+      { name: "primarydrug", rxcui: "999", held_in: ["drug-interactions.json", "nti-register.json"] },
+    ]]]),
+  };
+  const d = doseIdentitySplit("aliasdrug", split);
+  expect(!!d, "a drug whose DOSE is filed under one spelling while its SAFETY data sits under another MUST be detected — that is the E1 defect, and this guard is the only thing that would catch it recurring");
+  expect(d.sibling === "primarydrug", "the finding must name the sibling — a clinician cannot reconcile an identity they are not shown");
+  expect(d.rxcui === "999", "…and the concept the two share, which is the evidence they are one drug");
+  expect(JSON.stringify(d.capabilities) === JSON.stringify(["drug-interactions.json", "nti-register.json"]),
+    "…and WHICH safety checks did not see it — those are the checks whose PASS is not proof");
+
+  // No dose here → nothing to gate. The guard is about a dose reaching a patient past inert checks.
+  expect(doseIdentitySplit("primarydrug", split) === null,
+    "the sibling holds no dose, so there is no dose to gate — a block here would be over-triage");
+
+  // NOT a split: both names hold the same capabilities. Same concept, nothing divided.
+  const whole = {
+    present: true, dataset_version: "fixture:v1",
+    byName: new Map([["a", "1"], ["b", "1"]]),
+    byRxcui: new Map([["1", [
+      { name: "a", rxcui: "1", held_in: ["dose-guidance.json", "drug-interactions.json"] },
+      { name: "b", rxcui: "1", held_in: ["dose-guidance.json", "drug-interactions.json"] },
+    ]]]),
+  };
+  expect(doseIdentitySplit("a", whole) === null, "two names holding the SAME data are not split — a guard that fires on the whole case gets switched off, and then the real split ships");
+
+  // Only SAFETY capabilities count. A cosmetic capability under a sibling is not a safety split.
+  const cosmetic = {
+    present: true, dataset_version: "fixture:v1",
+    byName: new Map([["x", "2"], ["y", "2"]]),
+    byRxcui: new Map([["2", [
+      { name: "x", rxcui: "2", held_in: ["dose-guidance.json"] },
+      { name: "y", rxcui: "2", held_in: ["counselling-points.json"] },
+    ]]]),
+  };
+  expect(doseIdentitySplit("x", cosmetic) === null,
+    `only the eight accessors' capabilities decide whether a CHECK missed data (${SAFETY_CAPABILITIES.length} of them). Counselling points under a sibling name are not a safety split.`);
+
+  expect(doseIdentitySplit("unknown-name", split) === null, "a name not in the map cannot be split — the caller's fail-safe stands");
+  expect(doseIdentitySplit("aliasdrug", { present: false, byName: new Map(), byRxcui: new Map() }) === null, "no map → no detection (status quo; never an error)");
 }
-
-// The datastore's canonical names, for the fixture.
-const CANON = new Set(["amoxicillin", "amlodipine", "amiodarone", "clomiphene", "twina", "twinb"]);
-const isCanonical = (n) => CANON.has(String(n).toLowerCase());
-
-// ---- 1. THE GATE: an unsigned identity map must not steer a dose lookup ------------------------
-const unsigned = fixture({ signed: false });
-expect(resolveIngredient("amoxycillin", isCanonical, { map: unsigned }) === null,
-  "an UNSIGNED identity map must NOT redirect a lookup — a name→ingredient map is a drug-identity assertion and passes the same gate as every other dataset");
-expect(resolveIngredient("amoxycillin", isCanonical, { map: unsigned, allowUnsigned: true })?.canonical === "amoxicillin",
-  "…and allowUnsigned must be an EXPLICIT opt-in, so review can happen before behaviour changes");
-
-// ---- 2. Signed map: the real variant resolves --------------------------------------------------
-const signed = fixture({ signed: true });
-const r = resolveIngredient("amoxycillin", isCanonical, { map: signed });
-expect(r?.canonical === "amoxicillin", "the AU spelling must reach the signed AU dose");
-expect(r?.rxcui === "723", "the resolution must carry the RxCUI it rests on — an unauditable mapping is not an authoritative one");
-expect(r?.via === "rxnorm-nlm", "the resolution must name its source");
-
-// ---- 3. NEVER FUZZY — the wrong-drug pairs ------------------------------------------------------
-// These share a prefix and are the classic confusions. Different RxCUI → they must NOT resolve to
-// each other. This is the assertion that makes the whole approach safe rather than clever.
-expect(resolveIngredient("amiodarone", isCanonical, { map: signed }) === null,
-  "amiodarone is canonical — it must resolve to nothing, and certainly never to amlodipine");
-for (const [a, b] of [["amlodipine", "amiodarone"], ["amiodarone", "amlodipine"]]) {
-  const res = resolveIngredient(a, isCanonical, { map: signed });
-  expect(res === null || res.canonical !== b, `${a} must NEVER resolve to ${b} — different RxNorm concepts are different drugs`);
-}
-
-// ---- 4. NEVER GUESS ----------------------------------------------------------------------------
-expect(resolveIngredient("ambiguous-name", isCanonical, { map: signed }) === null,
-  "a name whose concept maps to TWO canonical ingredients must be REFUSED, never picked — ambiguity is not resolved by choosing");
-expect(resolveIngredient("unresolvable-thing", isCanonical, { map: signed }) === null,
-  "an UNRESOLVED record must never be used to redirect");
-expect(resolveIngredient("two-concepts", isCanonical, { map: signed }) === null,
-  "an AMBIGUOUS record (RxNorm returned >1 concept) must never be used to redirect");
-expect(resolveIngredient("amoxicilin", isCanonical, { map: signed }) === null,
-  "a typo must resolve to NOTHING — there is no similarity matching anywhere in this path");
-expect(resolveIngredient("totally-made-up", isCanonical, { map: signed }) === null, "an unknown name must resolve to nothing");
-expect(resolveIngredient("", isCanonical, { map: signed }) === null, "empty → nothing");
-
-// ---- 5. The common path does no work and takes no risk ------------------------------------------
-expect(resolveIngredient("amoxicillin", isCanonical, { map: signed }) === null,
-  "an ALREADY-canonical name must return null — the resolver never touches the ordinary lookup");
-
-// ---- 6. Absent map = no behaviour change --------------------------------------------------------
-expect(resolveIngredient("amoxycillin", isCanonical, { map: { present: false, signed: false, byName: new Map(), byRxcui: new Map() } }) === null,
-  "no map → no resolution → the caller's existing fail-safe stands");
 
 // ---- 7. The real harvested dataset, if present --------------------------------------------------
 if (existsSync(MAP_PATH)) {
@@ -143,7 +146,7 @@ if (existsSync(MAP_PATH)) {
     const together = cols.some((c) => c.names.includes(a) && c.names.includes(b));
     expect(!together, `${a} and ${b} must NEVER share an RxNorm concept — if this fires, the map is unsafe and must not be signed`);
   }
-  console.log(`  (real map: ${ds.records.length} names · ${ds.records.filter((x) => x.resolution === "resolved").length} resolved · ${cols.length} collision group(s) · unsigned)`);
+  console.log(`  (real map: ${ds.records.length} names · ${ds.records.filter((x) => x.resolution === "resolved").length} resolved · ${cols.length} collision group(s) · SIGNED — provenance only, gates nothing)`);
 }
 
 // ---- 8. THE E1 REGRESSION — a dose must never emit while its safety checks are inert ------------
@@ -358,4 +361,8 @@ if (errors.length) {
   console.error(`contract-ingredient-identity FAIL (${errors.length})`);
   process.exit(1);
 }
-console.log("contract-ingredient-identity: OK (never fuzzy · ambiguity REFUSED not picked · an unsigned identity map cannot steer a dose lookup · unresolved → fail-safe)");
+// The summary must claim only what THIS file still tests. It used to say "never fuzzy · ambiguity
+// REFUSED · an unsigned map cannot steer" — all three were resolveIngredient's, and all three moved to
+// contract-drug-vocabulary with it. A summary that keeps claiming a departed test's coverage is the
+// same overclaim this project has spent the day removing, in a place nobody would think to check.
+console.log("contract-ingredient-identity: OK (the map's attestation is honest — the ruling is on the SOURCE, states what was NOT reviewed, and unlocks nothing · no dangerous pair shares a concept · unresolved names record WHY · the E1 regression: a misnomer must not change the answer)\n  never-fuzzy + ambiguity-refused now live in contract-drug-vocabulary §6, aimed at canonicalise() — the live steerer.");

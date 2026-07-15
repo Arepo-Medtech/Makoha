@@ -4,6 +4,20 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## The identity map is signed, and the orphan it gated is gone (2026-07-15)
+
+**`resolve-ingredient-orphan` → REMOVED/resolved.** `resolveIngredient()` — the E6 fix, superseded by E7's aliases and E8's signed vocabulary, with zero production callers — is deleted. **Removed rather than wired**, and the reason is the point: wiring it would have created a **second canonicaliser** beside the vocabulary's, which is the E6 defect itself and precisely what B0/B0b exist to prevent by settling identity once, upstream, before either executor runs. An orphan that would be a hazard if reconnected is not a spare part.
+
+**Its safety tests were migrated, not deleted.** "Never fuzzy" — amlodipine/amiodarone, hydralazine/hydroxyzine, a typo resolving to nothing — is a property of whatever **steers today**, and that is `canonicalise()`. Those assertions moved to `contract-drug-vocabulary` §6 and were **proven to bite there** (a prefix-matching canonicalise reddens it) *before* the code was cut. Deleting a safety test along with the orphan it happened to hang off would have left the property holding by construction and asserted by nobody — the M1 shape, and exactly how a safety property quietly stops being one.
+
+**The removal exposed a second one, in the code it was careful to keep.** `doseIdentitySplit()` — the live fail-safe blocker — was **asserted by nobody**: disabling it reddened nothing, because it fires 0 times across all 451 dose ingredients (E7 fixed the root, so no split exists to detect). Live, correct, unexercised. Closed in the same pass with a fixture that *makes* it fire, and proven to bite.
+
+Also removed: `loadIdentityMap`'s `signed` field, read only by the deleted gate. A field that *looks* like it gates something and doesn't is the `allergy_status` trap (F-C8) in miniature. The map's `clinical_sign_off` now gates **nothing at all** — pure provenance, exactly as its attestation says.
+
+**One honest wrinkle:** the signed attestation *names* `resolveIngredient`, and it was removed hours after sealing. Not re-attested — the record is dated and describes the state at signing, and its conclusion is *strengthened* (the flag gated one dead function then; nothing now). Re-signing for a refactor would make a clinician's signature a function of our internals. The register entry is the trail. Sequencing lesson: remove first, then sign.
+
+---
+
 ## The identity map is signed — and it unlocks nothing, which is the point (2026-07-15)
 
 **Status:** `npm test` EXIT=0 · `verification` Pass: true · seals 25/0 · frozen contracts byte-unchanged.
