@@ -4,6 +4,199 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## E8b — "in doubt" means ASK, not refuse (operator ruling) (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 66 suites) + `verification` (Pass: true) + `pharm:seals` (25/25) green. Frozen contracts byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Ruling:** *"Do not harvest RxNorm US Brands — but when a US Generic is only spelling variant or near synonym based on the same INN-RXCUI this should be place in the drug_vocabulary bucket — as the mix of the two still occurs frequently — if the system is ever in doubt — a question should return to patient or doctor — to confirm the exact medication they intended."*
+
+**The correction.** E8's first cut had a boolean bar: `steer` or `refuse`. That made "the system is in doubt" a reason to **dead-end** a name a human could resolve in one answer — the same suppression instinct the show-evidence principle exists to stop, applied to identity instead of evidence. Three states now:
+
+| state | count | meaning |
+|---|---|---|
+| `steer` | 5108 | resolve silently (AU, unambiguous, already ours) |
+| **`confirm`** | **72** | **ASK the patient/doctor** — 70 US generics + 2 ambiguous |
+| `refuse` | 16 | only where asking is nonsense: a manufacturer's name is not a drug |
+
+**US generics are recorded and they ask.** paracetamol/acetaminophen · salbutamol/albuterol · rifampicin/rifampin · aciclovir/acyclovir · mesalazine/mesalamine · leuprorelin/leuprolide · glycerol/glycerin. Verified live on a signed copy:
+
+> `acetaminophen` → **"You entered "acetaminophen", which is the US name for the medicine known in Australia as "paracetamol" (the same ingredient, RxNorm 161). Is "paracetamol" the medication you intend?"** → `BLOCKED_NO_PROOF` pending the answer.
+
+An unanswered identity question **is** missing proof: we do not know which drug this is, so no check below proved anything about it. The name no longer dead-ends, and a US name still never silently becomes an Australian one — `international_generic` + `steer` is **unrepresentable at the schema level**, signed or not.
+
+**US brands are not harvested, and the line comes from RxNorm's own data** rather than a guess about which strings look like brands: admitted only when TTY ∈ {IN, PIN, MIN}. Verified across all 987 resolved concepts — **IN 933 · PIN 51 · MIN 2 · BN 0**. (The first TTY attempt returned empty for all 987 — `allProperties?prop=names+codes` does not carry TTY. Caught and re-fetched from the property endpoint. Had it shipped, every international generic would have been unverifiable and correctly refused: a silent loss of the whole ruling.)
+
+**Ambiguity asks too, and still never picks** — every candidate presented. A `confirm` without a question is unrepresentable: "ask" with nothing to ask is a block wearing a nicer word.
+
+**Unchanged:** `Lasix` still resolves silently → PASS + dose. Still unsigned; sign-off unlocks the 3635 brands and the 70 confirm-prompts.
+
+## E8 — the drug vocabulary: one identity for every name in use (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 66 suites) + `verification` (Pass: true) + `pharm:seals` (25/25) + capability-groups (10 groups / 24 capabilities) green. Frozen contracts byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Operator task:** *"'Drug vocabulary (Using the PBS INN Australian name as Primary authority)': catch and list all the names, synonyms, international variants and minor spelling variants that eventually get used interchangeably — so they link to the unifying identifier… unifying the prevalent use of variants by patients, doctors and systems."*
+
+**What it is.** 1455 drugs · 5197 names — 3635 AU brands, 1455 primaries, 70 international generics, 18 former names, 16 company artifacts, 2 spelling variants. RxCUI on 969, WHO ATC on 1094.
+
+```
+Lasix       (patient)  ┐
+frusemide   (doctor)   ├─→  furosemide · RxCUI 4603 · ATC C03CA01
+furosemide  (system)   ┘
+```
+
+New capability group **`drug_identity`** — cross-cutting, deliberately not an APF22 heading. Every other group answers a clinical question *about* a drug; this one answers **which drug**, the question all the others silently assumed. E6 proved the assumption unsafe.
+
+**The trap.** RxNorm's canonical is the USAN, not the INN: `acetaminophen`, `albuterol`, `epinephrine`. A vocabulary keyed on `rxnorm_name` would have Americanised an Australian clinical system — **invisibly**, since those spellings appear nowhere in our data and no collision report would flag it. So **PBS (the Australian Government's own formulary) is the naming authority; RxNorm supplies the concept id only.** AU brands come from PBS's own `brand_name` field, never RxNorm's US brand table — the jurisdiction hazard closed at the source rather than by a rule.
+
+**Not ingest-routable**, the same bar `dose_guidance` has and for the same reason: a vocabulary entry redirects a lookup, so an agent able to author one could map `amoxicillin` → `warfarin` and steer a dose. Built deterministically, never from prose.
+
+**16 company names caught** — PBS's `brand_name` carries "Pfizer Australia Pty Ltd" and 15 others. They name a manufacturer, not a drug.
+
+**Ships unsigned and steers nothing.** Sign-off is what unlocks the 3635 brands. Honest limit: PBS is the *subsidised* list, so OTC brands (Panadol) are absent — a coverage gap needing a TGA/ARTG source, not a defect.
+
+## E7 — the INN name is the primary identity (operator ruling) (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Operator ruling:** *"re-author all listings so the INN name is the primary identity so links to the capabilities or medication related content are never lost or not linked based on a misnomer."*
+
+### The trap in the ruling, and the guard that defuses it
+
+**RxNorm's canonical name is the USAN, not the INN.** Taking `rxnorm_name` as "the INN" would have renamed, across an *Australian* clinical system:
+
+```
+paracetamol → acetaminophen    salbutamol → albuterol    adrenaline → epinephrine
+```
+
+(verified: RxNorm canonical for rxcui 161 is `acetaminophen`, 435 is `albuterol`, 3992 is `epinephrine`.) That is the jurisdiction inversion this repo exists to prevent — a US ontology overwriting AU clinical vocabulary — done in the name of "standardising", and **invisible in the collision report**, because the US spelling never appears in our data so nothing would have flagged it.
+
+The guard is structural, not a rule to remember: **the primary may only ever be a name the datastore already holds.** No new string is introduced, so an RxNorm-only US name cannot enter. **PBS — the Australian Government's own formulary — is the authority**, and across all 19 collision groups PBS *is* the INN; in **9 of them it disagrees with RxNorm's canonical**, which is exactly the trap. Ambiguity **refuses**: `sodium chloride ≡ sodium chloride solution` (PBS holds both) was left alone rather than guessed.
+
+### What changed
+
+**18 renames** across 6 datasets (13 orthographic, 5 substantive). Not renamed: `pbs-formulary.json` and `formulations.json` — they are **mirrors** of external sources, and rewriting a mirror makes it a forgery of its upstream.
+
+**The clinician's word is not lost.** KL attested `frusemide`; the record is now `furosemide` with `also_known_as: ["frusemide"]` and `attested_as: "frusemide"`. The dose TEXT — the thing he signed — is byte-unchanged, so his attestation stands on what he reviewed. The rename is a datastore *identity* decision, recorded in each dataset's `attestation.rename_history[]` with its RxCUI and authority.
+
+**The old name still LINKS** — the second half of the ruling. `canonicalise()` resolves an alias to the primary, **once, at the engine boundary**. That placement is the safety property: resolving aliases inside `getDoseGuidance()` alone would have rebuilt the E6 defect exactly — a dose found under the alias while the interaction check still missed and silently passed. All eight accessors now key on one identity. The resolution is **reported**, never silent. The aliases are not an outside claim: they are names *this datastore already used* for that drug, so nothing consults the unsigned RxNorm map at runtime.
+
+### The result
+
+```
+frusemide      HARD_FAIL  interaction_severe   ← was: PASS + dose + interaction PASS
+furosemide     HARD_FAIL  interaction_severe
+eformoterol    PASS  dose YES                  ← was: dose orphaned under the old name
+formoterol     PASS  dose YES                  ← was: no dose at all
+```
+
+Both spellings now behave identically. **The E1 regression is fixed at the root, not merely guarded** — all 6 splits reconciled; `doseIdentitySplit()` remains as belt-and-braces and should never fire again.
+
+**The test was reframed, not weakened.** It previously asserted "the six known splits BLOCK"; E7 made them resolve. The invariant is now stated more sharply — **a misnomer must not change the answer**: two names for one drug must produce the same status, the same flags, and agree on whether a dose exists. That catches splits nobody has thought of yet, and it pins the jurisdiction guard (`acetaminophen` must never appear; `paracetamol` must survive).
+
+**Register moves.** `dose-identity-split-unsafe-pass` → root-fixed (guard retained). New `inn-primary-identity` reconcile + `--refresh-held-in` (recomputes `held_in` with no RxNorm call — a stale map is worse than none, since the guard reads it). **Remaining for the clinician:** 5 SUBSTANTIVE renames are different words RxNorm treats as one concept and PBS authorises — `certolizumab → certolizumab pegol`, `erythropoietin → epoetin alfa`, `hydroxyurea → hydroxycarbamide`, `thyroxine → levothyroxine`, `hexamine hippurate → methenamine hippurate`. These are clinical identity claims, not spellings, and want KL's eye.
+
+---
+
+## E6 — the identity map, and the E1 regression it found (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Dataset `-dev`, receipts `mock`, nothing patient-facing.
+
+### The headline: E1 introduced a safety regression, and E6 found it
+
+Verified live on the engine **before** the fix:
+
+```
+frusemide    PASS       dose EMITTED   interaction_check PASS       no flags
+furosemide   HARD_FAIL  no dose        interaction_check HARD_FAIL  interaction_severe
+```
+
+Same drug (RxNorm 4603), same patient, same co-medications (digoxin + lithium). The dose lives under the Australian name `frusemide`; the interaction and NTI data live under the INN `furosemide`. **The check ran, looked up the wrong string, found nothing, and passed.** A dose emitted while its safety checks were inert.
+
+Before E1 these drugs had no dose, so `knownDrug()` was false and the engine returned `BLOCKED_NO_PROOF`. **E1 turned a fail-safe block into an unsafe pass** by populating dose-guidance from APF's name-space while every other capability uses the INN name-space. Six drugs, measured not estimated: frusemide/furosemide · chlorthalidone/chlortalidone · eformoterol/formoterol · cholecalciferol/colecalciferol · beclomethasone/beclometasone · hexamine hippurate/methenamine hippurate.
+
+It also **inverts the register's own claim** that "a miss is a SILENT no-dose (fail-safe direction)". For a split name the miss is a silent no-INTERACTION-CHECK *while a dose flows*.
+
+### The guard, and why an unsigned map may apply it
+
+`doseIdentitySplit()` detects a dose whose RxNorm-equivalent sibling holds safety data its own name lacks; `engine.js` downgrades PASS/WARN → `BLOCKED_NO_PROOF` and **states the reason and the sibling name** — never a silent block. A check that looked up a name the datastore files under a different spelling has not PROVEN anything, so its PASS is not proof, which is precisely what BLOCKED_NO_PROOF means. HARD_FAIL is more severe and stands untouched.
+
+**The asymmetry that makes this legitimate on an unsigned map:** an unsigned identity map may **BLOCK** (fail-safe — worst case a spurious block a clinician resolves) but may **never STEER** a lookup (unsafe — being wrong doses the wrong drug). Same data, opposite risk profile, opposite gate. Blocking needs no sign-off; steering does.
+
+Proven both ways in `contract-ingredient-identity.js`: the 6 splits block with a reason, `furosemide` still HARD_FAILs on the real interaction (the fix did not mask it), and an unaffected drug still emits its signed dose (the guard is narrow, not a blanket — an over-broad block would bin the clinician's signed content behind a naming concern).
+
+### The register's framing of FL-06 was wrong, twice, and is corrected
+
+- *"the 29% non-match gates coverage"* — **false**. E1 removed a hardcoded array and coverage went 11 → 451 with the normaliser unbuilt.
+- *"a miss is a SILENT no-dose"* — **false**. An unrecognised name fails `knownDrug()` → `BLOCKED_NO_PROOF`. Fail-safe *and* visible: "amoxycillin", "clomifene", "Amoxil" and "totally-made-up-drug" all block.
+- Measured: of the 123 dose ingredients absent from every other capability, **120 are genuine coverage gaps** (we hold a dose but no interaction/scheduling fact) and only **3** are orthographic variants — and those 3 differ only against unsigned bulk data no accessor reads. A normaliser would have "fixed" three records. The real defect was the six splits, which the register never named.
+
+### The identity map (`ingredient-identity.json`, 1473 names, UNSIGNED)
+
+Harvested from RxNorm (NLM, public domain, registered `rxnorm-nlm`, `use_restriction: content_ingest`) by **exact/registered-synonym lookup (search=0)**. 987 resolved · 19 collision groups · unresolved recorded with a reason, never dropped.
+
+**It is not fuzzy matching, and that was verified before building.** Two names are the same ingredient ONLY when RxNorm returns the same RxCUI. Look-alike pairs stay distinct — **0 collisions** across amlodipine/amiodarone, hydralazine/hydroxyzine, clonidine/clonazepam, vinblastine/vincristine, chlorpromazine/chlorpropamide, carbamazepine/oxcarbazepine, methotrexate/metronidazole, dexamphetamine/dexamethasone. Typos refuse: "amoxicilin", "amlodipin" → no match. **Normalized search (`search=2`) was REJECTED** precisely because it *did* resolve "amlodipin" (→ 104416, amlodipine besylate) — approximate matching, the one thing that must not be in this path.
+
+**It ships UNSIGNED and the resolver refuses to steer on it.** A name→ingredient map is a drug-IDENTITY assertion; this repo's own precedent (APF_TO_DATASTORE) is that identity assertions are reported, never silent, and are "data a clinician can read and correct". It is authored for KL to review, not switched on behind him — two mappings in particular want his eye: **epoetin alfa ≡ erythropoietin** and **levothyroxine ≡ thyroxine** (RxNorm gives each pair one concept; whether that identity should steer a dose lookup is a clinical call, not the agent's).
+
+**Transport note:** Node's outbound is blocked in this environment while curl is permitted, so the harvest has an explicit `--via-curl` shim, reported in the run header. Explicit, never a silent fallback — a harvest that quietly changed transport is a harvest whose provenance you cannot reason about.
+
+**Register moves.** New `dose-identity-split-unsafe-pass` (Critical pre-fix → Medium guarded) and `ingredient-identity` (PARTIAL, unsigned). `pharm-ingredient-name-normalisation` framing corrected. **Remaining:** reconcile the two name-spaces — re-author the 6 dose records under the INN name (a worksheet round-trip, since the ingredient key is what KL attested against) or sign the identity map so the resolver may steer. Until then those 6 doses are unreachable, which is the honest state and strictly safer than what E1 shipped.
+
+---
+
+## E3 — the evidence plane: R-47b built, and the dose evidence reaches the clinician (2026-07-15)
+
+**Status:** `npm test` (EXIT=0) + `verification` (Pass: true) + `pharm:seals` (23/23) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. **Nothing became patient-facing.**
+
+**The distinction this rests on.** "No autonomous prescription" means the AI must not MINT a dose. It does not mean a registered practitioner may not be SHOWN one with its provenance. Showing a clinician the signed AU dose, the US/EU labels beside it and what the literature reports IS the human-in-the-loop — it is what Guardrail 2 presumes is happening. Patient-facing rules had been applied to the clinician-facing path.
+
+**Two planes, already separate in this architecture.** `PharmCheck` (frozen, `additionalProperties:false`, seven DOSE_KEYS) is authoritative and patient-promotable and is **untouched**. The `ReviewBundle` — which already described itself as *"what the clinician reviewer is SHOWN, as a hashed contract"* — is the evidence plane, and was not frozen. The bar between them, `releaseToPatient()`, already existed. E3 adds `ReviewBundle.dose_evidence[]` and changes neither.
+
+**What now reaches the clinician** (`mcp/servers/pharmacology/dose-evidence-plane.js`): the clinician-signed AU dose (the one authoritative kind, carrying who attested it); **every US/EU comparator VERBATIM**, labelled foreign and framed as evidence beside the AU dose, never a verdict on it; the CDS gateway's `dose_candidate` — which the client mapped and the pipeline then **discarded**, the circularity being that the dose had no consumer *because* it was discarded, and was cited as the reason not to build the KM that produces it; the **261 clinician-signed literature records** that were engine-isolated (correctly — a study finding is not a dose) but where engine-isolated had silently been doing the work of clinician-isolated; the congruence appraisal and the plausibility read, as flags never vetoes.
+
+**R-47b, the runtime surface, is built.** Carrying the evidence in the bundle is NOT R-47b — that is precisely the trap R-47 names, and the first cut of E3 fell into it: the bundle carried both comparators and the portal's HTML rendered neither. `portal/server.js renderDoseEvidence()` renders it, and `assertDoseEvidenceRendered()` makes a surface that drops a comparator **throw** — `renderBundle` self-verifies through it, mirroring `renderDoseWorksheet`'s discipline. Verified on the real render: HTTP 200, AU dose + JYLAMVO + the EU label + the literature displayed, AU primacy stated, authoritative distinguished from advisory. The evidence rides **inside `bundle_sha256`**, so removing a comparator breaks the hash: "the clinician saw the divergence" is now part of the medicolegal record rather than an assumption of the ruling.
+
+**§1.1 held — and I had violated it.** The operator's own limit: *"'Show the clinician everything' never becomes 'show a dose the firewall blocked'. No override, no exception."* The first cut surfaced the AU dose, both foreign labels and the literature doses on a HARD_FAIL. The principle governs what we show when we show; it does not dissolve the firewall. Past a block (HARD_FAIL / BLOCKED_NO_PROOF / paediatric) **no dose text is surfaced** — and the withholding is ACCOUNTED FOR, with counts and reason ("1 clinician-signed AU dose, 2 US/EU comparators, 2 literature records — withheld because the firewall returned HARD_FAIL"), so a gated action never becomes the silent drop the principle actually names. A drug we hold nothing on declares no withholding: a phantom would imply knowledge we lack.
+
+**Engine isolation preserved STRUCTURALLY.** `international_dose_guidance`'s isolation is not a comment — it holds because no engine accessor exists ("preserved by construction, not by wording"). Adding `getInternationalDose()` to `PharmDataSource` would have handed `engine.js` a path to a foreign label. So the plane reads the isolated registers directly and is imported by the pipeline's **portal channel only**; the engine's accessor set stays exactly eight, none foreign. The test pins both, because that is exactly the guarantee a later convenience import dissolves.
+
+**A false positive, caught by the suite.** The first `assertNoAdvisoryInDose` compared every advisory item's text against the dose and fired on `plausibility` — which quotes the dose line it assesses, so for a single-line monograph that string IS `safe_dose_range`. It broke `contract-firewall` on a legitimate PASS. A safety bar with false positives does not fail safe; it gets loosened under pressure and is then absent when the real inversion arrives. Narrowed to the actual hazard: foreign-sourced dose text (`international_label` / `cds_dose_candidate` / `literature`) reaching the AU dose field. Still fires on a US label as the AU dose; no longer fires on the genuine one.
+
+**The pipeline comment revised** (operator: *"this may need revision"*). Was: *"Nothing here emits a dose; it only tightens continuation."* The first half remains true of the AUTHORITATIVE dose and must; the second half was describing evidence going in the bin, which was never a safety property. The status fold is byte-for-byte the same monotone operation.
+
+**Register moves.** `dose-congruence-surfacing-unbuilt` → R-47a **and** R-47b both BUILT; **stays PARTIAL and does NOT resolve** — the Portal itself is blocker #2 and stays RED (FL-11 WORM bucket, FL-43 live IdP); a rendered page behind an unbuilt portal is not a clinician in a live consult. `dose-guidance-empty-no-au-source` still must not resolve while R-47 is open. Gap-register R-47 updated. **Field lag closed:** `pharm-records-checksum-unverified` → R-46 and `dose-congruence-surfacing-unbuilt` → R-47 links backfilled; zero `pending promotion` remain.
+
+---
+
+## E1/E2 — the eleven become 451: the full APF22 adult set, clinician-attested (2026-07-15)
+
+**Status:** `npm test` (EXIT=0) + `verification` (Pass: true) + `pharm:seals` (23/23) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` / `pipeline.js` / `engine.js` byte-unchanged vs `17da525`. Dataset stays `-dev`; receipts stay `mode=mock`; **nothing became patient-facing.**
+
+**Why there were only 11 doses.** Not a safety bar — a hardcoded array. `scripts/pharm-dose-author.mjs` ran over `const wanted = [...TIER_A, "amoxicillin"]`: eleven drugs, the C2 risk-tiered first pass, never widened. The clinician's transcription always carried **451 adult doses across 471 monographs**; 440 had simply never been authored. Removing the array needed no architectural change, no new data, and no new dependency. The register's claim that coverage was gated on `pharm-ingredient-name-normalisation` (the 71% match rate) was **false** and is corrected in that record: a dose is authored under the APF ingredient name and `getDoseGuidance()` looks up by that same string, so the name only has to be self-consistent.
+
+**E1 — the gate removed.** Every readable adult dose is authored, carrying its plausibility state and `au_congruence` appraisal as LABELS rather than as reasons to withhold it (show-evidence principle). 451 built, **0 validation failures**; the substring bar swept all 451 with **0 violations** — the agent only ever cut the clinician's text. The 20 monographs with no adult dose are skipped and reported (paediatric-only / referral Note / declared Section D absence): the paediatric hard limit holding by construction, since `adultDose()` deliberately does not return the combined "Adult and paediatric dose" label. The C2d attestations **carried forward** on byte-identical `source_statement` (11/11, 0 drift); the dataset flag went to `clinical_sign_off:false` while 440 drafts existed, because a seal that no longer describes what it seals is R-46 wearing a new hat.
+
+**E2 — the attestation surface, tranched.** Operator ruling: "xlsx, Tier A + indication-present first." Tranche 1 = 123 records (Tier A ∪ indication-present), tranche 2 = 328 (the remainder — NOT lesser evidence: `indication_status:absent` is a fact about the SOURCE, never a judgement on the dose). Tranching is **asserted lossless** (123 + 328 = 451): a record in neither tranche is a clinician-transcribed dose that silently never reaches a clinician. **KL (MED0001857758) attested all 451 — 0 Amend, 0 Reject.**
+
+**New: `scripts/lib/xlsx-min.mjs`, a dependency-free .xlsx writer/reader.** No xlsx library exists in `package.json` and CLAUDE.md bars introducing a dependency mid-execution; an .xlsx is a ZIP of XML and Node ships `zlib`, so the clinician gets the format that demonstrably worked for the 88/308 passes with **no new supply-chain surface on a clinical-safety repo**. Deterministic for a fixed timestamp (a worksheet is a medicolegal artifact; a diff should mean the content moved, not the clock). Verified beyond "it generates": valid ZIP, every part well-formed XML, cells round-trip to the correct refs, dropdown anchored to `J2:J124`, and macOS QuickLook renders it.
+
+**New: `scripts/pharm-dose-apply-signoff.mjs` — the round-trip's missing half.** The 88/308 sign-offs were applied **by hand**, which is exactly how R-46 happened. Three guards, each proved by deliberately breaking it rather than asserted:
+- **Text drift.** The clinician attested the words the worksheet SHOWED him. Every attested record's `source_statement` is compared byte-for-byte against the verbatim cell at apply time; any mismatch **aborts the whole apply**. Proved by laundering sertraline's dose to "500 mg daily, max 2000 mg" — refused, naming the row. Without it, a re-author between generation and apply would launder new text through an old signature: an agent-authored dose wearing a clinician's name.
+- **Unreadable marks.** A blank or unrecognised decision aborts. "I could not read his mark" must never resolve to "approved".
+- **The re-seal (R-46), made mechanical.** Applying a sign-off mutates every attested record's provenance, invalidating the authoring-time `records_checksum` — the exact mechanism that left 7 datasets stale. The script re-seals in the same pass that causes the drift: `d6d77ecac912… → 733aacafcd5e…`, recorded in `attestation.reseal_history`.
+
+Amend/Reject are **reported, never auto-applied** — an amendment is the clinician's new words and goes back through Channel B so the substring bar still proves the agent only cut. `regulatory_sign_off` is never set here; that is FL-50, a different gate.
+
+**A real bug, found by its own guard.** Testing the blank-decision refusal, a blanked cell read back as `"55"` rather than blank: Excel writes empty cells self-closing (`<c r="J2"/>`), and the reader required a closing tag, so **an empty cell captured the next cell's body as its own value**. On this worksheet that reads the clinician's amendment NOTE (K) as his DECISION (J) — had the note column contained the word "Attest", an unreadable mark would have become an approved dose. Fixed and pinned in `test/contract-dose-worksheet-xlsx.js` with the reasoning written down.
+
+**R-47a strengthened, not weakened.** The bar is now **surface-agnostic and serves both surfaces from ONE implementation** — a second hand-written copy of a safety assertion for a second surface is precisely the silent-divergence hazard R-47 names. Its delimiter is load-bearing, not cosmetic: `"implausible".includes("plausible")` is `true`, so an undelimited check would let a record rendered only as *implausible* pass a check for *plausible* — a false all-clear on the exact axis the bar guards. `contract-dose-worksheet.js`'s sweep now reads **both** `.md` and `.xlsx` from disk and asserts what R-47a actually claims: **nothing is `approved` that was not DISPLAYED somewhere**. Tranche-aware, because attestation happens in tranches. Tamper-proved: a forged blind approval fails.
+
+**One artifact was destroyed and restored.** Regenerating the worksheet overwrote the *signed* C2d markdown — the medicolegal record carrying KL's 11 ☑ marks. Caught in `git status`, restored from HEAD (11 ☑ intact, empty diff), and the root cause fixed: the renderer's date-keyed default path silently clobbered on any same-day re-run, and now **refuses** to overwrite an existing worksheet.
+
+**Register moves.** `dose-guidance-empty-no-au-source` → advanced (11 → 451, all attested; stays `PARTIAL` — **must not resolve while R-47b is open**). `pharm-ingredient-name-normalisation` → scope **corrected** (silent-omission risk for ~132 ingredients, NOT a coverage gate). New: `contract-dose-worksheet-xlsx` wired into `npm test`. **Blocker #1 stays RED** — FL-34 (live CDS) + FL-50 (regulatory) own it. What changed is that the *knowledge* is no longer the gap.
+
+---
+
 ## AU primacy — non_congruent no longer requires a note (2026-07-15)
 
 **Status:** operator ruling, second correction to the C0 amendment. `npm test` (62) + `verification` + `pharm:seals` green. No dose authored; registers still empty.

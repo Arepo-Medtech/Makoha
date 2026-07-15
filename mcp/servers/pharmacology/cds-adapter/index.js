@@ -82,5 +82,26 @@ export function composeCdsVerdict(engineStatus, cdsResult) {
     blocks: status === "HARD_FAIL" || status === "BLOCKED_NO_PROOF",
     cds_verdict: cds.verdict,
     blocking_reasons: status === cds.verdict && cds.verdict !== engineStatus ? [cds.reason] : [],
+    // E3 — the gateway's dose reaches its consumer instead of the floor.
+    //
+    // The fold above is unchanged and stays monotone on STATUS: the safety property is that a CDS
+    // provider can only ADD severity, never rescue the engine. That is untouched.
+    //
+    // What changed is what happens to the EVIDENCE. The client maps the gateway's `dose_candidate`
+    // into `cds.dose_guidance` (opencds-client.js), and this function used to read only `verdict` and
+    // `reason` — so the pipeline folded the status and threw the dose away. It had no consumer, which
+    // was then cited as the reason not to build the KM that would produce it. That is circular: the
+    // dose was discarded because nothing consumed it, and nothing consumed it because it was
+    // discarded. `evidence` is the consumer. It is ADVISORY, it rides to the CLINICIAN plane (the
+    // ReviewBundle), and it never enters PharmCheck.dose_guidance — a second executor's opinion over
+    // the same clinician-signed records, for a practitioner to weigh. Agreement corroborates;
+    // divergence is exactly what they should see.
+    //
+    // Null unless the CDS layer actually produced a dose AND its own hard rules allowed one: the
+    // client already drops the dose on HARD_FAIL/NOT_RUN, so nothing here can surface a dose the
+    // firewall blocked.
+    evidence: cds.dose_guidance
+      ? { dose_candidate: cds.dose_guidance, provider: cds.provider ?? null, km_set: cds.knowledge_module_set ?? null }
+      : null,
   };
 }

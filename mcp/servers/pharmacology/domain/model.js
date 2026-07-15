@@ -772,7 +772,123 @@ export const validateCdsEnvelope = validator(CdsEnvelopeSchema, "CdsEnvelope");
  * schema's own refinements (two channels, AHPRA-gated entry, mandatory AMASS cross-check) rather
  * than in absence from this map — a validator that REFUSES bad records is a stronger guarantee
  * than no validator at all. It stays engine-readable but EMPTY until C2 authors Tier A. */
+/**
+ * DrugVocabularySchema — the unifying drug vocabulary (E8).
+ *
+ * OPERATOR TASK 2026-07-15: *"'Drug vocabulary (Using the PBS INN Australian name as Primary
+ * authority)': catch and list all the names, synonyms, international variants and minor spelling
+ * variants that eventually get used interchangeably... so they link to the unifying identifier."*
+ *
+ * WHY IT EXISTS. E6/E7 proved the datastore carried two name-spaces and that a misnomer could inert a
+ * safety check — `frusemide` emitted a dose with a PASSing interaction check while `furosemide`, the
+ * same drug, HARD_FAILed on a severe interaction. E7 made the INN primary and reconciled the six
+ * splits. This is the general case: patients say "Lasix", doctors write "frusemide", systems store
+ * "furosemide", and all three must land on ONE identity.
+ *
+ * ══ THE AUTHORITY MODEL ══
+ *   PRIMARY   — the PBS ingredient name. PBS is the Australian Government's own formulary: an AU
+ *               naming authority, not a US one. Verified across all 19 E6 collision groups: PBS IS
+ *               the INN, and in NINE of them it DISAGREES with RxNorm's canonical (which is the USAN,
+ *               not the INN — taking rxnorm_name as "the INN" would have renamed paracetamol to
+ *               acetaminophen across an Australian clinical system).
+ *   IDENTITY  — RxCUI (RxNorm/NLM, international concept id) + ATC (WHO), both recorded so the
+ *               vocabulary links to identifiers outside our own strings.
+ *   NAMES     — every variant, each carrying its own jurisdiction, source and kind. A US name is
+ *               LABELLED US; it is never silently treated as an Australian one.
+ *
+ * ══ THE MECHANICAL BAR: `usable_for_lookup` ══
+ * Recording a name and RESOLVING on it are different acts, and this field is the difference. A name
+ * that maps to more than one primary is recorded and marked FALSE — ambiguity is refused, never
+ * resolved by choosing, because choosing wrong doses the wrong drug. Foreign variants default FALSE:
+ * a US brand must not steer an AU lookup on an unreviewed claim. Nothing is BINNED (show-evidence) —
+ * the knowledge is kept and labelled for what it is, and the clinician decides what may steer.
+ *
+ * NOT INGEST-ROUTABLE, deliberately (see CAPABILITY_FILE): a vocabulary entry redirects a lookup, so
+ * an agent able to author one could map 'amoxicillin' → 'warfarin' and steer a dose. It is built
+ * deterministically from PBS + RxNorm + the datastore's own names — never from authored prose.
+ */
+const VocabNameSchema = z
+  .object({
+    name: z.string().min(2),
+    kind: z.enum([
+      "primary",                // the PBS/INN Australian name — the identity
+      "inn",                    // the INN where it differs from the primary string
+      "former_name",            // a superseded AU/BAN name still in wide use (frusemide, lignocaine)
+      "spelling_variant",       // orthographic only (amoxycillin, chlorthalidone)
+      "brand",                  // an AU PBS-listed brand (Lasix)
+      "international_generic",  // a US/EU GENERIC sharing the same INN-RxCUI (acetaminophen, albuterol)
+      "company_artifact",       // a sponsor's company name leaking into a brand field — never a drug
+    ]),
+    jurisdiction: z.enum(["AU", "US", "EU", "INTL"]),
+    source: z.string().min(3), // no receipt, no claim
+    /** RxNorm term type. Operator ruling: US GENERICS only (IN/PIN/MIN) — never brands (BN). */
+    rxnorm_tty: z.string().optional(),
+
+    /**
+     * THE BAR — three states, because "recording" and "resolving" are not the only options.
+     *
+     * OPERATOR RULING 2026-07-15: *"when a US Generic is only spelling variant or near synonym based
+     * on the same INN-RXCUI this should be place in the drug_vocabulary bucket — as the mix of the
+     * two still occurs frequently — if the system is ever in doubt — a question should return to
+     * patient or doctor — to confirm the exact medication they intended."*
+     *
+     *   steer   — resolve silently (still reported). AU names, already ours, unambiguous.
+     *   confirm — resolve ONLY after a human confirms. The system is in doubt, so it ASKS rather than
+     *             guessing (unsafe) or dead-ending (useless). This is where a US generic lives:
+     *             paracetamol/acetaminophen are one ingredient and people genuinely mix them, so the
+     *             name must not be a dead end — but a US name must never silently become an AU one.
+     *             Ambiguity lives here too: "you wrote X; it lists under A and B — which?" is more use
+     *             than a flat refusal, and it still never picks.
+     *   refuse  — never resolve, and asking would be nonsense (a manufacturer's name is not a drug).
+     */
+    lookup_disposition: z.enum(["steer", "confirm", "refuse"]),
+    /** Required unless `steer` — an unexplained hesitation is indistinguishable from a bug. */
+    disposition_reason: z.string().optional(),
+    /** For `confirm`: what to put to the patient/doctor. The question, in their words. */
+    confirm_prompt: z.string().optional(),
+    /** For an ambiguous `confirm`: every drug this name reaches. The system never picks among them. */
+    confirm_candidates: z.array(z.string()).optional(),
+  })
+  .strict()
+  .refine((v) => v.lookup_disposition === "steer" || !!v.disposition_reason, {
+    message: "a name that does not steer MUST record why — an unexplained refusal or hesitation is indistinguishable from a bug",
+  })
+  .refine((v) => v.lookup_disposition !== "confirm" || !!v.confirm_prompt, {
+    message: "a 'confirm' disposition MUST carry the question to put to the patient/doctor — 'ask' without a question is just a block",
+  });
+
+export const DrugVocabularySchema = z
+  .object({
+    primary_name: z.string().min(2),
+    authority: z.enum(["pbs", "datastore"]), // datastore = not PBS-listed (private/OTC/hospital)
+    identity: z
+      .object({
+        rxcui: z.string().nullable(),
+        atc_codes: z.array(z.string()).default([]),
+      })
+      .strict(),
+    names: z.array(VocabNameSchema).min(1),
+    provenance: ProvenanceSchema,
+  })
+  .strict()
+  .refine((v) => v.names.some((n) => n.kind === "primary" && n.name.toLowerCase() === v.primary_name.toLowerCase()), {
+    message: "the primary_name must appear in names[] as kind 'primary' — the identity must be in its own vocabulary",
+  })
+  .refine((v) => v.names.every((n) => n.kind !== "international_generic" || n.lookup_disposition !== "steer"), {
+    message: "a US/EU generic may NEVER steer silently — it is 'confirm' at most. The mix is frequent and the name must not dead-end, but a foreign name must never become an Australian one without a human saying so.",
+  })
+  .refine((v) => v.names.every((n) => n.kind !== "international_generic" || (n.rxnorm_tty && ["IN", "PIN", "MIN"].includes(n.rxnorm_tty))), {
+    message: "an international_generic must be a GENERIC concept (RxNorm TTY IN/PIN/MIN) — operator ruling: US BRANDS are not harvested",
+  });
+
+export function validateDrugVocabulary(v) {
+  const r = DrugVocabularySchema.safeParse(v);
+  if (!r.success) throw new Error("Invalid DrugVocabulary: " + r.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+  return r.data;
+}
+
 export const CAPABILITY_VALIDATORS = {
+  drug_vocabulary: validateDrugVocabulary,
   dose_evidence: validateDoseEvidence,
   dose_guidance: validateDoseGuidance,
   // Engine-isolated like dose_evidence: validated on the way IN, never readable by the engine.

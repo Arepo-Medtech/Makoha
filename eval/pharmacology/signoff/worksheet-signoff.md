@@ -99,3 +99,46 @@ the paediatric hard limit is unchanged and its plan (`.planning/PAEDIATRIC-DOSIN
 `review_status`), which is exactly how 7 seals were silently invalidated before. This time the break
 was surfaced immediately by the assertion R-46 added, and closed deliberately via
 `pharm-reseal.mjs --reason` — the basis is in `attestation.reseal_history[]`. All 23 seals verify.
+
+---
+
+## Third pass — the full APF22 Section D adult set (E1/E2, KL, 2026-07-15)
+
+Registered medical practitioner **Kenneth Lee (MED0001857758)** completed the two tranched dose
+worksheets (`dose-guidance-worksheet-KL-2026-07-15-tranche1.xlsx` — 123 records, Tier A +
+indication-present; `dose-guidance-worksheet-KL-2026-07-15-tranche2.xlsx` — 328 records, the
+remainder): **all 451 records Attested, 0 Amend, 0 Reject**. Applied by
+`scripts/pharm-dose-apply-signoff.mjs` as `reviewed_by:"Kenneth Lee"` + `review_status:"approved"`.
+
+**What changed, and why it is 451 and not 11.** The dose author ran over a hardcoded eleven-drug list
+(`const wanted = [...TIER_A, "amoxicillin"]`) — the C2 risk-tiered first pass, which outlived its
+purpose. It was never a safety bar: the clinician's transcription carries 451 adult doses across 471
+monographs, and 440 of them had simply never been authored. E1 removed the gate; every readable adult
+dose is now written, each carrying its plausibility state and congruence appraisal as LABELS rather
+than as reasons to withhold it. The substring bar swept all 451: **0 violations** — the agent only
+ever cut the clinician's text.
+
+**Evidence he was shown (R-47a).** Each record was presented with his verbatim APF22 source statement,
+every segmented dose line (indication · route · dosing basis), its plausibility state — including the
+carbamazepine order-of-magnitude flag (AU max 2 g vs US initial 200 mg) — and every US/EU comparator
+label dose verbatim with its authorisation status, including metformin's WITHDRAWN US label. The
+rendering bar (`assertEvidenceRendered`) ran over the generated cells and would have thrown had any
+evidence been recorded-but-not-displayed. It is the SAME function the markdown surface uses, called
+with an xlsx delimiter — one implementation, two surfaces, because a second hand-written copy of a
+safety bar is the silent-divergence hazard R-47 names.
+
+**Text-drift check (new, and load-bearing).** At apply time every attested record's `source_statement`
+was compared byte-for-byte against the verbatim cell the worksheet displayed. A mismatch aborts the
+whole apply: the clinician attested the words he read, and a re-author between generation and apply
+would otherwise launder new text through an old signature. PASSED for all 451.
+
+**The re-seal is now mechanical (R-46).** Applying a sign-off mutates every attested record's
+provenance block, invalidating the `records_checksum` computed at authoring time — the exact mechanism
+that left 7 datasets stale on 2026-07-15. The apply script re-seals in the same pass that causes the
+drift, rather than leaving it to memory: `d6d77ecac912… → 733aacafcd5e…`, recorded in
+`attestation.reseal_history`. `npm run pharm:seals` reports 23/23.
+
+**Scope of this sign-off:** CLINICAL only. **Regulatory (TGA) sign-off NOT given** — that is FL-50, a
+different gate, and `regulatory_sign_off` stays `false`. The dataset remains `-dev`, receipts stay
+`mode=mock`, and nothing became patient-facing. Paediatric doses remain deliberately absent: the 232
+paediatric rows are held and the paediatric hard limit is unchanged (under-18 → in-person review).

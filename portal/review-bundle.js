@@ -55,6 +55,36 @@ export const ReviewBundleSchema = z
     abcde_record: z.record(z.unknown()).optional(),
     history_summary: z.record(z.unknown()).optional(),
     conflict_audit: z.record(z.unknown()).optional(),
+    // THE EVIDENCE PLANE (E3, R-47b). Everything we hold about the dose, for the CLINICIAN.
+    // Mirrors mcp/schemas/portal-review-bundle.schema.json. Advisory + provenance-tagged; the
+    // authoritative AU dose stays in PharmCheck (frozen) and is the only patient-promotable one.
+    // `patient_facing` is a LITERAL false, not a default — an item cannot opt into being
+    // patient-facing, and the gate (releaseToPatient) remains the only route to a patient.
+    // This rides INSIDE bundle_sha256, which is what turns "the clinician saw the divergence" from
+    // an assumption of the AU-primacy ruling into part of the medicolegal record.
+    dose_evidence: z
+      .array(
+        z.object({
+          kind: z.enum(["au_dose_signed", "international_label", "cds_dose_candidate", "literature", "congruence", "plausibility", "held"]),
+          authority: z.enum(["authoritative", "advisory"]),
+          ingredient: z.string().min(1),
+          jurisdiction: z.enum(["AU", "US", "EU"]).optional(),
+          agency: z.string().optional(),
+          text: z.string().optional(),
+          status: z.string().optional(),
+          source: z.string().min(1),
+          attested_by: z.string().nullable().optional(),
+          entered_by: z.string().nullable().optional(),
+          amass_id: z.string().optional(),
+          context: z.string().optional(),
+          population: z.string().optional(),
+          citation: z.record(z.unknown()).optional(),
+          evidence_note: z.string().optional(),
+          note: z.string().optional(),
+          patient_facing: z.literal(false),
+        }).strict(),
+      )
+      .optional(),
     // Hash over the canonical bundle-without-this-field: what was reviewed.
     bundle_sha256: z.string().regex(HASH),
   })
@@ -113,6 +143,7 @@ export function buildReviewBundle(result) {
     ...(result.abcde_record ? { abcde_record: result.abcde_record } : {}),
     ...(result.history_summary ? { history_summary: result.history_summary } : {}),
     ...(result.conflict_audit ? { conflict_audit: result.conflict_audit } : {}),
+    ...(result.dose_evidence?.length ? { dose_evidence: result.dose_evidence } : {}),
   });
   const bundle = { ...withoutHash, bundle_sha256: sha256Prefixed(canonical(withoutHash)) };
   return validateReviewBundle(bundle);

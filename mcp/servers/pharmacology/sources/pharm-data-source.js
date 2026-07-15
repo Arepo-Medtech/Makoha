@@ -89,6 +89,10 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       // reference-only). They carry NO dose fields — they only add HARD_FAIL/WARN checks.
       pregnancy: read("data/pregnancy-risk.json"),
       hepatic: read("data/hepatic.json"),
+      // E8 — the drug vocabulary. NOT a clinical capability and NOT read by any accessor: it is read
+      // ONLY by canonicalise(), to resolve a name to the primary identity BEFORE any accessor runs.
+      // Gated on clinical_sign_off inside _buildVocabIndex(); an unsigned vocabulary steers nothing.
+      vocabulary: read("data/drug-vocabulary.json"),
     };
     this._mock = JSON.parse(readFileSync(join(__dirname, "..", "mock-data.json"), "utf8"));
     // Datastore-backed iff the four core SAFETY capabilities each carry >=1 signed record.
@@ -114,6 +118,118 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       : `heydoc-pharm-synthetic-mock:${this._mock.dataset_version}`;
   }
   _records(key) { const d = this._store[key]; return d && Array.isArray(d.records) ? d.records : []; }
+
+  /**
+   * Resolve a drug name to the datastore's PRIMARY (INN) identity, via the `also_known_as` aliases
+   * the E7 reconcile recorded on the records themselves.
+   *
+   * OPERATOR RULING 2026-07-15: *"re-author all listings so the INN name is the primary identity so
+   * links to the capabilities or medication related content are never lost or not linked based on a
+   * misnomer."* E7 made the INN primary; this is the second half — the old name must still LINK.
+   * `frusemide` is still what a great many Australian prescribers write, and it must not fall off a
+   * cliff because the datastore harmonised to `furosemide`.
+   *
+   * ══ WHY THIS LIVES AT THE BOUNDARY AND NOT IN THE ACCESSORS ══
+   * Resolving aliases inside `getDoseGuidance()` alone would RECREATE the exact defect E6 found: the
+   * dose lookup would resolve `frusemide` → the furosemide record and emit a dose, while
+   * `getInteractions("frusemide")` still missed and its check silently passed. A dose with inert
+   * checks — the same unsafe pass, rebuilt by a well-meaning convenience. So the engine canonicalises
+   * ONCE, at entry, and every one of the eight accessors then sees the same identity. Consistency is
+   * the safety property here; a partial resolution is worse than none.
+   *
+   * ══ WHY THIS IS SAFE WHERE STEERING ON THE RxNORM MAP IS NOT ══
+   * The aliases are NOT an outside claim. They are names THIS DATASTORE ALREADY USED for that drug —
+   * we held a dose under `frusemide`, so treating `frusemide` as furosemide preserves an identity we
+   * already asserted rather than importing a new one. The RxNorm map is what let us SEE the two names
+   * were one concept; PBS (the AU authority) chose which is primary; and the choice is recorded, with
+   * its RxCUI and basis, in each dataset's `attestation.rename_history` and each record's
+   * `attested_as`. Nothing here consults the unsigned map at runtime.
+   *
+   * Exact match only, never fuzzy. An unknown name resolves to itself and the caller's fail-safe
+   * (BLOCKED_NO_PROOF) stands.
+   *
+   * @returns {{ canonical: string, from: string|null }} `from` is non-null ONLY when an alias was
+   *   applied, so the caller can REPORT it. A silent identity change is exactly what this subsystem
+   *   must never do.
+   */
+  canonicalise(drug) {
+    const n = String(drug || "").trim().toLowerCase();
+    if (!n) return { canonical: n, from: null };
+    if (!this._aliasIndex) {
+      // Built once from the datastore's own records. Later capabilities win nothing: an alias that
+      // pointed at two different primaries would be ambiguous, so it is DROPPED rather than guessed.
+      const idx = new Map(); const ambiguous = new Set();
+      for (const key of Object.keys(this._store || {})) {
+        for (const r of this._records(key)) {
+          const primary = r.ingredient ?? r.subject;
+          if (typeof primary !== "string") continue;
+          for (const aka of r.also_known_as || []) {
+            const a = String(aka).toLowerCase();
+            const p = primary.toLowerCase();
+            if (a === p) continue;
+            if (idx.has(a) && idx.get(a) !== p) ambiguous.add(a);
+            idx.set(a, p);
+          }
+        }
+      }
+      for (const a of ambiguous) idx.delete(a); // ambiguity is refused, never resolved by choosing
+      this._aliasIndex = idx;
+    }
+    const hit = this._aliasIndex.get(n);
+    if (hit) return { canonical: hit, from: n, via: "datastore alias (also_known_as)" };
+
+    // THE VOCABULARY (E8) — the general case: brands, former names, spelling and international
+    // variants, all linked to one identity. It is a drug-IDENTITY assertion at scale, so it is GATED
+    // ON CLINICAL SIGN-OFF: until KL signs it, this returns nothing and behaviour is exactly the E7
+    // behaviour. A wrong vocabulary entry redirects a dose lookup to the wrong drug, so it does not
+    // get to switch itself on.
+    //
+    // Only `usable_for_lookup` names steer. Ambiguous names (reaching two drugs), international
+    // variants (a US name must never resolve an AU lookup) and company-name artifacts are recorded in
+    // the vocabulary but excluded here — recording is not resolving.
+    const vocab = this._vocabIndex ?? (this._vocabIndex = this._buildVocabIndex());
+    const v = vocab.get(n);
+    if (!v) return { canonical: n, from: null };
+
+    // `confirm` — the system is in doubt, so it ASKS rather than guessing or dead-ending (operator
+    // ruling: "if the system is ever in doubt — a question should return to patient or doctor — to
+    // confirm the exact medication they intended"). It does NOT resolve: the caller gets the question
+    // and the candidates, and a human answers. A US generic lives here (paracetamol/acetaminophen are
+    // one ingredient and the mix is frequent — but a US name never silently becomes an Australian
+    // one), as does an ambiguous name (every candidate presented, none chosen).
+    if (v.disposition === "confirm") {
+      return { canonical: n, from: null, confirm: { prompt: v.prompt, candidates: v.candidates, via: v.via } };
+    }
+    return { canonical: v.primary, from: n, via: v.via };
+  }
+
+  /** Reverse index over the SIGNED vocabulary: usable name → primary. Empty when unsigned/absent. */
+  _buildVocabIndex() {
+    const ds = this._store?.vocabulary;
+    const idx = new Map();
+    if (!ds || ds.attestation?.clinical_sign_off !== true) return idx; // unsigned → steers nothing, asks nothing
+    for (const r of ds.records || []) {
+      for (const n of r.names || []) {
+        const a = String(n.name).toLowerCase();
+        if (a === String(r.primary_name).toLowerCase()) continue;
+        if (n.lookup_disposition === "refuse") continue; // a manufacturer's name is not a drug
+        const entry = n.lookup_disposition === "confirm"
+          ? { disposition: "confirm", prompt: n.confirm_prompt, candidates: n.confirm_candidates || [r.primary_name], via: `drug vocabulary (${n.kind}, ${n.jurisdiction})` }
+          : { disposition: "steer", primary: r.primary_name.toLowerCase(), via: `drug vocabulary (${n.kind}, ${n.jurisdiction}; ${n.source})` };
+        // Belt-and-braces: the build already dispositions a name reaching two drugs as `confirm`, but
+        // a name that arrived here twice with different primaries would be a build defect. Downgrade
+        // to a question rather than pick — never silently choose one.
+        const prev = idx.get(a);
+        if (prev && prev.disposition === "steer" && entry.disposition === "steer" && prev.primary !== entry.primary) {
+          idx.set(a, { disposition: "confirm", prompt: `You entered "${n.name}". That name is listed for more than one medication (${prev.primary}, ${entry.primary}). Which one do you mean?`, candidates: [prev.primary, entry.primary], via: "drug vocabulary (conflicting entries — never resolved by choosing)" });
+          continue;
+        }
+        if (!prev) idx.set(a, entry);
+      }
+    }
+    return idx;
+  }
+
   getAllergyGroup(drug) {
     const n = String(drug || "").toLowerCase();
     const store = this._records("allergy");

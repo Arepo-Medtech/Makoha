@@ -17,6 +17,9 @@
  * reference content is clinician-signed synthetic, never presented as a licensed vendor.
  */
 import { validatePharmIntent, validatePharmCheck } from "./schemas.js";
+// Identity-split detection (E6). Imported for a FAIL-SAFE BLOCK only — the engine never uses the
+// identity map to STEER a lookup; that would redirect a dose on an unverified identity claim.
+import { doseIdentitySplit } from "./domain/ingredient-identity.js";
 import { SyntheticSelfDevelopedSource } from "./sources/pharm-data-source.js";
 
 const PHARM_VENDOR = process.env.PHARM_VENDOR || "stub";
@@ -49,7 +52,15 @@ export function receipt(mode = "mock") {
 export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   const intent = validatePharmIntent(intentInput);
   const src_ = source || DEFAULT_SOURCE; // reference-knowledge source (seam)
-  const drug = String(intent.drug_intent.drug_name || "").toLowerCase();
+  // Canonicalise the drug's identity ONCE, here, before any accessor runs (E7; operator ruling: the
+  // INN name is the primary identity so a link is never lost to a misnomer). Every one of the eight
+  // accessors then keys on the SAME identity — which is the safety property. Resolving aliases inside
+  // a single accessor would rebuild the E6 defect exactly: a dose found under the alias while the
+  // interaction check still missed and silently passed. Exact match on the datastore's own
+  // `also_known_as`; an unknown name resolves to itself and the fail-safe stands.
+  const _named = String(intent.drug_intent.drug_name || "").toLowerCase();
+  const _canon = typeof src_.canonicalise === "function" ? src_.canonicalise(_named) : { canonical: _named, from: null };
+  const drug = _canon.canonical;
   const age = intent.clinical_context && intent.clinical_context.patient_age_years;
   const src = [src_.datasetVersion()];
   const checks = [];
@@ -222,6 +233,28 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
     nextData.push("Provide patient age (no remote paediatric dosing).");
   }
 
+  // REPORT the identity resolution. An identity change the clinician cannot see is exactly the
+  // recorded-but-not-displayed failure R-47 names, applied to the drug's NAME instead of its dose.
+  // It rides in next_data_requests (the frozen PharmCheck has no other clinician-visible channel
+  // here) and in the evidence plane, which renders it on the review surface.
+  // The system is IN DOUBT about which medicine was meant — so it ASKS (operator ruling 2026-07-15).
+  // It does not guess (unsafe) and it does not dead-end a name a human could resolve in one answer
+  // (useless). BLOCKED_NO_PROOF is exactly right: we cannot prove which drug this is, so nothing
+  // proceeds — but the clinician/patient gets a real question, not a refusal.
+  if (_canon.confirm) {
+    nextData.push(_canon.confirm.prompt);
+    if (_canon.confirm.candidates?.length > 1) {
+      nextData.push(`Candidates: ${_canon.confirm.candidates.join(" · ")}. The system does not choose between medications.`);
+    }
+  }
+
+  if (_canon.from) {
+    nextData.push(
+      `Identity resolved: '${_canon.from}' → '${drug}' (the datastore's primary INN identity; ` +
+      `'${_canon.from}' is recorded as a known alias of it). All safety checks below ran against '${drug}'.`,
+    );
+  }
+
   // Overall status (HARD_FAIL terminal > BLOCKED_NO_PROOF > WARN > PASS).
   let status;
   if (checks.some((c) => c.status === "HARD_FAIL")) status = "HARD_FAIL";
@@ -236,6 +269,36 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   if (!known && status !== "HARD_FAIL") {
     status = "BLOCKED_NO_PROOF";
     nextData.push(`Drug '${drug}' is not in the pharmacology reference set — clinician verification required before proceeding.`);
+  }
+
+  // Identity split → escalate. Same shape as the unknown-drug rule above, and for a sharper reason.
+  //
+  // THE DEFECT (found 2026-07-15, introduced by E1, verified live): the dose lives under the
+  // Australian name while the safety data lives under the INN. `frusemide` + digoxin + lithium
+  // returned PASS with a dose and interaction_check PASS; `furosemide` — the SAME drug, RxCUI 4603 —
+  // returned HARD_FAIL on a severe interaction. The check ran, looked up the wrong string, found
+  // nothing, and passed. A dose emitted while its safety checks were inert. Six drugs are affected.
+  //
+  // A check that looked up a name the datastore files under a different spelling has not PROVEN
+  // anything, so its PASS is not proof — which is exactly what BLOCKED_NO_PROOF means. The clinician
+  // gets the reason and the sibling name, not a silent block.
+  //
+  // This uses the identity map EVEN WHILE IT IS UNSIGNED, deliberately: blocking on a suspected
+  // identity is fail-safe (worst case, a spurious block a clinician resolves), whereas STEERING a
+  // lookup on an unverified identity would dose the wrong drug. Same data, opposite risk, opposite
+  // gate — see domain/ingredient-identity.js. A HARD_FAIL already blocks and is more severe, so it
+  // stands untouched.
+  // An unanswered identity question is missing proof: we do not know WHICH drug this is, so no check
+  // below proved anything about it. HARD_FAIL is more severe and stands.
+  if (_canon.confirm && status !== "HARD_FAIL") status = "BLOCKED_NO_PROOF";
+
+  const split = doseIdentitySplit(drug);
+  if (split && status !== "HARD_FAIL") {
+    status = "BLOCKED_NO_PROOF";
+    nextData.push(
+      `Drug identity unreconciled: '${drug}' and '${split.sibling}' are the same ingredient (RxNorm ${split.rxcui}), but ${split.capabilities.join(", ")} hold data only under '${split.sibling}'. ` +
+      `Those checks did not see it, so their result is not proof. Confirm the identity (ingredient-identity.json) or re-author under one name before relying on this.`,
+    );
   }
 
   // Dose guidance ONLY when safe to proceed — never on HARD_FAIL/BLOCKED/paediatric.

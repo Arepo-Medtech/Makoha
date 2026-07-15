@@ -23,7 +23,7 @@
  *
  * Usage: node scripts/pharm-dose-worksheet.mjs --utc 2026-07-15 [--out <path>]
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -143,21 +143,35 @@ export function renderDoseWorksheet(records, international = [], { utc } = {}) {
  * or demand they justify it; it constrains the MACHINE, guaranteeing the clinician is never asked to
  * weigh something they were not shown.
  *
+ * SURFACE-AGNOSTIC (E2, 2026-07-15). The bar now serves BOTH attestation surfaces — the markdown
+ * worksheet and the .xlsx — from ONE implementation. `code` supplies the delimiter a surface uses to
+ * render a state token; everything else is plain substring containment and needs no adaptation.
+ * A second, hand-written copy of a safety assertion for a second surface is precisely the
+ * silent-divergence hazard this module exists to prevent, so there is exactly one of it.
+ *
+ * WHY THE DELIMITER MATTERS, and is not cosmetic: a bare `includes("plausible")` is satisfied by the
+ * word inside "implausible". A record whose only rendered state was "implausible" would then pass a
+ * check for "plausible" — a false all-clear on the exact axis this bar guards. Delimiting the token
+ * (`` `plausible` `` in markdown, `[plausible]` in xlsx) makes the two states distinguishable.
+ *
+ * @param {string} out - the rendered surface, as text (for xlsx: every cell value, joined)
+ * @param {Array} records
+ * @param {{ code?: (s: string) => string }} opts - how this surface delimits a state token
  * @throws Error naming the record and the missing evidence.
  */
-export function assertEvidenceRendered(out, records) {
+export function assertEvidenceRendered(out, records, { code = (s) => `\`${s}\`` } = {}) {
   for (const r of records) {
     if (!out.includes(r.source_statement)) throw new Error(`R-47: ${r.ingredient} — the verbatim source statement is RECORDED but NOT DISPLAYED`);
     for (const l of r.dose_lines) {
       if (!out.includes(l.statement)) throw new Error(`R-47: ${r.ingredient} — a dose line is RECORDED but NOT DISPLAYED`);
-      if (!out.includes(`\`${l.plausibility}\``)) throw new Error(`R-47: ${r.ingredient} — plausibility state "${l.plausibility}" is RECORDED but NOT DISPLAYED`);
+      if (!out.includes(code(l.plausibility))) throw new Error(`R-47: ${r.ingredient} — plausibility state "${l.plausibility}" is RECORDED but NOT DISPLAYED`);
     }
     for (const cm of r.au_congruence.comparators) {
       if (!out.includes(cm.dose_statement)) {
         throw new Error(`R-47: ${r.ingredient} — a ${cm.jurisdiction} comparator dose is RECORDED but NOT DISPLAYED. A non-congruence the clinician cannot see defeats the entire AU-primacy ruling, which assumes they were alerted to it.`);
       }
     }
-    if (r.au_congruence.status !== "no_comparator" && !out.includes(`\`${r.au_congruence.status}\``)) {
+    if (r.au_congruence.status !== "no_comparator" && !out.includes(code(r.au_congruence.status))) {
       throw new Error(`R-47: ${r.ingredient} — the congruence status is RECORDED but NOT DISPLAYED`);
     }
   }
@@ -173,6 +187,18 @@ function main(argv) {
   const intl = JSON.parse(readFileSync(join(DATA_DIR, "international-dose-guidance.json"), "utf8")).records || [];
   const md = renderDoseWorksheet(records, intl, { utc });
   const out = val("--out") || join(__dirname, "..", "eval", "pharmacology", "signoff", `dose-guidance-worksheet-KL-${utc}.md`);
+
+  // A COMPLETED worksheet is the medicolegal artifact — it carries the clinician's own Attest/Amend/
+  // Reject marks and is what `worksheet-signoff.md` cites as the record of what he decided. The default
+  // path is date-keyed, so a same-day re-author (exactly what E1 is) resolves to a path that may already
+  // hold a SIGNED worksheet, and writeFileSync would destroy it silently — a marked ☑ replaced by a
+  // blank ☐, with nothing to indicate a signature ever existed. Refuse rather than clobber. --force is
+  // deliberate and loud; a new tranche should take a new --out.
+  if (existsSync(out) && !args.includes("--force")) {
+    console.error(`pharm-dose-worksheet: REFUSING to overwrite an existing worksheet — it may carry the clinician's marks.\n  ${out}\nUse --out <new path> for a new tranche, or --force if you are certain it is unsigned.`);
+    process.exit(2);
+  }
+
   writeFileSync(out, md);
   console.log(`pharm-dose-worksheet: ${records.length} record(s) → ${out}`);
   console.log("  R-47 self-verification PASSED — every comparator dose, plausibility state and verbatim source is rendered.");
