@@ -9,6 +9,26 @@ This document is the canonical reference for all nine trunk agents' roles, clini
 
 ---
 
+
+## MECHANICAL vs CONVENTIONAL — read this before quoting a constraint
+
+Each trunk below lists **Verifier checks triggered**. That list is the COMPLETE set of automated bars on
+that trunk. It has always been accurate — and it has never included a diagnosis check or a dose check,
+because none exists.
+
+Until R1 (2026-07-15) the nine system prompts said `## Constraints (enforced by verification)` above
+`- No diagnosis. - No dosages.` **That claim was false**, and this document never made it. Measured
+against the live detectors: `The patient has appendicitis.` is not caught; `Take 500 mg of amoxicillin
+three times daily.` is not caught. `overconfident_diagnosis` catches a definitive *register* ("definitely
+… diagnosed"); `advisory_dose_leak` catches a dose wearing *advisory* framing (the G9 leak). Both are
+correct as targeted detectors — the defect was the claim.
+
+So: **MECHANICAL** = the `Verifier checks triggered` line, plus the two output-shape detectors.
+**CONVENTIONAL** = everything else, including no-diagnosis and no-dosages. Conventional does not mean
+optional — it means *nobody is watching but the trunk itself*, and the register says so
+(`trunk-constraint-claims-unenforced`) rather than pretending otherwise. `test/contract-trunk-claims.js`
+enforces that a prompt can never again claim a bar this document does not list.
+
 ## Universal Constraints (all trunks, non-negotiable)
 
 These constraints apply to every trunk regardless of specialisation. They are injected into every `ContextPacket.constraints[]` array before trunk-specific constraints are appended.

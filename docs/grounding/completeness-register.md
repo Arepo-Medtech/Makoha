@@ -1552,6 +1552,91 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: evidence-claims-recorded-not-displayed
+  path: portal/server.js (renderEvidenceClaims + assertEvidenceClaimsRendered) · portal/review-bundle.js (evidence_claims) · mcp/schemas/portal-review-bundle.schema.json
+  component_type: other (clinician surface)
+  state: COMPLETE
+  evidence: **FOUND + FIXED 2026-07-15 (M4). R-47's failure mode, in code I had already touched.** `evidence_claims` has always been in the ReviewBundle schema, populated by `buildReviewBundle`, and hashed into `bundle_sha256` — and it was **rendered ZERO times**. Every claim a trunk made, with its supports, was RECORDED AND NEVER DISPLAYED: "satisfies every schema and every test, READS as done because the data is right there in the record, and quietly defeats Guardrail 2". E3 built `renderDoseEvidence` for the dose evidence and never noticed the claims sitting beside it. Verified on the real pipeline: 4 claims carried, 0 displayed. **And `supports: []` is representable** (the schema sets no `minItems`), so an UNANCHORED claim is a real case, not a hypothetical one.
+  blocks: nothing — additive
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-diagnosis / human-in-the-loop (Guardrail 2 — disposal presumes SIGHT). A model has **no calibrated internal uncertainty signal it can surface honestly**: fluency and correctness are decoupled, so it states a fabricated threshold in exactly the voice it uses for well-established fact. A clinician scanning well-written output has nothing to separate a receipt-backed claim from a confabulated one — unless the surface tells them, which it now does.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE.** `renderEvidenceClaims()` displays every claim with a register **derived from GROUNDING, never from wording**: `supports.length > 0` → receipt-backed; `supports.length === 0` → **HYPOTHESIS — anchored to nothing**, with the count surfaced in the heading rather than buried in a row. `assertEvidenceClaimsRendered()` is the bar (the third of its kind, after R-47a's `assertEvidenceRendered` and R-47b's `assertDoseEvidenceRendered`), and `renderBundle` self-verifies through it. **The subtle failure is the one that matters and is asserted separately: an unanchored claim DISPLAYED WITHOUT its register is worse than one not displayed at all** — it then reads as a finding, and a naive "is it rendered?" check passes. Tamper-proven THREE ways: dropping the claims THROWS; dropping the register on an unanchored claim THROWS; marking everything receipt-backed (register from wording, not grounding) THROWS. Two identically-worded claims — one anchored, one not — are asserted to land in different registers, because if wording could move the register the model's fluency would be steering it, which is the bug. The claims ride INSIDE `bundle_sha256`, so what the clinician saw and in which register is part of the medicolegal record (asserted: stripping them breaks the hash).
+  gap_register_link: none (Medium)
+  status: resolved
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: positional-stability-unchecked
+  path: verification/positional-stability.js · test/contract-positional-stability.js · verification/pipeline.js (generate_candidate(packet)) · integration/generation-backend.js
+  component_type: verifier
+  state: PARTIAL
+  evidence: **HARNESS BUILT 2026-07-15 (M3).** Positional bias is the LLM glitch with no bedside equivalent: a transformer over-favours the first/last item of a list for reasons of attention geometry (primacy/recency, "lost in the middle"), not clinical merit — so the ORDER you list differentials in changes the ranked output. A human applies judgement to each entry roughly independently of ordinal position; **a reviewer has no intuition for this because they do not have the bug.** It is silent by construction: the only way to see it is to permute the input and look. **PREMISE CHECKED (the M1/M2 lesson): the default trunk generator (`stubGenerationOutput()`) returns a FIXED STRING and ignores the packet entirely — it is trivially position-stable and checking it proves NOTHING.** The harness is for the REAL generation path (`generate_candidate(packet)` — Claude/MedGemma, mock by default) and is INERT until one is wired.
+  blocks: nothing — additive and currently inert
+  safety_class: degrades_safe (it reports; it changes no output)
+  invariant_exposure: none directly. It guards ranking integrity — a failure mode invisible to every human reviewer, which is exactly why it needs a machine to look.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE (the harness):** `checkPositionalStability(packet, generate)` permutes `facts`/`evidence` with a SEEDED shuffle (an instability nobody can reproduce cannot be investigated) and compares the RANKING, not the prose — two runs of a model word things differently while ranking identically, and comparing prose would flag paraphrase as instability. **THE CONTROL RUN IS THE LOAD-BEARING PART:** you cannot attribute a difference to POSITION until you have established the generator is DETERMINISTIC. A model at temperature > 0 varies for reasons unrelated to ordering; without the control, the harness would blame temperature on position and cry wolf until someone switched it off — and then the real instability ships. So a non-deterministic generator returns `verdict: "indeterminate"` — an honest "I cannot tell you" over a confident wrong attribution. Also `not_applicable` when no list exceeds length 1 (reporting "stable" there would be a pass nobody earned). **Tamper-proven BOTH ways: deleting the control run makes it misattribute noise as "unstable" (caught); neutering detection makes it miss a purely position-ranking generator (caught).** **OPERATOR RULING 2026-07-15 — EVALUATION-ONLY, wired into FL-40, with a case set that deliberately includes LONG-LIST cases.** The reasoning is the operator's own bias analysis: *"Model bias is stateless and frozen at training — you cannot fatigue it… It fails the same way every time under the same prompt, which is at least predictable."* **Positional bias is a property of the MODEL, not of the patient**, so runtime permutation would pay ~4× generation per consultation (baseline + 3 permutations) to re-measure a constant. Two supporting reasons: a mid-consult flag has **no good action** (`required_human_review` is already always true, so "this ranking may be positional" adds noise to a clinician who was reviewing it regardless), and 4× latency on a telehealth consult is real cost for a signal obtainable at the gate. **THE LONG-LIST REQUIREMENT IS THE LOAD-BEARING HALF, not a garnish:** severity depends on the INPUT — a long differential is far more susceptible than a short one (attention is finite; the middle of a long list is attended least). An eval set of only typical-length cases would certify stability on the EASY SHAPE and miss the failure entirely. This is the one condition under which evaluation-only is insufficient, so it is a requirement of the ruling rather than an optimisation. **REMAINING: (a) FL-40 wires `checkPositionalStability` into the eval harness as a blocking threshold; (b) the case set gains deliberate long-list cases (FL-22 distribution work is the natural home); (c) nothing runs until an LLM is in the loop — the harness is inert against the stub, which ignores the packet. If live signal is later wanted, the cheap middle is a SAMPLED CANARY (1-in-N consults, or only when a list exceeds a length threshold) — a fraction of the cost for most of the coverage. NOT runtime-by-default.**
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: descent-guard-upstream-inheritance
+  path: test/contract-descent-guard.js · integration/trunk-sequencer.js · integration/trunk-pipeline.js · verification/pipeline.js (generate_candidate(packet)) · mcp/schemas/context-packet.schema.json (evidence[])
+  component_type: verifier
+  state: PARTIAL
+  evidence: **M2's PREMISE WAS FALSE — verified BEHAVIOURALLY 2026-07-15.** `.planning/TRUNK-RISK-MODEL.md` §4 said "T6–T9 currently inherit the frame". **They do not.** Ran 5.0 → 6.0 through the REAL sequencer with a marker in 5.0's output and captured 6.0's packet through the generator hook: **the marker is absent.** There is no trunk-to-trunk output flow at all — `runTrunkWithGrounding` accepts no upstream-context parameter, `executed` is an accumulating RECORD never fed forward, and generation is packet-only by contract (`generate_candidate(packet)`; generation-backend.js states it). So there was no frame to guard, and building the guard anyway would have been a wall across a gate nobody uses — the exact failure the trunk-risk-model exercise exists to correct.
+  blocks: nothing today. **But this is load-bearing and TEMPORARY**: a pipeline whose trunks never see each other's work is not the target state — 7.0 must eventually code what 4.0/5.0 framed. The sequencer's halt-rule-4 rationale ("a rejected output must never become upstream context for the next trunk") is recorded INTENT that the flow will exist; it currently guards a flow that does not.
+  safety_class: degrades_safe
+  invariant_exposure: none directly — it protects the uncorrelated-bias property. On this mountain the deaths are on the DESCENT: 6.0–9.0 run downhill from 5.0's summit, which is exactly where anchoring propagates, premature closure bites and sycophancy compounds. A downstream trunk handed 5.0's frame as a PREMISE will confirm it.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE (the honest half):** `contract-descent-guard.js` pins the property BEHAVIOURALLY — it drives the real sequencer and asserts no downstream packet carries an upstream conclusion; it pins generation as packet-only (the property section 1's proof rests on); and it asserts `packet.evidence[]` still exists as the correct future home. **Tamper-proven the hard way** — the first two tamper attempts were INCOMPLETE (`_upstream` never reached contextInjection's explicit meta), so the test appeared to pass and proved nothing; only the third, complete wiring made it FAIL, naming T6.0 and stating the fix. **NOT BUILT, deliberately: the `downstream_independence` verifier check.** There is nothing to check — no output flows. It is worth building the day the flow is, and not before. **THE DESIGN IS RECORDED IN THE FAILURE MESSAGE**, so the engineer who wires trunk-to-trunk flow is told at the moment they break the test: route it as an EvidenceNode in `packet.evidence[]` (a CLAIM, with a receipt), never as a fact in `packet.facts[]`, then build `downstream_independence` (agreement with an upstream conclusion must cite support that is not merely that conclusion).
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: blind-commit-anchor-firewall
+  path: verification/pipeline.js (contextInjection — M1 guard) · test/contract-blind-commit.js · mcp/schemas/context-packet.schema.json (facts[].category enum)
+  component_type: verifier
+  state: COMPLETE
+  evidence: **BUILT 2026-07-15 (M1).** Trunks 1.0–5.0 may never see a clinician's leading hypothesis: anchoring + positional bias + sycophancy COMPOUND in a language model, and a differential produced after the human has spoken is not a second opinion — it is an amplifier of whoever spoke first. 6.0–9.0 deliberately MAY see it (the independent view exists by then; comparison is the point). **The design doc's proposed mechanism was WRONG and research corrected it:** `context-allowlist.js` is already default-deny and TRUNK-AGNOSTIC — it filters case content (00/01/02), so there was no DENY set to add to and no trunk scoping to add it to. **The property already held BY CONSTRUCTION:** nothing produces a `clinical_assessment` fact (the only reference is a CONSUMER's priority map in models/jamba/assembler.js), `user_input` never reaches the packet (`routing(_userInput, trunk)` ignores it), and the ContextPacket is additionalProperties:false with no hypothesis field. **But it held by ACCIDENT** — `clinical_assessment` is a valid category in the packet's own enum, so the day someone adds "the clinician's working dx" (plausible: it is genuinely useful for 6.0–9.0), 1.0–5.0 would inherit the anchor and nothing would say a word.
+  blocks: nothing — additive
+  safety_class: degrades_safe (it THROWS; it can only refuse, never admit)
+  invariant_exposure: none directly. It protects the ONE structural protection this design has — uncorrelated bias between the human and the model. A design that lets the clinician's anchor propagate into the model, and the model's sycophancy back into the clinician, has engineered the correlation it should have been built to break.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE.** The guard THROWS (following context-allowlist's scoring-store precedent: "a firewall-breach attempt must halt packet assembly loudly, never degrade to a dropped field" — silently dropping the anchor would leave the caller believing it was delivered), is trunk-scoped to 1.0–5.0, and its message names WHERE the assessment belongs instead (6.0–9.0). `contextInjection` exported + a `_test_facts` seam added, because the guard is unreachable through the public surface and **a guard that can only be checked by grepping its own source is not tested**. Tamper-proven BEHAVIOURALLY both ways: making 5.0 sighted FAILS; neutering the throw FAILS. **This turned an accident into a guarantee — the same shape as R1.**
+  gap_register_link: none (Medium)
+  status: resolved
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: trunk-constraint-claims-unenforced
+  path: trunk/prompts/trunk-{1..9}.0-system.md · docs/grounding/trunk-constraints.md · .claude/trunk-cheatsheets/*.md · verification/integrity-detectors/detectors.js
+  component_type: trunk-prompt
+  state: PARTIAL
+  evidence: **FOUND + RELABELLED 2026-07-15 (R1).** All nine trunk prompts ended with `## Constraints (enforced by verification)` over `- No diagnosis. - No dosages.` **Verification does not check either.** Its five checks are no_invented_codes / no_invented_guidelines / no_invented_operations / no_repo_invention / hard_stop_enforcement. Two detectors DO exist and are correctly wired (monotone AND — a detector failure fails the output and can never rescue it) but are NARROW BY DESIGN and neither catches the act — measured, not inferred: `The patient has appendicitis.` NOT caught · `This is definitely appendicitis.` NOT caught · `Diagnosis: appendicitis.` NOT caught · `Take 500 mg of amoxicillin three times daily.` NOT caught. `overconfident_diagnosis` needs "definitely" within 40 chars of "diagnos"; `advisory_dose_leak` needs ADVISORY framing too (it targets the G9 leak). **The detectors are correct; the CLAIM was the defect.** And the prompts invented it alone: `trunk-constraints.md` (the source of truth) has always listed exactly which checks fire per trunk and NEVER listed a diagnosis or dose check, and the derived cheatsheets are honest too — they already separate `Verifier checks that apply` from `Literal constraints`. The nine prompts were the sole outlier, which INVERTS the usual derived-file rule: source and derived agreed; the implementation was wrong.
+  blocks: nothing downstream — but it was the false premise every scope conversation rested on, and the precondition for M1–M4 (blind commit / descent guard / positional stability / register separation) meaning anything
+  safety_class: presents_mock_as_live
+  invariant_exposure: no-autonomous-diagnosis / no-autonomous-prescription — **the constraints are real obligations and remain absolute; the ENFORCEMENT was overstated in nine files.** An unenforced constraint labelled "enforced" buys silence with a promise it does not keep: it reads as absolute so nobody asks how the risk is modelled, and it stops nothing so the risk is not handled.
+  risk: High
+  blocks_patient_facing: false
+  build_action: **R1 DONE 2026-07-15.** (a) All nine prompts relabelled into MECHANICAL (only bars that exist, read from trunk-constraints.md — no new fact invented) vs CONVENTIONAL (the literal constraints, honestly labelled, with the text stating plainly that on those "nobody is watching but you"). NOTHING LIFTED — every literal constraint survives, asserted. (c) **`test/contract-trunk-claims.js` makes the honesty MECHANICAL** — a prompt may not name a bar that does not exist in verifier.js/DETECTORS, must match trunk-constraints.md EXACTLY (D-R-1: a subset lets a prompt quietly under-claim), may not say "enforced by verification" outside a MECHANICAL block, and must still state every literal constraint AS A BULLET. Tamper-proven BOTH ways: a fabricated bar FAILS; deleting a constraint FAILS. **The suite's own first cut had a false-pass** — it tested the whole file for /no diagnosis/i and its own explanatory prose satisfied it, so a deletion passed; caught by tampering and scoped to bullets. **REMAINING: (a) R2 — the four-field risk model (altitude / what-you-are-FOR / failure-mode-here / bars) across all nine; the boilerplate is honest now but still has ZERO positive scope (9/9 prompts: 4–6 negatives, 0 positives) and names ZERO of the four LLM-specific failure modes (sycophancy/anchoring/positional/confabulation → 0 files each). (b) R3–R6 — the actual bars: M1 blind commit (reuses context-allowlist's default-deny), M2 descent guard (T5's output as EvidenceNode + a downstream_independence check), M3 positional stability, M4 register separation. Until those land, "no diagnosis" is conventional and the register says so.**
+  gap_register_link: pending promotion (High — mirror per the one-way rule)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: drug-vocabulary-capability
   path: mcp/servers/pharmacology/data/drug-vocabulary.json · domain/model.js (DrugVocabularySchema) · scripts/pharm-vocabulary-build.mjs · sources/pharm-data-source.js (canonicalise) · data/capability-groups.json (drug_identity)
   component_type: dataset

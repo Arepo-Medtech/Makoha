@@ -103,6 +103,77 @@ ${sn.length ? `<p><strong>Safety-net:</strong></p><ul>${sn.map((s) => `<li>${esc
 }
 
 /**
+ * EVIDENCE CLAIMS — FLUENCY IS NOT CONFIDENCE (M4).
+ *
+ * OPERATOR, 2026-07-15: *"Separate fluency from confidence. Never present model output in a register
+ * that implies calibrated certainty. Surface source-grounding, and treat any claim the model cannot
+ * anchor to a retrievable reference as a hypothesis, not a finding."* And: *"A hesitant human clinician
+ * telegraphs doubt ('I'm not sure, but…'). An LLM will state a fabricated drug interaction or a
+ * non-existent guideline threshold in the same register it uses for well-established fact."*
+ *
+ * THAT IS THE POINT. A model has no calibrated internal uncertainty signal it can surface honestly —
+ * fluency and correctness are DECOUPLED. So confidence cannot be read off the prose, and a clinician
+ * scanning well-written output has nothing to distinguish a receipt-backed claim from a confabulated
+ * one. The register has to come from the GROUNDING, not the wording.
+ *
+ * WHY THIS EXISTS AT ALL — R-47's failure mode, found again in code I had already touched.
+ * `evidence_claims` has always been in the bundle schema, populated by buildReviewBundle, and hashed
+ * into bundle_sha256. **It was rendered ZERO times.** Every claim a trunk made, with its supports, was
+ * RECORDED AND NEVER DISPLAYED — "satisfies every schema and every test, READS as done because the data
+ * is right there in the record, and quietly defeats Guardrail 2". E3 built renderDoseEvidence for the
+ * dose evidence and never noticed the claims sitting beside it.
+ *
+ * THE REGISTER IS DERIVED FROM GROUNDING, NOT FROM WORDING:
+ *   supports.length > 0  → RECEIPT-BACKED. Something retrievable stands behind it.
+ *   supports.length === 0 → HYPOTHESIS. Anchored to nothing. Not a finding, whatever it sounds like.
+ * `supports: []` is representable (the schema sets no minItems), so the unanchored case is real, not
+ * hypothetical — and it is the one that must never wear a finding's voice.
+ */
+function renderEvidenceClaims(bundle) {
+  const claims = bundle.evidence_claims || [];
+  if (!claims.length) return "";
+  const rows = claims.map((c) => {
+    const anchored = (c.supports || []).length > 0;
+    const badge = anchored
+      ? `<span class="pass">receipt-backed</span>`
+      : `<span class="fail">HYPOTHESIS — anchored to nothing</span>`;
+    const support = anchored
+      ? `<ul>${c.supports.map((s) => `<li><small>${esc(s.kind)}: <code>${esc(s.ref)}</code></small></li>`).join("")}</ul>`
+      : `<small class="fail">No retrievable reference. The model cannot tell you how confident it is — fluency and correctness are decoupled in it, so this reads exactly like a fact and is not one. Treat as a hypothesis to test, never a finding to act on.</small>`;
+    return `<tr><td>${esc(c.claim)}</td><td>${badge}</td><td>${support}</td></tr>`;
+  }).join("");
+  const unanchored = claims.filter((c) => !(c.supports || []).length).length;
+  return `<h3>Evidence claims (${claims.length})${unanchored ? ` — <span class="fail">${unanchored} anchored to nothing</span>` : ""}</h3>
+<div class="banner"><strong>Fluency is not confidence.</strong> The register below is derived from GROUNDING, not from how the output is worded. A model has no calibrated uncertainty signal it can surface honestly: it states a fabricated threshold in the same voice it uses for well-established fact. What separates them is whether something retrievable stands behind the claim — which is what this table shows, and the prose cannot.</div>
+<table><tr><th>Claim</th><th>Register</th><th>Grounding</th></tr>${rows}</table>`;
+}
+
+/**
+ * THE M4 BAR, as a function so it can be TESTED rather than trusted.
+ *
+ * Same discipline as assertEvidenceRendered (R-47a) and assertDoseEvidenceRendered (R-47b): a surface
+ * that carries a claim in its hashed bundle but drops it from the page is the exact recorded-but-not-
+ * displayed failure. Every claim must appear, and every UNANCHORED claim must be visibly marked — an
+ * unanchored claim rendered without its register is worse than not rendering it at all, because it
+ * then reads as a finding.
+ *
+ * @throws Error naming the claim.
+ */
+export function assertEvidenceClaimsRendered(html, bundle) {
+  for (const c of bundle.evidence_claims || []) {
+    if (!html.includes(esc(c.claim))) {
+      throw new Error(`M4: the claim "${c.claim}" is RECORDED in the bundle but NOT DISPLAYED. A claim the clinician cannot see is a claim they cannot weigh.`);
+    }
+  }
+  const hasUnanchored = (bundle.evidence_claims || []).some((c) => !(c.supports || []).length);
+  if (hasUnanchored && !/HYPOTHESIS — anchored to nothing/.test(html)) {
+    throw new Error(
+      `M4: an UNANCHORED claim is displayed without its register. Fluency and correctness are decoupled in a language model — an unanchored claim reads exactly like a finding unless it is marked, which is the whole failure this bar exists to prevent.`,
+    );
+  }
+}
+
+/**
  * THE RUNTIME CLINICIAN SURFACE (R-47b) — what a consulting clinician actually SEES about the dose.
  *
  * WHY THIS FUNCTION IS THE POINT OF R-47b. The operator ruled AU primacy: a `non_congruent` AU dose
@@ -190,6 +261,7 @@ export function renderBundle(bundle, identity) {
 ${bundle.firewall_status ? `<p><strong>Pharmacology firewall:</strong> <span class="${bundle.firewall_status === "PASS" ? "pass" : "fail"}">${esc(bundle.firewall_status)}</span>${bundle.continuation_blocked ? " — continuation BLOCKED (no override)" : ""}</p>` : ""}
 ${bundle.hard_stops.length ? `<ul class="fail">${bundle.hard_stops.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
 ${renderDoseEvidence(bundle)}
+${renderEvidenceClaims(bundle)}
 ${renderPppTtt(bundle)}
 ${renderChecks(bundle.verification)}
 <h3>Candidate output (exact bytes under review)</h3><pre>${esc(bundle.candidate_output)}</pre>
@@ -219,6 +291,9 @@ ${decided ? `<p><strong>Latest decision on this hash:</strong> ${esc(decided.dec
   // R-47 names: recorded, never displayed, passing every schema, reading as done. Make it throw here
   // rather than let a clinician sign a divergence they were never shown.
   assertDoseEvidenceRendered(html, bundle);
+  // M4 — the same bar, applied to the CLAIMS: recorded-but-not-displayed is the R-47 failure, and
+  // an unanchored claim shown without its register reads as a finding.
+  assertEvidenceClaimsRendered(html, bundle);
   return html;
 }
 

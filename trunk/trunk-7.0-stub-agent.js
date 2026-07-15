@@ -25,7 +25,7 @@ evidence_refs:
 - terminology receipt: term-mock-1
 - citation: cw-au:imaging-lbp:2024-01
 
-No diagnosis or dosages. Code lock-in requires terminology receipt.`;
+No diagnosis or dosages (CONVENTIONAL — see the prompt's 'The bars': nothing mechanically enforces these). Code lock-in requires terminology receipt.`;
 
 async function main() {
   const result = await runTrunkWithGrounding(TRUNK_ID, USER_INPUT, {

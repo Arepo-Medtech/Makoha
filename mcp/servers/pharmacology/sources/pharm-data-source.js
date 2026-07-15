@@ -176,7 +176,7 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       this._aliasIndex = idx;
     }
     const hit = this._aliasIndex.get(n);
-    if (hit) return { canonical: hit, from: n, via: "datastore alias (also_known_as)" };
+    if (hit) return { canonical: hit, from: n, via: "datastore alias (also_known_as)", rxcui: this.identityCode(hit) };
 
     // THE VOCABULARY (E8) — the general case: brands, former names, spelling and international
     // variants, all linked to one identity. It is a drug-IDENTITY assertion at scale, so it is GATED
@@ -189,7 +189,7 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
     // the vocabulary but excluded here — recording is not resolving.
     const vocab = this._vocabIndex ?? (this._vocabIndex = this._buildVocabIndex());
     const v = vocab.get(n);
-    if (!v) return { canonical: n, from: null };
+    if (!v) return { canonical: n, from: null, rxcui: this.identityCode(n) };
 
     // `confirm` — the system is in doubt, so it ASKS rather than guessing or dead-ending (operator
     // ruling: "if the system is ever in doubt — a question should return to patient or doctor — to
@@ -200,7 +200,36 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
     if (v.disposition === "confirm") {
       return { canonical: n, from: null, confirm: { prompt: v.prompt, candidates: v.candidates, via: v.via } };
     }
-    return { canonical: v.primary, from: n, via: v.via };
+    return { canonical: v.primary, from: n, via: v.via, rxcui: this.identityCode(v.primary) };
+  }
+
+  /**
+   * The drug's RxNorm concept id — the CODE that travels to the CDS gateway (B0b).
+   *
+   * OPERATOR, 2026-07-15: *"is it more pragmatic to use a code … and just maintain strict canonical
+   * names for all internal functions?"* Yes. A code is unambiguous by construction; a name makes
+   * correctness depend on two systems agreeing on a spelling, which is the class of defect F6 was.
+   * The wire contract (`OpenCdsDrugSchema`) already carries `rxnorm_code` — nothing populated it.
+   *
+   * GATED ON SIGN-OFF, deliberately. The RxCUI comes from the drug vocabulary, which is a
+   * drug-IDENTITY assertion and is UNSIGNED. Sending a code that the gateway answers with a DOSE keyed
+   * on it IS steering — the same act `canonicalise()` refuses on an unsigned map. So this returns null
+   * until a clinician signs, the gateway falls back to the canonical name (which B0 made correct), and
+   * B0b changes no behaviour today. It wires the precision that sign-off unlocks.
+   *
+   * @returns {string|null} RxCUI, or null when unsigned/absent. 437 of the 451 dose ingredients have
+   *   one; the 14 without are combination products and classes, which is why the NAME must still ride.
+   */
+  identityCode(drug) {
+    const ds = this._store?.vocabulary;
+    if (!ds || ds.attestation?.clinical_sign_off !== true) return null; // unsigned → no code steers
+    if (!this._codeIndex) {
+      this._codeIndex = new Map();
+      for (const r of ds.records || []) {
+        if (r.identity?.rxcui) this._codeIndex.set(String(r.primary_name).toLowerCase(), r.identity.rxcui);
+      }
+    }
+    return this._codeIndex.get(String(drug || "").toLowerCase()) ?? null;
   }
 
   /** Reverse index over the SIGNED vocabulary: usable name → primary. Empty when unsigned/absent. */

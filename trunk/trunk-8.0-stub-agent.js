@@ -27,7 +27,7 @@ next_data_requests:
 evidence_refs:
 - citation: cw-au:imaging-lbp:2024-01
 
-No diagnosis or dosages. Pharmacology firewall governs continuation.`;
+No diagnosis or dosages (CONVENTIONAL — see the prompt's 'The bars': nothing mechanically enforces these). Pharmacology firewall governs continuation.`;
 
 async function main() {
   const result = await runTrunkWithGrounding(TRUNK_ID, USER_INPUT, {

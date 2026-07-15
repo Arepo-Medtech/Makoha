@@ -217,6 +217,104 @@ if (existsSync(MAP_PATH)) {
   }
 }
 
+// ---- 9. B0 (FL-34 Phase B): BOTH EXECUTORS GET THE SAME IDENTITY ------------------------------
+// There are two executors on the pipeline path — the in-process engine and the CDS slot (the OpenCDS
+// gateway). The engine canonicalises at its own boundary (E7), but the pipeline was handing queryCds
+// the RAW intent. Demonstrated before the fix, with a recording fake gateway:
+//
+//     engine canonicalises to  : furosemide     (and the OpenCDS KB is exported from those records)
+//     gateway actually receives: "frusemide"    ← the raw intent name
+//
+// The E6 defect rebuilt one layer out. Fail-SAFE (a gateway miss folds to BLOCKED_NO_PROOF — the fold
+// is monotone) but it would make the OSS CDS path unusable for exactly the aliased names E7/E8 exist
+// to handle, and it would make Phase D's A/B parity measure a SPELLING rather than an implementation
+// difference. This is the assertion that stops it coming back.
+{
+  const { runPipeline } = await import("../verification/pipeline.js");
+  const prevState = process.env.HEYDOC_PHARM_CDS;
+  const prevEp = process.env.HEYDOC_PHARM_CDS_ENDPOINT;
+  process.env.HEYDOC_PHARM_CDS = "AU_OSS_CDS";
+  process.env.HEYDOC_PHARM_CDS_ENDPOINT = "https://gateway.example.test";
+
+  const seen = [];
+  const gateway = async (_url, opts) => {
+    seen.push(JSON.parse(opts.body).drug.drug_name);
+    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: "fl30-kb:v1", check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
+  };
+  const run = (drug) => runPipeline({
+    trunk: "8.0", cds_fetch: gateway,
+    pharm_intent: { intent_id: "i-b0", session_ref: "enc-b0-test", intent_type: "new_prescription", drug_intent: { drug_name: drug, drug_class: "x" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 60 }, mode: "mock" },
+    resolved_facts: { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 },
+  });
+
+  await run("frusemide");
+  expect(seen[0] === "furosemide",
+    `the GATEWAY must receive the canonical identity, not the raw name — the KB is INN-keyed, so a raw name looks up something it does not hold (got "${seen[0]}")`);
+
+  // An already-canonical name is unchanged — canonicalisation is idempotent, not a rewrite.
+  seen.length = 0;
+  await run("furosemide");
+  expect(seen[0] === "furosemide", "an already-canonical name must reach the gateway untouched");
+
+  // An UNKNOWN name is NOT rewritten — resolution adds reach, it never invents an identity. The
+  // gateway sees exactly what was asked, and the engine's fail-safe stands.
+  seen.length = 0;
+  await run("totally-made-up-drug");
+  expect(seen[0] === "totally-made-up-drug", "an unknown name must reach the gateway as written — never silently replaced");
+
+  // ---- B0b: the CODE, not just the name ---------------------------------------------------------
+  // Operator: "is it more pragmatic to use a code ... and just maintain strict canonical names for all
+  // internal functions?" Yes. A code is unambiguous by construction; a name makes correctness depend
+  // on two systems agreeing on a spelling — the class of defect F6 was.
+  seen.length = 0;
+  const seenDrug = [];
+  const recordingGw = async (_u, opts) => { seenDrug.push(JSON.parse(opts.body).drug); return gateway(_u, opts); };
+  const runCode = (drug) => runPipeline({
+    trunk: "8.0", cds_fetch: recordingGw,
+    pharm_intent: { intent_id: "i-b0b", session_ref: "enc-b0b-test", intent_type: "new_prescription", drug_intent: { drug_name: drug, drug_class: "x" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 60 }, mode: "mock" },
+    resolved_facts: { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 },
+  });
+
+  // UNSIGNED (the shipped state): no code steers, and the NAME is still correct — B0b changes no
+  // behaviour until a clinician signs. Sending a code the gateway answers with a DOSE keyed on it IS
+  // steering, so it passes the same gate as the vocabulary itself.
+  await runCode("frusemide");
+  expect(seenDrug[0].drug_name === "furosemide", "unsigned: the canonical NAME must still reach the gateway (B0)");
+  expect(!seenDrug[0].rxnorm_code, "an UNSIGNED vocabulary must not send a code — a code the gateway answers with a dose IS steering");
+
+  // ATC must NEVER be sent as an identity. It is a therapeutic CLASSIFICATION: V07AY alone covers ~70
+  // distinct products (every bandage and dressing), B03AC four iron preparations. It sits in the
+  // record looking like a candidate; keying identity on it would answer with the wrong drug.
+  expect(!seenDrug[0].atc_code, "ATC must never be sent as an identity — it is a classification, not a key");
+
+  if (prevState === undefined) delete process.env.HEYDOC_PHARM_CDS; else process.env.HEYDOC_PHARM_CDS = prevState;
+  if (prevEp === undefined) delete process.env.HEYDOC_PHARM_CDS_ENDPOINT; else process.env.HEYDOC_PHARM_CDS_ENDPOINT = prevEp;
+}
+
+// ---- 10. F7: the frozen intent CANNOT carry a code — and must not be smuggled -------------------
+// `drug_intent` in the FROZEN pharm-intent.schema.json is additionalProperties:false with NO
+// rxnorm_code and NO atc_code. The zod mirror silently STRIPS them, so extractDrug's di.rxnorm_code /
+// di.atc_code could never be populated through a validated intent — dead reads that created the
+// ILLUSION the codes flow. The fix is to pass the code as an ARGUMENT (the WIRE contract has the
+// field; the intent does not). This pins that nobody later "fixes" F7 by putting the code on the
+// intent, which would smuggle a contract-forbidden field to the gateway by bypassing validation.
+{
+  const { validatePharmIntent } = await import("../mcp/servers/pharmacology/schemas.js");
+  const v = validatePharmIntent({
+    intent_id: "i", session_ref: "enc-f7-0001", intent_type: "new_prescription", patient_facts_ref: {}, mode: "mock",
+    drug_intent: { drug_name: "furosemide", drug_class: "d", rxnorm_code: "4603", atc_code: "C03CA01", amt_snomed_code: "123" },
+  });
+  expect(!("rxnorm_code" in v.drug_intent), "the frozen intent must NOT carry rxnorm_code — it is stripped, so putting it there is a silent no-op at best and smuggling at worst");
+  expect(!("atc_code" in v.drug_intent), "the frozen intent must NOT carry atc_code");
+  expect(v.drug_intent.amt_snomed_code === "123", "amt_snomed_code IS on the frozen intent — the AU-native code, simply not harvested yet");
+
+  // And the frozen contract itself is untouched by B0b.
+  const schema = JSON.parse(readFileSync("mcp/schemas/pharm-intent.schema.json", "utf8"));
+  const di = schema.properties.drug_intent;
+  expect(di.additionalProperties === false, "drug_intent stays closed");
+  expect(!("rxnorm_code" in di.properties), "B0b must NOT have widened the frozen intent — the code rides the WIRE, not the contract");
+}
+
 if (errors.length) {
   errors.forEach((e) => console.error("FAIL:", e));
   console.error(`contract-ingredient-identity FAIL (${errors.length})`);
