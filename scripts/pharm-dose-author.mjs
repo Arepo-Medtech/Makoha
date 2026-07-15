@@ -33,8 +33,13 @@ import { checksumRecords } from "./pharm-author.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "mcp", "servers", "pharmacology", "data");
 
-/** Tier A — the risk-tiered first pass: the NTI / anticoagulant / cytotoxic set, already the
- *  best-covered drugs in the datastore (14–17 capabilities each). NOT the 886 PBS rows. */
+/** Tier A — the NTI / anticoagulant / cytotoxic set: the highest-risk drugs, and the best-covered in
+ *  the datastore (14–17 capabilities each).
+ *
+ *  E1 (2026-07-15): this is now a REPORTING marker only — it orders the worksheet so the clinician
+ *  meets the highest-risk drugs first. It is NO LONGER A FILTER. Until E1 this list (plus amoxicillin)
+ *  was the entire authoring scope: eleven drugs, because C2 was a deliberate risk-tiered first pass.
+ *  That scoping outlived its purpose and became the handbrake — see the gate note in main(). */
 export const TIER_A = ["methotrexate", "carbamazepine", "metformin", "sulfasalazine", "phenytoin",
   "alendronate", "apixaban", "dabigatran", "simvastatin", "rivaroxaban"];
 
@@ -121,32 +126,78 @@ function main(argv) {
   const ix = byIngredient(parseApfMonographs(readFileSync(md, "utf8")));
   const intl = JSON.parse(readFileSync(join(DATA_DIR, "international-dose-guidance.json"), "utf8")).records || [];
 
-  // Tier A + amoxicillin. Amoxicillin is not Tier A by risk, but it is the ONLY drug in the datastore
-  // that reaches a clean safe-PASS (no renal rule, no hepatic record, no NTI), which is why
-  // contract-pharmacology.js uses it to prove "a safe PASS carries a dose". Today it proves that with
-  // a MOCK dose; C3 removes that fallback, so authoring the real APF dose is what keeps the assertion
-  // meaningful — and makes it stronger, since it then proves a CLINICIAN-SIGNED dose flows.
-  const wanted = [...TIER_A, "amoxicillin"];
-  const out = []; const notes = [];
-  for (const name of wanted) {
-    // try the datastore name, then the explicit APF-spelling map (reported, never silent)
-    let mono = ix.get(name);
-    if (!mono) {
-      const apfName = Object.keys(APF_TO_DATASTORE).find((k) => APF_TO_DATASTORE[k] === name);
-      if (apfName && ix.get(apfName)) { mono = ix.get(apfName); notes.push(`  ↔ normalised APF "${apfName}" → datastore "${name}" (explicit map)`); }
-    }
-    if (!mono) { notes.push(`  ✗ ${name}: NOT FOUND in the transcription — not written`); continue; }
-    const rec = buildRecord(mono, name, intl, { ahpra, utc });
-    if (!rec) { notes.push(`  ✗ ${name}: no adult dose in the monograph — not written`); continue; }
+  // ── E1 (2026-07-15): THE TIER_A GATE IS GONE ────────────────────────────────────────────────────
+  // This loop used to run over `[...TIER_A, "amoxicillin"]` — ELEVEN drugs — because C2 was a
+  // deliberate risk-tiered first pass. That scoping outlived its purpose and became the handbrake:
+  // the clinician transcribed 471 monographs carrying 451 adult doses, and 440 of them were never
+  // authored. Not because any safety bar rejected them — because a filter literal was never widened.
+  // A dose the clinician wrote that the engine never sees is the same failure as no dose at all
+  // (see the APF_TO_DATASTORE header), arrived at more expensively.
+  //
+  // Under the show-evidence principle EVERY readable adult dose is authored. Nothing is binned. The
+  // plausibility state, congruence appraisal and indication status ride WITH each record: they LABEL
+  // it for the clinician, they never withhold it. Authoring is not attesting — every new record is
+  // `review_status:"draft"` and reaches nobody until KL's worksheet round-trip approves it.
+  //
+  // A monograph with no "Adult dose" label is skipped and reported (paediatric-only, referral Note,
+  // or a declared Section D absence). That is the paediatric hard limit holding by construction:
+  // `adultDose()` deliberately does not return the combined "Adult and paediatric dose" label.
+  const out = []; const notes = []; const skipped = [];
+  for (const [apfName, mono] of ix) {
+    // APF orthography → datastore spelling, via the explicit map. Reported, never silent.
+    const datastoreName = APF_TO_DATASTORE[apfName] || apfName;
+    if (APF_TO_DATASTORE[apfName]) notes.push(`  ↔ normalised APF "${apfName}" → datastore "${datastoreName}" (explicit map)`);
+
+    const rec = buildRecord(mono, datastoreName, intl, { ahpra, utc });
+    if (!rec) { skipped.push(datastoreName); continue; } // no adult dose in this monograph
     out.push(rec);
   }
 
+  // Highest-risk first, then alphabetical — the order the clinician reads them in.
+  out.sort((a, b) => {
+    const ta = TIER_A.includes(a.ingredient) ? 0 : 1;
+    const tb = TIER_A.includes(b.ingredient) ? 0 : 1;
+    return ta - tb || a.ingredient.localeCompare(b.ingredient);
+  });
+
+  // ── Carry forward prior attestations ────────────────────────────────────────────────────────────
+  // A re-author must NEVER silently discard a clinician's signature. Where a record's source_statement
+  // is BYTE-IDENTICAL to one KL already approved, his attestation stands — it is the same text, from
+  // the same transcription, and re-running a deterministic segmentation does not un-review it. Where
+  // the text DRIFTED, the record returns to draft: he attested the old words, not the new ones.
+  const prior = new Map(
+    (JSON.parse(readFileSync(join(DATA_DIR, "dose-guidance.json"), "utf8")).records || [])
+      .map((r) => [String(r.ingredient).toLowerCase(), r]),
+  );
+  let carried = 0; const drifted = [];
+  for (const r of out) {
+    const p = prior.get(r.ingredient.toLowerCase());
+    if (!p || p.provenance?.review_status !== "approved") continue;
+    if (p.source_statement === r.source_statement) {
+      r.provenance.reviewed_by = p.provenance.reviewed_by;
+      r.provenance.review_status = "approved";
+      carried++;
+    } else {
+      drifted.push(r.ingredient); // stays draft — deliberately
+    }
+  }
+
+  const drafts = out.filter((r) => r.provenance.review_status === "draft").length;
+  const withComparator = out.filter((r) => r.au_congruence.status !== "no_comparator").length;
+  const implausible = out.filter((r) => r.dose_lines.some((l) => l.plausibility === "implausible"));
+
   console.log(`\npharm-dose-author: ${out.length} record(s) built from ${md}\n`);
   notes.forEach((n) => console.log(n));
-  for (const r of out) {
-    const p = r.dose_lines.map((l) => l.plausibility);
-    console.log(`  • ${r.ingredient.padEnd(15)} ${r.indication_status.padEnd(8)} ${r.dose_lines.length} line(s)  congruence=${r.au_congruence.status.padEnd(14)} plausibility=${[...new Set(p)].join(",")}`);
-  }
+  console.log(`  monographs read        ${ix.size}`);
+  console.log(`  authored (adult dose)  ${out.length}`);
+  console.log(`  skipped (no adult dose)${String(skipped.length).padStart(4)}  — paediatric-only / referral Note / declared Section D absence`);
+  console.log(`  attestation carried    ${String(carried).padStart(4)}  — byte-identical source, KL's signature stands`);
+  console.log(`  source text drifted    ${String(drifted.length).padStart(4)}  ${drifted.length ? "→ returned to draft: " + drifted.join(", ") : "— none"}`);
+  console.log(`  awaiting attestation   ${String(drafts).padStart(4)}  review_status:draft`);
+  console.log(`  with US/EU comparator  ${String(withComparator).padStart(4)}`);
+  console.log(`  order-of-magnitude ⚠   ${String(implausible.length).padStart(4)}  ${implausible.length ? "→ " + implausible.map((r) => r.ingredient).join(", ") : ""}`);
+  console.log(`\n  NOTHING BINNED — every readable adult dose above is written, labelled with its`);
+  console.log(`  plausibility and congruence state. The clinician disposes (Guardrail 2).`);
 
   if (!write) { console.log("\npharm-dose-author: --dry-run (default). Re-run with --write.\n"); return; }
 
@@ -155,8 +206,25 @@ function main(argv) {
   ds.records = out;
   ds.records_checksum = checksumRecords(out); // sealed AFTER the records are final (R-46's rule)
   ds.last_authored_utc = null; // stamped by the operator at commit, per repo convention
+
+  // The dataset-level flag must not outrun the records. With drafts present it is FALSE — per-record
+  // `review_status` stays authoritative, exactly the precedent the reference datasets set in the
+  // 88/308 worksheets. Leaving it `true` over 440 drafts would be the R-46 failure wearing a new hat:
+  // a signature field that no longer describes what it seals.
+  if (drafts > 0) {
+    ds.attestation.clinical_sign_off = false;
+    ds.attestation.scope =
+      `pharm-dose-guidance dev v0.1.0 — ${out.length} records (E1: the full APF22 Section D adult set). ` +
+      `${carried} carry KL's ${ds.attestation.attested_utc} attestation forward (byte-identical source_statement); ` +
+      `${drafts} are review_status 'draft' and AWAIT attestation. Dataset-level clinical_sign_off is FALSE while any ` +
+      `draft remains — per-record review_status is authoritative. AU doses only; paediatric rows deliberately ` +
+      `excluded (the paediatric hard limit is unchanged).`;
+  }
+
   writeFileSync(path, JSON.stringify(ds, null, 2) + "\n");
-  console.log(`\npharm-dose-author: wrote ${out.length} record(s) → dose-guidance.json (all review_status:draft — clinician attestation still required)\n`);
+  console.log(`\npharm-dose-author: wrote ${out.length} record(s) → dose-guidance.json`);
+  console.log(`  ${carried} attested (carried forward) · ${drafts} draft — clinician attestation required`);
+  console.log(`  dataset clinical_sign_off → ${ds.attestation.clinical_sign_off} (drafts present)\n`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main(process.argv);

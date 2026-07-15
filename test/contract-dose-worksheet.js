@@ -14,8 +14,10 @@
  *
  * Run from repo root: node test/contract-dose-worksheet.js
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { renderDoseWorksheet, assertEvidenceRendered } from "../scripts/pharm-dose-worksheet.mjs";
+import { readXlsxText } from "../scripts/lib/xlsx-min.mjs";
 
 const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -103,18 +105,48 @@ expect(/withholding what we hold is not neutrality/i.test(c4), "…with the reas
 const c4single = renderDoseWorksheet([], [{ ingredient: "orphanol", jurisdiction: "US", agency: "FDA", amass_id: "A1", authorization_status: "ACTIVE", dose_statement: "10 mg daily" }], { utc: "2026-07-15" });
 expect(/bare fact, NOT a common range/i.test(c4single), "a SINGLE foreign label is a bare fact, never a 'common range' (D-SE-4)");
 
-// ---- 7. The real generated worksheet, if present ----------------------------------------------
-const real = "eval/pharmacology/signoff/dose-guidance-worksheet-KL-2026-07-15.md";
-if (existsSync(real)) {
-  const md = readFileSync(real, "utf8");
+// ---- 7. The real worksheets: NOTHING IS APPROVED THAT WAS NOT DISPLAYED ------------------------
+// This is R-47a's actual claim, and the one that matters: the clinician SAW what he attested.
+//
+// Doses are authored and attested in TRANCHES (C2d: 11 records; E1: the full 451-record APF22 adult
+// set), so the attestation surface is the SET of worksheets in the signoff directory, not one file —
+// each completed worksheet is the medicolegal artifact for the tranche it covers. Checking a single
+// hardcoded path would either fail the moment a second tranche lands, or (worse) pass on a stale file
+// while newer records went unexamined.
+//
+// A `draft` record needs no surface YET — it has not been attested, so there is nothing it could have
+// been attested blind to. It needs one before it can be approved, and that is exactly what this
+// assertion enforces at the moment approval is applied.
+// BOTH surfaces count. The clinician attests from .xlsx (E2: the format that carried the 88 + 308
+// passes) and the .md renders the same records; a record shown on either was shown. Sweeping only
+// .md would make this assertion pass or fail on which FORMAT happened to be generated rather than on
+// whether the clinician saw the dose — and would red the moment an xlsx-attested tranche lands.
+const SIGNOFF_DIR = "eval/pharmacology/signoff";
+if (existsSync(SIGNOFF_DIR)) {
+  const files = readdirSync(SIGNOFF_DIR).filter((f) => f.startsWith("dose-guidance-worksheet"));
+  const sheets = files.map((f) =>
+    f.endsWith(".xlsx")
+      ? readXlsxText(readFileSync(join(SIGNOFF_DIR, f)))
+      : readFileSync(join(SIGNOFF_DIR, f), "utf8"),
+  );
   const recs = JSON.parse(readFileSync("mcp/servers/pharmacology/data/dose-guidance.json", "utf8")).records || [];
-  for (const r of recs) {
-    expect(md.includes(r.source_statement), `real worksheet: ${r.ingredient}'s verbatim APF text must be rendered`);
+  const approved = recs.filter((r) => r.provenance?.review_status === "approved");
+
+  for (const r of approved) {
+    expect(
+      sheets.some((s) => s.includes(r.source_statement)),
+      `R-47a: ${r.ingredient} is APPROVED but its verbatim APF text appears in NO worksheet — it was attested blind`,
+    );
     for (const cm of r.au_congruence.comparators) {
-      expect(md.includes(cm.dose_statement), `real worksheet: ${r.ingredient}'s ${cm.jurisdiction} comparator dose must be DISPLAYED, not merely recorded`);
+      expect(
+        sheets.some((s) => s.includes(cm.dose_statement)),
+        `R-47a: ${r.ingredient} is APPROVED but its ${cm.jurisdiction} comparator dose was DISPLAYED nowhere — the AU-primacy ruling assumes the clinician saw the divergence`,
+      );
     }
   }
-  expect(recs.length > 0, "the real worksheet covers the authored records");
+  expect(recs.length > 0, "the datastore carries authored dose records");
+  expect(sheets.length > 0, "at least one attestation worksheet is retained as the medicolegal artifact");
+  expect(files.some((f) => f.endsWith(".xlsx")), "the xlsx attestation surface must be retained — it is what the clinician actually signs from");
 }
 
 if (errors.length) {
