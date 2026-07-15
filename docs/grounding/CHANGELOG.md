@@ -4,6 +4,32 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## The identity map is signed — and it unlocks nothing, which is the point (2026-07-15)
+
+**Status:** `npm test` EXIT=0 · `verification` Pass: true · seals 25/0 · frozen contracts byte-unchanged.
+
+**Register:** `resolve-ingredient-orphan` **opened** (Low, ORPHAN). No blocker moved. Nothing patient-facing.
+
+**Operator ruling: "sign it for the chain."** `ingredient-identity.json` (1473 RxNorm lookups) now carries `clinical_sign_off: true` — and the signature is **KL's vocabulary ruling #2 recorded against the harvest it was about**, not a review of 1473 rows.
+
+**What it changes: nothing.** Measured A/B before signing, and again after — `frusemide`, `furosemide`, `amoxycillin`, `lignocaine` all identical. Three reasons, all verified:
+
+- `resolveIngredient()` is the **only** consumer the flag gates, and it has **zero production callers** — the E6 fix, superseded by E7's aliases and E8's vocabulary. Now registered as an **ORPHAN**.
+- `doseIdentitySplit()` — the engine's real use — reads the map **unsigned by design**, to BLOCK fail-safe.
+- `pharm-vocabulary-build` reads `.records` without consulting the flag at all.
+
+**So why sign it?** A clinician-signed vocabulary built from an **unsigned input** is a traceability gap, and traceability (requirement → design → code → test → evidence) is what keeps this system certifiable. The signature closes a **provenance chain**; it does not switch anything on — and the statement says so, in those words, so nobody later reads it as having.
+
+**The claim is verified, not typed.** The statement asserts KL made ruling #2. The script **refuses to write it** unless that ruling is actually present in the vocabulary's own attestation — the derived signature is bound to the source ruling and cannot outlive it. Four guards, all tamper-proven: an unsigned vocabulary refuses; a missing ruling refuses; an already-broken seal refuses (applying would bury a tamper under a fresh seal carrying his name); and a record declaring *clinical judgement* refuses, because a ruling on a **source** cannot cover a row a human actually judged.
+
+**The attestation cannot be edited to overclaim** — stripping *"he did NOT review these 1473 individual lookups"*, or *"WHAT THIS UNLOCKS: nothing"*, or the regulatory disclaimer each turns the suite red.
+
+**And a state-pinning test went red — the fourth time today.** `contract-ingredient-identity` asserted *"the harvested map ships UNSIGNED"*. That is a **state**, not the safety property. The property is that the map does not switch *itself* on and that an unsigned map steers nothing — now proven by fixture in both directions, so it survives the thing it was waiting for.
+
+---
+
+---
+
 ## FL-34 Phase D — A/B parity: the engine vs the gateway (2026-07-15)
 
 **Status:** `npm test` EXIT=0 (81 suites) · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `6b32205`.

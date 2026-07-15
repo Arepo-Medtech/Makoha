@@ -106,9 +106,20 @@ if (existsSync(MAP_PATH)) {
   const ds = JSON.parse(readFileSync(MAP_PATH, "utf8"));
 
   expect(m.present, "the harvested map must load");
-  expect(ds.attestation.clinical_sign_off === false,
-    "the harvested map ships UNSIGNED — it is authored for clinician review, not switched on behind them");
+  // THIS PINNED A STATE, NOT A PROPERTY — and went red the moment the ruling was recorded (2026-07-15).
+  // The fourth time today: "ships unsigned" is not the safety property. The property is that the map
+  // does not switch ITSELF on, and that an unsigned map STEERS NOTHING — both proven by fixture below,
+  // in both directions, so they survive the thing they were waiting for.
+  expect(ds.attestation.clinical_sign_off === true,
+    "the map is SIGNED (KL, 2026-07-15) — but note what that signature IS: his vocabulary ruling #2 ('RxNorm's concept id is the identity key') recorded against the harvest it was about. It closes a PROVENANCE CHAIN (a signed vocabulary built from an unsigned input is a traceability gap) and unlocks NOTHING — behaviour is A/B-identical signed vs unsigned.");
+  expect(/did NOT review these 1473 individual lookups/.test(ds.attestation.statement),
+    "the statement must say plainly what he did NOT do. He ruled on the SOURCE, not on 1473 rows, and an attestation that implied otherwise would be a fabrication wearing his name.");
+  expect(/WHAT THIS UNLOCKS: nothing/.test(ds.attestation.statement),
+    "…and that it unlocks nothing — so nobody later reads this signature as having switched something on");
+  expect(/regulatory \(TGA\) sign-off NOT given/.test(ds.attestation.statement), "clinical only — regulatory is FL-50, a different gate");
   expect(ds.attestation.regulatory_sign_off === false, "regulatory sign-off is a different gate (FL-50)");
+  expect(ds.records.every((x) => x.provenance?.review_status === "approved"),
+    "a signed map must carry the ruling per-record — the dataset flag is not the attestation, the records are");
   expect(ds.records.every((x) => x.provenance?.source_ref === "rxnorm-nlm"),
     "every record must carry its source — no receipt, no claim");
   expect(ds.records.every((x) => x.resolution !== "resolved" || x.rxcui),
