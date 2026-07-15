@@ -825,6 +825,24 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   last_scanned: 2026-07-15
 ```
 
+
+```md
+- id: resolve-ingredient-orphan
+  path: mcp/servers/pharmacology/domain/ingredient-identity.js — resolveIngredient()
+  component_type: other
+  state: ORPHAN
+  evidence: **Found 2026-07-15 while ruling on the identity map's sign-off.** `resolveIngredient()` is exported, contract-tested, and has **ZERO production callers** — grep across mcp/verification/scripts/portal/integration returns only `test/contract-ingredient-identity.js`. It is the E6 fix (resolve an AU spelling variant to the canonical dose), superseded twice: by **E7** (`also_known_as` aliases, resolved at the engine's own boundary) and by **E8** (the drug vocabulary, which now does the work and IS signed). It is also the ONLY consumer the map's `clinical_sign_off` flag gates — which is why signing the map unlocks nothing: the flag guards a function nobody calls. The engine's real use of the map, `doseIdentitySplit()`, reads it UNSIGNED by design to BLOCK fail-safe, and `pharm-vocabulary-build` reads `.records` without consulting the flag.
+  blocks: nothing
+  safety_class: none — it is unreachable; an unreachable resolver cannot resolve anything wrongly
+  invariant_exposure: none today. If it were ever WIRED, it would become a SECOND canonicaliser beside the vocabulary's — which is the E6 defect the single upstream identity boundary (B0/B0b) exists to prevent. That is the argument for removing rather than wiring it.
+  risk: Low
+  blocks_patient_facing: false
+  build_action: WIRE or REMOVE under an approved plan — a DEAD_END/ORPHAN is a defect, not a backlog item to defer (charter `<architecture_rules>`). **Recommend REMOVE:** the vocabulary supersedes it, and wiring it would create the second divergent canonicaliser B0 was built to eliminate. Removing it also removes the last thing the map's signed flag gates, which would make the flag purely a provenance record — which is all it is now anyway.
+  gap_register_link: none (Low)
+  status: open
+  last_scanned: 2026-07-15
+```
+
 ## MEDIUM
 
 ```md
