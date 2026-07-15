@@ -18,7 +18,13 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 **Tamper-proven both ways:** deleting the control run makes it misattribute noise as `unstable` (caught); neutering detection makes it miss a generator that ranks *purely* by input position (caught).
 
-**Remains:** wire it to the live generation path, env-gated (the `contract-fhir-live` / `contract-terminology-live` precedent), once an LLM is in the loop — and decide runtime (2× generation cost) vs evaluation-only. **M4** (register separation — reusing the evidence plane's `authority` field) is the last of the four.
+**OPERATOR RULING 2026-07-15 — EVALUATION-ONLY, wired into FL-40, with a case set that deliberately includes LONG-LIST cases.** The reasoning is the operator's own analysis: *"Model bias is stateless and frozen at training… It fails the same way every time under the same prompt, which is at least predictable."* Positional bias is a property of the **model**, not the patient — runtime permutation would pay ~4× generation per consultation to re-measure a constant. And a mid-consult flag has no good action: `required_human_review` is already always true.
+
+**The long-list requirement is the load-bearing half.** Severity depends on the input — a long differential is far more susceptible than a short one, because attention is finite and the middle of a long list is attended least. An eval set of only typical-length cases would certify stability on the **easy shape** and miss the failure entirely. It is the single condition under which evaluation-only is insufficient, so it is a requirement of the ruling rather than an optimisation. Recorded in FL-40, the register and the index.
+
+If live signal is later wanted, the cheap middle is a **sampled canary** — 1-in-N consults, or only when a list exceeds a length threshold — not runtime by default.
+
+**M4** (register separation — reusing the evidence plane's `authority` field) is the last of the four.
 
 ## M2 — the descent guard: the premise was false (2026-07-15)
 
