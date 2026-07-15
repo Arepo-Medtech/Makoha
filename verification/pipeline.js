@@ -17,6 +17,9 @@ import { tagConsultFacts, sensitivityWarnings } from "./consult-tagger.js";
 import { buildEncounterHistorySummary } from "./history-summary.js";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
 import { queryCds, composeCdsVerdict } from "../mcp/servers/pharmacology/cds-adapter/index.js";
+// The evidence plane is imported HERE (the portal/audit channel), never by engine.js — that is what
+// keeps international_dose_guidance structurally isolated from the AU dose path.
+import { assembleDoseEvidence, assertNoAdvisoryInDose } from "../mcp/servers/pharmacology/dose-evidence-plane.js";
 import { pharmCdsState } from "../config/flags.js";
 import { gradeConcern, composeTriage, buildAbcdeRecord } from "./ppp-ttt/index.js";
 
@@ -162,6 +165,7 @@ export async function runPipeline(options = {}) {
   // packet + ledger, and is the hard_stop_receipt that lets the verifier tell a
   // legitimate (receipt-backed) HARD_FAIL from an invented one.
   let firewall_status;
+  let dose_evidence = [];
   let continuation_blocked = false;
   let hard_stops = [];
   let hardStopReceipt;
@@ -177,16 +181,48 @@ export async function runPipeline(options = {}) {
     // status quo, so mock runs are never force-blocked. The fold is MONOTONE
     // (composeCdsVerdict): it can only ADD severity, so an empty slot at 'live' forces
     // HARD_FAIL (the E7 floor finally biting at patient-facing), and a provider verdict can
-    // strengthen but never rescue the engine. Nothing here emits a dose; it only tightens
-    // continuation. The engine's own receipt (pushed above) remains the firewall receipt.
+    // strengthen but never rescue the engine.
+    //
+    // E3 — REVISED. This comment used to read "Nothing here emits a dose; it only tightens
+    // continuation." The first half is still true of the AUTHORITATIVE dose and must stay true: the
+    // only dose that reaches PharmCheck.dose_guidance is the clinician-signed AU record, and nothing
+    // in this block puts one there. But the sentence was also describing the gateway's dose being
+    // silently DROPPED, and that was not a safety property — it was evidence going in the bin. It now
+    // rides to the CLINICIAN plane as advisory: a second executor's opinion beside the AU dose, for
+    // the practitioner to weigh. The status fold is byte-for-byte the same monotone operation.
+    // The engine's own receipt (pushed above) remains the firewall receipt.
     let cdsReasons = [];
+    let cdsEvidence = null;
     const providerSelected = ["FILLED", "AU_OSS_CDS"].includes(pharmCdsState(process.env));
     if (providerSelected || context_mode === "live") {
       const cds = await queryCds(options.pharm_intent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch });
       const folded = composeCdsVerdict(firewall_status, cds);
       firewall_status = folded.status;
       cdsReasons = folded.blocking_reasons || [];
+      cdsEvidence = folded.evidence;
     }
+
+    // THE EVIDENCE PLANE (E3, R-47b). Assemble everything we hold about this drug FOR THE CLINICIAN:
+    // the signed AU dose, the US/EU labels beside it verbatim, the CDS candidate, what the literature
+    // reports, the congruence appraisal and the plausibility read. Portal + audit channel ONLY —
+    // the same channel as history_summary/ppp_ttt, never merged into the ContextPacket, so the trunk
+    // LLM does not see it. The clinician does, and because the bundle is hashed, "they saw the
+    // divergence" — the precondition the AU-primacy ruling assumes — becomes part of the record.
+    //
+    // Assembled even when continuation is blocked: a clinician looking at a HARD_FAIL still deserves
+    // to see WHAT we hold. The bar it must not cross is PharmCheck.dose_guidance, and it does not —
+    // asserted immediately below, at the seam, rather than trusted.
+    // firewall_status and age GATE the dose text: SHOW-EVIDENCE-PRINCIPLE §1.1 — "'Show the clinician
+    // everything' never becomes 'show a dose the firewall blocked'. No override, no exception." Past a
+    // block the plane returns an account of what is WITHHELD and why, never the dose itself.
+    dose_evidence = assembleDoseEvidence(options.pharm_intent.drug_intent?.drug_name, {
+      firewallStatus: firewall_status,
+      ageYears: options.pharm_intent.clinical_context?.patient_age_years ?? null,
+      cdsDoseCandidate: cdsEvidence?.dose_candidate ?? null,
+      cdsProvider: cdsEvidence?.provider ?? null,
+      cdsKmSet: cdsEvidence?.km_set ?? null,
+    });
+    assertNoAdvisoryInDose(pc, dose_evidence);
 
     if (firewall_status === "HARD_FAIL") {
       hardStopReceipt = pc.receipt.request_id;
@@ -368,6 +404,10 @@ export async function runPipeline(options = {}) {
     output: candidate_output,
     verification,
     firewall_status,
+    // Clinician-facing dose evidence (E3, R-47b): the signed AU dose + US/EU labels verbatim + CDS
+    // candidate + literature + congruence/plausibility. Portal channel only — never trunk context,
+    // never patient-facing without the gate. Empty when no pharm intent ran.
+    dose_evidence,
     continuation_blocked,
     hard_stops,
     // Audit-channel omnibus enrichment (null when no case content): dataset

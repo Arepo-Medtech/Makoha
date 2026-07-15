@@ -5,35 +5,99 @@
   "description": "The complete review workspace presented to a clinician in the Verification Portal (portal/review-bundle.js): the exact candidate output + medicolegal hash, verification results, receipts, evidence claims, firewall status, and the producer-gated audit artifacts (PPP-TTT verdict, ABCDE record, history summary, conflict audit). bundle_sha256 is computed over the canonical bundle-without-that-field and is recorded with the clinician's decision (gate-record-store), so the audit trail proves what was REVIEWED, not just what was decided. Zod mirror: portal/review-bundle-schema exports in portal/review-bundle.js (this JSON schema is the source of truth).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["bundle_version", "run_id", "timestamp_utc", "mode", "candidate_output", "candidate_output_hash", "verification", "receipts", "evidence_claims", "continuation_blocked", "hard_stops", "bundle_sha256"],
+  "required": [
+    "bundle_version",
+    "run_id",
+    "timestamp_utc",
+    "mode",
+    "candidate_output",
+    "candidate_output_hash",
+    "verification",
+    "receipts",
+    "evidence_claims",
+    "continuation_blocked",
+    "hard_stops",
+    "bundle_sha256"
+  ],
   "properties": {
-    "bundle_version": { "const": "1.0" },
-    "run_id": { "type": "string", "minLength": 8 },
-    "trunk_id": { "type": "string" },
-    "timestamp_utc": { "type": "string", "format": "date-time" },
-    "mode": { "type": "string", "enum": ["mock", "dry_run", "live"] },
-    "candidate_output": { "type": "string", "minLength": 1, "description": "The exact bytes under review." },
-    "candidate_output_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "bundle_version": {
+      "const": "1.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "trunk_id": {
+      "type": "string"
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "mock",
+        "dry_run",
+        "live"
+      ]
+    },
+    "candidate_output": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The exact bytes under review."
+    },
+    "candidate_output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
     "verification": {
       "type": "object",
-      "required": ["pass", "results", "missing_receipts"],
+      "required": [
+        "pass",
+        "results",
+        "missing_receipts"
+      ],
       "properties": {
-        "pass": { "type": "boolean" },
+        "pass": {
+          "type": "boolean"
+        },
         "results": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["check", "passed"],
+            "required": [
+              "check",
+              "passed"
+            ],
             "properties": {
-              "check": { "type": "string" },
-              "passed": { "type": "boolean" },
-              "reason": { "type": "string" },
-              "severity": { "type": "string" }
+              "check": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              }
             }
           }
         },
-        "missing_receipts": { "type": "array", "items": { "type": "string" } },
-        "mock_receipt_flags": { "type": "array", "items": { "type": "string" } }
+        "missing_receipts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mock_receipt_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "receipts": {
@@ -41,12 +105,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["request_id", "upstream", "mode"],
+        "required": [
+          "request_id",
+          "upstream",
+          "mode"
+        ],
         "properties": {
-          "request_id": { "type": "string" },
-          "upstream": { "type": "string" },
-          "mode": { "type": "string" },
-          "timestamp_utc": { "type": "string" }
+          "request_id": {
+            "type": "string"
+          },
+          "upstream": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "timestamp_utc": {
+            "type": "string"
+          }
         }
       }
     },
@@ -55,28 +131,176 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["claim", "supports"],
+        "required": [
+          "claim",
+          "supports"
+        ],
         "properties": {
-          "claim": { "type": "string" },
+          "claim": {
+            "type": "string"
+          },
           "supports": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["kind", "ref"],
-              "properties": { "kind": { "type": "string" }, "ref": { "type": "string" } }
+              "required": [
+                "kind",
+                "ref"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "ref": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
       }
     },
-    "firewall_status": { "type": "string" },
-    "continuation_blocked": { "type": "boolean" },
-    "hard_stops": { "type": "array", "items": { "type": "string" } },
-    "ppp_ttt": { "type": "object", "description": "Producer-gated (ppp-ttt-verdict.schema.json); carried opaque." },
-    "abcde_record": { "type": "object", "description": "Producer-gated (ppp-ttt-abcde-record.schema.json); carried opaque." },
-    "history_summary": { "type": "object", "description": "Producer-gated (patient-history-summary.schema.json); carried opaque." },
-    "conflict_audit": { "type": "object", "description": "Producer-gated (verification/conflict-audit.js); carried opaque." },
-    "bundle_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+    "firewall_status": {
+      "type": "string"
+    },
+    "continuation_blocked": {
+      "type": "boolean"
+    },
+    "hard_stops": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ppp_ttt": {
+      "type": "object",
+      "description": "Producer-gated (ppp-ttt-verdict.schema.json); carried opaque."
+    },
+    "abcde_record": {
+      "type": "object",
+      "description": "Producer-gated (ppp-ttt-abcde-record.schema.json); carried opaque."
+    },
+    "history_summary": {
+      "type": "object",
+      "description": "Producer-gated (patient-history-summary.schema.json); carried opaque."
+    },
+    "conflict_audit": {
+      "type": "object",
+      "description": "Producer-gated (verification/conflict-audit.js); carried opaque."
+    },
+    "bundle_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "dose_evidence": {
+      "type": "array",
+      "description": "THE EVIDENCE PLANE (E3, R-47b). Everything the system holds about a dose, assembled for the CLINICIAN and rendered in the surface they review. Advisory by default and provenance-tagged: the clinician-signed AU dose, the US/EU approved labels beside it VERBATIM, a CDS gateway's dose candidate as a second executor's opinion, what the primary literature reports, the congruence appraisal and the plausibility read. WHY IT IS HERE AND NOT IN PharmCheck: 'no autonomous prescription' means the AI must not MINT a dose; it does not mean a registered practitioner may not be SHOWN one with its provenance. PharmCheck.dose_guidance (frozen) stays the clinician-signed AU dose ALONE and is the only patient-promotable dose. These items are never patient-facing: patient_facing is const false, and the bar between the planes is portal/verification-gate.js releaseToPatient(). This array is inside bundle_sha256, so 'the clinician saw the divergence' \u2014 the precondition the AU-primacy ruling assumes \u2014 becomes provable rather than presumed.",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "authority",
+          "ingredient",
+          "source",
+          "patient_facing"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "au_dose_signed",
+              "international_label",
+              "cds_dose_candidate",
+              "literature",
+              "congruence",
+              "plausibility",
+              "held"
+            ],
+            "description": "What this item IS. Only au_dose_signed can ever be authoritative."
+          },
+          "authority": {
+            "type": "string",
+            "enum": [
+              "authoritative",
+              "advisory"
+            ],
+            "description": "'authoritative' is reserved for a clinician-ATTESTED AU dose (review_status:approved). Everything else \u2014 foreign labels, CDS candidates, literature, appraisals \u2014 is advisory: it informs the practitioner's decision and never substitutes for it. An authored-but-unattested AU dose is advisory, not authoritative."
+          },
+          "ingredient": {
+            "type": "string",
+            "minLength": 1
+          },
+          "jurisdiction": {
+            "type": "string",
+            "enum": [
+              "AU",
+              "US",
+              "EU"
+            ],
+            "description": "Where this evidence has force. A foreign label is NEVER an AU dose."
+          },
+          "agency": {
+            "type": "string",
+            "description": "e.g. FDA, EMA."
+          },
+          "text": {
+            "type": "string",
+            "description": "The VERBATIM thing the clinician reads. Never paraphrased \u2014 the agent may segment and label, never rewrite."
+          },
+          "status": {
+            "type": "string",
+            "description": "Kind-specific state: authorisation_status (ACTIVE/WITHDRAWN), congruence (congruent/non_congruent/no_comparator), plausibility (plausible/implausible/unassessable), or queue_status."
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Provenance \u2014 where this came from. No item without one."
+          },
+          "attested_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The registered practitioner who attested it, when attested."
+          },
+          "entered_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AHPRA registration id on the clinician authoring channel."
+          },
+          "amass_id": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "population": {
+            "type": "string",
+            "description": "The study population \u2014 a literature dose may not transfer to this patient."
+          },
+          "citation": {
+            "type": "object",
+            "description": "The retrieval-verified citation for a literature item.",
+            "additionalProperties": true
+          },
+          "evidence_note": {
+            "type": "string",
+            "description": "Design limits of the evidence (confounding, observational, etc.)."
+          },
+          "note": {
+            "type": "string",
+            "description": "How to read this item \u2014 its limits, stated in the clinician's terms."
+          },
+          "patient_facing": {
+            "const": false,
+            "description": "MECHANICAL. Evidence-plane items are clinician-facing only. Nothing here reaches a patient except through the clinician's gate decision (releaseToPatient), which binds to the exact output bytes."
+          }
+        }
+      }
+    }
   }
 }

@@ -102,14 +102,94 @@ ${abcde ? `<p><strong>Pathway:</strong> ${esc(abcde.B_balance?.pathway)} · <str
 ${sn.length ? `<p><strong>Safety-net:</strong></p><ul>${sn.map((s) => `<li>${esc(s.descriptor)}</li>`).join("")}</ul>` : ""}` : ""}`;
 }
 
-function renderBundle(bundle, identity) {
+/**
+ * THE RUNTIME CLINICIAN SURFACE (R-47b) — what a consulting clinician actually SEES about the dose.
+ *
+ * WHY THIS FUNCTION IS THE POINT OF R-47b. The operator ruled AU primacy: a `non_congruent` AU dose
+ * ships and needs no explanatory note, "as long as the non-congruent fact has been ALERTED to the
+ * clinician". Sound — the AU clinician is the final authority. But it has a precondition that lives
+ * HERE and nowhere else: the ruling assumes the clinician SAW the divergence. R-47a built that
+ * guarantee for the attestation worksheet. THIS is the other half: the live consult.
+ *
+ * Carrying `dose_evidence` in the bundle is not sufficient and is precisely the trap R-47 names — an
+ * appraisal that is RECORDED but never DISPLAYED satisfies every schema, reads as done because the
+ * data is right there in the JSON, and quietly defeats Guardrail 2. So this renders it, and
+ * `assertDoseEvidenceRendered` (below) makes a surface that drops a comparator THROW rather than
+ * silently ship.
+ *
+ * Ordering is deliberate: the AU dose first (it is the authoritative one), then what sits beside it.
+ * The foreign labels are framed as evidence, never as a verdict — a US label does not question an AU
+ * dose, and the clinician should not be nudged to read it that way.
+ */
+function renderDoseEvidence(bundle) {
+  const ev = bundle.dose_evidence || [];
+  if (!ev.length) return "";
+
+  const KIND_LABEL = {
+    au_dose_signed: "AU dose — clinician-signed",
+    international_label: "International label",
+    cds_dose_candidate: "CDS second opinion",
+    literature: "Literature (not prescribing guidance)",
+    congruence: "Congruence",
+    plausibility: "Plausibility",
+    held: "Held / withheld",
+  };
+
+  const rows = ev.map((e) => {
+    const authority = e.authority === "authoritative"
+      ? `<span class="pass">authoritative</span>`
+      : `<span class="warn">advisory</span>`;
+    const where = [e.jurisdiction, e.agency].filter(Boolean).join(" · ");
+    const flag = e.status === "implausible" || (e.status || "").startsWith("dose_text_withheld") || (e.status && e.status !== "ACTIVE" && e.kind === "international_label");
+    return `<tr>
+ <td><strong>${esc(KIND_LABEL[e.kind] || e.kind)}</strong>${where ? `<br><small>${esc(where)}</small>` : ""}</td>
+ <td>${authority}${e.status ? `<br><small class="${flag ? "fail" : ""}">${esc(e.status)}</small>` : ""}</td>
+ <td>${e.text ? `<pre>${esc(e.text)}</pre>` : ""}${e.citation?.identifier ? `<small>${esc(e.citation.id_type || "ref")} ${esc(e.citation.identifier)}${e.citation.title ? " — " + esc(e.citation.title) : ""}</small><br>` : ""}${e.population ? `<small><strong>Population:</strong> ${esc(e.population)}</small><br>` : ""}${e.evidence_note ? `<small>${esc(e.evidence_note)}</small><br>` : ""}<small>${esc(e.note || "")}</small></td>
+ <td><small>${esc(e.source)}${e.attested_by ? `<br>attested by ${esc(e.attested_by)}` : ""}</small></td>
+</tr>`;
+  }).join("");
+
+  const hasForeign = ev.some((e) => e.kind === "international_label");
+  return `<h3>Dose evidence — everything we hold (${ev.length})</h3>
+<div class="banner"><strong>AU has primacy.</strong> The AU dose is the clinician-signed record. Anything shown beside it — foreign approved labels, a CDS second opinion, what the literature reports — is <strong>evidence for your judgement, never a verdict on the AU dose</strong>. A dose that differs from a foreign label is normal: jurisdictions differ by approved indication, population and regulatory history, and it needs no justification from you.${hasForeign ? " These are shown so the decision is yours with everything we hold in front of you." : ""}</div>
+<table><tr><th>What</th><th>Authority</th><th>Content (verbatim)</th><th>Provenance</th></tr>${rows}</table>`;
+}
+
+/**
+ * THE R-47b BAR, as a function so it can be TESTED rather than trusted.
+ *
+ * Asserts the rendered runtime surface actually DISPLAYS every piece of dose evidence the bundle
+ * carries — above all every comparator's dose. This is the exact inverse of the bars this subsystem
+ * keeps removing: it does not bin a clinician's dose or demand they justify it; it constrains the
+ * MACHINE, guaranteeing the clinician is never asked to weigh something they were not shown.
+ *
+ * Compares against the ESCAPED form, because that is what actually reaches the browser: a check
+ * against the raw string would pass while an escaping bug rendered the comparator unreadable.
+ *
+ * @throws Error naming the item and the missing evidence.
+ */
+export function assertDoseEvidenceRendered(html, bundle) {
+  for (const e of bundle.dose_evidence || []) {
+    if (e.text && !html.includes(esc(e.text))) {
+      throw new Error(
+        `R-47b: a ${e.kind} item${e.jurisdiction ? ` (${e.jurisdiction})` : ""} for ${e.ingredient} is RECORDED in the bundle but NOT DISPLAYED on the clinician's surface. ` +
+        `A divergence the clinician cannot see defeats the AU-primacy ruling, which assumes they were alerted to it.`,
+      );
+    }
+  }
+}
+
+/** Exported for the R-47b contract test: the SURFACE is what must be asserted, so the test drives
+ *  the real render rather than a reconstruction of it. */
+export function renderBundle(bundle, identity) {
   const decided = effectiveDecision(bundle.candidate_output_hash);
-  return `<h1>Review — run ${esc(bundle.run_id)}</h1>
+  const html = `<h1>Review — run ${esc(bundle.run_id)}</h1>
 <p><strong>Trunk:</strong> ${esc(bundle.trunk_id || "—")} · <strong>Mode:</strong> ${esc(bundle.mode)} ·
  <strong>Hash:</strong> <code>${esc(bundle.candidate_output_hash)}</code> ·
  <strong>Bundle:</strong> <code>${esc(bundle.bundle_sha256)}</code></p>
 ${bundle.firewall_status ? `<p><strong>Pharmacology firewall:</strong> <span class="${bundle.firewall_status === "PASS" ? "pass" : "fail"}">${esc(bundle.firewall_status)}</span>${bundle.continuation_blocked ? " — continuation BLOCKED (no override)" : ""}</p>` : ""}
 ${bundle.hard_stops.length ? `<ul class="fail">${bundle.hard_stops.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
+${renderDoseEvidence(bundle)}
 ${renderPppTtt(bundle)}
 ${renderChecks(bundle.verification)}
 <h3>Candidate output (exact bytes under review)</h3><pre>${esc(bundle.candidate_output)}</pre>
@@ -133,6 +213,13 @@ ${decided ? `<p><strong>Latest decision on this hash:</strong> ${esc(decided.dec
  <p><label>Notes <input name="notes" size="60"></label></p>
  <button type="submit"${identity && identity.verified ? "" : " disabled"}>Record decision</button>
 </form>`;
+
+  // SELF-VERIFY (R-47b) — the same discipline renderDoseWorksheet uses on the attestation surface.
+  // A page that carries a comparator in its bundle but drops it from its HTML is the exact failure
+  // R-47 names: recorded, never displayed, passing every schema, reading as done. Make it throw here
+  // rather than let a clinician sign a divergence they were never shown.
+  assertDoseEvidenceRendered(html, bundle);
+  return html;
 }
 
 // --- queue assembly ---------------------------------------------------------------
