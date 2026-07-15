@@ -27,6 +27,20 @@ Cleaner transport for a Node/FHIR repo, but cards are *loosely structured adviso
 — a poor fit for the firewall, which needs **typed per-check verdicts** (HARD_FAIL vs WARN
 per `check_id`, with `severity` and typed `flags`).
 
+> **SUPERSEDED 2026-07-15 (FL-34 Phase B, F2) — the internal transport recommendation below did
+> not survive contact with the build.** This section recommends the gateway speak **native DSS/vMR**
+> to OpenCDS internally. Phase A settled it the other way: the deployed gateway is the **CDS Hooks
+> R4** service (`/<context>/r4/hooks/cds-services`), and Phase B's 9 knowledge modules implement
+> `CdsHooksExecutionEngine`. **There is no DSS/vMR path.**
+>
+> The reasoning below — that vMR is structured and "unlike CDS Hooks cards" maps cleanly to typed
+> verdicts — was sound as far as it went, and Phase B answers it rather than ignores it: each KM
+> emits ONE card carrying the **structured verdict in an extension** (D-B-2), so the shim maps
+> `cards → check_verdicts` without ever parsing prose. The typed, monotone-foldable property the
+> firewall depends on is preserved; it just rides in an extension instead of a vMR document.
+>
+> The EXTERNAL recommendation (JSON over HTTPS, mirroring the frozen shapes) stands and is built.
+
 **Recommendation (finalise at A2): a thin JSON gateway in front of OpenCDS.**
 - **External wire (our `opencds-client.js` ↔ gateway): JSON over HTTPS**, a request/response
   contract mirroring the frozen `pharm-intent` → `pharm-check` shapes. Keeps our Node/ESM
