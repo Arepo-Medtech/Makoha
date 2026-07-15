@@ -31,6 +31,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "mcp", "servers", "pharmacology", "data");
 
 export const CAPABILITY_FILE = {
+  // drug_vocabulary is deliberately NOT here, for the same reason dose_guidance is not: a vocabulary
+  // entry REDIRECTS a lookup, so an agent able to author one could map 'amoxicillin' -> 'warfarin' and
+  // steer a dose to the wrong drug. It is built deterministically by pharm-vocabulary-build.mjs from
+  // PBS + RxNorm + the datastore's own names — never from authored prose.
   nti: "nti-register.json",
   interactions: "drug-interactions.json",
   renal: "renal-rules.json",

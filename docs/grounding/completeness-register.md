@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: drug-vocabulary-capability
+  path: mcp/servers/pharmacology/data/drug-vocabulary.json · domain/model.js (DrugVocabularySchema) · scripts/pharm-vocabulary-build.mjs · sources/pharm-data-source.js (canonicalise) · data/capability-groups.json (drug_identity)
+  component_type: dataset
+  state: PARTIAL
+  evidence: **BUILT 2026-07-15 (E8) on operator task.** The unifying drug vocabulary: **1455 drugs · 5197 names** — 3635 AU brands, 1455 primaries, 71 international variants, 18 former names, 16 company artifacts, 2 spelling variants. Links every name a patient/doctor/system actually uses to ONE identity + its unifying identifiers (RxCUI 969, WHO ATC 1094). Verified: `Lasix` (patient) · `frusemide` (doctor) · `furosemide` (system) all land on rxcui 4603 / ATC C03CA01. New `drug_identity` capability group — cross-cutting, not an APF22 heading: it answers WHICH DRUG, the question every other group silently assumed (E6 proved the assumption unsafe).
+  blocks: nothing — it is additive and gated; the E7 also_known_as path is unchanged until this is signed
+  safety_class: degrades_safe (unsigned → steers nothing; every refusal states its reason)
+  invariant_exposure: **Australian healthcare context only** — the load-bearing one. RxNorm's canonical is the USAN, NOT the INN: `rxnorm_name` for paracetamol is "acetaminophen", salbutamol "albuterol", adrenaline "epinephrine". A vocabulary that took rxnorm_name as the primary would have Americanised an AU clinical system, invisibly (the US spelling appears nowhere in our data, so no collision report would flag it). GUARDED: PBS (the AU Government formulary) is the naming authority; RxNorm supplies the CONCEPT ID only; an `international_variant` with `usable_for_lookup:true` is UNREPRESENTABLE at the schema level, so a US name can never resolve an AU lookup **even when the vocabulary is signed**.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE:** schema + validator + `drug_identity` group + deterministic builder + `canonicalise()` wiring + `contract-drug-vocabulary` in npm test. **NOT ingest-routable** — the same bar `dose_guidance` has, for the same reason: a vocabulary entry REDIRECTS a lookup, so an agent able to author one could map 'amoxicillin' → 'warfarin' and steer a dose. Recording ≠ resolving: `usable_for_lookup` gates what may steer; ambiguity is refused BOTH WAYS (refusing one side only silently picks the other — asserted); company names leaking into PBS's brand_name field (16) are caught as artifacts, never drugs. Nothing binned — every name kept and labelled. **REMAINING:** (a) **clinician sign-off** — until then `canonicalise()` does not read it and behaviour is exactly E7's; signed, it unlocks 3635 AU brand names as lookups (verified: `Lasix` → furosemide's full HARD_FAIL). (b) PBS is the subsidised list, so OTC brands (Panadol) are absent — an honest coverage limit, not a defect. (c) RxNorm brand/synonym harvest deliberately NOT done: it would import US brands into an AU name-space.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: pharm-ingredient-name-normalisation
   path: scripts/pharm-dose-author.mjs (APF_TO_DATASTORE explicit map) · mcp/servers/pharmacology/data/data-sources.json (rxnorm-nlm, registered but unbuilt) · mcp/servers/pharmacology/sources/pharm-data-source.js (all getters key on lowercased ingredient)
   component_type: other (identity normalisation)

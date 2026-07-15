@@ -89,6 +89,10 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       // reference-only). They carry NO dose fields — they only add HARD_FAIL/WARN checks.
       pregnancy: read("data/pregnancy-risk.json"),
       hepatic: read("data/hepatic.json"),
+      // E8 — the drug vocabulary. NOT a clinical capability and NOT read by any accessor: it is read
+      // ONLY by canonicalise(), to resolve a name to the primary identity BEFORE any accessor runs.
+      // Gated on clinical_sign_off inside _buildVocabIndex(); an unsigned vocabulary steers nothing.
+      vocabulary: read("data/drug-vocabulary.json"),
     };
     this._mock = JSON.parse(readFileSync(join(__dirname, "..", "mock-data.json"), "utf8"));
     // Datastore-backed iff the four core SAFETY capabilities each carry >=1 signed record.
@@ -172,7 +176,40 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       this._aliasIndex = idx;
     }
     const hit = this._aliasIndex.get(n);
-    return hit ? { canonical: hit, from: n } : { canonical: n, from: null };
+    if (hit) return { canonical: hit, from: n, via: "datastore alias (also_known_as)" };
+
+    // THE VOCABULARY (E8) — the general case: brands, former names, spelling and international
+    // variants, all linked to one identity. It is a drug-IDENTITY assertion at scale, so it is GATED
+    // ON CLINICAL SIGN-OFF: until KL signs it, this returns nothing and behaviour is exactly the E7
+    // behaviour. A wrong vocabulary entry redirects a dose lookup to the wrong drug, so it does not
+    // get to switch itself on.
+    //
+    // Only `usable_for_lookup` names steer. Ambiguous names (reaching two drugs), international
+    // variants (a US name must never resolve an AU lookup) and company-name artifacts are recorded in
+    // the vocabulary but excluded here — recording is not resolving.
+    const vocab = this._vocabIndex ?? (this._vocabIndex = this._buildVocabIndex());
+    const v = vocab.get(n);
+    return v ? { canonical: v.primary, from: n, via: v.via } : { canonical: n, from: null };
+  }
+
+  /** Reverse index over the SIGNED vocabulary: usable name → primary. Empty when unsigned/absent. */
+  _buildVocabIndex() {
+    const ds = this._store?.vocabulary;
+    const idx = new Map();
+    if (!ds || ds.attestation?.clinical_sign_off !== true) return idx; // unsigned → does not steer
+    for (const r of ds.records || []) {
+      for (const n of r.names || []) {
+        if (!n.usable_for_lookup) continue;
+        const a = String(n.name).toLowerCase();
+        if (a === String(r.primary_name).toLowerCase()) continue;
+        // Belt-and-braces: the build already refuses ambiguity, but a name reaching two primaries
+        // here would be a build defect — drop it rather than pick.
+        if (idx.has(a) && idx.get(a).primary !== r.primary_name.toLowerCase()) { idx.set(a, null); continue; }
+        idx.set(a, { primary: r.primary_name.toLowerCase(), via: `drug vocabulary (${n.kind}, ${n.jurisdiction}; ${n.source})` });
+      }
+    }
+    for (const [k, v] of idx) if (!v) idx.delete(k);
+    return idx;
   }
   getAllergyGroup(drug) {
     const n = String(drug || "").toLowerCase();
