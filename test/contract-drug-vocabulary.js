@@ -170,6 +170,79 @@ expect(CAPABILITY_FILE.drug_vocabulary === undefined,
   expect(co.every((n) => n.kind === "company_artifact" && n.lookup_disposition === "refuse"), "a company name must be caught as an artifact and refused");
 }
 
+// ---- 5. CLINICIAN OVERRIDES — a ruling the sources cannot derive, and cannot silently lose ------
+//
+// THE WORKED CASE (V1, ruled by KL 2026-07-15). `erythropoietin` was steering to `epoetin alfa`, and
+// NO MECHANICAL TEST COULD HAVE CAUGHT IT:
+//   - RxNorm groups 'erythropoietin' under RxCUI 105694, the SAME concept as epoetin alfa. So a
+//     "different concept → don't steer" rule is vacuous: all 20 aliases share their primary's
+//     concept id (checked — zero mismatches). By that measure it is as sound as frusemide→furosemide.
+//   - The ambiguity detector cannot fire: the name reaches exactly ONE primary. Nothing collides.
+// RxNorm's grouping reflects US usage ('EPO' = epoetin alfa). In AU practice it is the class term
+// covering four marketed agents. That gap between a naming authority and bedside meaning is not in
+// the data. It took a clinician — which is the entire argument for the sign-off gate.
+{
+  const OVERRIDES = JSON.parse(readFileSync("mcp/servers/pharmacology/data/vocabulary-overrides.json", "utf8")).overrides;
+
+  // 5a. The ruling is IN FORCE in the shipped vocabulary — not merely recorded in the ruling file.
+  const epo = find("epoetin alfa");
+  const ery = epo?.names.find((n) => n.name.toLowerCase() === "erythropoietin");
+  expect(!!ery, "fixture: epoetin alfa must carry the erythropoietin alias");
+  expect(ery.lookup_disposition === "confirm",
+    "'erythropoietin' must ASK, not steer: it is the class term for FOUR agents this datastore holds (epoetin alfa, epoetin lambda, darbepoetin alfa, methoxy PEG-epoetin beta). Steering it picks one arbitrarily — a classification is not an identity.");
+  expect((ery.confirm_candidates || []).length === 4, "the question must present all four ESAs and choose none");
+  expect(/OVERRIDDEN by clinician ruling/.test(ery.source),
+    "the name must carry the ruling's provenance — a reader has to be able to see this was a clinician's call, not the build's, and find who made it");
+
+  // 5b. THE MECHANICAL BAR — an override may never CREATE a steer. This is the asymmetry the whole
+  // subsystem runs on: a wrong entry that asks costs a question; a wrong entry that steers doses the
+  // wrong drug. Without this, the override table becomes a way to hand-wave a name INTO steering —
+  // exactly the act clinical sign-off exists to gate.
+  const pbs = [{ ingredient: "Drug A", brand_name: "BrandA", atc_code: "A01AA01" }];
+  expect(
+    throws(() => buildVocabulary({
+      pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+      overrides: [{ name: "BrandA", primary_name: "Drug A", lookup_disposition: "steer", ruled_by: "x", ruled_utc: "2026-07-15", basis: "b" }],
+    })),
+    "an override that STEERS must THROW. An override may only take a name OUT of silent resolution, never put one in — otherwise the ruling table is a hole straight through the gate.",
+  );
+
+  // 5c. Tightening the other way is allowed — that is what a ruling is FOR.
+  const tightened = buildVocabulary({
+    pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+    overrides: [{ name: "BrandA", primary_name: "Drug A", lookup_disposition: "confirm", confirm_prompt: "which?", confirm_candidates: ["Drug A"], disposition_reason: "ruled ambiguous", ruled_by: "KL", ruled_utc: "2026-07-15", basis: "test" }],
+  });
+  expect(tightened.records[0].names.find((n) => n.name === "BrandA").lookup_disposition === "confirm",
+    "a clinician must be able to take a name out of steering — that is the point of the table");
+  expect(tightened.stats.overridden === 1, "the build must COUNT overrides, so a silent no-op is visible in the stats");
+
+  // 5d. A ruling that matches NOTHING must FAIL THE BUILD — R-47's shape, on a clinical ruling.
+  // Recorded-but-not-applied: the ruling sits in the file, a reader believes it is in force, and it
+  // is not. A drug renamed since the ruling would do exactly this, quietly.
+  expect(
+    throws(() => buildVocabulary({
+      pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+      overrides: [{ name: "a-name-that-does-not-exist", primary_name: "Drug A", lookup_disposition: "confirm", confirm_prompt: "?", disposition_reason: "r", ruled_by: "KL", ruled_utc: "2026-07-15", basis: "b" }],
+    })),
+    "a ruling that matches nothing must THROW, not pass quietly — recorded-but-not-applied is the failure R-47 named, and a clinical ruling is the worst place for it",
+  );
+
+  // 5e. The ruling must survive a REBUILD. This is why the override is data and not a hand-edit: the
+  // build regenerates the vocabulary from scratch, so a hand-fix to drug-vocabulary.json would be
+  // reverted on the next run with nobody told.
+  const identity = [{ name: "erythropoietin", rxcui: "105694", resolution: "resolved", rxnorm_name: "epoetin alfa", rxnorm_tty: "IN" }];
+  const rebuilt = buildVocabulary({
+    pbs: [{ ingredient: "epoetin alfa", brand_name: "Eprex 1000", atc_code: "B03XA01" }],
+    identity,
+    datastoreNames: new Map([["epoetin alfa", { aliases: new Set(["erythropoietin"]) }]]),
+    utc: "2026-07-15",
+    overrides: OVERRIDES,
+  });
+  const re = rebuilt.records[0].names.find((n) => n.name.toLowerCase() === "erythropoietin");
+  expect(re && re.lookup_disposition === "confirm",
+    "the ruling must survive a full rebuild from PBS + RxNorm — RxNorm still says these are one concept, and the clinician's ruling must still win");
+}
+
 if (errors.length) {
   errors.forEach((e) => console.error("FAIL:", e));
   console.error(`contract-drug-vocabulary FAIL (${errors.length})`);

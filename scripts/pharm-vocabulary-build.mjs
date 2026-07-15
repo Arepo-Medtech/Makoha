@@ -67,15 +67,67 @@ import { checksumRecords } from "./pharm-author.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "mcp", "servers", "pharmacology", "data");
 
-const SKIP = new Set(["data-sources.json", "capability-groups.json", "ingredient-identity.json", "drug-vocabulary.json"]);
+const SKIP = new Set(["data-sources.json", "capability-groups.json", "ingredient-identity.json", "drug-vocabulary.json", "vocabulary-overrides.json"]);
 /** A sponsor's company name is not a brand. PBS's brand_name field carries 8 of them. */
 const COMPANY = /(pty\s*ltd|pty\s*limited|\bltd\b|\blimited\b|\binc\b|pharmaceutical|pharmacare|healthcare|laboratories)/i;
 
 const lc = (s) => String(s || "").trim().toLowerCase();
 const load = (f) => { try { return JSON.parse(readFileSync(join(DATA_DIR, f), "utf8")); } catch { return null; } };
 
+/**
+ * Apply the clinician rulings in `vocabulary-overrides.json` on top of the automatic disposition.
+ *
+ * ══ WHY THIS EXISTS AT ALL ══
+ * The build is deterministic over PBS + RxNorm + our own names, and that is its strength — the agent
+ * makes no identity judgement of its own. But it means the build can only ever be as right as those
+ * sources, and a clinician sometimes knows something they do not. `erythropoietin` is the worked
+ * case: RxNorm groups it under RxCUI 105694 (epoetin alfa), so by every mechanical test available it
+ * is as sound an alias as `frusemide → furosemide`, and the ambiguity detector cannot fire because
+ * the name reaches exactly one primary. It is still wrong for Australian practice, where it names the
+ * hormone class rather than one of four marketed agents. No rule derives that. A clinician does.
+ *
+ * ══ WHY IT IS DATA AND NOT A HAND-EDIT ══
+ * The build REGENERATES drug-vocabulary.json from scratch. A hand-edit to that file is silently
+ * reverted on the next run — the ruling would evaporate and nobody would be told. So the ruling lives
+ * in a file the build must read, carrying who ruled it, when, and why the machine got it wrong.
+ *
+ * ══ THE MECHANICAL BAR ══
+ * An override may NEVER produce `steer`. It can only take a name OUT of silent resolution, never put
+ * one in. That asymmetry is the one this whole subsystem runs on: a wrong entry that ASKS costs a
+ * question; a wrong entry that STEERS doses the wrong drug. Without this bar, the override table
+ * would become a way to hand-wave a name into steering — precisely the act clinical sign-off exists
+ * to gate. Violating it throws rather than warns: a ruling that widens resolution is not a ruling
+ * this file is allowed to carry.
+ */
+function applyOverrides(names, primaryName, overrides, stats) {
+  if (!overrides?.length) return names;
+  return names.map((n) => {
+    const o = overrides.find((x) => lc(x.name) === lc(n.name) && lc(x.primary_name) === lc(primaryName));
+    if (!o) return n;
+    if (o.lookup_disposition === "steer") {
+      throw new Error(
+        `vocabulary-overrides: refusing to apply an override that STEERS ('${o.name}' → '${o.primary_name}').\n` +
+        `An override may only take a name OUT of silent resolution (steer → confirm/refuse), never put one in. ` +
+        `A wrong entry that asks costs a question; a wrong entry that steers doses the wrong drug. ` +
+        `If a name genuinely should steer, it must earn that from the sources the build reads — not from this table.`,
+      );
+    }
+    stats.overridden++;
+    return {
+      ...n,
+      lookup_disposition: o.lookup_disposition,
+      disposition_reason: o.disposition_reason,
+      ...(o.confirm_prompt ? { confirm_prompt: o.confirm_prompt } : {}),
+      ...(o.confirm_candidates ? { confirm_candidates: o.confirm_candidates } : {}),
+      // The ruling's provenance rides on the name itself, so a reader of the vocabulary can see this
+      // was a clinician's call and not the build's — and can find who made it.
+      source: `${n.source} — DISPOSITION OVERRIDDEN by clinician ruling (${o.ruled_by}, ${o.ruled_utc}): ${o.basis}`,
+    };
+  });
+}
+
 /** Build the vocabulary. Pure over its inputs so it can be tested without the datastore. */
-export function buildVocabulary({ pbs, identity, datastoreNames, utc }) {
+export function buildVocabulary({ pbs, identity, datastoreNames, utc, overrides = [] }) {
   // 1. PBS → the AU authority. ingredient = primary; brand_name = an AU brand.
   const byPrimary = new Map(); // primary(lc) → { primary_name, atc:Set, brands:Set }
   for (const r of pbs) {
@@ -167,6 +219,7 @@ export function buildVocabulary({ pbs, identity, datastoreNames, utc }) {
 
   const records = [];
   let confirmForeign = 0, confirmAmbiguous = 0, refusedArtifact = 0, steer = 0;
+  const overrideStats = { overridden: 0 };
   for (const d of draft) {
     const names = d.names.map((n) => {
       const targets = reach.get(lc(n.name)) || new Set();
@@ -212,11 +265,23 @@ export function buildVocabulary({ pbs, identity, datastoreNames, utc }) {
       return { ...n, lookup_disposition: "steer" };
     });
 
+    // Clinician rulings land LAST, on top of the automatic disposition — so an override can only ever
+    // tighten what the build decided, and the build's own reasoning is what it tightens.
+    const ruled = applyOverrides(names, d.primary_name, overrides, overrideStats);
+    // Keep the reported tallies honest: an overridden name is no longer steering, and a stat line that
+    // said otherwise would be a small lie in the one place someone checks the shape of this dataset.
+    for (let i = 0; i < names.length; i++) {
+      if (names[i].lookup_disposition === "steer" && ruled[i].lookup_disposition !== "steer") {
+        steer--;
+        if (ruled[i].lookup_disposition === "confirm") confirmAmbiguous++; else refusedArtifact++;
+      }
+    }
+
     records.push(validateDrugVocabulary({
       primary_name: d.primary_name,
       authority: byPrimary.get(d.key).fromDatastore ? "datastore" : "pbs",
       identity: { rxcui: d.rxcui, atc_codes: d.atc },
-      names,
+      names: ruled,
       provenance: {
         source: "PBS (AU formulary) primary + AU brands · RxNorm/NLM concept id · breath-ezy datastore names",
         source_ref: "pbs-formulary,rxnorm-nlm",
@@ -229,7 +294,27 @@ export function buildVocabulary({ pbs, identity, datastoreNames, utc }) {
     }));
   }
 
-  return { records, stats: { steer, confirmForeign, confirmAmbiguous, refusedArtifact } };
+  // An override that matched NOTHING is a silent no-op — the ruling is in the file, the reader
+  // believes it is in force, and it is not. That is the recorded-but-not-applied shape of R-47, on a
+  // clinical ruling. So it fails the build rather than passing quietly.
+  if (overrides.length && overrideStats.overridden < overrides.length) {
+    const applied = new Set();
+    for (const r of records) for (const n of r.names) {
+      const o = overrides.find((x) => lc(x.name) === lc(n.name) && lc(x.primary_name) === lc(r.primary_name));
+      if (o && n.lookup_disposition === o.lookup_disposition) applied.add(lc(o.name) + "→" + lc(o.primary_name));
+    }
+    const missed = overrides.filter((o) => !applied.has(lc(o.name) + "→" + lc(o.primary_name)));
+    if (missed.length) {
+      throw new Error(
+        `vocabulary-overrides: ${missed.length} clinician ruling(s) matched NOTHING and were silently dropped: ` +
+        missed.map((o) => `'${o.name}' → '${o.primary_name}'`).join(", ") + ".\n" +
+        `The ruling is recorded but not in force — a reader of this file would believe it applied. ` +
+        `Either the name/primary has been renamed since the ruling, or it no longer exists. Reconcile the ruling; do not ignore it.`,
+      );
+    }
+  }
+
+  return { records, stats: { steer, confirmForeign, confirmAmbiguous, refusedArtifact, overridden: overrideStats.overridden } };
 }
 
 /** Every name the datastore already uses, with the aliases E7 recorded. */
@@ -257,7 +342,8 @@ function main(argv) {
   const identity = load("ingredient-identity.json")?.records || [];
   if (!pbs.length) { console.error("pbs-formulary.json missing/empty — PBS is the AU naming authority for this build"); process.exit(2); }
 
-  const { records, stats } = buildVocabulary({ pbs, identity, datastoreNames: collectDatastoreNames(), utc });
+  const overrides = load("vocabulary-overrides.json")?.overrides || [];
+  const { records, stats } = buildVocabulary({ pbs, identity, datastoreNames: collectDatastoreNames(), utc, overrides });
 
   const totalNames = records.reduce((n, r) => n + r.names.length, 0);
   const disp = { steer: 0, confirm: 0, refuse: 0 };
@@ -278,6 +364,10 @@ function main(argv) {
   console.log(`               ${String(stats.confirmForeign).padStart(5)}  US generic sharing the INN-RxCUI (the mix is frequent; never silently AU)`);
   console.log(`               ${String(stats.confirmAmbiguous).padStart(5)}  ambiguous — every candidate presented, none chosen`);
   console.log(`    refuse   ${String(disp.refuse).padStart(5)}  a manufacturer's name is not a drug — nothing to confirm`);
+  if (stats.overridden) {
+    console.log(`\n  CLINICIAN OVERRIDES applied: ${stats.overridden}  (rulings the sources could not derive — see vocabulary-overrides.json)`);
+    for (const o of overrides) console.log(`    '${o.name}' → '${o.primary_name}': ${o.overrides_automatic} → ${o.lookup_disposition}  [${o.ruled_by}, ${o.ruled_utc}]`);
+  }
 
   if (!write) { console.log("\n  --dry-run (default). Re-run with --write.\n"); return; }
 

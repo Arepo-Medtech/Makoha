@@ -1,0 +1,25 @@
+{
+  "_note": "CLINICIAN RULINGS that override the vocabulary build's automatic disposition. The build (scripts/pharm-vocabulary-build.mjs) regenerates drug-vocabulary.json deterministically from PBS + RxNorm + the datastore's own names, so a hand-edit to that file is SILENTLY REVERTED on the next rebuild. A clinical ruling has to live here to survive. THE MECHANICAL BAR: an override may never produce `steer`. It can only take a name OUT of silent resolution (steer -> confirm/refuse), never put one in. That direction is the whole asymmetry this subsystem runs on — a wrong entry that ASKS costs a question; a wrong entry that STEERS doses the wrong drug. The build throws if an override tries to steer.",
+  "registry_version": "vocabulary-overrides:v1.0.0",
+  "generated": "2026-07-15",
+  "overrides": [
+    {
+      "name": "erythropoietin",
+      "primary_name": "epoetin alfa",
+      "lookup_disposition": "confirm",
+      "confirm_prompt": "You entered \"erythropoietin\". In Australian practice that is the name of the hormone class, not of one medicine — it could mean epoetin alfa, epoetin lambda, darbepoetin alfa, or methoxy polyethylene glycol-epoetin beta, which are dosed differently. Which one do you mean?",
+      "confirm_candidates": [
+        "epoetin alfa",
+        "epoetin lambda",
+        "darbepoetin alfa",
+        "methoxy polyethylene glycol-epoetin beta"
+      ],
+      "disposition_reason": "ambiguous — 'erythropoietin' is the hormone/class term and this datastore holds four erythropoiesis-stimulating agents (epoetin alfa, epoetin lambda, darbepoetin alfa, methoxy polyethylene glycol-epoetin beta). The system does not choose between medications.",
+      "overrides_automatic": "steer",
+      "ruled_by": "Kenneth Lee (MED0001857758)",
+      "ruled_utc": "2026-07-15",
+      "basis": "Clinician ruling on FL-34 vocabulary review, 2026-07-15: 'ask'. THIS OVERRIDES RxNORM, DELIBERATELY. RxNorm groups 'erythropoietin' under RxCUI 105694 — the same concept as epoetin alfa — so it is not a naming error the build could detect: by every mechanical test available, this alias is as sound as 'frusemide -> furosemide' (all 20 aliases share their primary's concept id; the check was run and found zero mismatches). Nor does the ambiguity detector fire, because the name reaches exactly one primary — nothing collides. RxNorm's grouping reflects US usage, where 'erythropoietin'/'EPO' commonly means epoetin alfa (Epogen/Procrit). In Australian practice it is a class term. That gap between a naming authority and bedside meaning is not derivable from the data; it takes a clinician, which is what clinical sign-off is for.",
+      "hazard_if_left": "LATENT, not live. All four ESAs currently hold nothing in any of the eight accessors — no dose, no renal rule, no interactions — and epoetin alfa is not even a knownDrug, so both paths escalate to BLOCKED_NO_PROOF today and the steer changes nothing. It becomes real the moment ESA data is authored under 'epoetin alfa': 'erythropoietin' would then silently mean one specific product, and a patient on darbepoetin would be checked against epoetin alfa's data. Recorded now, while it is cheap."
+    }
+  ]
+}
