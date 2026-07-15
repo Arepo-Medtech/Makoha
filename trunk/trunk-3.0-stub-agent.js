@@ -19,7 +19,7 @@ structured_history:
   red_flags_reported: none
   radiation: unknown
 
-evidence_refs: [citation cw-au:imaging-lbp:2024-01 for triage context]. No diagnosis or dosages. History enrichment only.`;
+evidence_refs: [citation cw-au:imaging-lbp:2024-01 for triage context]. No diagnosis or dosages (CONVENTIONAL — see the prompt's 'The bars': nothing mechanically enforces these). History enrichment only.`;
 
 async function main() {
   const result = await runTrunkWithGrounding(TRUNK_ID, USER_INPUT, {

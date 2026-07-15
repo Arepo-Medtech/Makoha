@@ -6,4 +6,11 @@ May consume: mcp-pharmacology PharmCheck output (the sole source of dose guidanc
 Fail-safe status: HARD_FAIL → pipeline halts, no override path. BLOCKED_NO_PROOF when allergy/meds/renal facts are absent. Schedule 8 (S8) intent without a documented SafeScript WA PDMP check → HARD_FAIL.
 Verifier checks that apply: no_invented_codes, no_invented_guidelines, no_invented_operations, no_repo_invention, hard_stop_enforcement (critical).
 Literal constraints: ["no diagnosis","no dosages","no autonomous prescribing","pharmacology firewall HARD_FAIL blocks"]
+
+Mechanical vs conventional (R1): the `Verifier checks that apply` line above is the COMPLETE set of
+automated bars on this trunk. The `Literal constraints` are NOT mechanically enforced — no check inspects
+output shape for a diagnosis or a dose (`overconfident_diagnosis` catches a boast, not the act;
+`advisory_dose_leak` catches a dose in advisory framing only). They are real obligations, honestly
+labelled. Register: `trunk-constraint-claims-unenforced`.
+
 Note: pharmacology server is an unbuilt CRITICAL gap — runs on mock data only; must not reach patient-facing use until a live vendor is connected and validated.

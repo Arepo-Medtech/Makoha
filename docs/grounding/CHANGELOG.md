@@ -4,6 +4,49 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## R1+R2 — the trunks stop claiming a wall they do not have, and gain a purpose (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 67 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0, **unaffected** — the proof this is a text change) + `pharm:seals` 25/25. Frozen contracts byte-unchanged vs `9b93eb5`. **No verifier check added, removed or altered.**
+
+### R1 — the false claim
+
+All nine prompts ended with `## Constraints (enforced by verification)` over `- No diagnosis. - No dosages.` **Verification checks neither.** Measured, not inferred:
+
+```
+"The patient has appendicitis."                  → not caught
+"Take 500 mg of amoxicillin three times daily."  → not caught
+```
+
+`overconfident_diagnosis` needs "definitely" within 40 chars of "diagnos"; `advisory_dose_leak` needs *advisory* framing (it targets the G9 leak). **The detectors are correct — the claim was the defect.** And the prompts invented it alone: `trunk-constraints.md` always listed exactly which checks fire and never listed a diagnosis check; the cheatsheets already separated `Verifier checks that apply` from `Literal constraints`. **The nine prompts were the sole outlier** — inverting the usual rule: source and derived agreed, the *implementation* was wrong.
+
+An unenforced constraint labelled "enforced" buys silence with a promise it does not keep: absolute enough that nobody asks how the risk is modelled, empty enough that it isn't. That is `presents_mock_as_live`.
+
+**The bar (R1-c).** `contract-trunk-claims.js` makes the honesty mechanical — the principle applied to itself. Written FIRST and run against the old prompts: **9/9 FAILED**, the defect stated mechanically rather than asserted. A prompt may not name a bar that does not exist, must match `trunk-constraints.md` exactly, and must still state every literal constraint as a bullet. Tamper-proven both ways. **Its own first cut had a false-pass** — it tested the whole file for `/no diagnosis/i` and its own prose satisfied it, so deleting the constraint passed; caught by tampering, scoped to bullets.
+
+### R2 — the mountain, as a risk model
+
+The operator's Everest allegory carries the safety argument the design was missing: **most deaths are on the descent.** T6–T9 run inside T5's frame — exactly where anchoring propagates, premature closure bites and sycophancy compounds. The safety budget was uniform; the mountain and the bias analysis independently say spend it at the summit and on the way down.
+
+Four fields per trunk — **Altitude** (where on the effort/yield curve; what it may spend) · **What you are FOR** (positive scope) · **The failure mode HERE** (named for a language model at this position) · **The bars** (R1's).
+
+| | before | after |
+|---|---|---|
+| positive scope statements | **0** across all nine | **4–11** per trunk |
+| LLM failure modes named | **0** | 1–3, matched to altitude |
+| T5 (summit) | 5 neg / **0 pos** | 7 neg / **11 pos** |
+
+T5 is now stated as what it is: **the disconfirmation engine** — "that is why you are the summit: not because you conclude, but because you are the only trunk positioned to see what would REFUTE the emerging picture… your value is highest exactly where you are least agreeable." Its failure mode is named plainly: *"you will not FEEL the unaccounted-for abnormal calcium."* T8 is "the last belay" and its catastrophic mode is sycophancy past a HARD_FAIL.
+
+**Contracts byte-untouched** — R2 moved no output key, no fail-safe status. Nothing lifted: every literal constraint survives, asserted.
+
+### R3 + a pre-existing defect found
+
+All nine cheatsheets now join the two halves they already carried. `trunk-constraints.md` states the distinction once, at the top. Stub-agent strings reworded so a grep does not land on the old framing.
+
+**Found while syncing:** the T1.0 cheatsheet's literal constraints read `"triage only"` — **T2.0's constraint, copy-pasted**. The source (*"Initial routing and safety gate only"*) and the prompt were both correct; the derived file was the defect. Corrected per the `<context_loading>` maintenance rule.
+
+**Register:** `trunk-constraint-claims-unenforced` (PARTIAL, High, `presents_mock_as_live`). **Remains:** R3–R6 — the actual bars (M1 blind commit, reusing context-allowlist's default-deny; M2 descent guard, T5-as-EvidenceNode + `downstream_independence`; M3 positional stability; M4 register separation). Until then "no diagnosis" is conventional and the register says so.
+
 ## E8b — "in doubt" means ASK, not refuse (operator ruling) (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 66 suites) + `verification` (Pass: true) + `pharm:seals` (25/25) green. Frozen contracts byte-unchanged vs `17da525`. Nothing patient-facing.

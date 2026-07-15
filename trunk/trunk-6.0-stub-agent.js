@@ -27,7 +27,7 @@ next_data_requests:
 - Provide full LOINC-coded panel values and timestamps for trend interpretation.
 - Confirm any red-flag symptom progression since sample collection.
 
-evidence_refs: [citation cw-au:imaging-lbp:2024-01]. No diagnosis or dosages. Investigation interpretation only.`;
+evidence_refs: [citation cw-au:imaging-lbp:2024-01]. No diagnosis or dosages (CONVENTIONAL — see the prompt's 'The bars': nothing mechanically enforces these). Investigation interpretation only.`;
 
 async function main() {
   const result = await runTrunkWithGrounding(TRUNK_ID, USER_INPUT, {

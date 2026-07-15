@@ -5,5 +5,14 @@ Forbidden: history enrichment; producing routing_plan.next_trunks before safety_
 May consume: docs citations + receipts for any non-obvious claim. Mints no codes, identity, or pharmacology facts.
 Fail-safe status: blocked_incomplete → list missing_inputs and stop, no routing_plan. escalate_now immediately on any T5 red flag, without waiting for downstream trunks.
 Verifier checks that apply: no_invented_codes, no_invented_guidelines, no_invented_operations, no_repo_invention, hard_stop_enforcement.
-Literal constraints (TRUNK_CONSTRAINTS): ["no diagnosis","no dosages","triage only"]
+Literal constraints (TRUNK_CONSTRAINTS): ["no diagnosis","no dosages","initial routing and safety gate only"]
+  (CORRECTED 2026-07-15/R3: this read "triage only" — T2.0's constraint, copy-pasted. The source
+  (trunk-constraints.md: "Initial routing and safety gate only — no history enrichment") and the prompt were
+  both correct; the derived file was the defect, per the <context_loading> maintenance rule.)
+
+Mechanical vs conventional (R1): the `Verifier checks that apply` line above is the COMPLETE set of
+automated bars on this trunk. The `Literal constraints` are NOT mechanically enforced — no check inspects
+output shape for a diagnosis or a dose (`overconfident_diagnosis` catches a boast, not the act;
+`advisory_dose_leak` catches a dose in advisory framing only). They are real obligations, honestly
+labelled. Register: `trunk-constraint-claims-unenforced`.
 Routing: selects routing_plan.next_trunks. Short-circuit 1.0 → 9.0 when red-flag escalation is needed.

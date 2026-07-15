@@ -6,3 +6,10 @@ May consume: terminology lookup receipts (one per code, required); benign-regist
 Fail-safe status: no receipt → code_lock_status: blocked. Blocked-with-reasons is always preferable to emitting an unsupported code.
 Verifier checks that apply: no_invented_codes (critical), no_invented_guidelines, no_invented_operations, no_repo_invention.
 Literal constraints: ["no diagnosis","no dosages","code lock-in requires terminology receipt","benign registry gating"]
+
+Mechanical vs conventional (R1): the `Verifier checks that apply` line above is the COMPLETE set of
+automated bars on this trunk. The `Literal constraints` are NOT mechanically enforced — no check inspects
+output shape for a diagnosis or a dose (`overconfident_diagnosis` catches a boast, not the act;
+`advisory_dose_leak` catches a dose in advisory framing only). They are real obligations, honestly
+labelled. Register: `trunk-constraint-claims-unenforced`.
+
