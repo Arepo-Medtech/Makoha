@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## M2 — the descent guard: the premise was false (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 69 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged — **no schema field, no verifier check added**.
+
+**My design doc was wrong, and the research caught it — for the second time.** `TRUNK-RISK-MODEL.md` §4 said *"T6–T9 currently inherit the frame."* **They do not.** Verified behaviourally, not by reading signatures: run 5.0 → 6.0 through the real sequencer with a marker in 5.0's output, capture 6.0's packet through the generator hook — **the marker is absent**. There is no trunk-to-trunk output flow at all. `runTrunkWithGrounding` takes no upstream-context parameter; `executed` is an accumulating *record*, never fed forward; generation is packet-only by contract.
+
+**So there was no frame to guard.** Building the guard anyway would have been a wall across a gate nobody uses — precisely the failure this whole exercise exists to correct. The most valuable thing M2 could do was *not* be built.
+
+**What was worth doing.** The property "no trunk inherits another's conclusion" holds today **by construction**, and nothing asserted it — the M1 shape again. And this one is *load-bearing and temporary*: a pipeline whose trunks never see each other's work is not the target state (7.0 must eventually code what 5.0 framed). The day someone wires it, they will do it the easy way — pass the output — and sycophancy compounds silently down the descent.
+
+**So the suite fails when that happens, and says how to do it instead:** route the conclusion as an `EvidenceNode` in `packet.evidence[]` — a CLAIM with a receipt — never as a premise in `packet.facts[]`. Then, and only then, build `downstream_independence`. **The design lives in the failure message**, delivered at the moment someone needs it.
+
+**`downstream_independence` is deliberately NOT built.** There is nothing to check. It is worth building the day the flow exists, and not before.
+
+**Tamper-proven the hard way.** The first two attempts were **incomplete** — `_upstream` never reached `contextInjection`'s explicit `meta` — so the test appeared to pass and proved nothing. Only the third, complete wiring made it FAIL, naming T6.0 and stating the fix. A test whose tamper you cannot land is a test you have not verified.
+
+**Remains:** M3 (positional stability — permute and compare; catches a glitch invisible to every human reviewer), M4 (register separation — reuses the evidence plane's `authority` field).
+
 ## M1 — the blind commit: an accident becomes a guarantee (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 68 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged vs `9b93eb5` — **no schema field, no verifier check added**.

@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: descent-guard-upstream-inheritance
+  path: test/contract-descent-guard.js · integration/trunk-sequencer.js · integration/trunk-pipeline.js · verification/pipeline.js (generate_candidate(packet)) · mcp/schemas/context-packet.schema.json (evidence[])
+  component_type: verifier
+  state: PARTIAL
+  evidence: **M2's PREMISE WAS FALSE — verified BEHAVIOURALLY 2026-07-15.** `.planning/TRUNK-RISK-MODEL.md` §4 said "T6–T9 currently inherit the frame". **They do not.** Ran 5.0 → 6.0 through the REAL sequencer with a marker in 5.0's output and captured 6.0's packet through the generator hook: **the marker is absent.** There is no trunk-to-trunk output flow at all — `runTrunkWithGrounding` accepts no upstream-context parameter, `executed` is an accumulating RECORD never fed forward, and generation is packet-only by contract (`generate_candidate(packet)`; generation-backend.js states it). So there was no frame to guard, and building the guard anyway would have been a wall across a gate nobody uses — the exact failure the trunk-risk-model exercise exists to correct.
+  blocks: nothing today. **But this is load-bearing and TEMPORARY**: a pipeline whose trunks never see each other's work is not the target state — 7.0 must eventually code what 4.0/5.0 framed. The sequencer's halt-rule-4 rationale ("a rejected output must never become upstream context for the next trunk") is recorded INTENT that the flow will exist; it currently guards a flow that does not.
+  safety_class: degrades_safe
+  invariant_exposure: none directly — it protects the uncorrelated-bias property. On this mountain the deaths are on the DESCENT: 6.0–9.0 run downhill from 5.0's summit, which is exactly where anchoring propagates, premature closure bites and sycophancy compounds. A downstream trunk handed 5.0's frame as a PREMISE will confirm it.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE (the honest half):** `contract-descent-guard.js` pins the property BEHAVIOURALLY — it drives the real sequencer and asserts no downstream packet carries an upstream conclusion; it pins generation as packet-only (the property section 1's proof rests on); and it asserts `packet.evidence[]` still exists as the correct future home. **Tamper-proven the hard way** — the first two tamper attempts were INCOMPLETE (`_upstream` never reached contextInjection's explicit meta), so the test appeared to pass and proved nothing; only the third, complete wiring made it FAIL, naming T6.0 and stating the fix. **NOT BUILT, deliberately: the `downstream_independence` verifier check.** There is nothing to check — no output flows. It is worth building the day the flow is, and not before. **THE DESIGN IS RECORDED IN THE FAILURE MESSAGE**, so the engineer who wires trunk-to-trunk flow is told at the moment they break the test: route it as an EvidenceNode in `packet.evidence[]` (a CLAIM, with a receipt), never as a fact in `packet.facts[]`, then build `downstream_independence` (agreement with an upstream conclusion must cite support that is not merely that conclusion).
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: blind-commit-anchor-firewall
   path: verification/pipeline.js (contextInjection — M1 guard) · test/contract-blind-commit.js · mcp/schemas/context-packet.schema.json (facts[].category enum)
   component_type: verifier
