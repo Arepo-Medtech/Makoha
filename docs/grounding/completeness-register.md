@@ -1504,16 +1504,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: dose-plausibility-guard-unbuilt
   path: scripts/pharm-dose-crosscheck.mjs (C1, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema)
   component_type: other (authoring guard)
-  state: UNBUILT
+  state: COMPLETE
   evidence: Opened 2026-07-15 by the C0 amendment (operator ruling reversing D-DG-3). The original `cross_check` gate binned an AU dose whose FDA/EMA label differed. That gate was removed as wrong (it inverted the jurisdiction rule and conflated "different jurisdiction" with "wrong" — see the DoseGuidanceSchema header). BUT it was incidentally catching one real thing: a TRANSCRIPTION TYPO. A clinician entering "5000 mg" for "500 mg" would have been caught by the foreign-label comparison. Removing the gate removes that catch, and this item exists so that loss is TRACKED rather than silently accepted.
   blocks: nothing — dose-guidance C2 can proceed without it; this narrows a residual entry-error risk
   safety_class: degrades_safe
   invariant_exposure: none directly — but an order-of-magnitude dose entry error is the classic catastrophic med-error class, and Channel B is manual clinician transcription, which is exactly where such an error would enter
   risk: Medium
   blocks_patient_facing: false
-  build_action: Build in C1, where the dose-string parsing already has to live. It is a PLAUSIBILITY check, NOT a congruence check — conflating the two is precisely what produced the bad gate: an order-of-magnitude discrepancy is a different question from "the EU approved a different indication". Suggested shape: parse the AU and comparator dose magnitudes; a >10x discrepancy is a WARN routed to the clinician for confirmation, never an automatic bin (a genuine 10x difference between jurisdictions is possible — e.g. loading vs maintenance dosing). Must not resurrect a veto.
+  build_action: **RESOLVED 2026-07-15 (C1).** Built `mcp/servers/pharmacology/domain/dose-plausibility.js` — pure, offline, no network. `parseMaxDoseMg()` reads mg/g/microgram (longest-first unit alternation, so "microgram" cannot partial-match as "g" — a 1,000,000x error), takes the MAX amount (a misplaced zero lands on the cap), and returns null for a weight/BSA basis (mg/kg, mg/m²), non-mass units (IU/mL/%), or anything unreadable. `assessPlausibility()` → plausible | implausible | **unassessable**, worst-comparator-wins. **FAIL-SAFE: unreadable is NEVER "plausible"** — an unassessable result explicitly says "this is NOT an all-clear", because a guard that guesses launders a non-check into reassurance. **It is a WARN for a human, never a bin** (a genuine >10x jurisdictional difference is possible — loading vs maintenance dosing). `test/contract-dose-plausibility.js` (in npm test) proves BOTH directions: the 5000-vs-500 typo IS caught, and the legitimate 500-q8h-vs-875-BD AU/US difference — which the removed gate would have BINNED — passes untouched. Congruence stays AUTHORED, not computed: whether a difference is "non-congruent" or "a different approved indication" is clinical judgement, and the structural protection is that comparators[].dose_statement is REQUIRED, so the clinician reads the foreign label verbatim regardless of the status.
   gap_register_link: none (Medium)
-  status: open
+  status: resolved
   last_scanned: 2026-07-15
 ```
 
