@@ -121,10 +121,56 @@ for (const g of intl) {
 }
 
 // ---- 5. Structural invariants -------------------------------------------------------------------
-expect(ds.attestation.clinical_sign_off === false,
-  "the vocabulary ships UNSIGNED — it is a drug-identity assertion at scale, authored for clinician review, not switched on behind them");
-expect(ds.attestation.regulatory_sign_off === false, "regulatory sign-off is a different gate (FL-50)");
-expect(ds.records.every((r) => r.provenance.review_status === "draft"), "every record awaits review");
+//
+// THESE TWO ASSERTIONS USED TO PIN "UNSIGNED", and they went red the moment KL signed on 2026-07-15 —
+// correctly, because they pinned A STATE rather than A PROPERTY. The property was never "this file is
+// unsigned"; it was "this file does not switch ITSELF on, and steers nothing until a clinician says
+// so". A state-pinning test does not survive the thing it is waiting for, and worse: it would have
+// gone quietly green again if the GATE broke while the data happened to be unsigned.
+//
+// So the gate is now proven against the FLAG, both directions, below — and what is asserted about the
+// shipped file is what an attestation must actually carry.
+expect(ds.attestation.clinical_sign_off === true,
+  "the vocabulary is SIGNED (KL, 2026-07-15). If this is ever false again, an attestation was removed — find out by whom and why before touching anything else.");
+expect(ds.attestation.regulatory_sign_off === false,
+  "regulatory sign-off is a DIFFERENT gate (FL-50) and clinical sign-off must never be mistaken for it — this dataset remains -dev and non-patient-facing");
+expect(ds.records.every((r) => r.provenance.review_status === "approved"),
+  "a signed vocabulary must have every record approved per-record — the dataset flag is not the attestation, the records are");
+expect(/Kenneth Lee \(MED0001857758\)/.test(ds.attestation.reviewer_id || ""),
+  "the attestation must name the practitioner and their registration — an unattributable signature is not one");
+
+// THE ATTESTATION MUST STATE ITS OWN SCOPE HONESTLY. He did not read 5,196 rows and the statement must
+// not imply he did: the whole design rests on him having ruled on two SOURCES plus the names that
+// actually steer. A statement that overclaimed would be the fabrication this subsystem exists to
+// prevent, wearing his name.
+expect(/did NOT mark 5,196 rows/.test(ds.attestation.statement),
+  "the attestation statement must state plainly what was NOT read — an overclaimed scope is a fabricated attestation");
+expect(/PBS as the Australian naming authority/.test(ds.attestation.statement) && /RxNorm's concept id as the identity key/.test(ds.attestation.statement),
+  "the statement must record the two AUTHORITY rulings — they are what covers the 3,635 brands");
+expect(/erythropoietin/.test(ds.attestation.statement),
+  "the statement must record the ATC-sibling evidence and the defect it caught — that is why the review was not a formality");
+expect(Array.isArray(ds.attestation.reseal_history) && ds.attestation.reseal_history.some((h) => /R-46/.test(h.reason || "")),
+  "applying the sign-off MUTATES every record's provenance and invalidates the seal — the re-seal must be recorded in the same pass (R-46), not left to memory");
+
+// ---- 5b. THE GATE IS THE FLAG, NOT THE CALENDAR — proven in BOTH directions ---------------------
+{
+  const { SyntheticSelfDevelopedSource } = await import("../mcp/servers/pharmacology/sources/pharm-data-source.js");
+
+  // SIGNED (the live path): the vocabulary now steers, asks, and carries codes.
+  const signed = new SyntheticSelfDevelopedSource();
+  expect(signed.canonicalise("Lasix").canonical === "furosemide", "SIGNED: a brand must now reach its ingredient — this is what the sign-off unlocked");
+  expect(signed.identityCode("furosemide") === "4603", "SIGNED: the code must now travel to the CDS gateway (B0b)");
+  expect(!!signed.canonicalise("erythropoietin").confirm, "SIGNED: KL's ruling must be LIVE — erythropoietin asks and never picks");
+
+  // UNSIGNED: same data, same names, one flag flipped — and everything must go inert.
+  const unsigned = new SyntheticSelfDevelopedSource();
+  unsigned._store.vocabulary = { ...unsigned._store.vocabulary, attestation: { ...unsigned._store.vocabulary.attestation, clinical_sign_off: false } };
+  unsigned._codeIndex = null; unsigned._vocabIndex = null;
+  expect(unsigned.canonicalise("Lasix").from === null,
+    "UNSIGNED: a brand must steer NOTHING. An unsigned identity map may BLOCK, but it must never STEER — that asymmetry is the gate, and it must depend on the flag rather than on which day it is.");
+  expect(unsigned.identityCode("furosemide") === null, "UNSIGNED: no code may travel — a code the gateway answers with a dose IS steering");
+  expect(!unsigned.canonicalise("erythropoietin").confirm, "UNSIGNED: even the ruling is inert — recording is not resolving");
+}
 expect(ds.records.every((r) => r.names.every((n) => n.source)), "every name must carry its source — no receipt, no claim");
 expect(ds.records.every((r) => r.names.every((n) => n.lookup_disposition === "steer" || n.disposition_reason)),
   "a name that does not steer must record WHY — an unexplained hesitation is indistinguishable from a bug");
