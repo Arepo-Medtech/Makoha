@@ -121,10 +121,56 @@ for (const g of intl) {
 }
 
 // ---- 5. Structural invariants -------------------------------------------------------------------
-expect(ds.attestation.clinical_sign_off === false,
-  "the vocabulary ships UNSIGNED — it is a drug-identity assertion at scale, authored for clinician review, not switched on behind them");
-expect(ds.attestation.regulatory_sign_off === false, "regulatory sign-off is a different gate (FL-50)");
-expect(ds.records.every((r) => r.provenance.review_status === "draft"), "every record awaits review");
+//
+// THESE TWO ASSERTIONS USED TO PIN "UNSIGNED", and they went red the moment KL signed on 2026-07-15 —
+// correctly, because they pinned A STATE rather than A PROPERTY. The property was never "this file is
+// unsigned"; it was "this file does not switch ITSELF on, and steers nothing until a clinician says
+// so". A state-pinning test does not survive the thing it is waiting for, and worse: it would have
+// gone quietly green again if the GATE broke while the data happened to be unsigned.
+//
+// So the gate is now proven against the FLAG, both directions, below — and what is asserted about the
+// shipped file is what an attestation must actually carry.
+expect(ds.attestation.clinical_sign_off === true,
+  "the vocabulary is SIGNED (KL, 2026-07-15). If this is ever false again, an attestation was removed — find out by whom and why before touching anything else.");
+expect(ds.attestation.regulatory_sign_off === false,
+  "regulatory sign-off is a DIFFERENT gate (FL-50) and clinical sign-off must never be mistaken for it — this dataset remains -dev and non-patient-facing");
+expect(ds.records.every((r) => r.provenance.review_status === "approved"),
+  "a signed vocabulary must have every record approved per-record — the dataset flag is not the attestation, the records are");
+expect(/Kenneth Lee \(MED0001857758\)/.test(ds.attestation.reviewer_id || ""),
+  "the attestation must name the practitioner and their registration — an unattributable signature is not one");
+
+// THE ATTESTATION MUST STATE ITS OWN SCOPE HONESTLY. He did not read 5,196 rows and the statement must
+// not imply he did: the whole design rests on him having ruled on two SOURCES plus the names that
+// actually steer. A statement that overclaimed would be the fabrication this subsystem exists to
+// prevent, wearing his name.
+expect(/did NOT mark 5,196 rows/.test(ds.attestation.statement),
+  "the attestation statement must state plainly what was NOT read — an overclaimed scope is a fabricated attestation");
+expect(/PBS as the Australian naming authority/.test(ds.attestation.statement) && /RxNorm's concept id as the identity key/.test(ds.attestation.statement),
+  "the statement must record the two AUTHORITY rulings — they are what covers the 3,635 brands");
+expect(/erythropoietin/.test(ds.attestation.statement),
+  "the statement must record the ATC-sibling evidence and the defect it caught — that is why the review was not a formality");
+expect(Array.isArray(ds.attestation.reseal_history) && ds.attestation.reseal_history.some((h) => /R-46/.test(h.reason || "")),
+  "applying the sign-off MUTATES every record's provenance and invalidates the seal — the re-seal must be recorded in the same pass (R-46), not left to memory");
+
+// ---- 5b. THE GATE IS THE FLAG, NOT THE CALENDAR — proven in BOTH directions ---------------------
+{
+  const { SyntheticSelfDevelopedSource } = await import("../mcp/servers/pharmacology/sources/pharm-data-source.js");
+
+  // SIGNED (the live path): the vocabulary now steers, asks, and carries codes.
+  const signed = new SyntheticSelfDevelopedSource();
+  expect(signed.canonicalise("Lasix").canonical === "furosemide", "SIGNED: a brand must now reach its ingredient — this is what the sign-off unlocked");
+  expect(signed.identityCode("furosemide") === "4603", "SIGNED: the code must now travel to the CDS gateway (B0b)");
+  expect(!!signed.canonicalise("erythropoietin").confirm, "SIGNED: KL's ruling must be LIVE — erythropoietin asks and never picks");
+
+  // UNSIGNED: same data, same names, one flag flipped — and everything must go inert.
+  const unsigned = new SyntheticSelfDevelopedSource();
+  unsigned._store.vocabulary = { ...unsigned._store.vocabulary, attestation: { ...unsigned._store.vocabulary.attestation, clinical_sign_off: false } };
+  unsigned._codeIndex = null; unsigned._vocabIndex = null;
+  expect(unsigned.canonicalise("Lasix").from === null,
+    "UNSIGNED: a brand must steer NOTHING. An unsigned identity map may BLOCK, but it must never STEER — that asymmetry is the gate, and it must depend on the flag rather than on which day it is.");
+  expect(unsigned.identityCode("furosemide") === null, "UNSIGNED: no code may travel — a code the gateway answers with a dose IS steering");
+  expect(!unsigned.canonicalise("erythropoietin").confirm, "UNSIGNED: even the ruling is inert — recording is not resolving");
+}
 expect(ds.records.every((r) => r.names.every((n) => n.source)), "every name must carry its source — no receipt, no claim");
 expect(ds.records.every((r) => r.names.every((n) => n.lookup_disposition === "steer" || n.disposition_reason)),
   "a name that does not steer must record WHY — an unexplained hesitation is indistinguishable from a bug");
@@ -168,6 +214,79 @@ expect(CAPABILITY_FILE.drug_vocabulary === undefined,
   expect(shared.every((n) => (n.confirm_candidates || []).length === 2), "the question must present both candidates");
   const co = records.flatMap((r) => r.names.filter((n) => n.name === "Acme Pharma Pty Ltd"));
   expect(co.every((n) => n.kind === "company_artifact" && n.lookup_disposition === "refuse"), "a company name must be caught as an artifact and refused");
+}
+
+// ---- 5. CLINICIAN OVERRIDES — a ruling the sources cannot derive, and cannot silently lose ------
+//
+// THE WORKED CASE (V1, ruled by KL 2026-07-15). `erythropoietin` was steering to `epoetin alfa`, and
+// NO MECHANICAL TEST COULD HAVE CAUGHT IT:
+//   - RxNorm groups 'erythropoietin' under RxCUI 105694, the SAME concept as epoetin alfa. So a
+//     "different concept → don't steer" rule is vacuous: all 20 aliases share their primary's
+//     concept id (checked — zero mismatches). By that measure it is as sound as frusemide→furosemide.
+//   - The ambiguity detector cannot fire: the name reaches exactly ONE primary. Nothing collides.
+// RxNorm's grouping reflects US usage ('EPO' = epoetin alfa). In AU practice it is the class term
+// covering four marketed agents. That gap between a naming authority and bedside meaning is not in
+// the data. It took a clinician — which is the entire argument for the sign-off gate.
+{
+  const OVERRIDES = JSON.parse(readFileSync("mcp/servers/pharmacology/data/vocabulary-overrides.json", "utf8")).overrides;
+
+  // 5a. The ruling is IN FORCE in the shipped vocabulary — not merely recorded in the ruling file.
+  const epo = find("epoetin alfa");
+  const ery = epo?.names.find((n) => n.name.toLowerCase() === "erythropoietin");
+  expect(!!ery, "fixture: epoetin alfa must carry the erythropoietin alias");
+  expect(ery.lookup_disposition === "confirm",
+    "'erythropoietin' must ASK, not steer: it is the class term for FOUR agents this datastore holds (epoetin alfa, epoetin lambda, darbepoetin alfa, methoxy PEG-epoetin beta). Steering it picks one arbitrarily — a classification is not an identity.");
+  expect((ery.confirm_candidates || []).length === 4, "the question must present all four ESAs and choose none");
+  expect(/OVERRIDDEN by clinician ruling/.test(ery.source),
+    "the name must carry the ruling's provenance — a reader has to be able to see this was a clinician's call, not the build's, and find who made it");
+
+  // 5b. THE MECHANICAL BAR — an override may never CREATE a steer. This is the asymmetry the whole
+  // subsystem runs on: a wrong entry that asks costs a question; a wrong entry that steers doses the
+  // wrong drug. Without this, the override table becomes a way to hand-wave a name INTO steering —
+  // exactly the act clinical sign-off exists to gate.
+  const pbs = [{ ingredient: "Drug A", brand_name: "BrandA", atc_code: "A01AA01" }];
+  expect(
+    throws(() => buildVocabulary({
+      pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+      overrides: [{ name: "BrandA", primary_name: "Drug A", lookup_disposition: "steer", ruled_by: "x", ruled_utc: "2026-07-15", basis: "b" }],
+    })),
+    "an override that STEERS must THROW. An override may only take a name OUT of silent resolution, never put one in — otherwise the ruling table is a hole straight through the gate.",
+  );
+
+  // 5c. Tightening the other way is allowed — that is what a ruling is FOR.
+  const tightened = buildVocabulary({
+    pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+    overrides: [{ name: "BrandA", primary_name: "Drug A", lookup_disposition: "confirm", confirm_prompt: "which?", confirm_candidates: ["Drug A"], disposition_reason: "ruled ambiguous", ruled_by: "KL", ruled_utc: "2026-07-15", basis: "test" }],
+  });
+  expect(tightened.records[0].names.find((n) => n.name === "BrandA").lookup_disposition === "confirm",
+    "a clinician must be able to take a name out of steering — that is the point of the table");
+  expect(tightened.stats.overridden === 1, "the build must COUNT overrides, so a silent no-op is visible in the stats");
+
+  // 5d. A ruling that matches NOTHING must FAIL THE BUILD — R-47's shape, on a clinical ruling.
+  // Recorded-but-not-applied: the ruling sits in the file, a reader believes it is in force, and it
+  // is not. A drug renamed since the ruling would do exactly this, quietly.
+  expect(
+    throws(() => buildVocabulary({
+      pbs, identity: [], datastoreNames: new Map(), utc: "2026-07-15",
+      overrides: [{ name: "a-name-that-does-not-exist", primary_name: "Drug A", lookup_disposition: "confirm", confirm_prompt: "?", disposition_reason: "r", ruled_by: "KL", ruled_utc: "2026-07-15", basis: "b" }],
+    })),
+    "a ruling that matches nothing must THROW, not pass quietly — recorded-but-not-applied is the failure R-47 named, and a clinical ruling is the worst place for it",
+  );
+
+  // 5e. The ruling must survive a REBUILD. This is why the override is data and not a hand-edit: the
+  // build regenerates the vocabulary from scratch, so a hand-fix to drug-vocabulary.json would be
+  // reverted on the next run with nobody told.
+  const identity = [{ name: "erythropoietin", rxcui: "105694", resolution: "resolved", rxnorm_name: "epoetin alfa", rxnorm_tty: "IN" }];
+  const rebuilt = buildVocabulary({
+    pbs: [{ ingredient: "epoetin alfa", brand_name: "Eprex 1000", atc_code: "B03XA01" }],
+    identity,
+    datastoreNames: new Map([["epoetin alfa", { aliases: new Set(["erythropoietin"]) }]]),
+    utc: "2026-07-15",
+    overrides: OVERRIDES,
+  });
+  const re = rebuilt.records[0].names.find((n) => n.name.toLowerCase() === "erythropoietin");
+  expect(re && re.lookup_disposition === "confirm",
+    "the ruling must survive a full rebuild from PBS + RxNorm — RxNorm still says these are one concept, and the clinician's ruling must still win");
 }
 
 if (errors.length) {

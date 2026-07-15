@@ -239,7 +239,7 @@ if (existsSync(MAP_PATH)) {
   const seen = [];
   const gateway = async (_url, opts) => {
     seen.push(JSON.parse(opts.body).drug.drug_name);
-    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: "fl30-kb:v1", check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
+    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: DEFAULT_KM_SET, check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
   };
   const run = (drug) => runPipeline({
     trunk: "8.0", cds_fetch: gateway,
@@ -275,12 +275,39 @@ if (existsSync(MAP_PATH)) {
     resolved_facts: { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 },
   });
 
-  // UNSIGNED (the shipped state): no code steers, and the NAME is still correct — B0b changes no
-  // behaviour until a clinician signs. Sending a code the gateway answers with a DOSE keyed on it IS
-  // steering, so it passes the same gate as the vocabulary itself.
+  // THE NAME reaches the gateway canonicalised, signed or not — that is B0, and it is what makes the
+  // name path correct on its own.
   await runCode("frusemide");
-  expect(seenDrug[0].drug_name === "furosemide", "unsigned: the canonical NAME must still reach the gateway (B0)");
-  expect(!seenDrug[0].rxnorm_code, "an UNSIGNED vocabulary must not send a code — a code the gateway answers with a dose IS steering");
+  expect(seenDrug[0].drug_name === "furosemide", "the canonical NAME must reach the gateway (B0)");
+
+  // THE CODE IS GATED ON SIGN-OFF, and the gate is proven MECHANICALLY — in both directions, against
+  // fixtures, not against whatever the shipped datastore happens to be today.
+  //
+  // This assertion used to read "an UNSIGNED vocabulary must not send a code" and was checked against
+  // the live datastore, which was unsigned at the time. KL signed it on 2026-07-15 and the test went
+  // red — correctly, because it was pinning A STATE rather than A PROPERTY. A state-pinning test does
+  // not survive the thing it is waiting for, and worse, it would have gone quietly green again if the
+  // gate broke while the data happened to be unsigned. So: fixtures, both directions.
+  {
+    const { SyntheticSelfDevelopedSource } = await import("../mcp/servers/pharmacology/sources/pharm-data-source.js");
+    const src = new SyntheticSelfDevelopedSource();
+
+    // The gate's real subject: the vocabulary's OWN attestation flag.
+    expect(src._store.vocabulary.attestation.clinical_sign_off === true,
+      "fixture: the shipped vocabulary is signed (KL 2026-07-15) — so the SIGNED direction below is the live path");
+    expect(src.identityCode("furosemide") === "4603",
+      "SIGNED: the code must now travel — this is what the clinician's sign-off unlocked, and what turns 937 name-only gateway subjects into code-keyed ones");
+
+    // Flip the flag on a fresh source and the code must vanish. Same data, same names, one flag.
+    const unsigned = new SyntheticSelfDevelopedSource();
+    unsigned._store.vocabulary = { ...unsigned._store.vocabulary, attestation: { ...unsigned._store.vocabulary.attestation, clinical_sign_off: false } };
+    unsigned._codeIndex = null;
+    unsigned._vocabIndex = null;
+    expect(unsigned.identityCode("furosemide") === null,
+      "UNSIGNED: no code may travel. Sending a code the gateway answers with a DOSE keyed on it IS steering — the same act the vocabulary gate refuses. The gate must be the FLAG, not the calendar.");
+    expect(unsigned.canonicalise("Lasix").from === null,
+      "UNSIGNED: a brand must steer nothing either — an unsigned identity map may BLOCK, but it must never STEER");
+  }
 
   // ATC must NEVER be sent as an identity. It is a therapeutic CLASSIFICATION: V07AY alone covers ~70
   // distinct products (every bandage and dressing), B03AC four iron preparations. It sits in the

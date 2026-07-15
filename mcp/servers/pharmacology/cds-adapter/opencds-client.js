@@ -26,7 +26,25 @@
  */
 import { validateOpenCdsRequest, validateOpenCdsResponse } from "./opencds-contract.js";
 
-const DEFAULT_KM_SET = "fl30-kb:v1";
+/**
+ * The FL-30 knowledge set this client requests, and cross-checks on every response. MUST equal
+ * `KM_SET` in the gateway's `tools/export-fl30-kb.mjs` and `Fl30KnowledgeBase.EXPECTED_KM_SET`.
+ *
+ * v1 → v2 (2026-07-15): v1 was exported while the drug vocabulary was UNSIGNED, so the gateway KB
+ * matched by NAME only. KL signed it, which populated the identity sidecar (522 RxCUIs) — a change in
+ * how a KM resolves WHICH DRUG a request is about, i.e. a knowledge change, so it gets a new version
+ * rather than silently riding along inside v1.
+ *
+ * The version is what makes the transition safe in BOTH directions: a gateway still serving v1 to a
+ * v2 client, or the reverse, fails the cross-check below and BLOCKS (BLOCKED_NO_PROOF) rather than
+ * answering from knowledge nobody asked for.
+ *
+ * EXPORTED so tests assert the PROPERTY (the client cross-checks whatever it requested) instead of
+ * hardcoding a literal. Three suites pinned "fl30-kb:v1" and would have gone red on this bump for no
+ * safety reason — the same state-pinning defect that made the vocabulary suites red when it was
+ * signed. A test that breaks on a version bump is not testing the version check.
+ */
+export const DEFAULT_KM_SET = "fl30-kb:v2";
 // The core safety checks the in-process engine runs — the default request when the intent
 // does not name checks_requested. All members are within the frozen check_id enum.
 const DEFAULT_CHECKS = ["allergy_check", "interaction_check", "renal_dosing_check", "nti_check", "age_appropriateness_check"];

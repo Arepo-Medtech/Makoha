@@ -14,7 +14,7 @@ const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
 
 // A3: an injectable fake OpenCDS gateway — keeps the test fully OFFLINE (no live call).
-const KM = "fl30-kb:v1";
+import { DEFAULT_KM_SET as KM } from "../mcp/servers/pharmacology/cds-adapter/opencds-client.js"; // never a literal: a test that breaks on a version bump is not testing the version check
 const gatewayReturning = (respObj, { ok = true, status = 200 } = {}) => async () => ({ ok, status, json: async () => respObj });
 const gatewayThrows = () => async () => { throw new Error("ECONNREFUSED"); };
 const ossEnv = { HEYDOC_PHARM_CDS: "AU_OSS_CDS", HEYDOC_PHARM_CDS_ENDPOINT: "https://opencds-gateway/v1" };

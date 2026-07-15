@@ -19,6 +19,7 @@
  * Run from repo root: node test/contract-dose-evidence-plane.js
  */
 import { readFileSync } from "node:fs";
+import { DEFAULT_KM_SET } from "../mcp/servers/pharmacology/cds-adapter/opencds-client.js"; // the km_set rides into evidence as a PROVENANCE label — it must name the set that really produced it
 import { assembleDoseEvidence, assertNoAdvisoryInDose, EVIDENCE_KINDS } from "../mcp/servers/pharmacology/dose-evidence-plane.js";
 import { composeCdsVerdict } from "../mcp/servers/pharmacology/cds-adapter/index.js";
 import { buildReviewBundle, verifyReviewBundle } from "../portal/review-bundle.js";
@@ -76,11 +77,11 @@ expect(lit.every((l) => l.citation?.identifier), "every literature item must car
 expect(lit.every((l) => /not prescribing guidance/i.test(l.note || "")), "literature must state that it is not prescribing guidance");
 
 // ---- 5. The CDS gateway's dose candidate now HAS a consumer -------------------------------------
-const folded = composeCdsVerdict("PASS", { verdict: "PASS", reason: "ok", dose_guidance: { safe_dose_range: "5 mg daily" }, provider: "au_oss_cds", knowledge_module_set: "fl30-kb:v1" });
+const folded = composeCdsVerdict("PASS", { verdict: "PASS", reason: "ok", dose_guidance: { safe_dose_range: "5 mg daily" }, provider: "au_oss_cds", knowledge_module_set: DEFAULT_KM_SET });
 expect(folded.status === "PASS", "the fold must stay monotone on status — unchanged");
 expect(folded.evidence?.dose_candidate?.safe_dose_range === "5 mg daily", "the gateway's dose must now reach a consumer instead of the floor");
 
-const withCds = assembleDoseEvidence("methotrexate", { cdsDoseCandidate: { safe_dose_range: "5 mg daily" }, cdsProvider: "au_oss_cds", cdsKmSet: "fl30-kb:v1" });
+const withCds = assembleDoseEvidence("methotrexate", { cdsDoseCandidate: { safe_dose_range: "5 mg daily" }, cdsProvider: "au_oss_cds", cdsKmSet: DEFAULT_KM_SET });
 const cand = withCds.find((e) => e.kind === "cds_dose_candidate");
 expect(!!cand, "a CDS dose candidate must surface as advisory evidence");
 expect(cand?.authority === "advisory", "a CDS candidate is a second OPINION, never the AU dose");

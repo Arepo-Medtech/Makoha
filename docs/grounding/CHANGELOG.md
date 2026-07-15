@@ -4,6 +4,52 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## fl30-kb:v2 — the identity sidecar goes live (2026-07-15)
+
+**Status:** `npm test` EXIT=0 · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `dd9bfd3`: **68/68** JUnit (was 63) · 12/12 export fixtures.
+
+**Why the version moved.** v1 was exported while the drug vocabulary was unsigned, so `identityCode()` returned null for every drug and the KB matched by **name**. The sign-off (V3) means the same export now yields **522 codes** (`rxcui_active: true`; 415 name-only). That changes *how a KM resolves which drug a request is about* — a knowledge change — so it took a new `km_set` rather than silently riding along inside v1. Three pins moved deliberately: the export's `KM_SET`, the Java `EXPECTED_KM_SET`, and breath-ezy's `DEFAULT_KM_SET`.
+
+**The version is what makes the transition safe, and it was verified end-to-end against the real client rather than asserted:** a gateway still serving **v1 → `BLOCKED_NO_PROOF`**; **v2 → PASS**; a future **v3 → `BLOCKED_NO_PROOF`**. Both directions fail safe, which is why the bump is safe to make before any gateway is deployed. (My first probe showed all three blocking — for an unrelated `request_id` length error. A broken probe is not a result; it was re-run properly.)
+
+**A hazard the bump activated, found before shipping it.** `drugKey`'s code branch was **dead** while the sidecar was empty — `byCode` was always null, so the resolution order never mattered and the code won silently. Turning code-first matching on makes that live: a code and a name that **disagree** would check the *code's* drug while the record, the card and the clinician's screen all say the name's — a wrong-drug check that looks entirely normal.
+
+Today the pipeline sets both from one `canonicaliseDrugName()` call, so they cannot disagree. That is a property of **the current caller**, not of the wire contract, which lets any client populate both fields independently. An accident is not a safeguard. `drugKey` now **refuses** a conflict — it cannot know which of the two is wrong, so it must not choose. Throwing is the fail-safe: the base turns it into `NOT_RUN` (→ `BLOCKED_NO_PROOF`) and the dose KM emits nothing. Returning null would have been far worse — the accessors would find no records and every check would report a placid PASS.
+
+**Five tests pinned the empty sidecar and went red — correctly.** They now test the property: a code reaches the **same record** the name does (a key, not a second opinion); a drug with no code still resolves by name; an unknown code falls back to the name; a conflict refuses; and a conflict yields no dose through the real `evaluate()` path — driven through OpenCDS's own `WritableCdsRequest`/`WritableHookContext`, not a stand-in that could drift from what the engine builds. That is now **three separate times today** that a state-pinning test broke on the state changing; the fix each time was to test the property instead.
+
+**Tamper-proven by exit code:** letting the code win on a conflict, returning null instead of throwing, and accepting a v1 bundle each turn the suite red. **Artifact audit:** all 9 `file_sha256` match; zero foreign-label bytes; **all 522 codes reach a real record**; no name reachable by two codes.
+
+**The 415 name-only subjects are not a gap** — combination products (`trimethoprim with sulfamethoxazole`) and classes (`oestrogens`, `ferrous salts`) that RxNorm models as multi-ingredient concepts. They carry real signed knowledge, which is exactly why a code-only contract fails and the name must still ride.
+
+---
+
+## V1–V3 — the drug vocabulary is SIGNED (2026-07-15)
+
+**Status:** `npm test` EXIT=0 · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 BROKEN · frozen contracts byte-unchanged.
+
+**Register:** `drug-vocabulary-capability` PARTIAL → **resolved**. Kenneth Lee (MED0001857758) marked the worksheet **108 Attest / 0 Amend / 0 Reject**, 0 brand exceptions → **1455/1455 records approved**, `clinical_sign_off: true`, re-sealed in the same pass (R-46, `51da51a4a677 → 51b51555254b`). Only `reviewed_by`/`review_status` moved — **zero identity content changed**.
+
+**What the signature covers, stated exactly.** He did **not** read 5,196 rows, and the attestation says so — a test pins that it cannot be edited to overclaim. He ruled on two **sources** (PBS as the AU naming authority for brand→ingredient; RxNorm's concept id as the identity key), which cover the 3,635 brands — each listed and individually exceptable — and then decided individually every name that **steers**, every question the system asks a patient, and every refusal. That reduction from 5,196 rows to 108 decisions is what made the review real rather than theatre.
+
+**V1 — the gate earned its keep before it was signed.** `erythropoietin` was steering to `epoetin alfa`. It is the hormone **class**; the datastore holds four ESAs. **No mechanical test could catch it:** RxNorm files `erythropoietin` under RxCUI 105694 — the *same concept* as epoetin alfa — so by every available check it looked as sound as `frusemide → furosemide` (all 20 aliases share their primary's concept; zero mismatches), and the ambiguity detector cannot fire on a name reaching one primary. I tested that hypothesis **before** building a bar on it, and it was false. RxNorm's grouping is US usage; AU practice differs. That gap is not in the data — it took a clinician.
+
+Now it **asks**, via `vocabulary-overrides.json`: a clinician-ruling table, because the build regenerates the vocabulary from PBS + RxNorm and a hand-edit would be silently reverted. Three bars, tamper-proven: an override may **never create a steer** (only `steer → confirm/refuse` — otherwise the table is a hole through the gate); a ruling matching nothing **fails the build** (recorded-but-not-applied is R-47's shape on a clinical ruling); and the ruling survives a rebuild.
+
+**V2 — the worksheet, and a real defect in my own bar.** Each former-name row carries its primary's **ATC-class siblings** — the evidence that made V1's defect visible (epoetin alfa → 3 siblings; levothyroxine → 1, correctly judged harmless since thyroxine *is* T4; furosemide → 0). ATC still isn't an identity: it cannot say *which* drug a name means, which is why it never resolves one — but it can say what lives nearby.
+
+My first `assertVocabularyRendered` searched the **whole workbook** for each sibling and **passed with the sibling column empty**, because the readme's own prose names darbepoetin alfa. My commentary satisfied my own bar — the R1 false-pass again. A worksheet with an empty evidence column would have shipped green. Now row-scoped: found elsewhere is not found.
+
+**V3 — the apply.** Text drift aborts the **whole** apply (a partial one signs the rows that still match while hiding that the dataset moved); a blank on a decision sheet aborts ("I could not read his mark" must never become "approved"); a blank on the **brands** sheet is the authority ruling, and that coverage is **checked, not assumed** — reject the PBS ruling and every record carrying a brand is held. Amend/Reject are reported and held, never auto-applied. A **primary** is never approved by inference: a name resolving to itself redirects nothing, so it was never a decision.
+
+**Now live:** 3,635 brands reach their ingredient (`Lasix`→furosemide, `Eutroxsig`→levothyroxine); the 73 ask-prompts fire; `identityCode()` returns RxCUIs, so B0b's code now travels to the CDS gateway. **Still barred, signed or not:** a US generic never steers silently (`acetaminophen` still asks) — that bar is in the schema, not the signing state.
+
+**Three tests were pinning a STATE, not a property, and went red on signing — correctly.** `contract-drug-vocabulary` and `contract-ingredient-identity` asserted "ships unsigned". A state-pinning test does not survive the thing it is waiting for, and worse, it would have gone quietly green again if the *gate* broke while the data happened to be unsigned. Both now prove the gate against the **flag**, in both directions, by fixture.
+
+**Not done, deliberately:** the gateway KB is **not** re-exported. Signing unlocks code-first matching (0 → 522 codes, `rxcui_active` true), but per D-B-1 a knowledge change must be a deliberate re-export to a new `km_set`, which is a coordinated three-place change. The committed bundle stays name-keyed and correct.
+
+---
+
 ## FL-34 Phase B — the FL-30 knowledge bundle and its 9 OpenCDS knowledge modules (2026-07-15)
 
 **Status:** `npm test` + `verification` + `trunk:stub:all` green; frozen contracts byte-unchanged. Gateway-side: `mvn -o test` 63/63, `node --test tools/*.test.mjs` 12/12. **Sibling repo `kenleefreo/breath-ezy-cds-gateway` @ `d47eaad`** (B1 `29bebee` · B2 `15ee1f2` · B3 `3d50c6a` · B4 `d47eaad`).
