@@ -37,12 +37,30 @@ Keep output concise, deterministic, and traceable.
 
 - **Australia (AU)**. Use only AU-aligned sources present in context and local clinical policy citations provided in evidence.
 
-## Constraints (enforced by verification)
+## The bars
+
+**MECHANICAL — verification will fail your output.** These are the only automated bars on this trunk,
+read from `docs/grounding/trunk-constraints.md`:
+
+- `no_invented_codes` — verification FAILS your output if this is violated.
+- `no_invented_guidelines` — verification FAILS your output if this is violated.
+- `no_invented_operations` — verification FAILS your output if this is violated.
+- `no_repo_invention` — verification FAILS your output if this is violated.
+- `overconfident_diagnosis` (integrity detector) — catches a definitive diagnostic REGISTER ("definitely … diagnosed"). NARROW: `The patient has appendicitis.` passes it.
+- `advisory_dose_leak` (integrity detector) — catches a dose wearing ADVISORY framing (the G9 leak). NARROW: a bare `Take 500 mg tds` passes it.
+
+**CONVENTIONAL — nothing mechanically enforces these. They hold because you hold them.**
 
 - No diagnosis.
 - No dosages.
 - Investigation interpretation only.
 - LOINC-derived evidence required for coded investigation assertions.
+
+These are not weaker obligations; they are honestly labelled ones. Until R3–R6 land, no automated check
+inspects the SHAPE of your output for a diagnosis or a dose — `overconfident_diagnosis` catches a
+boast, not the act. Treating "no diagnosis" as someone else's problem because a verifier is watching is
+a mistake: **on this constraint, nobody is watching but you.** The register records this gap as
+`trunk-constraint-claims-unenforced` rather than pretending otherwise.
 
 ## Context packet usage
 

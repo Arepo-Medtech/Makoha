@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: trunk-constraint-claims-unenforced
+  path: trunk/prompts/trunk-{1..9}.0-system.md · docs/grounding/trunk-constraints.md · .claude/trunk-cheatsheets/*.md · verification/integrity-detectors/detectors.js
+  component_type: trunk-prompt
+  state: PARTIAL
+  evidence: **FOUND + RELABELLED 2026-07-15 (R1).** All nine trunk prompts ended with `## Constraints (enforced by verification)` over `- No diagnosis. - No dosages.` **Verification does not check either.** Its five checks are no_invented_codes / no_invented_guidelines / no_invented_operations / no_repo_invention / hard_stop_enforcement. Two detectors DO exist and are correctly wired (monotone AND — a detector failure fails the output and can never rescue it) but are NARROW BY DESIGN and neither catches the act — measured, not inferred: `The patient has appendicitis.` NOT caught · `This is definitely appendicitis.` NOT caught · `Diagnosis: appendicitis.` NOT caught · `Take 500 mg of amoxicillin three times daily.` NOT caught. `overconfident_diagnosis` needs "definitely" within 40 chars of "diagnos"; `advisory_dose_leak` needs ADVISORY framing too (it targets the G9 leak). **The detectors are correct; the CLAIM was the defect.** And the prompts invented it alone: `trunk-constraints.md` (the source of truth) has always listed exactly which checks fire per trunk and NEVER listed a diagnosis or dose check, and the derived cheatsheets are honest too — they already separate `Verifier checks that apply` from `Literal constraints`. The nine prompts were the sole outlier, which INVERTS the usual derived-file rule: source and derived agreed; the implementation was wrong.
+  blocks: nothing downstream — but it was the false premise every scope conversation rested on, and the precondition for M1–M4 (blind commit / descent guard / positional stability / register separation) meaning anything
+  safety_class: presents_mock_as_live
+  invariant_exposure: no-autonomous-diagnosis / no-autonomous-prescription — **the constraints are real obligations and remain absolute; the ENFORCEMENT was overstated in nine files.** An unenforced constraint labelled "enforced" buys silence with a promise it does not keep: it reads as absolute so nobody asks how the risk is modelled, and it stops nothing so the risk is not handled.
+  risk: High
+  blocks_patient_facing: false
+  build_action: **R1 DONE 2026-07-15.** (a) All nine prompts relabelled into MECHANICAL (only bars that exist, read from trunk-constraints.md — no new fact invented) vs CONVENTIONAL (the literal constraints, honestly labelled, with the text stating plainly that on those "nobody is watching but you"). NOTHING LIFTED — every literal constraint survives, asserted. (c) **`test/contract-trunk-claims.js` makes the honesty MECHANICAL** — a prompt may not name a bar that does not exist in verifier.js/DETECTORS, must match trunk-constraints.md EXACTLY (D-R-1: a subset lets a prompt quietly under-claim), may not say "enforced by verification" outside a MECHANICAL block, and must still state every literal constraint AS A BULLET. Tamper-proven BOTH ways: a fabricated bar FAILS; deleting a constraint FAILS. **The suite's own first cut had a false-pass** — it tested the whole file for /no diagnosis/i and its own explanatory prose satisfied it, so a deletion passed; caught by tampering and scoped to bullets. **REMAINING: (a) R2 — the four-field risk model (altitude / what-you-are-FOR / failure-mode-here / bars) across all nine; the boilerplate is honest now but still has ZERO positive scope (9/9 prompts: 4–6 negatives, 0 positives) and names ZERO of the four LLM-specific failure modes (sycophancy/anchoring/positional/confabulation → 0 files each). (b) R3–R6 — the actual bars: M1 blind commit (reuses context-allowlist's default-deny), M2 descent guard (T5's output as EvidenceNode + a downstream_independence check), M3 positional stability, M4 register separation. Until those land, "no diagnosis" is conventional and the register says so.**
+  gap_register_link: pending promotion (High — mirror per the one-way rule)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: drug-vocabulary-capability
   path: mcp/servers/pharmacology/data/drug-vocabulary.json · domain/model.js (DrugVocabularySchema) · scripts/pharm-vocabulary-build.mjs · sources/pharm-data-source.js (canonicalise) · data/capability-groups.json (drug_identity)
   component_type: dataset
