@@ -26,7 +26,25 @@
  *
  *   docker run -d -p 18080:8080 -p 18081:8081 breath-ezy-cds-gateway
  *   HEYDOC_PHARM_CDS_ENDPOINT=http://localhost:18081 node test/parity-opencds-gateway.js
- *   HEYDOC_PHARM_CDS_ENDPOINT=http://localhost:18081 node test/parity-opencds-gateway.js --all
+ *   HEYDOC_PHARM_CDS_ENDPOINT=http://localhost:18081 node test/parity-opencds-gateway.js --sample
+ *
+ * ══ THE DEFAULT IS THE FULL SWEEP, AND IT DID NOT START THAT WAY ══
+ * The plan (D-D-3) argued for a sample: "451 x 8 = 3,608 HTTP calls; a harness too slow to run is a
+ * harness nobody runs." That reasoned about REQUEST COUNT and never measured WALL CLOCK.
+ *
+ *   full sweep : ~15s  ·  451/451 drugs  ·  81/81 renal rules  ·  49/49 dose-reduction-only
+ *   sample     :  ~8s  ·   43/451        ·   7/81              ·   2/49
+ *   (npm test, for scale: ~33s)
+ *
+ * The sample saved TEN SECONDS and gave up ~90% of the data SHAPES — including 47 of the 49
+ * dose-reduction-only renal rules, which is the exact shape that caused a real KM bug in B2 (63 of the
+ * 104 signed renal records carry ONLY that field; the first RenalDosingCheckKm read only the other one
+ * and would have silently PASSed most of the renal knowledge base). A sample that thin on the shape
+ * that has already bitten us is not a cost saving.
+ *
+ * So: the full sweep by default. `--sample` remains for tight iteration. This harness skips entirely
+ * in CI, so the 15s only ever lands on someone who deliberately asked — and someone who deliberately
+ * asks for a parity check wants the answer, not a tenth of it.
  */
 import { readFileSync } from "node:fs";
 import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
@@ -38,7 +56,10 @@ if (!EP) {
   console.log("parity-opencds-gateway: SKIPPED — HEYDOC_PHARM_CDS_ENDPOINT unset (no container). This proves NOTHING about parity; it means nobody asked.");
   process.exit(0);
 }
-const ALL = process.argv.includes("--all");
+// The full sweep unless told otherwise. `--all` is still accepted so an existing invocation does not
+// break, but it is now the default and the flag is a no-op.
+const SAMPLE_ONLY = process.argv.includes("--sample");
+const ALL = !SAMPLE_ONLY;
 
 const DATA = "mcp/servers/pharmacology/data/dose-guidance.json";
 const ingredients = JSON.parse(readFileSync(DATA, "utf8")).records.map((r) => r.ingredient);
@@ -90,11 +111,11 @@ for (const [profile, facts] of Object.entries(PROFILES)) {
   }
 }
 
-// COVERAGE IS PRINTED, ALWAYS. A silent sample reads as exhaustive, and this one is not: `--all` is
-// 451 ingredients × 2 profiles × 8 checks, which is why it is not the default — but the default's
-// limits must be visible rather than implied.
+// COVERAGE IS PRINTED, ALWAYS — even now the default is the full sweep. A silent run reads as
+// exhaustive whether it is or not, and `--sample` still exists: the one run that most needs its limits
+// on screen is the reduced one somebody reached for while iterating.
 console.log(`\nparity-opencds-gateway @ ${EP}`);
-console.log(`  coverage    : ${sample.length} of ${ingredients.length} ingredients${ALL ? " (--all)" : " (sample — re-run with --all for the full set)"} × ${Object.keys(PROFILES).length} fact profiles = ${compared} comparisons`);
+console.log(`  coverage    : ${sample.length} of ${ingredients.length} ingredients${ALL ? " (full sweep)" : " (--sample — THIN: ~2 of 49 dose-reduction-only renal rules. Drop the flag for the full sweep; it costs ~7s more)"} × ${Object.keys(PROFILES).length} fact profiles = ${compared} comparisons`);
 console.log(`  checks asked: all ${ALL_CHECKS.length} (never the 5 DEFAULT_CHECKS — a 5-check answer would make the ASK look like a divergence)`);
 console.log(`  agreement   : ${agreed}/${compared}`);
 console.log(`  dose        : compared on ${doseCompared} case(s) where either executor emitted one`);

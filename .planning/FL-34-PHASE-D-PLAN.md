@@ -139,8 +139,13 @@ blocker #1 stays RED.
 - **D-D-2 — is a divergence a FAILURE or a REPORT?** *Recommend **failure*** — exit non-zero. A parity
   harness that reports and passes is a log file, and nobody reads log files. It cannot say which side
   is wrong, but it can refuse to be green.
-- **D-D-3 — sample, or sweep all 451?** *Recommend **sample** (~40) by default with `--all` available.*
-  451 drugs × 8 checks = 3,608 HTTP calls per run; a harness too slow to run is a harness nobody runs.
-  The coverage is printed either way.
+- **D-D-3 — sample, or sweep all 451?** ~~*Recommend sample (~40) by default with `--all` available.*~~
+  **WRONG, and reversed 2026-07-15 after measuring.** The argument was "451 × 8 = 3,608 HTTP calls; a
+  harness too slow to run is a harness nobody runs" — which reasoned about REQUEST COUNT and never
+  measured WALL CLOCK. **Full sweep: ~15s. Sample: ~8s.** (`npm test` is ~33s.) The sample saved ten
+  seconds and gave up ~90% of the data SHAPES — 7 of 81 renal rules, **2 of 49 dose-reduction-only**,
+  1 of 6 S8, 2 of 12 hepatic. The dose-reduction-only class is the exact shape that caused the B2 KM
+  bug. **The full sweep is now the default; `--sample` opts out.** Recorded rather than edited away:
+  the cost/benefit call was made on an assumption, and the measurement inverted it.
 - **D-D-4 — env-gated like C4, or require a container?** *Recommend **env-gated***, consistent with C4
   and smoke-llm — and the same hole, named the same way.
