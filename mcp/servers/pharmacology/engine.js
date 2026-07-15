@@ -44,6 +44,38 @@ export function receipt(mode = "mock") {
 }
 
 /**
+ * Resolve a drug name to the datastore's PRIMARY (INN) identity — exported so a CALLER can settle the
+ * identity ONCE, before dispatching to more than one executor (FL-34 Phase B, B0).
+ *
+ * WHY THIS IS EXPORTED, AND WHY THE PIPELINE MUST USE IT. `runPharmCheck` canonicalises at its own
+ * boundary (E7), so the in-process engine is internally consistent. But it is not the only executor:
+ * `verification/pipeline.js` also calls `queryCds()`, and it was passing the RAW intent. Demonstrated
+ * at `9b93eb5` with a recording fake gateway:
+ *
+ *     engine canonicalises to  : furosemide     (E7 — and the OpenCDS KB is exported from those records)
+ *     gateway actually receives: "frusemide"    ← the raw intent name
+ *
+ * That is the E6 defect rebuilt one layer out: two executors, one drug, two different lookup keys. It
+ * is fail-SAFE (a gateway miss folds to BLOCKED_NO_PROOF — the fold is monotone and can only add
+ * severity) but it would make the OSS CDS path unusable for exactly the aliased names E7/E8 exist to
+ * handle, and it would make Phase D's A/B parity measure a SPELLING rather than an implementation
+ * difference — a ghost to chase under staging pressure.
+ *
+ * So: one identity, settled once, handed to every executor. Idempotent — canonicalising an
+ * already-canonical name is a no-op, so `runPharmCheck` re-canonicalising costs nothing and stays
+ * correct if a caller forgets.
+ *
+ * @returns {{ canonical: string, from: string|null, confirm?: { prompt: string, candidates: string[] } }}
+ *   `from` non-null ⇒ an alias was resolved (REPORT it). `confirm` ⇒ the system is in doubt and must
+ *   ASK; the caller must NOT rewrite the name, because we do not know which drug it is.
+ */
+export function canonicaliseDrugName(name, { source } = {}) {
+  const src = source || DEFAULT_SOURCE;
+  const n = String(name || "").toLowerCase();
+  return typeof src.canonicalise === "function" ? src.canonicalise(n) : { canonical: n, from: null };
+}
+
+/**
  * Run the deterministic safety check. Validates the intent and the produced
  * PharmCheck (never emits a malformed safety result). `resolved` carries the
  * patient facts the orchestrator would resolve from patient_facts_ref.

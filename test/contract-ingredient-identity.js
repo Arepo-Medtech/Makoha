@@ -217,6 +217,55 @@ if (existsSync(MAP_PATH)) {
   }
 }
 
+// ---- 9. B0 (FL-34 Phase B): BOTH EXECUTORS GET THE SAME IDENTITY ------------------------------
+// There are two executors on the pipeline path — the in-process engine and the CDS slot (the OpenCDS
+// gateway). The engine canonicalises at its own boundary (E7), but the pipeline was handing queryCds
+// the RAW intent. Demonstrated before the fix, with a recording fake gateway:
+//
+//     engine canonicalises to  : furosemide     (and the OpenCDS KB is exported from those records)
+//     gateway actually receives: "frusemide"    ← the raw intent name
+//
+// The E6 defect rebuilt one layer out. Fail-SAFE (a gateway miss folds to BLOCKED_NO_PROOF — the fold
+// is monotone) but it would make the OSS CDS path unusable for exactly the aliased names E7/E8 exist
+// to handle, and it would make Phase D's A/B parity measure a SPELLING rather than an implementation
+// difference. This is the assertion that stops it coming back.
+{
+  const { runPipeline } = await import("../verification/pipeline.js");
+  const prevState = process.env.HEYDOC_PHARM_CDS;
+  const prevEp = process.env.HEYDOC_PHARM_CDS_ENDPOINT;
+  process.env.HEYDOC_PHARM_CDS = "AU_OSS_CDS";
+  process.env.HEYDOC_PHARM_CDS_ENDPOINT = "https://gateway.example.test";
+
+  const seen = [];
+  const gateway = async (_url, opts) => {
+    seen.push(JSON.parse(opts.body).drug.drug_name);
+    return { ok: true, json: async () => ({ request_id: "resp-0001", engine: "opencds-dss", knowledge_module_set: "fl30-kb:v1", check_verdicts: [{ check_id: "allergy_check", status: "PASS" }], flags: [] }) };
+  };
+  const run = (drug) => runPipeline({
+    trunk: "8.0", cds_fetch: gateway,
+    pharm_intent: { intent_id: "i-b0", session_ref: "enc-b0-test", intent_type: "new_prescription", drug_intent: { drug_name: drug, drug_class: "x" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 60 }, mode: "mock" },
+    resolved_facts: { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 },
+  });
+
+  await run("frusemide");
+  expect(seen[0] === "furosemide",
+    `the GATEWAY must receive the canonical identity, not the raw name — the KB is INN-keyed, so a raw name looks up something it does not hold (got "${seen[0]}")`);
+
+  // An already-canonical name is unchanged — canonicalisation is idempotent, not a rewrite.
+  seen.length = 0;
+  await run("furosemide");
+  expect(seen[0] === "furosemide", "an already-canonical name must reach the gateway untouched");
+
+  // An UNKNOWN name is NOT rewritten — resolution adds reach, it never invents an identity. The
+  // gateway sees exactly what was asked, and the engine's fail-safe stands.
+  seen.length = 0;
+  await run("totally-made-up-drug");
+  expect(seen[0] === "totally-made-up-drug", "an unknown name must reach the gateway as written — never silently replaced");
+
+  if (prevState === undefined) delete process.env.HEYDOC_PHARM_CDS; else process.env.HEYDOC_PHARM_CDS = prevState;
+  if (prevEp === undefined) delete process.env.HEYDOC_PHARM_CDS_ENDPOINT; else process.env.HEYDOC_PHARM_CDS_ENDPOINT = prevEp;
+}
+
 if (errors.length) {
   errors.forEach((e) => console.error("FAIL:", e));
   console.error(`contract-ingredient-identity FAIL (${errors.length})`);

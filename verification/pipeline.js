@@ -15,7 +15,7 @@ import { EvidenceNodeSchema } from "./pipeline-schemas.js";
 import { omnibusDatasetReceipt } from "./omnibus.js";
 import { tagConsultFacts, sensitivityWarnings } from "./consult-tagger.js";
 import { buildEncounterHistorySummary } from "./history-summary.js";
-import { runPharmCheck } from "../mcp/servers/pharmacology/engine.js";
+import { runPharmCheck, canonicaliseDrugName } from "../mcp/servers/pharmacology/engine.js";
 import { queryCds, composeCdsVerdict } from "../mcp/servers/pharmacology/cds-adapter/index.js";
 // The evidence plane is imported HERE (the portal/audit channel), never by engine.js — that is what
 // keeps international_dose_guidance structurally isolated from the AU dose path.
@@ -170,7 +170,28 @@ export async function runPipeline(options = {}) {
   let hard_stops = [];
   let hardStopReceipt;
   if (options.pharm_intent) {
-    const pc = runPharmCheck(options.pharm_intent, options.resolved_facts || {});
+    // B0 (FL-34 Phase B) — SETTLE THE DRUG'S IDENTITY ONCE, HERE, BEFORE ANY EXECUTOR RUNS.
+    //
+    // There are TWO executors on this path: the in-process engine (runPharmCheck) and the CDS slot
+    // (queryCds → the OpenCDS gateway). The engine canonicalises at its own boundary (E7), but this
+    // block was handing queryCds the RAW intent. Demonstrated with a recording fake gateway:
+    // the engine checked `furosemide` while the gateway was sent `"frusemide"` — and the KB Phase B
+    // exports is keyed on the datastore's INN names, so the gateway would look up a name it does not
+    // hold. That is the E6 defect rebuilt one layer out.
+    //
+    // Fail-SAFE but not harmless: a gateway miss folds to BLOCKED_NO_PROOF (the fold is monotone), so
+    // nothing unsafe ships — but every aliased name would block, and Phase D's A/B parity would read
+    // a naming artifact as an implementation divergence.
+    //
+    // A `confirm` is NOT rewritten: we do not know which drug it is, so neither executor may be told.
+    // The engine asks the question and blocks; the gateway gets the name as written and misses, which
+    // folds to the same block. Consistent, and honest.
+    const _ident = canonicaliseDrugName(options.pharm_intent.drug_intent?.drug_name);
+    const pharmIntent = _ident.from
+      ? { ...options.pharm_intent, drug_intent: { ...options.pharm_intent.drug_intent, drug_name: _ident.canonical } }
+      : options.pharm_intent;
+
+    const pc = runPharmCheck(pharmIntent, options.resolved_facts || {});
     firewall_status = pc.status;
     receipts.push({ kind: "live_data", request_id: pc.receipt.request_id, upstream: pc.receipt.upstream, mode: pc.receipt.mode, receipt: pc.receipt });
 
@@ -195,7 +216,8 @@ export async function runPipeline(options = {}) {
     let cdsEvidence = null;
     const providerSelected = ["FILLED", "AU_OSS_CDS"].includes(pharmCdsState(process.env));
     if (providerSelected || context_mode === "live") {
-      const cds = await queryCds(options.pharm_intent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch });
+      // The SAME canonical identity the engine just checked — never the raw name (B0).
+      const cds = await queryCds(pharmIntent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch });
       const folded = composeCdsVerdict(firewall_status, cds);
       firewall_status = folded.status;
       cdsReasons = folded.blocking_reasons || [];
@@ -215,9 +237,9 @@ export async function runPipeline(options = {}) {
     // firewall_status and age GATE the dose text: SHOW-EVIDENCE-PRINCIPLE §1.1 — "'Show the clinician
     // everything' never becomes 'show a dose the firewall blocked'. No override, no exception." Past a
     // block the plane returns an account of what is WITHHELD and why, never the dose itself.
-    dose_evidence = assembleDoseEvidence(options.pharm_intent.drug_intent?.drug_name, {
+    dose_evidence = assembleDoseEvidence(pharmIntent.drug_intent?.drug_name, {
       firewallStatus: firewall_status,
-      ageYears: options.pharm_intent.clinical_context?.patient_age_years ?? null,
+      ageYears: pharmIntent.clinical_context?.patient_age_years ?? null,
       cdsDoseCandidate: cdsEvidence?.dose_candidate ?? null,
       cdsProvider: cdsEvidence?.provider ?? null,
       cdsKmSet: cdsEvidence?.km_set ?? null,
