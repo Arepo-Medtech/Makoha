@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: blind-commit-anchor-firewall
+  path: verification/pipeline.js (contextInjection — M1 guard) · test/contract-blind-commit.js · mcp/schemas/context-packet.schema.json (facts[].category enum)
+  component_type: verifier
+  state: COMPLETE
+  evidence: **BUILT 2026-07-15 (M1).** Trunks 1.0–5.0 may never see a clinician's leading hypothesis: anchoring + positional bias + sycophancy COMPOUND in a language model, and a differential produced after the human has spoken is not a second opinion — it is an amplifier of whoever spoke first. 6.0–9.0 deliberately MAY see it (the independent view exists by then; comparison is the point). **The design doc's proposed mechanism was WRONG and research corrected it:** `context-allowlist.js` is already default-deny and TRUNK-AGNOSTIC — it filters case content (00/01/02), so there was no DENY set to add to and no trunk scoping to add it to. **The property already held BY CONSTRUCTION:** nothing produces a `clinical_assessment` fact (the only reference is a CONSUMER's priority map in models/jamba/assembler.js), `user_input` never reaches the packet (`routing(_userInput, trunk)` ignores it), and the ContextPacket is additionalProperties:false with no hypothesis field. **But it held by ACCIDENT** — `clinical_assessment` is a valid category in the packet's own enum, so the day someone adds "the clinician's working dx" (plausible: it is genuinely useful for 6.0–9.0), 1.0–5.0 would inherit the anchor and nothing would say a word.
+  blocks: nothing — additive
+  safety_class: degrades_safe (it THROWS; it can only refuse, never admit)
+  invariant_exposure: none directly. It protects the ONE structural protection this design has — uncorrelated bias between the human and the model. A design that lets the clinician's anchor propagate into the model, and the model's sycophancy back into the clinician, has engineered the correlation it should have been built to break.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE.** The guard THROWS (following context-allowlist's scoring-store precedent: "a firewall-breach attempt must halt packet assembly loudly, never degrade to a dropped field" — silently dropping the anchor would leave the caller believing it was delivered), is trunk-scoped to 1.0–5.0, and its message names WHERE the assessment belongs instead (6.0–9.0). `contextInjection` exported + a `_test_facts` seam added, because the guard is unreachable through the public surface and **a guard that can only be checked by grepping its own source is not tested**. Tamper-proven BEHAVIOURALLY both ways: making 5.0 sighted FAILS; neutering the throw FAILS. **This turned an accident into a guarantee — the same shape as R1.**
+  gap_register_link: none (Medium)
+  status: resolved
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: trunk-constraint-claims-unenforced
   path: trunk/prompts/trunk-{1..9}.0-system.md · docs/grounding/trunk-constraints.md · .claude/trunk-cheatsheets/*.md · verification/integrity-detectors/detectors.js
   component_type: trunk-prompt

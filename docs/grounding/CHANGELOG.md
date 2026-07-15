@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## M1 — the blind commit: an accident becomes a guarantee (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 68 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged vs `9b93eb5` — **no schema field, no verifier check added**.
+
+**The property.** Trunks 1.0–5.0 must form an *independent* view and may never see a clinician's leading hypothesis. Anchoring, positional bias and sycophancy do not merely coexist in a language model — they **compound**. A differential produced after the human has spoken is not a second opinion; it is an amplifier of whoever spoke first. 6.0–9.0 deliberately **may** see it: by then the independent view exists and comparison is the entire point.
+
+**The design's mechanism was wrong, and research corrected it.** `TRUNK-RISK-MODEL.md` §4 said "add `clinician_hypothesis` to the context-allowlist DENY set for T1–T5". But `context-allowlist.js` is already **default-deny** and **trunk-agnostic** — it filters case content (00/01/02 nodes). There was no DENY set to add to, and no trunk scoping to add it to.
+
+**And the property already held — by construction.** Nothing produces a `clinical_assessment` fact (the sole reference is a *consumer's* priority-ordering map in `models/jamba/assembler.js`); `user_input` never reaches the packet (`routing(_userInput, trunk)` ignores it — the leading underscore is the contract); the ContextPacket is `additionalProperties:false` with no hypothesis field.
+
+**But it held by ACCIDENT.** `clinical_assessment` is a valid category in the packet's own enum. The day someone adds "the clinician's working dx" — plausible, since it is genuinely useful for 6.0–9.0 — trunks 1.0–5.0 would inherit the anchor and **nothing would say a word**. That is exactly how a property stops holding in silence, and it is the same shape as R1.
+
+**So M1 is not a new wall — it turns the accident into a guarantee.** The guard **throws**, following `context-allowlist`'s scoring-store precedent (*"a firewall-breach attempt must halt packet assembly loudly, never degrade to a dropped field"*): silently dropping the anchor would leave the caller believing it was delivered. Its message names where the assessment belongs instead.
+
+**A guard that can only be checked by grepping its own source is not tested.** The guard is unreachable through the public surface precisely because nothing produces the fact — so `contextInjection` is exported and a `_test_facts` seam added, and the suite drives the real assembler. Tamper-proven **behaviourally**, both ways: making 5.0 sighted FAILS; neutering the throw FAILS.
+
+**Remains:** M2 (descent guard — T5's output as an EvidenceNode + a `downstream_independence` check, breaking the model→clinician half), M3 (positional stability), M4 (register separation).
+
 ## R1+R2 — the trunks stop claiming a wall they do not have, and gain a purpose (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 67 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0, **unaffected** — the proof this is a text change) + `pharm:seals` 25/25. Frozen contracts byte-unchanged vs `9b93eb5`. **No verifier check added, removed or altered.**

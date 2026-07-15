@@ -70,7 +70,10 @@ function retrievalStub(plan) {
  *   - static_doc citations are NOT receipts; they are represented as EvidenceNode
  *     supports (kind "static_doc", ref = citation_id).
  */
-function contextInjection(plan, receipts, meta = {}) {
+/** Exported for the M1 contract test: the blind-commit guard is unreachable through the public
+ *  surface (nothing produces a clinical_assessment fact today), so the suite must drive the assembler
+ *  directly. A guard that can only be tested by grepping its own source is not tested. */
+export function contextInjection(plan, receipts, meta = {}) {
   const now = new Date().toISOString();
   const mode = meta.mode || "mock";
 
@@ -100,6 +103,10 @@ function contextInjection(plan, receipts, meta = {}) {
   // number) lab_result fact reaches the trunk. There is no live lab source yet
   // (fhir-broker unbuilt); callers/tests supply raw_investigations.
   const facts = (meta.raw_investigations || []).map((raw) => sanitiseInvestigation(raw).fact);
+  // Test seam ONLY (contract-blind-commit): lets the M1 guard be driven with a fact no producer emits
+  // today. Never set on any real path — the guard would be untestable otherwise, and an untested
+  // firewall is a comment.
+  if (Array.isArray(meta._test_facts)) facts.push(...meta._test_facts);
 
   // Case content is DEFAULT-DENY firewalled (C7/F9): any case-derived content a
   // caller supplies goes through the field-scoped allow-list mirroring the
@@ -108,6 +115,43 @@ function contextInjection(plan, receipts, meta = {}) {
   // sim/scorer metadata and simulator dialogue material never enter the packet.
   if (meta.case_content) {
     facts.push(...injectableFacts(contextAllowList(meta.case_content)));
+  }
+
+  // ── M1 — THE BLIND COMMIT (the anchor firewall) ────────────────────────────────────────────────
+  // The trunks that must form an INDEPENDENT view (1.0–5.0) may never see a clinician's leading
+  // hypothesis. This is the one structural protection this design has, and it is fragile:
+  //
+  //   "the two systems are most useful when their biases are UNCORRELATED, and most dangerous when
+  //    the design allows their biases to align. A human-in-the-loop system that lets the clinician's
+  //    anchor propagate into the model, and the model's sycophancy back into the clinician, has
+  //    engineered the correlation it should have been built to break."  (operator, 2026-07-15)
+  //
+  // Anchoring + positional bias + sycophancy do not merely coexist here — they COMPOUND. A model that
+  // sees the anchor first will tend to confirm it, and a differential produced after the human has
+  // spoken is worth close to nothing as a second opinion. So 1.0–5.0 commit BLIND; 6.0–9.0 may see it,
+  // because by then the independent view already exists and comparison is the point.
+  //
+  // WHY THIS IS A GUARD AND NOT A DENY-LIST ENTRY: today NOTHING produces a `clinical_assessment`
+  // fact, so the blind commit already holds — BY CONSTRUCTION, not by design. That is exactly how a
+  // property stops holding in silence: `clinical_assessment` is a valid category, so the day someone
+  // adds "the clinician's working dx" to the packet (plausible — it is genuinely useful for 6.0–9.0),
+  // 1.0–5.0 would inherit the anchor and nothing would say a word. This makes the accident a rule.
+  //
+  // IT THROWS, following the scoring-store precedent in context-allowlist.js: "a firewall-breach
+  // attempt must halt packet assembly loudly, never degrade to a dropped field." Silently dropping the
+  // anchor would leave the caller believing it was delivered.
+  const BLIND_TRUNKS = ["1.0", "2.0", "3.0", "4.0", "5.0"];
+  if (BLIND_TRUNKS.includes(String(meta.trunk_id))) {
+    const anchor = facts.find((f) => f && f.category === "clinical_assessment");
+    if (anchor) {
+      throw new Error(
+        `M1 blind-commit firewall: a 'clinical_assessment' fact ("${anchor.label}") was injected for trunk ${meta.trunk_id}. ` +
+        `Trunks 1.0–5.0 must form an INDEPENDENT view and may never see a clinician's leading hypothesis — anchoring, ` +
+        `positional bias and sycophancy compound, and a differential produced after the human has spoken is worth ` +
+        `almost nothing as a second opinion. Route the assessment to 6.0–9.0, which may see it once the independent ` +
+        `view exists.`,
+      );
+    }
   }
 
   return {
