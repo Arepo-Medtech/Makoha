@@ -48,10 +48,14 @@ const provenance = {
 };
 
 /** A minimal VALID record: clinician-entered APF22 fact, AMASS-agreed. */
+const SRC = "500 mg every 8 hours";
 const base = () => ({
   ingredient: "amoxicillin",
-  context: "adult, respiratory tract infection",
-  safe_dose_range: "500 mg every 8 hours",
+  context: "adult — APF22 Section D common dosage range",
+  source_statement: SRC,
+  indication_status: "absent",
+  dose_lines: [{ indication: null, route: null, statement: SRC, basis: "flat_mg", plausibility: "plausible" }],
+  safe_dose_range: SRC,
   origin: {
     channel: "clinician_apf_attestation",
     reference: "apf22",
@@ -139,6 +143,37 @@ rejects({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-
 
 // ---- 5. envelope discipline ----------------------------------------------------------------
 rejects({ ...base(), safe_dose_range: undefined }, "required", "a record without a dose is not a dose record");
+
+// ---- 7. THE SUBSTRING BAR (C2b) — the segmenter may CUT, never WRITE ------------------------
+// The one mechanical rule that binds the MACHINE rather than the clinician. It is the inverse of
+// the bars removed from this schema: it does not bin a dose or demand justification for one — it
+// guarantees everything SHOWN traces to something the clinician actually wrote.
+const MULTI = "Ulcerative colitis: 2–4 g daily. Rheumatoid arthritis: Initially 500 mg daily.";
+const multi = () => ({ ...base(), source_statement: MULTI, safe_dose_range: MULTI, indication_status: "present",
+  dose_lines: [
+    { indication: "Ulcerative colitis", route: null, statement: "2–4 g daily.", basis: "flat_mg", plausibility: "plausible" },
+    { indication: "Rheumatoid arthritis", route: null, statement: "Initially 500 mg daily.", basis: "flat_mg", plausibility: "plausible" },
+  ] });
+ok(multi(), "a multi-indication record with verbatim-substring lines parses");
+rejects({ ...multi(), dose_lines: [{ indication: "Ulcerative colitis", route: null, statement: "2-4 grams daily", basis: "flat_mg", plausibility: "plausible" }] },
+  "VERBATIM SUBSTRING", "a PARAPHRASED dose line must be rejected — the segmenter may not rewrite the clinician's words");
+rejects({ ...multi(), dose_lines: [{ indication: "Crohn disease", route: null, statement: "2–4 g daily.", basis: "flat_mg", plausibility: "plausible" }] },
+  "indication must be a VERBATIM SUBSTRING", "an INVENTED indication must be rejected — an indication the clinician did not write cannot be attached to their dose");
+rejects({ ...base(), safe_dose_range: "500 mg q8h" }, "must BE source_statement verbatim",
+  "safe_dose_range must equal source_statement — the engine emits the whole range and selects nothing (getDoseGuidance is indication-blind, so picking a line risks the wrong indication's dose)");
+rejects({ ...base(), indication_status: "present" }, "no dose line names an indication", '"present" with no indication-bearing line is rejected');
+rejects({ ...multi(), indication_status: "absent" }, "contradicts", '"absent" contradicting an indication-bearing line is rejected');
+rejects({ ...base(), dose_lines: [] }, "at least 1", "a record must carry at least one dose line — showing nothing is not an option");
+
+// A "mixed"-basis line is FIRST-CLASS: phenytoin carries both 4–5 mg/kg and a flat 200–500 mg, and
+// reporting both is the point. The old rule saw "/kg" and discarded the flat mg — hiding the very
+// numbers a misplaced zero lands on.
+const PHEN = "Anticonvulsant: Oral, initially 4–5 mg/kg daily. Usual maintenance dose 200–500 mg daily.";
+ok({ ...base(), source_statement: PHEN, safe_dose_range: PHEN, indication_status: "present",
+  dose_lines: [{ indication: "Anticonvulsant", route: "Oral", statement: "Oral, initially 4–5 mg/kg daily. Usual maintenance dose 200–500 mg daily.", basis: "mixed", plausibility: "plausible" }] },
+  "a MIXED-basis line (mg/kg AND flat mg) parses — both dosing methods are shown, neither hidden");
+ok({ ...base(), dose_lines: [{ indication: null, route: null, statement: SRC, basis: "flat_mg", plausibility: "unassessable", plausibility_note: "no comparator" }] },
+  "an unassessable line still SHIPS — the dose is shown, the absence of a plausibility claim is stated");
 rejects({ ...base(), provenance: undefined }, "required", "Guardrail 5 — an anonymous dose fact cannot sit in the store");
 rejects({ ...base(), amass_says: "500 mg" }, "Unrecognized", "strict(): an unknown key must not ride along");
 

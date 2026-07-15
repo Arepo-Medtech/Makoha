@@ -487,6 +487,32 @@ export const DoseGuidanceSchema = z
   .object({
     ingredient: z.string().min(2),
     context: z.string().min(3), // the indication / population this range applies to
+    // ---- the SHOW-EVIDENCE block (operator principle 2026-07-15) ----
+    // source_statement is THE AUTHORITY: the clinician's APF text, unaltered. Everything else in
+    // this block is a SEGMENTATION of it, and the superRefine below proves that mechanically.
+    // The engine never selects among dose_lines (safe_dose_range stays the whole statement) — they
+    // exist to be SHOWN. That is what makes segmenting a clinician's text safe here: if the engine
+    // PICKED a line, a segmentation error would be invisible and acted on; because the clinician
+    // SEES every line beside the verbatim source, an error is visible and recoverable.
+    source_statement: z.string().min(3),
+    indication_status: z.enum(["present", "absent"]), // "absent" is a fact to STATE, never a reason to withhold
+    dose_lines: z
+      .array(
+        z
+          .object({
+            indication: z.string().nullable(), // null ⇒ this line carries no indication
+            route: z.string().nullable().optional(),
+            statement: z.string().min(1), // MUST be a verbatim substring of source_statement
+            // A statement can legitimately be "mixed" — e.g. phenytoin carries BOTH 4–5 mg/kg and a
+            // flat 200–500 mg. Reporting both is the point: the old rule saw "/kg" and discarded the
+            // flat mg, hiding the very numbers a misplaced zero lands on.
+            basis: z.enum(["flat_mg", "weight_based", "mixed", "none"]),
+            plausibility: z.enum(["plausible", "implausible", "unassessable"]),
+            plausibility_note: z.string().optional(),
+          })
+          .strict()
+      )
+      .min(1),
     // ---- the FROZEN pharm-check.dose_guidance keys (byte-parity with the frozen contract) ----
     safe_dose_range: z.string().min(3), // THE NUMBER — clinician- or PI-supplied, never agent-authored
     adjustment_required: z.boolean().optional(),
@@ -535,6 +561,30 @@ export const DoseGuidanceSchema = z
   })
   .strict()
   .superRefine((r, ctx) => {
+    // ---- THE SUBSTRING BAR — the one mechanical rule that binds the MACHINE, not the clinician ----
+    // Every shown fragment must appear VERBATIM in the clinician's statement. The segmenter can CUT,
+    // never WRITE: a fabricated or paraphrased dose line fails to parse. This is the inverse of the
+    // bars removed from this schema — it does not bin a clinician's dose or demand they justify it;
+    // it guarantees everything SHOWN traces to something the clinician actually wrote.
+    if (r.safe_dose_range !== r.source_statement) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["safe_dose_range"], message: "safe_dose_range must BE source_statement verbatim — the engine emits the whole common range and selects nothing (it cannot: getDoseGuidance() is indication-blind, so picking a line would risk emitting the wrong indication's dose)" });
+    }
+    for (const [i, l] of (r.dose_lines || []).entries()) {
+      if (!r.source_statement.includes(l.statement)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dose_lines", i, "statement"], message: "dose line must be a VERBATIM SUBSTRING of source_statement — the segmenter may cut, never write. A paraphrased or invented dose line is unrepresentable." });
+      }
+      if (l.indication !== null && !r.source_statement.includes(l.indication)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dose_lines", i, "indication"], message: "indication must be a VERBATIM SUBSTRING of source_statement — an indication the clinician did not write cannot be attached to their dose" });
+      }
+    }
+    const anyIndication = (r.dose_lines || []).some((l) => l.indication !== null);
+    if (r.indication_status === "absent" && anyIndication) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["indication_status"], message: '"absent" contradicts a dose line that names an indication' });
+    }
+    if (r.indication_status === "present" && !anyIndication) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["indication_status"], message: '"present" but no dose line names an indication' });
+    }
+
     const o = r.origin;
     if (o.channel === "clinician_apf_attestation") {
       // The APF path is a CLINICIAN act on a specific attested source. Both halves are pinned:
