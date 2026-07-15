@@ -153,29 +153,67 @@ if (existsSync(MAP_PATH)) {
   });
   const facts = { allergens: ["paracetamol"], current_medications: ["digoxin", "lithium"], s8_pdmp_checked: true, egfr_ml_min: 90 };
 
-  if (existsSync(MAP_PATH)) {
-    // The six known splits must NOT emit a dose behind an inert check.
-    for (const d of ["frusemide", "chlorthalidone", "eformoterol", "cholecalciferol", "beclomethasone", "hexamine hippurate"]) {
-      const pc = runPharmCheck(intent(d), facts);
-      expect(pc.status !== "PASS" && pc.status !== "WARN",
-        `${d}: a dose must NEVER emit while its safety data sits under a different spelling — got ${pc.status}`);
-      expect(!pc.dose_guidance,
-        `${d}: no dose may be emitted when the interaction/NTI checks looked up the wrong string`);
-      expect(pc.next_data_requests.some((r) => /identity unreconciled/i.test(r)),
-        `${d}: the block must EXPLAIN itself and name the sibling — a silent block is its own failure`);
+  // E7 (operator ruling) fixed this AT THE ROOT rather than leaving it guarded: the INN name is now
+  // the primary identity and the old spelling is a recorded alias, canonicalised ONCE at the engine
+  // boundary. So the expected behaviour changed — the splits no longer BLOCK, they RESOLVE. The
+  // INVARIANT did not change, and this is now the sharper way to state it:
+  //
+  //     A MISNOMER MUST NOT CHANGE THE ANSWER.
+  //
+  // If two names for one drug ever produce different statuses or different flags again, something is
+  // split — whatever the mechanism. That is a stronger assertion than "the six known splits block",
+  // and it catches splits nobody has thought of yet.
+  const PAIRS = [
+    ["frusemide", "furosemide"], ["chlorthalidone", "chlortalidone"], ["eformoterol", "formoterol"],
+    ["cholecalciferol", "colecalciferol"], ["beclomethasone", "beclometasone"],
+    ["hexamine hippurate", "methenamine hippurate"], ["thyroxine", "levothyroxine"],
+  ];
+  for (const [alias, primary] of PAIRS) {
+    const a = runPharmCheck(intent(alias), facts);
+    const p = runPharmCheck(intent(primary), facts);
+    expect(a.status === p.status,
+      `'${alias}' and '${primary}' are one drug — a misnomer must NOT change the answer (got ${a.status} vs ${p.status})`);
+    expect(JSON.stringify(a.flags.map((f) => f.flag_type).sort()) === JSON.stringify(p.flags.map((f) => f.flag_type).sort()),
+      `'${alias}' and '${primary}' must raise the SAME flags — a link lost to a misnomer is the E1 defect`);
+    expect(!!a.dose_guidance === !!p.dose_guidance,
+      `'${alias}' and '${primary}' must agree on whether a dose exists`);
+    if (a.status !== p.status) continue;
+    // The resolution must be REPORTED — a silent identity change is its own failure.
+    expect(a.next_data_requests.some((r) => /identity resolved/i.test(r)),
+      `'${alias}': the identity resolution must be REPORTED, never silent`);
+  }
+
+  // THE E1 REGRESSION ITSELF: frusemide + digoxin/lithium once returned PASS with a dose and
+  // interaction_check PASS. It must HARD_FAIL on the real interaction, under EITHER spelling.
+  for (const d of ["frusemide", "furosemide"]) {
+    const pc = runPharmCheck(intent(d), facts);
+    expect(pc.status === "HARD_FAIL", `${d} + digoxin/lithium must HARD_FAIL on the real interaction — got ${pc.status}`);
+    expect(pc.flags.some((f) => f.flag_type === "interaction_severe"), `${d}: the severe interaction must be flagged`);
+    expect(!pc.dose_guidance, `${d}: no dose on a HARD_FAIL`);
+  }
+
+  // And the change must be NARROW: an unaffected drug still emits its clinician-signed dose. An
+  // over-broad block is its own failure — it would bin signed content behind a naming concern.
+  const ok = runPharmCheck({ ...intent("amoxicillin"), clinical_context: { patient_age_years: 45 } },
+    { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 });
+  expect(ok.status === "PASS" && !!ok.dose_guidance, "an unaffected drug must still emit its signed dose");
+
+  // AN UNKNOWN NAME STILL FAILS SAFE — canonicalisation adds reach, it never invents an identity.
+  const unknown = runPharmCheck(intent("totally-made-up-drug"), facts);
+  expect(unknown.status === "BLOCKED_NO_PROOF", "an unknown name must still BLOCK — resolution never invents a drug");
+
+  // THE JURISDICTION GUARD, on the real data: no US-only name may have entered. RxNorm's canonical
+  // for paracetamol is "acetaminophen"; had the reconcile taken rxnorm_name as "the INN" it would
+  // have Americanised an Australian clinical system. The reconcile may only pick names the datastore
+  // already held, so this must hold forever.
+  {
+    const dose = JSON.parse(readFileSync("mcp/servers/pharmacology/data/dose-guidance.json", "utf8")).records;
+    const names = new Set(dose.map((r) => String(r.ingredient).toLowerCase()));
+    for (const au of ["paracetamol", "salbutamol", "adrenaline"]) {
+      const us = { paracetamol: "acetaminophen", salbutamol: "albuterol", adrenaline: "epinephrine" }[au];
+      expect(!names.has(us), `'${us}' must NEVER appear — RxNorm's canonical is the USAN, not the INN; an AU system must not be Americanised by a "standardisation"`);
     }
-
-    // The INN spelling still finds the real interaction — the fix must not have masked it.
-    const inn = runPharmCheck(intent("furosemide"), facts);
-    expect(inn.status === "HARD_FAIL", "furosemide + digoxin/lithium must still HARD_FAIL on the real interaction");
-    expect(inn.flags.some((f) => f.flag_type === "interaction_severe"), "the severe interaction must still be flagged");
-
-    // AND the fix must be NARROW: the other 445 doses must still flow. An over-broad block is its
-    // own failure mode — it would bin the clinician's signed content behind a naming concern.
-    const ok = runPharmCheck({ ...intent("amoxicillin"), clinical_context: { patient_age_years: 45 } },
-      { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 });
-    expect(ok.status === "PASS" && !!ok.dose_guidance,
-      "an unaffected drug must still emit its clinician-signed dose — the guard must be narrow, not a blanket");
+    expect(names.has("paracetamol"), "paracetamol must survive the reconcile untouched");
   }
 }
 

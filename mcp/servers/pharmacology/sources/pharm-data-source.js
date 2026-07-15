@@ -114,6 +114,66 @@ export class SyntheticSelfDevelopedSource extends PharmDataSource {
       : `heydoc-pharm-synthetic-mock:${this._mock.dataset_version}`;
   }
   _records(key) { const d = this._store[key]; return d && Array.isArray(d.records) ? d.records : []; }
+
+  /**
+   * Resolve a drug name to the datastore's PRIMARY (INN) identity, via the `also_known_as` aliases
+   * the E7 reconcile recorded on the records themselves.
+   *
+   * OPERATOR RULING 2026-07-15: *"re-author all listings so the INN name is the primary identity so
+   * links to the capabilities or medication related content are never lost or not linked based on a
+   * misnomer."* E7 made the INN primary; this is the second half — the old name must still LINK.
+   * `frusemide` is still what a great many Australian prescribers write, and it must not fall off a
+   * cliff because the datastore harmonised to `furosemide`.
+   *
+   * ══ WHY THIS LIVES AT THE BOUNDARY AND NOT IN THE ACCESSORS ══
+   * Resolving aliases inside `getDoseGuidance()` alone would RECREATE the exact defect E6 found: the
+   * dose lookup would resolve `frusemide` → the furosemide record and emit a dose, while
+   * `getInteractions("frusemide")` still missed and its check silently passed. A dose with inert
+   * checks — the same unsafe pass, rebuilt by a well-meaning convenience. So the engine canonicalises
+   * ONCE, at entry, and every one of the eight accessors then sees the same identity. Consistency is
+   * the safety property here; a partial resolution is worse than none.
+   *
+   * ══ WHY THIS IS SAFE WHERE STEERING ON THE RxNORM MAP IS NOT ══
+   * The aliases are NOT an outside claim. They are names THIS DATASTORE ALREADY USED for that drug —
+   * we held a dose under `frusemide`, so treating `frusemide` as furosemide preserves an identity we
+   * already asserted rather than importing a new one. The RxNorm map is what let us SEE the two names
+   * were one concept; PBS (the AU authority) chose which is primary; and the choice is recorded, with
+   * its RxCUI and basis, in each dataset's `attestation.rename_history` and each record's
+   * `attested_as`. Nothing here consults the unsigned map at runtime.
+   *
+   * Exact match only, never fuzzy. An unknown name resolves to itself and the caller's fail-safe
+   * (BLOCKED_NO_PROOF) stands.
+   *
+   * @returns {{ canonical: string, from: string|null }} `from` is non-null ONLY when an alias was
+   *   applied, so the caller can REPORT it. A silent identity change is exactly what this subsystem
+   *   must never do.
+   */
+  canonicalise(drug) {
+    const n = String(drug || "").trim().toLowerCase();
+    if (!n) return { canonical: n, from: null };
+    if (!this._aliasIndex) {
+      // Built once from the datastore's own records. Later capabilities win nothing: an alias that
+      // pointed at two different primaries would be ambiguous, so it is DROPPED rather than guessed.
+      const idx = new Map(); const ambiguous = new Set();
+      for (const key of Object.keys(this._store || {})) {
+        for (const r of this._records(key)) {
+          const primary = r.ingredient ?? r.subject;
+          if (typeof primary !== "string") continue;
+          for (const aka of r.also_known_as || []) {
+            const a = String(aka).toLowerCase();
+            const p = primary.toLowerCase();
+            if (a === p) continue;
+            if (idx.has(a) && idx.get(a) !== p) ambiguous.add(a);
+            idx.set(a, p);
+          }
+        }
+      }
+      for (const a of ambiguous) idx.delete(a); // ambiguity is refused, never resolved by choosing
+      this._aliasIndex = idx;
+    }
+    const hit = this._aliasIndex.get(n);
+    return hit ? { canonical: hit, from: n } : { canonical: n, from: null };
+  }
   getAllergyGroup(drug) {
     const n = String(drug || "").toLowerCase();
     const store = this._records("allergy");

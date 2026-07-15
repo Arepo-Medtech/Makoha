@@ -4,6 +4,49 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## E7 — the INN name is the primary identity (operator ruling) (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Nothing patient-facing.
+
+**Operator ruling:** *"re-author all listings so the INN name is the primary identity so links to the capabilities or medication related content are never lost or not linked based on a misnomer."*
+
+### The trap in the ruling, and the guard that defuses it
+
+**RxNorm's canonical name is the USAN, not the INN.** Taking `rxnorm_name` as "the INN" would have renamed, across an *Australian* clinical system:
+
+```
+paracetamol → acetaminophen    salbutamol → albuterol    adrenaline → epinephrine
+```
+
+(verified: RxNorm canonical for rxcui 161 is `acetaminophen`, 435 is `albuterol`, 3992 is `epinephrine`.) That is the jurisdiction inversion this repo exists to prevent — a US ontology overwriting AU clinical vocabulary — done in the name of "standardising", and **invisible in the collision report**, because the US spelling never appears in our data so nothing would have flagged it.
+
+The guard is structural, not a rule to remember: **the primary may only ever be a name the datastore already holds.** No new string is introduced, so an RxNorm-only US name cannot enter. **PBS — the Australian Government's own formulary — is the authority**, and across all 19 collision groups PBS *is* the INN; in **9 of them it disagrees with RxNorm's canonical**, which is exactly the trap. Ambiguity **refuses**: `sodium chloride ≡ sodium chloride solution` (PBS holds both) was left alone rather than guessed.
+
+### What changed
+
+**18 renames** across 6 datasets (13 orthographic, 5 substantive). Not renamed: `pbs-formulary.json` and `formulations.json` — they are **mirrors** of external sources, and rewriting a mirror makes it a forgery of its upstream.
+
+**The clinician's word is not lost.** KL attested `frusemide`; the record is now `furosemide` with `also_known_as: ["frusemide"]` and `attested_as: "frusemide"`. The dose TEXT — the thing he signed — is byte-unchanged, so his attestation stands on what he reviewed. The rename is a datastore *identity* decision, recorded in each dataset's `attestation.rename_history[]` with its RxCUI and authority.
+
+**The old name still LINKS** — the second half of the ruling. `canonicalise()` resolves an alias to the primary, **once, at the engine boundary**. That placement is the safety property: resolving aliases inside `getDoseGuidance()` alone would have rebuilt the E6 defect exactly — a dose found under the alias while the interaction check still missed and silently passed. All eight accessors now key on one identity. The resolution is **reported**, never silent. The aliases are not an outside claim: they are names *this datastore already used* for that drug, so nothing consults the unsigned RxNorm map at runtime.
+
+### The result
+
+```
+frusemide      HARD_FAIL  interaction_severe   ← was: PASS + dose + interaction PASS
+furosemide     HARD_FAIL  interaction_severe
+eformoterol    PASS  dose YES                  ← was: dose orphaned under the old name
+formoterol     PASS  dose YES                  ← was: no dose at all
+```
+
+Both spellings now behave identically. **The E1 regression is fixed at the root, not merely guarded** — all 6 splits reconciled; `doseIdentitySplit()` remains as belt-and-braces and should never fire again.
+
+**The test was reframed, not weakened.** It previously asserted "the six known splits BLOCK"; E7 made them resolve. The invariant is now stated more sharply — **a misnomer must not change the answer**: two names for one drug must produce the same status, the same flags, and agree on whether a dose exists. That catches splits nobody has thought of yet, and it pins the jurisdiction guard (`acetaminophen` must never appear; `paracetamol` must survive).
+
+**Register moves.** `dose-identity-split-unsafe-pass` → root-fixed (guard retained). New `inn-primary-identity` reconcile + `--refresh-held-in` (recomputes `held_in` with no RxNorm call — a stale map is worse than none, since the guard reads it). **Remaining for the clinician:** 5 SUBSTANTIVE renames are different words RxNorm treats as one concept and PBS authorises — `certolizumab → certolizumab pegol`, `erythropoietin → epoetin alfa`, `hydroxyurea → hydroxycarbamide`, `thyroxine → levothyroxine`, `hexamine hippurate → methenamine hippurate`. These are clinical identity claims, not spellings, and want KL's eye.
+
+---
+
 ## E6 — the identity map, and the E1 regression it found (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Dataset `-dev`, receipts `mock`, nothing patient-facing.

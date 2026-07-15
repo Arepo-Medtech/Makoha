@@ -52,7 +52,15 @@ export function receipt(mode = "mock") {
 export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   const intent = validatePharmIntent(intentInput);
   const src_ = source || DEFAULT_SOURCE; // reference-knowledge source (seam)
-  const drug = String(intent.drug_intent.drug_name || "").toLowerCase();
+  // Canonicalise the drug's identity ONCE, here, before any accessor runs (E7; operator ruling: the
+  // INN name is the primary identity so a link is never lost to a misnomer). Every one of the eight
+  // accessors then keys on the SAME identity — which is the safety property. Resolving aliases inside
+  // a single accessor would rebuild the E6 defect exactly: a dose found under the alias while the
+  // interaction check still missed and silently passed. Exact match on the datastore's own
+  // `also_known_as`; an unknown name resolves to itself and the fail-safe stands.
+  const _named = String(intent.drug_intent.drug_name || "").toLowerCase();
+  const _canon = typeof src_.canonicalise === "function" ? src_.canonicalise(_named) : { canonical: _named, from: null };
+  const drug = _canon.canonical;
   const age = intent.clinical_context && intent.clinical_context.patient_age_years;
   const src = [src_.datasetVersion()];
   const checks = [];
@@ -223,6 +231,17 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   } else {
     addCheck("age_appropriateness_check", "NOT_RUN", undefined, "patient age not provided — cannot confirm the patient is not paediatric", ["patient_age_years"]);
     nextData.push("Provide patient age (no remote paediatric dosing).");
+  }
+
+  // REPORT the identity resolution. An identity change the clinician cannot see is exactly the
+  // recorded-but-not-displayed failure R-47 names, applied to the drug's NAME instead of its dose.
+  // It rides in next_data_requests (the frozen PharmCheck has no other clinician-visible channel
+  // here) and in the evidence plane, which renders it on the review surface.
+  if (_canon.from) {
+    nextData.push(
+      `Identity resolved: '${_canon.from}' → '${drug}' (the datastore's primary INN identity; ` +
+      `'${_canon.from}' is recorded as a known alias of it). All safety checks below ran against '${drug}'.`,
+    );
   }
 
   // Overall status (HARD_FAIL terminal > BLOCKED_NO_PROOF > WARN > PASS).

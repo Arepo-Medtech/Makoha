@@ -139,6 +139,29 @@ async function pool(items, n, fn) {
   return out;
 }
 
+/**
+ * Recompute `held_in` for an existing map WITHOUT re-querying RxNorm.
+ *
+ * A name→RxCUI resolution is a fact about RxNorm and does not change when we rename our own records.
+ * `held_in` is a fact about OUR datastore and changes the moment anything is re-authored — and a map
+ * whose held_in is stale is worse than no map: `doseIdentitySplit()` reads it, so a stale entry can
+ * block a drug whose split was just reconciled, or miss one just created. Refresh is therefore part
+ * of any re-authoring pass, not an optional tidy-up. A name we no longer hold anywhere is marked
+ * `held_in: []` rather than deleted — it is still a true statement about RxNorm, and dropping it
+ * would lose the record that the old spelling ever existed.
+ */
+export function refreshHeldIn(ds) {
+  const live = collectNames();
+  let moved = 0, orphaned = 0;
+  for (const r of ds.records || []) {
+    const now = [...(live.get(r.name.toLowerCase()) || [])].sort();
+    const before = (r.held_in || []).join("|");
+    if (now.join("|") !== before) { moved++; if (!now.length) orphaned++; }
+    r.held_in = now;
+  }
+  return { moved, orphaned };
+}
+
 async function main(argv) {
   const args = argv.slice(2);
   const val = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
@@ -148,6 +171,18 @@ async function main(argv) {
   const viaCurl = args.includes("--via-curl");
   const http = viaCurl ? curlFetch : fetch;
   if (!utc) { console.error("usage: node scripts/pharm-rxnorm-harvest.mjs --utc <YYYY-MM-DD> [--write] [--limit N] [--concurrency 8] [--via-curl]"); process.exit(2); }
+
+  if (args.includes("--refresh-held-in")) {
+    const path = join(DATA_DIR, "ingredient-identity.json");
+    const ds = JSON.parse(readFileSync(path, "utf8"));
+    const { moved, orphaned } = refreshHeldIn(ds);
+    ds.records_checksum = checksumRecords(ds.records); // R-46: the refresh mutated records
+    if (write) writeFileSync(path, JSON.stringify(ds, null, 2) + "\n");
+    console.log(`\npharm-rxnorm-harvest --refresh-held-in: ${moved} record(s) moved, ${orphaned} name(s) no longer held anywhere`);
+    console.log(`  (no RxNorm call — a name→RxCUI resolution does not change when we rename our own records)`);
+    console.log(write ? "  written + re-sealed.\n" : "  --dry-run. Re-run with --write.\n");
+    return;
+  }
 
   const all = collectNames();
   let names = [...all.keys()].sort();
