@@ -17,6 +17,9 @@
  * reference content is clinician-signed synthetic, never presented as a licensed vendor.
  */
 import { validatePharmIntent, validatePharmCheck } from "./schemas.js";
+// Identity-split detection (E6). Imported for a FAIL-SAFE BLOCK only — the engine never uses the
+// identity map to STEER a lookup; that would redirect a dose on an unverified identity claim.
+import { doseIdentitySplit } from "./domain/ingredient-identity.js";
 import { SyntheticSelfDevelopedSource } from "./sources/pharm-data-source.js";
 
 const PHARM_VENDOR = process.env.PHARM_VENDOR || "stub";
@@ -236,6 +239,32 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
   if (!known && status !== "HARD_FAIL") {
     status = "BLOCKED_NO_PROOF";
     nextData.push(`Drug '${drug}' is not in the pharmacology reference set — clinician verification required before proceeding.`);
+  }
+
+  // Identity split → escalate. Same shape as the unknown-drug rule above, and for a sharper reason.
+  //
+  // THE DEFECT (found 2026-07-15, introduced by E1, verified live): the dose lives under the
+  // Australian name while the safety data lives under the INN. `frusemide` + digoxin + lithium
+  // returned PASS with a dose and interaction_check PASS; `furosemide` — the SAME drug, RxCUI 4603 —
+  // returned HARD_FAIL on a severe interaction. The check ran, looked up the wrong string, found
+  // nothing, and passed. A dose emitted while its safety checks were inert. Six drugs are affected.
+  //
+  // A check that looked up a name the datastore files under a different spelling has not PROVEN
+  // anything, so its PASS is not proof — which is exactly what BLOCKED_NO_PROOF means. The clinician
+  // gets the reason and the sibling name, not a silent block.
+  //
+  // This uses the identity map EVEN WHILE IT IS UNSIGNED, deliberately: blocking on a suspected
+  // identity is fail-safe (worst case, a spurious block a clinician resolves), whereas STEERING a
+  // lookup on an unverified identity would dose the wrong drug. Same data, opposite risk, opposite
+  // gate — see domain/ingredient-identity.js. A HARD_FAIL already blocks and is more severe, so it
+  // stands untouched.
+  const split = doseIdentitySplit(drug);
+  if (split && status !== "HARD_FAIL") {
+    status = "BLOCKED_NO_PROOF";
+    nextData.push(
+      `Drug identity unreconciled: '${drug}' and '${split.sibling}' are the same ingredient (RxNorm ${split.rxcui}), but ${split.capabilities.join(", ")} hold data only under '${split.sibling}'. ` +
+      `Those checks did not see it, so their result is not proof. Confirm the identity (ingredient-identity.json) or re-author under one name before relying on this.`,
+    );
   }
 
   // Dose guidance ONLY when safe to proceed — never on HARD_FAIL/BLOCKED/paediatric.

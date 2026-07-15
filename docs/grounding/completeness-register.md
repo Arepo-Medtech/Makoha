@@ -1535,6 +1535,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: dose-identity-split-unsafe-pass
+  path: mcp/servers/pharmacology/engine.js (identity-split guard) · domain/ingredient-identity.js · data/ingredient-identity.json
+  component_type: other (drug identity)
+  state: PARTIAL
+  evidence: **FOUND + FIXED 2026-07-15 (E6). INTRODUCED BY E1 — a safety regression, self-inflicted, caught by measuring rather than by a test.** Verified live on the engine BEFORE the fix: `frusemide` + digoxin/lithium → **PASS, dose EMITTED, interaction_check PASS, no flags**; `furosemide` — the SAME drug, RxNorm 4603 — → **HARD_FAIL, interaction_severe**. The dose lives under the Australian name; the interaction + NTI data live under the INN. The check RAN, looked up the wrong string, found nothing, and PASSED. **A dose emitted while its safety checks were inert.** Before E1 these drugs had no dose, so knownDrug() was false → BLOCKED_NO_PROOF; E1 populated dose-guidance from APF's name-space while every other capability uses the INN name-space, **turning a fail-safe block into an unsafe pass**. SIX drugs affected (measured, not estimated): frusemide/furosemide · chlorthalidone/chlortalidone · eformoterol/formoterol · cholecalciferol/colecalciferol · beclomethasone/beclometasone · hexamine hippurate/methenamine hippurate. **This also inverts the register's own claim** that "a miss is a SILENT no-dose (fail-safe direction)": for a split name the miss is a silent no-INTERACTION-CHECK while a dose flows.
+  blocks: nothing downstream — the guard closes it; the remaining work is reconciling the two name-spaces properly
+  safety_class: can_emit_fabrication (pre-fix: a dose presented as checked when its checks never saw the drug)
+  invariant_exposure: no-autonomous-prescription / fail-safe-default — a PASS that proves nothing is not a PASS. Both restored by the guard.
+  risk: Critical (pre-fix) → Medium (guarded)
+  blocks_patient_facing: false (mock/dev only; nothing patient-facing — but this would have been Critical on any patient path)
+  build_action: **GUARD LANDED:** `doseIdentitySplit()` detects a dose whose RxNorm-equivalent sibling holds safety data its own name lacks; engine.js downgrades PASS/WARN → BLOCKED_NO_PROOF and states the reason + the sibling name (never a silent block). HARD_FAIL still stands (more severe). Tamper-proven + narrowness-proven in `contract-ingredient-identity.js`: the 6 splits block, `furosemide` still HARD_FAILs on the real interaction, and an unaffected drug still emits its signed dose. **THE ASYMMETRY that makes this legitimate on an UNSIGNED map:** an unsigned identity map may BLOCK (fail-safe — worst case a spurious block a clinician resolves) but may NEVER STEER a lookup (unsafe — being wrong doses the wrong drug). Same data, opposite risk, opposite gate. **REMAINING:** reconcile the two name-spaces — either re-author the 6 dose records under the INN name (a worksheet round-trip, since the ingredient key is what KL attested against) or sign `ingredient-identity.json` so the resolver may steer. Until then these 6 doses are unreachable, which is the honest state.
+  gap_register_link: none (Medium once guarded; escalate if a patient path is ever opened before reconciliation)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: pharm-ingredient-name-normalisation
   path: scripts/pharm-dose-author.mjs (APF_TO_DATASTORE explicit map) · mcp/servers/pharmacology/data/data-sources.json (rxnorm-nlm, registered but unbuilt) · mcp/servers/pharmacology/sources/pharm-data-source.js (all getters key on lowercased ingredient)
   component_type: other (identity normalisation)

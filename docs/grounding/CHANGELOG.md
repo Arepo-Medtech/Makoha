@@ -4,6 +4,53 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## E6 — the identity map, and the E1 regression it found (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 65 suites) + `verification` (Pass: true) + `pharm:seals` (24/24) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. Dataset `-dev`, receipts `mock`, nothing patient-facing.
+
+### The headline: E1 introduced a safety regression, and E6 found it
+
+Verified live on the engine **before** the fix:
+
+```
+frusemide    PASS       dose EMITTED   interaction_check PASS       no flags
+furosemide   HARD_FAIL  no dose        interaction_check HARD_FAIL  interaction_severe
+```
+
+Same drug (RxNorm 4603), same patient, same co-medications (digoxin + lithium). The dose lives under the Australian name `frusemide`; the interaction and NTI data live under the INN `furosemide`. **The check ran, looked up the wrong string, found nothing, and passed.** A dose emitted while its safety checks were inert.
+
+Before E1 these drugs had no dose, so `knownDrug()` was false and the engine returned `BLOCKED_NO_PROOF`. **E1 turned a fail-safe block into an unsafe pass** by populating dose-guidance from APF's name-space while every other capability uses the INN name-space. Six drugs, measured not estimated: frusemide/furosemide · chlorthalidone/chlortalidone · eformoterol/formoterol · cholecalciferol/colecalciferol · beclomethasone/beclometasone · hexamine hippurate/methenamine hippurate.
+
+It also **inverts the register's own claim** that "a miss is a SILENT no-dose (fail-safe direction)". For a split name the miss is a silent no-INTERACTION-CHECK *while a dose flows*.
+
+### The guard, and why an unsigned map may apply it
+
+`doseIdentitySplit()` detects a dose whose RxNorm-equivalent sibling holds safety data its own name lacks; `engine.js` downgrades PASS/WARN → `BLOCKED_NO_PROOF` and **states the reason and the sibling name** — never a silent block. A check that looked up a name the datastore files under a different spelling has not PROVEN anything, so its PASS is not proof, which is precisely what BLOCKED_NO_PROOF means. HARD_FAIL is more severe and stands untouched.
+
+**The asymmetry that makes this legitimate on an unsigned map:** an unsigned identity map may **BLOCK** (fail-safe — worst case a spurious block a clinician resolves) but may **never STEER** a lookup (unsafe — being wrong doses the wrong drug). Same data, opposite risk profile, opposite gate. Blocking needs no sign-off; steering does.
+
+Proven both ways in `contract-ingredient-identity.js`: the 6 splits block with a reason, `furosemide` still HARD_FAILs on the real interaction (the fix did not mask it), and an unaffected drug still emits its signed dose (the guard is narrow, not a blanket — an over-broad block would bin the clinician's signed content behind a naming concern).
+
+### The register's framing of FL-06 was wrong, twice, and is corrected
+
+- *"the 29% non-match gates coverage"* — **false**. E1 removed a hardcoded array and coverage went 11 → 451 with the normaliser unbuilt.
+- *"a miss is a SILENT no-dose"* — **false**. An unrecognised name fails `knownDrug()` → `BLOCKED_NO_PROOF`. Fail-safe *and* visible: "amoxycillin", "clomifene", "Amoxil" and "totally-made-up-drug" all block.
+- Measured: of the 123 dose ingredients absent from every other capability, **120 are genuine coverage gaps** (we hold a dose but no interaction/scheduling fact) and only **3** are orthographic variants — and those 3 differ only against unsigned bulk data no accessor reads. A normaliser would have "fixed" three records. The real defect was the six splits, which the register never named.
+
+### The identity map (`ingredient-identity.json`, 1473 names, UNSIGNED)
+
+Harvested from RxNorm (NLM, public domain, registered `rxnorm-nlm`, `use_restriction: content_ingest`) by **exact/registered-synonym lookup (search=0)**. 987 resolved · 19 collision groups · unresolved recorded with a reason, never dropped.
+
+**It is not fuzzy matching, and that was verified before building.** Two names are the same ingredient ONLY when RxNorm returns the same RxCUI. Look-alike pairs stay distinct — **0 collisions** across amlodipine/amiodarone, hydralazine/hydroxyzine, clonidine/clonazepam, vinblastine/vincristine, chlorpromazine/chlorpropamide, carbamazepine/oxcarbazepine, methotrexate/metronidazole, dexamphetamine/dexamethasone. Typos refuse: "amoxicilin", "amlodipin" → no match. **Normalized search (`search=2`) was REJECTED** precisely because it *did* resolve "amlodipin" (→ 104416, amlodipine besylate) — approximate matching, the one thing that must not be in this path.
+
+**It ships UNSIGNED and the resolver refuses to steer on it.** A name→ingredient map is a drug-IDENTITY assertion; this repo's own precedent (APF_TO_DATASTORE) is that identity assertions are reported, never silent, and are "data a clinician can read and correct". It is authored for KL to review, not switched on behind him — two mappings in particular want his eye: **epoetin alfa ≡ erythropoietin** and **levothyroxine ≡ thyroxine** (RxNorm gives each pair one concept; whether that identity should steer a dose lookup is a clinical call, not the agent's).
+
+**Transport note:** Node's outbound is blocked in this environment while curl is permitted, so the harvest has an explicit `--via-curl` shim, reported in the run header. Explicit, never a silent fallback — a harvest that quietly changed transport is a harvest whose provenance you cannot reason about.
+
+**Register moves.** New `dose-identity-split-unsafe-pass` (Critical pre-fix → Medium guarded) and `ingredient-identity` (PARTIAL, unsigned). `pharm-ingredient-name-normalisation` framing corrected. **Remaining:** reconcile the two name-spaces — re-author the 6 dose records under the INN name (a worksheet round-trip, since the ingredient key is what KL attested against) or sign the identity map so the resolver may steer. Until then those 6 doses are unreachable, which is the honest state and strictly safer than what E1 shipped.
+
+---
+
 ## E3 — the evidence plane: R-47b built, and the dose evidence reaches the clinician (2026-07-15)
 
 **Status:** `npm test` (EXIT=0) + `verification` (Pass: true) + `pharm:seals` (23/23) green. Frozen `pharm-intent` / `pharm-check` / `verification-gate.js` / `verifier.js` byte-unchanged vs `17da525`. **Nothing became patient-facing.**
