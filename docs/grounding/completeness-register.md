@@ -932,16 +932,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: mcp/servers/pharmacology/ (dose_evidence direct-APF citation variant — schema-only, un-seeded)
   component_type: dataset
   state: UNBUILT
-  evidence: DEFERRED-open from the FL-30 expansion scan (PR #66). A clinician-only direct-APF citation variant of dose_evidence that touches the dose invariant; schema-only, un-seeded, fail-closed against agents; NOT built. Deliberately withheld — the existing dose_evidence (259 PubMed-verified, retrieval-grounded, engine-isolated) is the built path; this variant would carry APF-attested dose facts and is out of scope until a clinician adopts it.
+  evidence: DEFERRED-open from the FL-30 expansion scan (PR #66). A clinician-only direct-APF citation variant of dose_evidence that touches the dose invariant; schema-only, un-seeded, fail-closed against agents; NOT built. Deliberately withheld — the existing dose_evidence (259 PubMed-verified, retrieval-grounded, engine-isolated) is the built path; this variant would carry APF-attested dose facts and is out of scope until a clinician adopts it. **SUPERSEDED 2026-07-15 (FL dose-guidance C0): the deferral condition — "until a clinician adopts it" — IS NOW MET.** Clinician KL (MED0001857758) transcribed all 471 APF22 Section D common-dosage ranges from his own copy and confirmed personal authorship 2026-07-15, adopting the direct-APF dose path. The adopted implementation is DIFFERENT AND BETTER than this item envisaged: rather than bolting an APF dose variant onto dose_evidence (which is engine-ISOLATED by design and must stay a citation register — a dose there could never reach the engine anyway), C0 built the real `dose_guidance` capability with clinician_apf_attestation as one of exactly two origin channels, AHPRA-gated so an agent-authored dose is unrepresentable. This item's need is now carried in full by `dose-guidance-empty-no-au-source`; keeping it open would double-count the same work.
   blocks: nothing on the critical path (the built dose_evidence register is reference-only, engine-isolated)
   safety_class: degrades_safe
-  invariant_exposure: no-autonomous-prescription (touches the dose invariant — kept UNBUILT/fail-closed until clinician-adopted)
+  invariant_exposure: no-autonomous-prescription (touches the dose invariant — kept UNBUILT/fail-closed until clinician-adopted; the adopting implementation carries a STRONGER bar than this item proposed — a mechanical AHPRA gate + a mandatory AMASS cross-check, not merely fail-closed-against-agents)
   risk: Medium
   blocks_patient_facing: false
-  build_action: DEFERRED — do not build until a clinician adopts the direct-APF citation variant; stays fail-closed/un-seeded until then.
+  build_action: SUPERSEDED — do not build as a dose_evidence variant. dose_evidence stays engine-isolated and citation-only, unchanged. The clinician-attested APF dose path now lives in `dose-guidance-empty-no-au-source` (schema built at C0; Channel B authoring at C2). No separate work remains under this id.
   gap_register_link: none
-  status: open
-  last_scanned: 2026-07-14
+  status: resolved
+  last_scanned: 2026-07-15
 ```
 
 ```md
@@ -1027,6 +1027,27 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   gap_register_link: gap-knowledge-datasets
   status: resolved
   last_scanned: 2026-06-30
+```
+
+```md
+- id: pharm-records-checksum-unverified
+  path: mcp/servers/pharmacology/data/*.json (records_checksum) · scripts/pharm-{author,ingest,pbs-sync}.mjs (writers) · test/contract-pharm-datastore.js (the test that should verify it and does not)
+  component_type: dataset
+  state: COMPLETE
+  evidence: Found 2026-07-15 (FL dose-guidance C0 scoped re-scan); **ROOT CAUSE PROVEN 2026-07-15 by forensic reconstruction — all 7 seals reproduced exactly, benign.** 7 of 21 sealed datasets did not match `checksumRecords(records)`: au-scheduling (261), clinical-uses (980), nti-register (53), pharmacodynamics (303), pharmacokinetics (303), precautions (1162), renal-rules (104).
+    **ROOT CAUSE: the seal is computed at AUTHORING/INGEST time, when incoming records are FORCED to `review_status:"draft"` / `reviewed_by:null`. The clinician sign-off pass then sets `reviewed_by`/`review_status:"approved"` ON THE RECORDS THEMSELVES — mutating them — and NOTHING RE-SEALS. Any dataset that received a sign-off after its last authoring/ingest therefore carries a stale seal, permanently.** No dataset was ever tampered with; NONE of the 7 has ever had a valid seal in its entire git history, because the break happens inside the very commit that creates them.
+    **PROVEN, not inferred.** Each seal was reproduced bit-exactly by reverting only the sign-off: (a) the 4 single-commit datasets (clinical-uses, pharmacodynamics, pharmacokinetics, precautions) match `checksumRecords(records with provenance reverted to draft)`; (b) the 3 multi-commit datasets (au-scheduling, nti-register, renal-rules — created at 3884f98, expanded at d4fb9a8) match `checksumRecords([original records still approved, ...records added at ingest still draft])`, exactly matching pharm-ingest.mjs's documented FORCES-draft behaviour.
+    **THE CLINICAL CONTENT IS BIT-IDENTICAL TO WHAT WAS SEALED — verified for all 7 by stripping provenance and comparing.** The ONLY delta is `provenance.reviewed_by` + `provenance.review_status` — precisely the fields the clinician's sign-off is SUPPOSED to change, recorded in the signed worksheets at eval/pharmacology/signoff/. Not one clinical fact drifted.
+    **The writers are NOT buggy** — pharm-author.mjs:154 and pharm-ingest.mjs:201 both seal `merged` and write `merged` with no mutation between. The defect is that the SIGN-OFF path mutates records outside either writer and never re-seals, and that **`records_checksum` is WRITE-ONLY: written in 3 places, VERIFIED IN NONE** (the only test referencing it, contract-pharm-pbs-sync.js:69, asserts merely that it is a string). `npm test` has always been green on all 7.
+  blocks: FL dose-guidance C1/C2 — the plan's "provenance layer" asserts the stored seal to prove the datastore has not been edited since clinician sign-off, and that guarantee is currently FALSE for 7 datasets. An export built to that spec would (correctly) abort on all 7.
+  safety_class: degrades_safe
+  invariant_exposure: auditability / traceability (requirement→design→code→test→evidence). NOT a data-correctness finding — the records may be entirely sound and the seals merely stale after a legitimate edit. That is exactly the problem: **a stale seal and an unreviewed mutation are indistinguishable without investigation**, so the datastore cannot presently PROVE the signed records are the records the clinician signed. In a TGA-regulated SaMD that proof is the point of the seal.
+  risk: High
+  blocks_patient_facing: false
+  build_action: **RESOLVED 2026-07-15 (three-step fix).** (1) The 7 stale seals re-sealed via the NEW `scripts/pharm-reseal.mjs`, each recording prior+new checksum and the forensic basis in `attestation.reseal_history[]` — a re-seal blesses the current records, so it is now a deliberate, --reason-required, self-documenting act rather than an automatic repair. No record re-reviewed or amended; the content was already proven bit-identical to the sealed bytes. All 21 seals verify. (2) **THE DURABLE FIX: `test/contract-pharm-datastore.js` now asserts `checksumRecords(records) === records_checksum` for every sealed dataset.** Proven to have teeth by a tamper test (mutate one record's provenance → EXIT=1; restore → EXIT=0). CI can never again go green on a broken seal. (3) The sign-off path's obligation to re-seal is documented in `eval/pharmacology/signoff/worksheet-signoff.md` AND enforced by (2) — a sign-off that skips the re-seal now reddens CI immediately instead of decaying silently. New `npm run pharm:seals` audits all seals.
+  gap_register_link: pending promotion (High — mirror into gap-register in this phase per the one-way promotion rule)
+  status: resolved
+  last_scanned: 2026-07-15
 ```
 
 ```md
@@ -1477,6 +1498,57 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   gap_register_link: none (Medium — below promotion threshold)
   status: resolved
   last_scanned: 2026-07-11
+```
+
+```md
+- id: dose-plausibility-guard-unbuilt
+  path: scripts/pharm-dose-crosscheck.mjs (C1, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema)
+  component_type: other (authoring guard)
+  state: UNBUILT
+  evidence: Opened 2026-07-15 by the C0 amendment (operator ruling reversing D-DG-3). The original `cross_check` gate binned an AU dose whose FDA/EMA label differed. That gate was removed as wrong (it inverted the jurisdiction rule and conflated "different jurisdiction" with "wrong" — see the DoseGuidanceSchema header). BUT it was incidentally catching one real thing: a TRANSCRIPTION TYPO. A clinician entering "5000 mg" for "500 mg" would have been caught by the foreign-label comparison. Removing the gate removes that catch, and this item exists so that loss is TRACKED rather than silently accepted.
+  blocks: nothing — dose-guidance C2 can proceed without it; this narrows a residual entry-error risk
+  safety_class: degrades_safe
+  invariant_exposure: none directly — but an order-of-magnitude dose entry error is the classic catastrophic med-error class, and Channel B is manual clinician transcription, which is exactly where such an error would enter
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Build in C1, where the dose-string parsing already has to live. It is a PLAUSIBILITY check, NOT a congruence check — conflating the two is precisely what produced the bad gate: an order-of-magnitude discrepancy is a different question from "the EU approved a different indication". Suggested shape: parse the AU and comparator dose magnitudes; a >10x discrepancy is a WARN routed to the clinician for confirmation, never an automatic bin (a genuine 10x difference between jurisdictions is possible — e.g. loading vs maintenance dosing). Must not resurrect a veto.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: dose-guidance-empty-no-au-source
+  path: mcp/servers/pharmacology/data/dose-guidance.json · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema) · mcp/servers/pharmacology/data/data-sources.json (tga-pi, amass-regulatory, apf22) · scripts/pharm-dose-{crosscheck,author}.mjs (C1/C2, unbuilt)
+  component_type: dataset
+  state: EMPTY
+  evidence: FL dose-guidance C0 (2026-07-15, plan .planning/DOSE-GUIDANCE-PLAN.md). dose-guidance.json holds `records: []` with clinical_sign_off:false — it is the ONLY datastore capability that becomes a dose (engine.js emits it via PharmCheck.dose_guidance on PASS/WARN), and it has never been populated. NOT an oversight and NOT an authoring backlog: it is the collision of two hard constraints — (a) the AU dose authorities are licence-restricted (APF22/AusDI are use_restriction:structure_only, content_licence_held:false; AMH is not a registered source at all; PBS's own registry note says it does NOT provide dosing), and (b) "no dosages from the LLM" bars the agent authoring one. The empty file is the fail-safe working. Research: .planning/DOSE-GUIDANCE-RESEARCH.md. Distinct from dose-evidence (261 KL-signed records) — that is a citation register of literature FINDINGS, engine-isolated by design (no accessor), NOT a dose source; the two are different epistemic categories and dose-evidence cannot be promoted into this file.
+  blocks: any dose emitted from the clinician-signed datastore (the engine currently falls back to 3 self-labelled mock doses — see dose-mock-fallback-mixing); FL-34 Phase B's dose-range KM (deliberately not built for this reason)
+  safety_class: degrades_safe
+  invariant_exposure: no-dosages-from-the-LLM / no-autonomous-prescription — the invariant this capability exists to protect. C0 makes the bar MECHANICAL rather than conventional: DoseGuidanceSchema admits exactly two origin channels (tga_pi | clinician_apf_attestation), requires an AHPRA registration id on the clinician channel (an agent string cannot match, so an agent-authored dose is UNREPRESENTABLE), and (AMENDED 2026-07-15) records an `au_congruence` APPRAISAL against the US/EU labels that is mandatory but ANNOTATES rather than vetoes — the original "omit diverges so a differing dose cannot be written" gate was removed as an inversion of the jurisdiction rule (a foreign regulator has no standing to veto an AU dose) and as over-triage (AU/US/EU labels legitimately differ).
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: C0 DONE (2026-07-15) — DoseGuidanceSchema + validateDoseGuidance authored and registered in CAPABILITY_VALIDATORS (previously absent as a "bespoke path"); tga-pi (pending — access is the SAME operator input FL-05's pregnancy-risk-bulk-sync-pending waits on) and amass-regulatory (copyleft_reference_only, VERIFICATION-ONLY, never an AU origin — probed live 2026-07-15, agency enum is exactly [FDA,EMA], no TGA) registered; D1 (dose-evidence attestation scope) + D3 (apf22.provides[] missing dose_range_facts) fixed; test/contract-dose-guidance-schema.js in npm test. REMAINING: C1 AMASS cross-checker (scripts/, un-gated); C2 Channel B authoring of Tier A (~10 drugs) from KL's own APF22 transcription — clinician-entered, NEVER bulk-ingested (the full 471-row verbatim Section D extract is an org/legal question riding the SAME PSA ruling as warning-labels-cal-verbatim-pending, and compilation right protects selection+arrangement even where each fact is bare); C3 remove the mock fallback; C4 Channel A (TGA PI, operator-gated).
+  gap_register_link: none (Medium — below promotion threshold; the patient-facing arm is owned by R-22/FL-34 + FL-50)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: dose-mock-fallback-mixing
+  path: mcp/servers/pharmacology/sources/pharm-data-source.js:170 (getDoseGuidance → mock-data.json.dose_guidance_mock)
+  component_type: other (data source fallback)
+  state: PARTIAL
+  evidence: FL dose-guidance C0 scan (2026-07-15). getDoseGuidance() returns the datastore record if present, ELSE falls through to mock-data.json.dose_guidance_mock (3 entries: amoxicillin, paracetamol, ibuprofen). SAFE TODAY and correctly classified degrades_safe: every mock dose self-labels inside the string ("500 mg PO every 8 hours (MOCK — not clinically validated)") and dose-guidance.json is empty, so ALL doses are mock and none masquerades as signed. LATENT, NOT CURRENT: the defect activates the moment dose-guidance C2 authors its first real record — the fallback would then silently mix clinician-signed and mock doses on one path, and the self-label becomes the only thing distinguishing them at the point a clinician reads a dose beside real ones.
+  blocks: nothing today — this is a precondition ON dose-guidance C2, not a blocker of it
+  safety_class: degrades_safe
+  invariant_exposure: mock-never-as-live (Guardrail 4) — not breached today (self-labelled, uniformly mock); WOULD be exposed at C2 if the fallback survives
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Remove the mock fallback in the SAME increment as the first real dose (dose-guidance plan C3): absent record → null → no dose. Strictly safety-improving (fail-safe default: missing proof → no dose, never a mock one). Verify contract-pharm-validation (20/20 + 8/8 adversarial) stays green and add a test asserting an unknown drug yields no dose. Do NOT resolve this item before C2 — while the store is empty the fallback is the only dose path the mock/dev pipeline has.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
 ```
 
 ---

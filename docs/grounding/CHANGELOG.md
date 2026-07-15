@@ -4,6 +4,68 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## R-46 — the integrity seal now actually seals (2026-07-15)
+
+**Status:** operator-approved three-step fix. `npm test` (61 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` all EXIT=0. **All 21 seals verify.** No clinical record was re-reviewed, amended, or re-attested; nothing patient-facing moved.
+
+**Plain language.** Every pharmacology dataset carries a `records_checksum` — the seal that makes "the signed records are the records the clinician signed" *provable*. It turned out **nothing ever checked it**. It was written by three scripts and verified by none, so the suite ran green for months with **7 of 21 seals broken**. A seal nobody checks isn't integrity; it's decoration.
+
+**The cause was benign, and proven so before anything was touched.** The seal is computed at authoring/ingest time, when incoming records are FORCED to `review_status:"draft"`. The clinician sign-off (worksheets, 88 + 308 records) then sets `reviewed_by`/`review_status` **on the records** — and nothing re-sealed. Each of the 7 prior seals was reconstructed **bit-exactly** by reverting only the sign-off, and the clinical content was verified **bit-identical** to the sealed bytes. Not one clinical fact drifted. Nothing was tampered with. The writers were never at fault (`pharm-author.mjs:154` / `pharm-ingest.mjs:201` both seal `merged` and write `merged`) — the sign-off mutates records *outside* them.
+
+**The three-step fix.**
+1. **Re-sealed the 7** via the new `scripts/pharm-reseal.mjs`. A re-seal *blesses* whatever the records currently are, so the tool makes that a deliberate act: `--reason` is REQUIRED, `--utc` is required (Date.now() avoided per repo convention), and every re-seal appends prior+new checksum + reason to `attestation.reseal_history[]` — chain of custody in the artifact, not just in git. `--check` audits without writing.
+2. **THE DURABLE FIX — `test/contract-pharm-datastore.js` now asserts `checksumRecords(records) === records_checksum` for every sealed dataset.** Proven to have teeth: mutating one record's provenance → **EXIT=1**; restoring → **EXIT=0**. CI can never again go green on a broken seal. *The drift was only ever the symptom; the unverified field was the defect.*
+3. **Closed the loop on the sign-off path.** `eval/pharmacology/signoff/worksheet-signoff.md` now documents that applying a sign-off MUTATES records and MUST be followed by a re-seal — and (2) enforces it, so a sign-off that skips it reddens CI immediately rather than decaying quietly. New `npm run pharm:seals` audits every seal.
+
+**Guidance recorded in three places (the test message, the tool header, the worksheet record):** if a seal breaks, **do not re-seal to clear the red.** A stale seal after a legitimate edit and an unreviewed mutation are indistinguishable from the hash alone — which is precisely what the seal exists to make distinguishable. Establish what changed first; `--reason` forces the answer into the artifact.
+
+**Found by:** the FL dose-guidance C0 scoped re-scan. C0's design *asserts* these seals to prove no drift since sign-off — had C2 been built first, its export would have aborted on all 7. Correct behaviour, discovered at the worst possible moment.
+
+---
+
+## FL dose-guidance C0 — schema, source registration, three defect fixes (2026-07-15)
+
+**Status:** operator-approved (`.planning/DOSE-GUIDANCE-PLAN.md`, C0 of C0–C4). **No dose was authored** — `dose-guidance.json` stays `records: []`. Nothing patient-facing; receipts stay `mock`. `npm test` (61 suites) + `npm run verification` (Pass: true) + `npm run trunk:stub:all` all green, EXIT=0.
+
+**Plain language.** `dose-guidance` is the only datastore capability that becomes a *dose*, and it has always been empty. That was never an oversight or a backlog item — it is the collision of two hard rules: the Australian dose authorities are licence-restricted (APF22/AusDI are facts-only, no content licence; AMH isn't a registered source; PBS explicitly doesn't publish dosing), and "no dosages from the LLM" bars the agent from writing one. The empty file was the fail-safe working. This phase does not fill it. It builds the lockable door the doses will one day come through, and proves the lock holds.
+
+**The bar is now mechanical, not conventional.** `DoseGuidanceSchema` (`domain/model.js`) admits exactly two origin channels — `tga_pi` and `clinician_apf_attestation` — and:
+- the clinician channel requires an **AHPRA registration id** (`^[A-Z]{3}\d{10}$`) in `origin.entered_by`. No agent string can match that pattern, so **an agent-authored dose is unrepresentable**, not merely forbidden.
+- **`diverges` is absent from the `cross_check` status enum.** Every AU dose is cross-checked against the FDA/EMA label via AMASS; a diverging candidate cannot be *expressed* as a dose-guidance record, so it cannot be written — it belongs in the review queue (D-DG-3 hard-block, enforced by parse failure rather than by a policy someone could forget).
+- `cross_check` is required, `agrees` must name its comparator, and `not_available` must say why and may not carry an `amass_id` — closing the "claim no comparator to skip the gate" loophole.
+- channels cannot be laundered: APF attestation must cite `apf22`; `tga_pi` must cite a PI document id **and** a `retrieved_utc` (PI is versioned; a citation without a retrieval time is not re-verifiable).
+
+`dose_guidance` **joined `CAPABILITY_VALIDATORS`**, from which it was previously absent as a "bespoke path". A validator that *refuses* bad records is a stronger guarantee than no validator.
+
+**Sources registered** (`data/data-sources.json`, registry_version 1.2.0):
+- `tga-pi` — `pending`/`content_ingest`. The AU primary dose source, sibling of `tga-pregnancy` and `rasml-tga`. **Not connected**: access is an OPERATOR input — the *same* one FL-05's `pregnancy-risk-bulk-sync-pending` already waits on. One action serves both.
+- `amass-regulatory` — `copyleft_reference_only`/`structure_only`. **NOT an Australian source. Verification only. Never an origin.** Probed live 2026-07-15: its agency enum is exactly `[FDA, EMA]` — there is no TGA in it. An FDA package-insert dose is not an AU dose. Its only sanctioned use is the `cross_check` gate. Reached at **authoring time** from `scripts/` tooling (the dose-evidence `get_article_metadata` precedent) — not a runtime dependency, no receipt-mode impact.
+
+**Three defects fixed.**
+- **D1** — `dose-evidence.json`'s attestation `scope` read *"skeleton — no records authored yet"* while the file held **261 KL-signed records** (2 + 259 across the two signed worksheets at `eval/pharmacology/signoff/`). Per-record `review_status` was authoritative and correct, so nothing was unsafe and no test was red — but the dataset-level text materially understated the clinician's sign-off, and **it is what misled FL-34 Phase B Finding 3 into asserting "no signed dose knowledge exists"**. Corrected in place, citing the worksheets; `records_checksum` verified unchanged (the checksum covers `records` only).
+- **D3** — `apf22.provides[]` had no dose-range entry while its own `notes` explicitly sanction *"dosing-range facts"*. The machine-readable list and the prose disagreed; an APF-sourced dose record would have failed source-capability validation. Added `dose_range_facts`.
+- **D2** — opened `dose-guidance-empty-no-au-source` (EMPTY/Medium) and `dose-mock-fallback-mixing` (PARTIAL/Medium — **latent**: `getDoseGuidance()` falls back to 3 self-labelled mock doses, which is safe while *every* dose is mock, but silently mixes signed and mock the moment C2 lands; must be removed in that same increment).
+
+**Register reconciliation.** `dose-evidence-apf-attestation-variant-deferred` → **resolved/SUPERSEDED**. Its deferral condition was *"until a clinician adopts it"* — and that condition was met: KL transcribed all 471 APF22 Section D common-dosage ranges from his own copy and confirmed personal authorship 2026-07-15. The adopted implementation is deliberately different from what that item envisaged: rather than bolting a dose variant onto `dose_evidence` (which is engine-**isolated** by design and must stay a citation register), the APF path became one of two origin channels on the real `dose_guidance` capability, under a stronger bar. `dose_evidence` is unchanged and stays engine-isolated.
+
+**Scope discipline recorded.** KL's 471-row transcription is **not** ingested and is never committed. Individual dose facts aren't copyrightable, but **compilation right protects selection and arrangement even where each element is a bare fact** — extracting ~10 Tier A ingredients as restructured facts is facts-use inside the existing APF22 attestation; ingesting all 471 "exactly as printed" in Section D's own arrangement is not, and rides the **same PSA ruling** `warning-labels-cal-verbatim-pending` already awaits.
+
+**Byte-unchanged (verified vs `e2b940e`, empty diff):** frozen `pharm-intent.schema.json`, `pharm-check.schema.json`, `portal/verification-gate.js`, `engine.js`, and the HIST-2 context path (`verification/context-allowlist.js`, `verification/pipeline-schemas.js`). **No HIST-2 amendment was made or needed** — that policy governs what reaches the *LLM's context packet*; the engine reads a different path.
+
+**Caught by the repo's own gates:** `contract-pharm-datastore` rejected an invented `licence_status: "documented"` on both new sources. Corrected to the existing vocabulary — `pending` for `tga-pi`, `copyleft_reference_only` for `amass-regulatory`.
+
+**D4 — registration category corrected (2026-07-15).** The repo described Kenneth Lee as a **registered pharmacist** while carrying AHPRA **MED0001857758** — and `MED` is AHPRA's *medical-practitioner* prefix (pharmacists carry `PHA`). Surfaced when the operator supplied the number; **corrected on his own statement: he is a registered MEDICAL PRACTITIONER.** The number was always right; the word was always wrong.
+
+The error originated in `.planning/FL-30_PharmCheck_Self-Build_Prompt.md` ("Author/Owner: Ken Lee — Senior Pharmacist (AU)") and propagated into `eval/pharmacology/signoff/worksheet-signoff.md`, this CHANGELOG, and the `status` gate text of **8 datasets** ("registered-pharmacist sign-off" → "registered-practitioner sign-off"). Tracing that origin is what justified rewording the gates: the phrase meant "the owner, believed to be a pharmacist, signs off" — it was never an independent pharmacist-scope control, so correcting it removes no control. **If an independent pharmacist review of the classically pharmacy-scope datasets (administration_handling, counselling_points, warning_labels/CAL) is wanted, that is a NEW control to specify deliberately.**
+
+**No attestation re-opened.** The 88 + 308 worksheets, signed blocks, attesting person, records and dates all stand — the same clinician attested the same records on the same days. `reviewer_id` was already correct (`Kenneth Lee (MED0001857758)`), so no `records_checksum` moved. This matters as *provenance hygiene*: the datastore's entire clinical sign-off rests on this identity, and an artifact reading "registered pharmacist / MED…" is internally inconsistent in exactly the way a TGA audit notices.
+
+**Still open (operator):** `.planning/FL-30_PharmCheck_Self-Build_Prompt.md:4` retains the "Senior Pharmacist (AU)" self-description. It is a historical planning artifact and was NOT edited — rewriting the founding document's stated authority basis is the operator's call, not the agent's.
+
+**Next:** C1 (AMASS cross-checker, un-gated) → C2 (Channel B, Tier A ~10 drugs) → C3 (drop the mock fallback with the first real dose) → C4 (TGA PI, operator-gated). FL-34 Phase B stays parked; its "no dose KM" conclusion is unchanged and now rests on this licence/authoring reason rather than "nothing is signed".
+
+---
+
 ## FL-34 Phase 0 — register-maintenance pass (2026-07-14)
 
 **Status:** report-only reconciliation ahead of the FL-34 OpenCDS-gateway build; NO code touched, no test run affected. Ahead of Phase A.
@@ -47,7 +109,7 @@ Kenneth Lee (MED0001857758) attested all 308 remaining draft records (Attest, 0 
 
 **Status:** all 8 `contract-pharm-*` suites green. Records-only change (provenance). **CLINICAL sign-off only — regulatory NOT given; datasets stay `-dev`, system stays mock/non-patient-facing.**
 
-**Plain language.** Registered pharmacist **Kenneth Lee** completed the per-record sign-off worksheet — **all 88 records Attested, 0 Amend, 0 Reject**, signed 2026-07-14. The signed worksheet is retained as the medicolegal artifact at `eval/pharmacology/signoff/PharmCheck-signoff-worksheet-KL-2026-07-14.xlsx` (+ `worksheet-signoff.md`). Applied in the repo: matching records set `reviewed_by:"Kenneth Lee"`, `review_status:"approved"` — **74 newly approved, 11 already-signed re-affirmed, 3 `warning_labels` PSA_CAL written approved with 3 stale RASML archived** to `superseded[]` (the attested RASML→PSA_CAL scheme correction).
+**Plain language.** Registered medical practitioner **Kenneth Lee** completed the per-record sign-off worksheet — **all 88 records Attested, 0 Amend, 0 Reject**, signed 2026-07-14. The signed worksheet is retained as the medicolegal artifact at `eval/pharmacology/signoff/PharmCheck-signoff-worksheet-KL-2026-07-14.xlsx` (+ `worksheet-signoff.md`). Applied in the repo: matching records set `reviewed_by:"Kenneth Lee"`, `review_status:"approved"` — **74 newly approved, 11 already-signed re-affirmed, 3 `warning_labels` PSA_CAL written approved with 3 stale RASML archived** to `superseded[]` (the attested RASML→PSA_CAL scheme correction).
 
 **Governance.** The three previously dataset-signed capabilities (interactions/contraindications/serious_adverse_effects) are now fully re-consolidated — 0 draft remaining, `has_unsigned_additions` cleared. The reference datasets (admin_handling, tdm, counselling, warning_labels, dose_evidence) keep `clinical_sign_off:false` at dataset level because each still holds unattested drafts outside this worksheet (P1 seeds, the 259-record dose-evidence register); per-record `review_status` is authoritative.
 
