@@ -1518,6 +1518,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: dose-congruence-surfacing-unbuilt
+  path: portal/ (clinician review surface) · scripts/pharm-dose-author.mjs (C2 worksheet round-trip, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema.au_congruence)
+  component_type: other (clinician surface)
+  state: UNBUILT
+  evidence: Opened 2026-07-15 by the second C0 amendment (operator ruling: AU primacy — `non_congruent` no longer requires an appraisal_note). **This item exists because that ruling has a load-bearing precondition that nothing currently enforces.** The ruling's reasoning is: "as long as the non-congruent fact has been ALERTED to the clinician, it is assumed the clinician has weighed it in their decision". That is sound — the AU clinician IS the final authority (Guardrail 2) — but it is an obligation on the SURFACE, not on the schema. `DoseGuidanceSchema` guarantees the foreign label's `dose_statement` is **RECORDED** in `au_congruence.comparators[]`. **NOTHING yet guarantees it is DISPLAYED.** If a `non_congruent` dose ships and no surface shows the clinician the foreign label beside the AU dose, then "the clinician weighed it" is false, the appraisal is inert metadata, and the AU-primacy model collapses into shipping unflagged divergences — the one outcome every party to this design (operator and agent) intends to prevent.
+  blocks: the safety argument under `dose-guidance-empty-no-au-source` C2 — not the authoring, but the point at which any dose reaches a clinician
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription / human-in-the-loop (Guardrail 2 — "the engine proposes, a registered practitioner disposes"; `required_human_review` is always true). Disposal presumes SIGHT. An appraisal recorded but never rendered satisfies the schema and defeats the guardrail — and it would READ as done, because the data is right there in the record. That is exactly the failure mode this item exists to keep visible.
+  risk: High
+  blocks_patient_facing: true
+  build_action: Before ANY dose is surfaced to a clinician: the review surface MUST render `au_congruence.status` and every `comparators[].dose_statement` (jurisdiction + agency + the foreign dose verbatim) alongside `safe_dose_range` — non-congruence must be visually unmissable, not a field in a payload. Two natural homes, both already on the board: (1) the Clinician Verification Portal (blocker #2, PARTIAL — `releaseToPatient()` is the adoption seam), and (2) the C2 worksheet round-trip, where KL sees the appraisal at attestation time. Add a contract test asserting a `non_congruent` record cannot be surfaced without its comparators rendered. **Do NOT resolve `dose-guidance` C2 as complete while this is open** — the schema change that made non_congruent shippable is only safe with this in place.
+  gap_register_link: pending promotion (High — mirror into gap-register per the one-way rule)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: dose-guidance-empty-no-au-source
   path: mcp/servers/pharmacology/data/dose-guidance.json · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema) · mcp/servers/pharmacology/data/data-sources.json (tga-pi, amass-regulatory, apf22) · scripts/pharm-dose-{crosscheck,author}.mjs (C1/C2, unbuilt)
   component_type: dataset

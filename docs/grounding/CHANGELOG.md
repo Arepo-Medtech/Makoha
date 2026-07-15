@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## AU primacy — non_congruent no longer requires a note (2026-07-15)
+
+**Status:** operator ruling, second correction to the C0 amendment. `npm test` (62) + `verification` + `pharm:seals` green. No dose authored; registers still empty.
+
+**The ruling.** *"The AU clinician is the final word of authority. As long as the non-congruent fact has been alerted to the clinician, it is assumed the clinician has weighed it in their decision and it does not require a note. AU dose has primacy."*
+
+**Why it was right, and why the requirement was wrong twice over.** The C0 amendment removed a gate that *binned* a differing AU dose — but it left behind a demand that the AU dose **explain itself**. That is the same inversion in a milder form: requiring justification makes the foreign label the default and the AU dose the deviation. AU has primacy; a differing US/EU label is a **fact to surface**, not a discrepancy to account for.
+
+And a second reason the operator did not need to give: **who would have written the note?** In Channel B the clinician enters the dose and the appraisal runs in the authoring pass — so the note would in practice be **agent-authored clinical reasoning** ("they differ because of indication X") asserted into a record a clinician reads. That is unverified clinical content the agent does not have, where a wrong explanation misleads worse than no explanation.
+
+**What changed.** `au_congruence.appraisal_note` is now OPTIONAL on `congruent`/`non_congruent` and stays REQUIRED on `no_comparator`. The split is principled and mirrors C1's: `no_comparator`'s note is a claim about **the search** ("AMASS holds no FDA/EMA authorisation") — mechanical, verifiable, and the thing that stops anyone claiming "no comparator" to skip the appraisal. `non_congruent`'s would be a claim about **clinical judgement**. Machine claims need justifying; the clinician's does not. The test now pins the reversal in both directions so the rule is not "restored" later.
+
+**The load-bearing catch — new gap R-47 (High).** The ruling's basis is that the fact *has been alerted to the clinician*. **That is an obligation on the SURFACE, and nothing enforces it yet.** The schema guarantees the foreign label's dose is **RECORDED** (`comparators[].dose_statement` is required); nothing guarantees it is **DISPLAYED**. An appraisal recorded but never rendered passes every test, **reads as done because the data sits right there in the record**, and silently defeats Guardrail 2 — because "the clinician weighed it" presumes the clinician saw it. Opened `dose-congruence-surfacing-unbuilt` / **R-47**: before any dose reaches a clinician, the review surface must render `au_congruence.status` and every comparator's jurisdiction/agency/dose verbatim beside `safe_dose_range`, visually unmissable, with a contract test to match. **C2 must not be called complete while R-47 is open.**
+
+---
+
 ## FL dose-guidance C1 — plausibility guard + the international route (2026-07-15)
 
 **Status:** operator-approved. `npm test` (62 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` + `pharm:seals` all EXIT=0. **No dose authored; both dose registers still empty.** Nothing patient-facing; no network code; no new dependency.

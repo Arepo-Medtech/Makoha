@@ -111,9 +111,17 @@ ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-0
       ],
       appraisal_note: "AU, US and EU labels all differ; AU follows APF22." } },
   "non-congruence against BOTH US and EU still ships");
-rejects({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
-      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }] } }, "must explain WHY",
-  "non_congruent without an appraisal_note must be rejected — the record ships, so the note is what the clinician weighs");
+// AU PRIMACY (operator ruling 2026-07-15, second correction): non_congruent needs NO note. An AU
+// dose does not justify itself to a foreign regulator — demanding an explanation would make the
+// foreign label the default and AU the deviation, the same inversion the veto removal fixed. And in
+// Channel B the explainer would be the AGENT, authoring clinical reasoning it does not have.
+ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }] } },
+  "non_congruent WITHOUT an appraisal_note must SHIP — the AU clinician is the final authority and does not explain themselves to the FDA");
+ok({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "500 mg every 8 hours" }],
+      appraisal_note: "identical" } },
+  "an appraisal_note remains ALLOWED when someone chooses to record context");
 
 // ---- 4. THE APPRAISAL CANNOT BE SKIPPED, FAKED, OR MIS-STAMPED ------------------------------
 rejects({ ...base(), au_congruence: undefined }, "required",
@@ -121,7 +129,7 @@ rejects({ ...base(), au_congruence: undefined }, "required",
 rejects({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "unfalsifiable",
   '"congruent" against no comparator must be rejected');
 rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "must state why",
-  '"no_comparator" without a reason must be rejected (an unexplained absence reads identically to an appraisal that never ran)');
+  '"no_comparator" without a reason must be rejected — unlike non_congruent, this is a claim about THE SEARCH (mechanical, verifiable) and is what stops anyone claiming "no comparator" to skip the appraisal');
 rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z",
       comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg BD" }], appraisal_note: "none" } }, "cannot carry comparators",
   '"no_comparator" carrying a comparator must be rejected');
