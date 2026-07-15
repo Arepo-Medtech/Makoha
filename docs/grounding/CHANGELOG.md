@@ -4,6 +4,31 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-34 Phase C — the shim, the container, and the first end-to-end call (2026-07-15)
+
+**Status:** `npm test` EXIT=0 (79 suites) · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `6f032d3`.
+
+**Register:** `fl30-kb-km-package` PARTIAL → **COMPLETE** · `opencds-gateway-shim` UNBUILT → **PARTIAL** · `dose-hold-surface-unenforced` **opened** (Medium). R-22 does not move; blocker #1 stays RED. Nothing is patient-facing: the slot stays EMPTY→HARD_FAIL until A4 and receipts stay `mock`.
+
+**Four defects only a real container found — each after 96 unit tests were green.**
+
+- **F-C8** — the OSS route **could not return PASS for any drug, ever.** The KMs read 7 facts; the wire carried 5, and only 3 overlapped. zod strips unknown keys *silently*. `allergy_check` is a DEFAULT_CHECK → no allergens → NOT_RUN → BLOCKED. Safe, and useless. The naming trap is worth keeping: `engine.js` reports the absent fact as `missing_facts_required: ["allergy_status"]` — a **label for what is missing** — while the fact is `resolved.allergens`. The wire was built from the label. `allergy_status` is now removed rather than left beside `allergens`, because a field that *looks* like the allergy fact but is never populated is what hid this.
+- **F-C7** — OpenCDS rejects any hook without `context.patientId`, and the locked request carries **no patient identifier by design** (boundary #4). The focal person id is now the **request id**: opaque, names no human, and unique per request — a fixed placeholder would make every consultation look like the same patient, and any per-person state OpenCDS kept would carry across encounters.
+- **F-C3** — **the register's own spec was the defect.** Its `build_action` said the shim *"echoes km_set"*. That makes the client's cross-check tautological: it can never fail, so a gateway running stale v1 knowledge answers **PASS on a lie**. Demonstrated against the real client before the shim existed. The version is now read from the **cards** — v1 → BLOCKED, v2 → PASS, v3 → BLOCKED, verified live.
+- **`wait -n` is bash; `/bin/sh` is dash** — the container exited 2 before Tomcat started.
+
+**C1** — my own plan under-specified F-C2. `engine.js` emits a flag **per interaction hit**; the KM emitted one per check. Warfarin + amiodarone + aspirin is one verdict and **two findings**, and the client filters `flags[]` to build the list a clinician *reads*. Per-hit severity too: a moderate hit stays moderate even when a critical sibling drives the verdict. The paediatric flag names **no drug**, because the engine's doesn't — the finding is about the patient.
+
+**C4** — the smoke, and it is the point. Everything else tests one side of a seam against fixtures I wrote. This runs the real client against a real container: 9 KMs discovered, a clean case PASSes, the four once-dead checks fire, a stale `km_set` blocks, **the gateway offers a dose and the client drops it on HARD_FAIL**, no dose for a child. Regression-proven: strip `allergens` from the wire and it reports `BLOCKED_NO_PROOF` — it catches F-C8 reappearing.
+
+**And it skips green in CI.** That is a deliberate hole, named rather than hidden: a green CI run does **not** mean this passed. It means nobody asked.
+
+**My own success message lied.** The first cut derived Tomcat's port (`:18081` → `:8080`), probed a port nothing listened on, swallowed the failure — and still announced *"9 KMs discovered"*. A claim it never checked. The base is now explicit, an unreachable probe **fails**, and when it is not run the line says *"discovery NOT checked"*. That is the overclaiming defect this whole phase corrected, written into my own output.
+
+---
+
+---
+
 ## fl30-kb:v2 — the identity sidecar goes live (2026-07-15)
 
 **Status:** `npm test` EXIT=0 · `verification` Pass: true · `trunk:stub:all` EXIT=0 · seals 25/0 · frozen contracts byte-unchanged. Gateway `dd9bfd3`: **68/68** JUnit (was 63) · 12/12 export fixtures.
