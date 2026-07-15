@@ -43,6 +43,12 @@ export const CAPABILITY_FILE = {
   pharmacodynamics: "pharmacodynamics.json",
   clinical_uses: "clinical-uses.json",
   dose_evidence: "dose-evidence.json",
+  // US/EU label doses retrieved from AMASS by the agent workflow and returned through the chat↔repo
+  // round-trip — the SAME path dose_evidence uses (ingest is schema-gated and FORCES draft). It is
+  // engine-isolated, so ingesting it can never put a foreign dose on the AU dose path.
+  // dose_guidance is deliberately NOT here: an AU dose enters only by clinician worksheet entry
+  // (Channel B) or a fetched TGA PI (Channel A), never through the generic authoring pipeline.
+  international_dose_guidance: "international-dose-guidance.json",
   administration_handling: "administration-handling.json",
   tdm_parameters: "tdm-parameters.json",
   warning_labels: "warning-labels.json",

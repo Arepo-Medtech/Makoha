@@ -18,6 +18,7 @@
  * Run from repo root: node test/contract-dose-guidance-schema.js
  */
 import { DoseGuidanceSchema, validateDoseGuidance, InternationalDoseGuidanceSchema, validateInternationalDoseGuidance, CAPABILITY_VALIDATORS } from "../mcp/servers/pharmacology/domain/model.js";
+import { CAPABILITY_FILE } from "../scripts/pharm-author.mjs";
 
 const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -110,9 +111,17 @@ ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-0
       ],
       appraisal_note: "AU, US and EU labels all differ; AU follows APF22." } },
   "non-congruence against BOTH US and EU still ships");
-rejects({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
-      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }] } }, "must explain WHY",
-  "non_congruent without an appraisal_note must be rejected — the record ships, so the note is what the clinician weighs");
+// AU PRIMACY (operator ruling 2026-07-15, second correction): non_congruent needs NO note. An AU
+// dose does not justify itself to a foreign regulator — demanding an explanation would make the
+// foreign label the default and AU the deviation, the same inversion the veto removal fixed. And in
+// Channel B the explainer would be the AGENT, authoring clinical reasoning it does not have.
+ok({ ...base(), au_congruence: { status: "non_congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg twice daily" }] } },
+  "non_congruent WITHOUT an appraisal_note must SHIP — the AU clinician is the final authority and does not explain themselves to the FDA");
+ok({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z",
+      comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "500 mg every 8 hours" }],
+      appraisal_note: "identical" } },
+  "an appraisal_note remains ALLOWED when someone chooses to record context");
 
 // ---- 4. THE APPRAISAL CANNOT BE SKIPPED, FAKED, OR MIS-STAMPED ------------------------------
 rejects({ ...base(), au_congruence: undefined }, "required",
@@ -120,7 +129,7 @@ rejects({ ...base(), au_congruence: undefined }, "required",
 rejects({ ...base(), au_congruence: { status: "congruent", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "unfalsifiable",
   '"congruent" against no comparator must be rejected');
 rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z", comparators: [] } }, "must state why",
-  '"no_comparator" without a reason must be rejected (an unexplained absence reads identically to an appraisal that never ran)');
+  '"no_comparator" without a reason must be rejected — unlike non_congruent, this is a claim about THE SEARCH (mechanical, verifiable) and is what stops anyone claiming "no comparator" to skip the appraisal');
 rejects({ ...base(), au_congruence: { status: "no_comparator", appraised_utc: "2026-07-15T00:00:00Z",
       comparators: [{ jurisdiction: "US", agency: "FDA", amass_id: "AMRC_x", dose_statement: "875 mg BD" }], appraisal_note: "none" } }, "cannot carry comparators",
   '"no_comparator" carrying a comparator must be rejected');
@@ -153,6 +162,20 @@ expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), safe_dose_range: 
   "strict(): a foreign record must not carry safe_dose_range — that key belongs to AU dose_guidance alone");
 expect(CAPABILITY_VALIDATORS.international_dose_guidance === validateInternationalDoseGuidance,
   "international_dose_guidance must be registered in CAPABILITY_VALIDATORS");
+
+// ---- 5c. ROUTING (C1) — an AU dose may NEVER enter via the generic agent round-trip ---------
+// CAPABILITY_FILE is what scripts/pharm-ingest.mjs routes on. international_dose_guidance IS
+// routable: it is agent-retrieved from AMASS and engine-isolated, so ingesting it can never put a
+// foreign dose on the AU dose path (the dose_evidence precedent).
+expect(CAPABILITY_FILE.international_dose_guidance === "international-dose-guidance.json",
+  "international_dose_guidance must be routable through pharm-ingest (agent-retrieved, engine-isolated)");
+// dose_guidance must NOT be. This is DEFENCE IN DEPTH behind the AHPRA gate, and it matters: the
+// AHPRA check is a PATTERN check, not an identity check — MED0001857758 is committed all over this
+// repo, so an agent that could reach the generic round-trip could author a dev-package quoting it and
+// pass the schema. Keeping dose_guidance off the ingest route means an AU dose cannot enter that way
+// AT ALL: only clinician worksheet entry (Channel B) or a fetched TGA PI (Channel A).
+expect(CAPABILITY_FILE.dose_guidance === undefined,
+  "dose_guidance must NOT be routable through pharm-ingest — an AU dose enters ONLY via Channel B (clinician worksheet) or Channel A (fetched TGA PI). Adding it here would let an agent author a dose through the generic round-trip quoting a known AHPRA id.");
 
 // ---- 6. wiring ------------------------------------------------------------------------------
 expect(CAPABILITY_VALIDATORS.dose_guidance === validateDoseGuidance,

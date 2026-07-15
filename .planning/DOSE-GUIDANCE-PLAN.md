@@ -104,13 +104,32 @@ be written to `dose-guidance.json` at all**; it is written to the review queue.
 **Verify:** `npm test` green; `contract-pharm-datastore` green; new schema unit tests — a record with
 `entered_by` an agent string **fails**; `channel:"clinician_apf_attestation"` + `reference:"tga-pi"` **fails**.
 
-### C1 — The AMASS divergence checker `[ENG, un-gated, LIVE NOW, still no doses]`
-`scripts/pharm-dose-crosscheck.mjs` — takes an ingredient + a candidate AU range, queries AMASS
-RegulatoryCore, returns `agrees | diverges | not_available` + the FDA/EMA statement and `amassId`.
-Live-probed and working (2026-07-15). Fully testable before a single dose exists: fixtures for agree,
-diverge, and no-record.
-**Verify:** fixture tests green; one live smoke against methotrexate (env-gated, skips in CI — the
-`smoke-llm.mjs` precedent).
+### C1 — Congruence + plausibility, and the international register `[ENG, un-gated, no doses yet]`
+**SPEC CORRECTED 2026-07-15 (C1 Phase 1 research).** This phase was planned as
+`scripts/pharm-dose-crosscheck.mjs` — "a script that queries AMASS RegulatoryCore". **That is
+architecturally impossible and does not match the repo's own precedent.** AMASS is an MCP connector
+available to the AGENT, not to a Node script; no script in this repo makes a live PubMed/AMASS call,
+and the 261 dose-evidence records were not produced by one. They came from an **agent retrieval
+workflow** (`authored_by: "claude-fable-5 dose-evidence retrieval workflow (retrieve +
+adversarial-verify agents)"`) returned through the **chat↔repo round-trip**: `docs/pharmcheck-export/`
+out → agent authors a dev-package → `scripts/pharm-ingest.mjs` back in, schema-gated and FORCING draft.
+
+So C1 follows that precedent exactly and needs **no network code at all**:
+1. **`domain/dose-plausibility.js`** — a pure, offline, fail-safe module. Parses dose magnitudes from
+   free-text statements and compares orders of magnitude. This is the `dose-plausibility-guard-unbuilt`
+   item: it is a **plausibility** check (>10× → WARN), **never** a congruence veto — conflating the two
+   is what produced the gate the C0 amendment removed. Fail-safe by construction: unparseable, or a
+   different dosing basis (mg/kg, mg/m²), → `unassessable`, **never** a silent all-clear.
+2. **Route `international_dose_guidance` through `pharm-ingest.mjs`** by adding it to `CAPABILITY_FILE`
+   — the same path `dose_evidence` already uses. (`dose_guidance` stays OUT: it is clinician-worksheet
+   entry, C2's bespoke path.) The agent retrieves from AMASS, authors a dev-package, ingest validates it
+   against `InternationalDoseGuidanceSchema` and forces `review_status:"draft"`.
+3. **Congruence status stays AUTHORED, not computed.** Whether a differing dose is "non-congruent" or
+   merely "a different approved indication" is a clinical judgement, not a string comparison. The real
+   protection is already structural: `au_congruence.comparators[].dose_statement` is REQUIRED, so the
+   clinician reads the foreign label verbatim beside the AU dose regardless of what the status claims.
+**Verify:** fixture tests for the parser (mg/g/microgram, ranges, frequency, mg/kg → unassessable,
+unparseable → unassessable) + a >10× typo catch + ingest routing. **No live call, so nothing to skip in CI.**
 
 ### C2 — Channel B: clinician entry `[ENG tooling un-gated; the DATA needs KL]`
 `scripts/pharm-dose-author.mjs` — reads a clinician-completed worksheet (the established

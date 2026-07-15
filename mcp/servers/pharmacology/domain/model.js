@@ -457,6 +457,25 @@ export const DoseEvidenceReviewQueueSchema = z
  * the foreign label side by side and decides, which is where the judgement belongs (Guardrail 2:
  * the engine proposes, a registered practitioner disposes; required_human_review is always true).
  * The appraisal is still MANDATORY — you must have looked, and "no_comparator" must say why.
+ *
+ * WHY "non_congruent" DOES NOT REQUIRE A NOTE (operator ruling 2026-07-15, second correction):
+ * this block first REQUIRED an appraisal_note on non_congruent — "explain why the AU dose differs".
+ * That was the same inversion in a milder form: demanding the AU dose JUSTIFY ITSELF against a foreign
+ * label makes the foreign label the default and AU the deviation. **AU has primacy.** A differing US/EU
+ * label is a FACT TO SURFACE, not a discrepancy the AU dose must account for. And note who would have
+ * written it: in Channel B the clinician enters the dose and the appraisal runs in the authoring pass,
+ * so the note would in practice be AGENT-AUTHORED CLINICAL REASONING ("they differ because of
+ * indication X") asserted into a record a clinician reads — unverified clinical content the agent does
+ * not actually know, where a wrong explanation misleads worse than no explanation.
+ * The note stays REQUIRED on "no_comparator" because that is a claim about THE SEARCH ("AMASS holds no
+ * FDA/EMA authorisation for this ingredient") — mechanical, verifiable, and the thing that stops anyone
+ * claiming "no comparator" to skip the appraisal silently. Machine claims need justifying; the
+ * clinician's judgement does not.
+ * WHAT CARRIES THE WEIGHT INSTEAD: `comparators[].dose_statement` is REQUIRED, so the foreign label's
+ * dose travels in the record verbatim. The clinician reads the AU dose and the foreign dose side by
+ * side and disposes (Guardrail 2). **That surfacing is load-bearing** — see
+ * `dose-congruence-surfacing-unbuilt`: if a non-congruence ships and nothing DISPLAYS it, this whole
+ * model collapses, because "the clinician weighed it" presumes the clinician saw it.
  * NOTE what this deliberately does NOT do: it is not a typo guard. An order-of-magnitude entry error
  * is a PLAUSIBILITY question, not a congruence one; conflating them is what produced the bad gate.
  * That check is tracked separately (`dose-plausibility-guard-unbuilt`) and belongs in C1, where the
@@ -503,8 +522,8 @@ export const DoseGuidanceSchema = z
               .strict()
           )
           .default([]),
-        // Required unless congruent: WHY they differ, or why no comparator exists. A bare
-        // "non_congruent" is not useful to the clinician who has to weigh it.
+        // OPTIONAL on congruent/non_congruent — an AU dose does not justify itself to a foreign
+        // regulator (see header). REQUIRED on no_comparator, where it is a claim about the search.
         appraisal_note: z.string().optional(),
       })
       .strict(),
@@ -555,10 +574,11 @@ export const DoseGuidanceSchema = z
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "appraisal_note"], message: '"no_comparator" must state why no US/EU label exists (e.g. AU-only product) — an unexplained absence is indistinguishable from an appraisal that never ran' });
       }
     }
-    if (c.status === "non_congruent" && !c.appraisal_note) {
-      // Non-congruence SHIPS — so the note is the whole point: it is what the clinician weighs.
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["au_congruence", "appraisal_note"], message: '"non_congruent" must explain WHY the AU dose differs from the US/EU label (different approved indication, population, regulatory history) — the record ships, so this note is what the clinician weighs at the point of decision' });
-    }
+    // NOTE the deliberate ABSENCE of a rule here: "non_congruent" needs NO appraisal_note. The AU
+    // clinician is the final authority; a differing foreign label is surfaced to them (comparators[]
+    // carries its dose_statement verbatim) and they dispose. Demanding an explanation would make the
+    // AU dose justify itself to a foreign regulator, and in practice the explainer would be the agent
+    // — clinical reasoning it does not have. Do not "restore" this rule; see the header.
     for (const [i, cm] of c.comparators.entries()) {
       // A US jurisdiction with an EMA agency (or vice versa) is a mis-stamped provenance.
       const want = cm.jurisdiction === "US" ? "FDA" : "EMA";

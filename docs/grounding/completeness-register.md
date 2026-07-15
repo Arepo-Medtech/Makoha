@@ -1504,15 +1504,32 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: dose-plausibility-guard-unbuilt
   path: scripts/pharm-dose-crosscheck.mjs (C1, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema)
   component_type: other (authoring guard)
-  state: UNBUILT
+  state: COMPLETE
   evidence: Opened 2026-07-15 by the C0 amendment (operator ruling reversing D-DG-3). The original `cross_check` gate binned an AU dose whose FDA/EMA label differed. That gate was removed as wrong (it inverted the jurisdiction rule and conflated "different jurisdiction" with "wrong" — see the DoseGuidanceSchema header). BUT it was incidentally catching one real thing: a TRANSCRIPTION TYPO. A clinician entering "5000 mg" for "500 mg" would have been caught by the foreign-label comparison. Removing the gate removes that catch, and this item exists so that loss is TRACKED rather than silently accepted.
   blocks: nothing — dose-guidance C2 can proceed without it; this narrows a residual entry-error risk
   safety_class: degrades_safe
   invariant_exposure: none directly — but an order-of-magnitude dose entry error is the classic catastrophic med-error class, and Channel B is manual clinician transcription, which is exactly where such an error would enter
   risk: Medium
   blocks_patient_facing: false
-  build_action: Build in C1, where the dose-string parsing already has to live. It is a PLAUSIBILITY check, NOT a congruence check — conflating the two is precisely what produced the bad gate: an order-of-magnitude discrepancy is a different question from "the EU approved a different indication". Suggested shape: parse the AU and comparator dose magnitudes; a >10x discrepancy is a WARN routed to the clinician for confirmation, never an automatic bin (a genuine 10x difference between jurisdictions is possible — e.g. loading vs maintenance dosing). Must not resurrect a veto.
+  build_action: **RESOLVED 2026-07-15 (C1).** Built `mcp/servers/pharmacology/domain/dose-plausibility.js` — pure, offline, no network. `parseMaxDoseMg()` reads mg/g/microgram (longest-first unit alternation, so "microgram" cannot partial-match as "g" — a 1,000,000x error), takes the MAX amount (a misplaced zero lands on the cap), and returns null for a weight/BSA basis (mg/kg, mg/m²), non-mass units (IU/mL/%), or anything unreadable. `assessPlausibility()` → plausible | implausible | **unassessable**, worst-comparator-wins. **FAIL-SAFE: unreadable is NEVER "plausible"** — an unassessable result explicitly says "this is NOT an all-clear", because a guard that guesses launders a non-check into reassurance. **It is a WARN for a human, never a bin** (a genuine >10x jurisdictional difference is possible — loading vs maintenance dosing). `test/contract-dose-plausibility.js` (in npm test) proves BOTH directions: the 5000-vs-500 typo IS caught, and the legitimate 500-q8h-vs-875-BD AU/US difference — which the removed gate would have BINNED — passes untouched. Congruence stays AUTHORED, not computed: whether a difference is "non-congruent" or "a different approved indication" is clinical judgement, and the structural protection is that comparators[].dose_statement is REQUIRED, so the clinician reads the foreign label verbatim regardless of the status.
   gap_register_link: none (Medium)
+  status: resolved
+  last_scanned: 2026-07-15
+```
+
+```md
+- id: dose-congruence-surfacing-unbuilt
+  path: portal/ (clinician review surface) · scripts/pharm-dose-author.mjs (C2 worksheet round-trip, unbuilt) · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema.au_congruence)
+  component_type: other (clinician surface)
+  state: UNBUILT
+  evidence: Opened 2026-07-15 by the second C0 amendment (operator ruling: AU primacy — `non_congruent` no longer requires an appraisal_note). **This item exists because that ruling has a load-bearing precondition that nothing currently enforces.** The ruling's reasoning is: "as long as the non-congruent fact has been ALERTED to the clinician, it is assumed the clinician has weighed it in their decision". That is sound — the AU clinician IS the final authority (Guardrail 2) — but it is an obligation on the SURFACE, not on the schema. `DoseGuidanceSchema` guarantees the foreign label's `dose_statement` is **RECORDED** in `au_congruence.comparators[]`. **NOTHING yet guarantees it is DISPLAYED.** If a `non_congruent` dose ships and no surface shows the clinician the foreign label beside the AU dose, then "the clinician weighed it" is false, the appraisal is inert metadata, and the AU-primacy model collapses into shipping unflagged divergences — the one outcome every party to this design (operator and agent) intends to prevent.
+  blocks: the safety argument under `dose-guidance-empty-no-au-source` C2 — not the authoring, but the point at which any dose reaches a clinician
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-prescription / human-in-the-loop (Guardrail 2 — "the engine proposes, a registered practitioner disposes"; `required_human_review` is always true). Disposal presumes SIGHT. An appraisal recorded but never rendered satisfies the schema and defeats the guardrail — and it would READ as done, because the data is right there in the record. That is exactly the failure mode this item exists to keep visible.
+  risk: High
+  blocks_patient_facing: true
+  build_action: Before ANY dose is surfaced to a clinician: the review surface MUST render `au_congruence.status` and every `comparators[].dose_statement` (jurisdiction + agency + the foreign dose verbatim) alongside `safe_dose_range` — non-congruence must be visually unmissable, not a field in a payload. Two natural homes, both already on the board: (1) the Clinician Verification Portal (blocker #2, PARTIAL — `releaseToPatient()` is the adoption seam), and (2) the C2 worksheet round-trip, where KL sees the appraisal at attestation time. Add a contract test asserting a `non_congruent` record cannot be surfaced without its comparators rendered. **Do NOT resolve `dose-guidance` C2 as complete while this is open** — the schema change that made non_congruent shippable is only safe with this in place.
+  gap_register_link: pending promotion (High — mirror into gap-register per the one-way rule)
   status: open
   last_scanned: 2026-07-15
 ```
