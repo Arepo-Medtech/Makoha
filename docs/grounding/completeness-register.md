@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: positional-stability-unchecked
+  path: verification/positional-stability.js · test/contract-positional-stability.js · verification/pipeline.js (generate_candidate(packet)) · integration/generation-backend.js
+  component_type: verifier
+  state: PARTIAL
+  evidence: **HARNESS BUILT 2026-07-15 (M3).** Positional bias is the LLM glitch with no bedside equivalent: a transformer over-favours the first/last item of a list for reasons of attention geometry (primacy/recency, "lost in the middle"), not clinical merit — so the ORDER you list differentials in changes the ranked output. A human applies judgement to each entry roughly independently of ordinal position; **a reviewer has no intuition for this because they do not have the bug.** It is silent by construction: the only way to see it is to permute the input and look. **PREMISE CHECKED (the M1/M2 lesson): the default trunk generator (`stubGenerationOutput()`) returns a FIXED STRING and ignores the packet entirely — it is trivially position-stable and checking it proves NOTHING.** The harness is for the REAL generation path (`generate_candidate(packet)` — Claude/MedGemma, mock by default) and is INERT until one is wired.
+  blocks: nothing — additive and currently inert
+  safety_class: degrades_safe (it reports; it changes no output)
+  invariant_exposure: none directly. It guards ranking integrity — a failure mode invisible to every human reviewer, which is exactly why it needs a machine to look.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE (the harness):** `checkPositionalStability(packet, generate)` permutes `facts`/`evidence` with a SEEDED shuffle (an instability nobody can reproduce cannot be investigated) and compares the RANKING, not the prose — two runs of a model word things differently while ranking identically, and comparing prose would flag paraphrase as instability. **THE CONTROL RUN IS THE LOAD-BEARING PART:** you cannot attribute a difference to POSITION until you have established the generator is DETERMINISTIC. A model at temperature > 0 varies for reasons unrelated to ordering; without the control, the harness would blame temperature on position and cry wolf until someone switched it off — and then the real instability ships. So a non-deterministic generator returns `verdict: "indeterminate"` — an honest "I cannot tell you" over a confident wrong attribution. Also `not_applicable` when no list exceeds length 1 (reporting "stable" there would be a pass nobody earned). **Tamper-proven BOTH ways: deleting the control run makes it misattribute noise as "unstable" (caught); neutering detection makes it miss a purely position-ranking generator (caught).** **REMAINING: wire it to the live generation path (env-gated, following the contract-fhir-live / contract-terminology-live precedent) once an LLM is actually in the loop; and decide whether it runs at RUNTIME (2× generation cost) or only in evaluation.**
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: descent-guard-upstream-inheritance
   path: test/contract-descent-guard.js · integration/trunk-sequencer.js · integration/trunk-pipeline.js · verification/pipeline.js (generate_candidate(packet)) · mcp/schemas/context-packet.schema.json (evidence[])
   component_type: verifier

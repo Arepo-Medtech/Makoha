@@ -4,6 +4,22 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## M3 — positional stability: the glitch no clinician will catch (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 70 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged — no schema field, no verifier check added.
+
+**The glitch.** A transformer over-favours the first and last item of a list for reasons of attention geometry — primacy/recency, "lost in the middle" — not clinical merit. So **the order you list differentials in changes the ranked output.** A human applies judgement to each entry roughly independently of ordinal position; **a reviewer has no intuition for this because they do not have the bug.** It is silent by construction. The only way to see it is to permute the input and look.
+
+**Premise checked first (the M1/M2 lesson).** `stubGenerationOutput()` returns a **fixed string and ignores the packet entirely** — it is trivially position-stable, and checking it would prove nothing. So the harness targets the real generation path (`generate_candidate(packet)` — Claude/MedGemma, mock by default) and is **inert until one is wired**. Built now, detection-proven, so the day a model is in the loop the check exists rather than being retrofitted after the first unstable ranking ships.
+
+**The control run is the load-bearing part.** You cannot attribute a difference to POSITION until you have established the generator is DETERMINISTIC. A model at temperature > 0 varies for reasons that have nothing to do with ordering. Without the control, the harness would blame temperature on position and **cry wolf until someone switched it off — and then the real instability ships**. So a non-deterministic generator returns `verdict: "indeterminate"`: an honest *"I cannot tell you"* beats a confident wrong attribution.
+
+**It compares the RANKING, not the prose** — two runs word things differently while ranking identically; comparing prose would flag paraphrase as instability. The shuffle is **seeded**: an instability nobody can reproduce cannot be investigated. And `not_applicable` when no list exceeds length 1 — reporting "stable" there would be a pass nobody earned.
+
+**Tamper-proven both ways:** deleting the control run makes it misattribute noise as `unstable` (caught); neutering detection makes it miss a generator that ranks *purely* by input position (caught).
+
+**Remains:** wire it to the live generation path, env-gated (the `contract-fhir-live` / `contract-terminology-live` precedent), once an LLM is in the loop — and decide runtime (2× generation cost) vs evaluation-only. **M4** (register separation — reusing the evidence plane's `authority` field) is the last of the four.
+
 ## M2 — the descent guard: the premise was false (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 69 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged — **no schema field, no verifier check added**.
