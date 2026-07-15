@@ -20,7 +20,31 @@ And a second reason the operator did not need to give: **who would have written 
 
 ---
 
-## FL dose-guidance C2b/C2d + C3 — the first real AU doses, and the mock fallback removed (2026-07-15)
+## FL dose-guidance C2d — the first clinician-signed AU doses (2026-07-15)
+
+**Status:** operator-attested. **11 AU dose records CLINICALLY SIGNED** by Kenneth Lee (MED0001857758) — all 11 **Attest**, 0 Amend, 0 Reject. `clinical_sign_off:true`, `regulatory_sign_off:false`, dataset stays `-dev`, receipts stay `mock`, **0 drafts remain, 23/23 seals verify.** Six gates EXIT=0.
+
+**`dose_guidance` has been empty since this repo began.** It is the one capability that becomes a *dose*, and it stayed empty because the AU dose authorities are licence-restricted and "no dosages from the LLM" bars the agent writing one. **It now holds 11 doses, and every number is the clinician's own verbatim APF22 Section D text.** The agent segmented and labelled it for display and wrote nothing — the schema's substring bar proves that mechanically, and `origin.entered_by` is an AHPRA id no agent string can match.
+
+**A signed AU dose now flows end-to-end:** amoxicillin → `PASS` → `"Oral, 250–500 mg 8-hourly or 1 g twice daily. IM/IV, 250 mg to 1 g every 6–8 hours."` — receipt still `mode:mock`, correctly, until FL-50.
+
+**What the clinician actually saw** (R-47a — the ruling that a non-congruent dose ships unexplained *assumes* he was alerted, so the surface is what makes that true): his verbatim source, every dose line with indication/route/basis/plausibility, and every US/EU comparator dose verbatim with its authorisation status. Including the two that most needed seeing — **carbamazepine**'s order-of-magnitude flag (AU max 2 g vs US *initial* 200 mg: a max-vs-initial artefact, visible and dismissable on sight) and **metformin**'s only citable US label being **WITHDRAWN**, marked "not a current label" rather than read as current.
+
+### R-46 reproduced live — and caught this time
+
+Applying the attestation set `provenance.reviewed_by`/`review_status` on all 11 records, **which broke the seal immediately** — the exact mechanism that silently invalidated 7 datasets for months. The difference: `contract-pharm-datastore`'s new assertion made it **visible within seconds** instead of decaying quietly, and it was closed deliberately through `pharm-reseal.mjs --reason`, with the basis now living in `attestation.reseal_history[]`. The R-46 fix demonstrated itself on the very next sign-off it had to survive.
+
+**Scope, held:** ADULT doses only. The 232 paediatric rows stay excluded — the paediatric hard limit is unchanged and its plan is parked.
+
+**REMAINING, and none of it is cosmetic:**
+- **R-47b — the RUNTIME clinician surface** (portal blocker #2). **`dose-guidance-empty-no-au-source` MUST NOT be resolved while this is open.** C2 made non-congruent doses real; R-47b is what guarantees a *consulting* clinician sees the divergence the AU-primacy ruling assumes they weighed. R-47a covered attestation only.
+- **C4 — TGA PI (Channel A)**, operator-gated on the same TGA access FL-05 awaits.
+- **Coverage beyond Tier A**, gated on `pharm-ingredient-name-normalisation` (only 71% of APF names match the datastore; `amoxycillin`≠`amoxicillin`).
+- **FL-50 regulatory** before anything is patient-facing.
+
+---
+
+## FL dose-guidance C2b/C3 — the first real AU doses, and the mock fallback removed (2026-07-15)
 
 **Status:** operator-approved. **11 AU dose records authored** (Tier A + amoxicillin), all `review_status:"draft"`, `clinical_sign_off:false` — **KL's attestation (C2d) still required**. Six gates EXIT=0; 23 seals verify; frozen contracts, `engine.js` and the HIST-2 path byte-unchanged.
 

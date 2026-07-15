@@ -34,7 +34,7 @@ Indication status: `present`
 | US | FDA | ACTIVE | The recommended starting dosage of JYLAMVO is 7.5 mg orally once weekly with escalation to achieve optimal response. Dosages of more than 20 mg once weekly result in an increased risk of serious adverse reactions, including myelosuppression. | `AMRC_3fGlV6Dt4OPHPpblkubUitVUbN3` |
 | EU | EMA | ACTIVE | The recommended initial dose is 7.5 mg (3.75 ml) methotrexate once weekly. | `AMRC_1b7jWbEDFeccd6RkJS01idTnGGk` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -59,7 +59,7 @@ Indication status: `present`
 |---|---|---|---|---|
 | US | FDA | ACTIVE | The recommended initial dose of EQUETRO is 200 mg administered twice daily. The dose may be increased by 200 mg per day to achieve optimal clinical response. | `AMRC_MptXnon1tbyon6nDa0hATWdzXhl` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -83,7 +83,7 @@ Indication status: `absent` — the monograph carries no indication for this ran
 |---|---|---|---|---|
 | US | FDA | WITHDRAWN_VOLUNTARY **⚠️ WITHDRAWN_VOLUNTARY — not a current label** | The recommended starting dose of GLUMETZA is 500 mg orally once daily with the evening meal. Increase the dose in increments of 500 mg every 1 to 2 weeks on the basis of glycemic control and tolerability, up to a maximum of 2,000 mg once daily with the evening meal. | `AMRC_VaZiOgNDr4gLmMMzOosoYBlRNPt` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -109,7 +109,7 @@ Indication status: `present`
 |---|---|---|---|---|
 | US | FDA | ACTIVE | Adults: 3 to 4 g daily in evenly divided doses with dosage intervals not exceeding eight hours. It may be advisable to initiate therapy with a lower dosage, e.g., 1 to 2 g daily, to reduce possible gastrointestinal intolerance. | `AMRC_8zDRix9bWVQRcpfgZP6FN4e3TZA` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -136,7 +136,7 @@ Indication status: `present`
 |---|---|---|---|---|
 | US | FDA | ACTIVE | The recommended starting dosage for adult patients who have received no previous treatment is 5 mL (125 mg/5 mL), or one teaspoonful, by mouth three times daily. Adjust the dosage to suit individual requirements, up to a maximum of 25 mL daily. | `AMRC_IoFIOhdH6gJ0LAD29QZobqErVn1` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -162,7 +162,7 @@ Indication status: `present`
 |---|---|---|---|---|
 | US | FDA | ACTIVE | The recommended dosage is: one 70 mg tablet once weekly or one bottle of 70 mg oral solution once weekly or one 10 mg tablet once daily | `AMRC_SQXLnFmyFx7BnPY5Xaie3X3UGNb` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -187,7 +187,7 @@ Indication status: `absent` — the monograph carries no indication for this ran
 | US | FDA | ACTIVE | The recommended dose of ELIQUIS for most patients is 5 mg taken orally twice daily. The recommended dose of ELIQUIS is 2.5 mg twice daily in patients with at least two of the following characteristics: age greater than or equal to 80 years, body weight less than or equal to 60 kg, serum creatinine greater than or equal to 1.5 mg/dL | `AMRC_JKaqdbkiiH5OwMOoJqUpy6NQuY3` |
 | EU | EMA | ACTIVE | The recommended dose of apixaban is 5 mg taken orally twice daily. Dose reduction: The recommended dose of apixaban is 2.5 mg taken orally twice daily in patients with NVAF and at least two of the following characteristics: age >= 80 years, body weight <= 60 kg, or serum creatinine >= 1.5 mg/dL (133 micromole/L). | `AMRC_NNBh3l5BiG6yKYz0z8Gn2t6YGKO` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -214,7 +214,7 @@ Indication status: `present`
 | US | FDA | ACTIVE | For patients with creatinine clearance (CrCl) > 30 mL/min, the recommended dosage of PRADAXA Capsules is 150 mg taken orally, twice daily. For patients with severe renal impairment (CrCl 15-30 mL/min), the recommended dosage of PRADAXA Capsules is 75 mg twice daily | `AMRC_RvQ2eYxeA3lFzm2LJblKvUHFQ4U` |
 | EU | EMA | ACTIVE | 300 mg dabigatran etexilate taken as one 150 mg capsule twice daily | `AMRC_WVGU4iehGvIjglnClAZySLe4GN9` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -238,7 +238,7 @@ Indication status: `absent` — the monograph carries no indication for this ran
 |---|---|---|---|---|
 | US | FDA | ACTIVE | The recommended dosage range of ZOCOR is 20 mg to 40 mg once daily. | `AMRC_JbHcvse1Lby0S0D969VPXYekEhM` |
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -259,7 +259,7 @@ Indication status: `absent` — the monograph carries no indication for this ran
 
 **International labels:** none. `no_comparator` — No US/EU label dose is available for rivaroxaban in the international register. This is a claim about the SEARCH, not about the AU dose.
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
@@ -280,7 +280,7 @@ Indication status: `absent` — the monograph carries no indication for this ran
 
 **International labels:** none. `no_comparator` — No US/EU label dose is available for amoxicillin in the international register. This is a claim about the SEARCH, not about the AU dose.
 
-**Decision:** ☐ Attest ☐ Amend ☐ Reject — _______________
+**Decision:** ☑ Attest ☐ Amend ☐ Reject — _______________
 
 ---
 
