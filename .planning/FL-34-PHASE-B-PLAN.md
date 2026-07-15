@@ -193,6 +193,59 @@ a naming artifact as a parity failure.
 `npm test` green (idempotence: `runPharmCheck` canonicalising an already-canonical name is a no-op).
 **GATE.**
 
+### B0b — Send the CODE, not just the name `[breath-ezy]` `[operator ruling — folded in]`
+
+**Operator, 2026-07-15:** *"when interacting with cds client is it more pragmatic to use a code USAS or
+INN or RxCUI and just maintain strict canonical names for all internal functions to avoid conflict?"*
+Yes — and B0 only did the name half. **Codes at the boundary, canonical names internally.**
+
+**The wire contract already has the field.** `OpenCdsDrugSchema` carries optional `atc_code`,
+`rxnorm_code`, `amt_snomed_code`, and `opencds-client.js:52-54` already forwards them. They arrive
+`undefined` because nothing upstream populates them. **No contract change is needed — just fill it.**
+
+**Coverage, measured:** **437 / 451 dose ingredients (97%) have an RxCUI.** The 14 without are
+combination products (`trimethoprim with sulfamethoxazole`, `levodopa with decarboxylase inhibitor`,
+`amoxycillin with clavulanic acid` — RxNorm models these as multi-ingredient concepts our single-name
+lookup does not resolve) and classes (`oestrogens`, `ferrous salts`). Real entries with real signed
+doses — which is exactly why a **code-only** contract fails and the name must still travel.
+
+**ATC is NOT an identity, and the data is decisive.** It is a therapeutic *classification*: `V07AY`
+maps to ~70 distinct products (every bandage, dressing and tape); `B03AC` covers four iron
+preparations. Keying identity on ATC would be catastrophic. It sits right there in the record looking
+like a candidate, so this is written down rather than left to be rediscovered.
+**AMT SNOMED would be the AU-native answer** — the frozen intent even carries `amt_snomed_code` — but
+AMT is not harvested and the standards pin says the AMT subset is not validated. Operator/NCTS lane.
+
+**F7 — NEW · two of the client's three code reads are DEAD, and one would be smuggling.** Verified:
+`drug_intent` in the frozen `pharm-intent.schema.json` is `additionalProperties: false` and has **no**
+`rxnorm_code` or `atc_code`. The zod mirror (`DrugIntentSchema`, a plain `z.object()`) **silently
+STRIPS** them:
+
+```
+in : drug_intent {drug_name, drug_class, rxnorm_code:"4603", atc_code:"C03CA01", amt_snomed_code:"123"}
+out: drug_intent {drug_name, drug_class, amt_snomed_code:"123"}        ← the other two are gone
+```
+
+So `extractDrug`'s `di.rxnorm_code` / `di.atc_code` can never be populated through a validated intent —
+dead reads that create the *illusion* the codes flow. And putting the code on the intent anyway would
+be worse: the pipeline hands `queryCds` the un-revalidated object, so the field WOULD reach the
+gateway — a value the frozen contract forbids, riding out because it bypassed validation. That is
+smuggling, and it is exactly what a frozen contract exists to stop.
+
+⇒ **The code rides as an explicit OPTION to `queryCds`**, never on the intent. The wire contract has
+the field; the intent does not; we do not smuggle. `pharm-intent` stays byte-frozen.
+
+**GATED ON SIGN-OFF, like everything else identity.** The RxCUI comes from the vocabulary/identity map,
+which are **unsigned**. Sending a code the gateway answers with a *dose* keyed on is steering — the
+same act the vocabulary gate refuses. So `rxnorm_code` is populated **only from a signed source**.
+Until KL signs: undefined, and the gateway falls back to the canonical name — which B0 already made
+correct. **B0b changes no behaviour today**; it wires and tests the precision that sign-off unlocks.
+
+**Verify:** the gateway receives `rxnorm_code: "4603"` for `frusemide` **when the source is signed**,
+and `undefined` when unsigned (with the canonical name still correct); `pharm-intent.schema.json`
+byte-unchanged; a test pinning that a code-bearing `drug_intent` is stripped, so nobody "fixes" F7 by
+smuggling. **GATE.**
+
 ### B1 — Export script + KB bundle `[gateway repo]`
 `export-fl30-kb.mjs` (+ `kb/`, `kb/manifest.json`). Reads a breath-ezy checkout **read-only**
 (`--datastore <path>`), applies the filter, verifies the provenance layer, stamps `km_set` +
@@ -201,7 +254,7 @@ a naming artifact as a parity failure.
 survive; (c) a tampered `records_checksum` **aborts**; (d) `km_set == "fl30-kb:v1"` pinned;
 (e) **(F5)** `international_dose_guidance` absent **even when its fixture is forced to
 `clinical_sign_off:true`**; (f) **(F5)** `drug_vocabulary` + `ingredient_identity` absent — identity is
-not executable knowledge; (g) **(F3)** `dose_guidance` **present**, with all 451 records.
+not executable knowledge; (g) **(F3)** `dose_guidance` **present**, with all 451 records; (h) **(B0b)** the KB carries DUAL KEYS — RxCUI-primary, canonical-name-fallback — and `manifest.excluded`/`manifest.name_only[]` names the 14 drugs with no code, so the gap is visible rather than assumed away.
 
 ### B2 — Tranche 1 KMs (the 5 `DEFAULT_CHECKS`) `[gateway repo]`
 One Java class per check implementing `CdsHooksExecutionEngine`; a shared `Fl30KnowledgeBase` loader
@@ -219,7 +272,7 @@ missing-fact→NOT_RUN / paediatric→flag-not-dose — plus a checksum-tamper t
 ### B4 — Tranche 3: the dose KM `[gateway repo]` `[NEW — F3 flipped]`
 Emit `dose_candidate` from the 451 signed records. **Only on PASS/WARN, never paediatric** — mirroring
 `engine.js:243`.
-**Verify:** JUnit — a dose emitted on PASS matches the engine's byte-for-byte for the same drug;
+**Verify:** JUnit — matching is **RxCUI-first, name-fallback** (B0b); a dose emitted on PASS matches the engine's byte-for-byte for the same drug;
 **no dose on HARD_FAIL/BLOCKED/paediatric**; a drug with no signed dose yields none (never a
 substitute). Plus a breath-ezy-side test that a gateway `dose_candidate` surfaces as
 `cds_dose_candidate` **advisory** in `ReviewBundle.dose_evidence[]` and **never** as

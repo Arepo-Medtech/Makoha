@@ -262,8 +262,57 @@ if (existsSync(MAP_PATH)) {
   await run("totally-made-up-drug");
   expect(seen[0] === "totally-made-up-drug", "an unknown name must reach the gateway as written — never silently replaced");
 
+  // ---- B0b: the CODE, not just the name ---------------------------------------------------------
+  // Operator: "is it more pragmatic to use a code ... and just maintain strict canonical names for all
+  // internal functions?" Yes. A code is unambiguous by construction; a name makes correctness depend
+  // on two systems agreeing on a spelling — the class of defect F6 was.
+  seen.length = 0;
+  const seenDrug = [];
+  const recordingGw = async (_u, opts) => { seenDrug.push(JSON.parse(opts.body).drug); return gateway(_u, opts); };
+  const runCode = (drug) => runPipeline({
+    trunk: "8.0", cds_fetch: recordingGw,
+    pharm_intent: { intent_id: "i-b0b", session_ref: "enc-b0b-test", intent_type: "new_prescription", drug_intent: { drug_name: drug, drug_class: "x" }, patient_facts_ref: {}, clinical_context: { patient_age_years: 60 }, mode: "mock" },
+    resolved_facts: { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true, egfr_ml_min: 90 },
+  });
+
+  // UNSIGNED (the shipped state): no code steers, and the NAME is still correct — B0b changes no
+  // behaviour until a clinician signs. Sending a code the gateway answers with a DOSE keyed on it IS
+  // steering, so it passes the same gate as the vocabulary itself.
+  await runCode("frusemide");
+  expect(seenDrug[0].drug_name === "furosemide", "unsigned: the canonical NAME must still reach the gateway (B0)");
+  expect(!seenDrug[0].rxnorm_code, "an UNSIGNED vocabulary must not send a code — a code the gateway answers with a dose IS steering");
+
+  // ATC must NEVER be sent as an identity. It is a therapeutic CLASSIFICATION: V07AY alone covers ~70
+  // distinct products (every bandage and dressing), B03AC four iron preparations. It sits in the
+  // record looking like a candidate; keying identity on it would answer with the wrong drug.
+  expect(!seenDrug[0].atc_code, "ATC must never be sent as an identity — it is a classification, not a key");
+
   if (prevState === undefined) delete process.env.HEYDOC_PHARM_CDS; else process.env.HEYDOC_PHARM_CDS = prevState;
   if (prevEp === undefined) delete process.env.HEYDOC_PHARM_CDS_ENDPOINT; else process.env.HEYDOC_PHARM_CDS_ENDPOINT = prevEp;
+}
+
+// ---- 10. F7: the frozen intent CANNOT carry a code — and must not be smuggled -------------------
+// `drug_intent` in the FROZEN pharm-intent.schema.json is additionalProperties:false with NO
+// rxnorm_code and NO atc_code. The zod mirror silently STRIPS them, so extractDrug's di.rxnorm_code /
+// di.atc_code could never be populated through a validated intent — dead reads that created the
+// ILLUSION the codes flow. The fix is to pass the code as an ARGUMENT (the WIRE contract has the
+// field; the intent does not). This pins that nobody later "fixes" F7 by putting the code on the
+// intent, which would smuggle a contract-forbidden field to the gateway by bypassing validation.
+{
+  const { validatePharmIntent } = await import("../mcp/servers/pharmacology/schemas.js");
+  const v = validatePharmIntent({
+    intent_id: "i", session_ref: "enc-f7-0001", intent_type: "new_prescription", patient_facts_ref: {}, mode: "mock",
+    drug_intent: { drug_name: "furosemide", drug_class: "d", rxnorm_code: "4603", atc_code: "C03CA01", amt_snomed_code: "123" },
+  });
+  expect(!("rxnorm_code" in v.drug_intent), "the frozen intent must NOT carry rxnorm_code — it is stripped, so putting it there is a silent no-op at best and smuggling at worst");
+  expect(!("atc_code" in v.drug_intent), "the frozen intent must NOT carry atc_code");
+  expect(v.drug_intent.amt_snomed_code === "123", "amt_snomed_code IS on the frozen intent — the AU-native code, simply not harvested yet");
+
+  // And the frozen contract itself is untouched by B0b.
+  const schema = JSON.parse(readFileSync("mcp/schemas/pharm-intent.schema.json", "utf8"));
+  const di = schema.properties.drug_intent;
+  expect(di.additionalProperties === false, "drug_intent stays closed");
+  expect(!("rxnorm_code" in di.properties), "B0b must NOT have widened the frozen intent — the code rides the WIRE, not the contract");
 }
 
 if (errors.length) {

@@ -47,7 +47,7 @@ export function cdsVendorAvailable(env = process.env) {
  * Query the CDS slot. EMPTY → HARD_FAIL, never any content. Fail-closed.
  * @returns {Promise<{ available: boolean, verdict: string, reason: string, dose_guidance: null, interactions: null, contraindications: null }>}
  */
-export async function queryCds(intent, { env = process.env, resolvedFacts = {}, fetchImpl, knowledgeModuleSet, validated } = {}) {
+export async function queryCds(intent, { env = process.env, resolvedFacts = {}, fetchImpl, knowledgeModuleSet, validated, rxnormCode = null } = {}) {
   const avail = cdsVendorAvailable(env);
   if (!avail.available) {
     // Keep the B4 wording when the reason is the uncontracted floor; otherwise surface the
@@ -58,7 +58,7 @@ export async function queryCds(intent, { env = process.env, resolvedFacts = {}, 
   if (avail.provider === "au_oss_cds") {
     // Track A: route to the OpenCDS client. It is fail-closed and re-applies the hard rules;
     // receipt mode stays 'mock' until staging validation (A4).
-    return queryOpenCds(intent, resolvedFacts, { endpoint: avail.endpoint, fetchImpl, knowledgeModuleSet, validated });
+    return queryOpenCds(intent, resolvedFacts, { endpoint: avail.endpoint, fetchImpl, knowledgeModuleSet, validated, rxnormCode });
   }
   // Commercial FILLED path: a validated vendor client would run here. Not built in this
   // increment — fail closed rather than emit unvalidated content.

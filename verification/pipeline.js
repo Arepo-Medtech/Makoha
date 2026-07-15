@@ -217,7 +217,10 @@ export async function runPipeline(options = {}) {
     const providerSelected = ["FILLED", "AU_OSS_CDS"].includes(pharmCdsState(process.env));
     if (providerSelected || context_mode === "live") {
       // The SAME canonical identity the engine just checked — never the raw name (B0).
-      const cds = await queryCds(pharmIntent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch });
+      // B0b: the CODE too, not just the name. Null until the vocabulary is signed — the gateway
+      // then falls back to the canonical name, which B0 made correct. Codes at the boundary,
+      // canonical names internally.
+      const cds = await queryCds(pharmIntent, { resolvedFacts: options.resolved_facts || {}, fetchImpl: options.cds_fetch, rxnormCode: _ident.rxcui ?? null });
       const folded = composeCdsVerdict(firewall_status, cds);
       firewall_status = folded.status;
       cdsReasons = folded.blocking_reasons || [];

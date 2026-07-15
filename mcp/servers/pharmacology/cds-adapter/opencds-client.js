@@ -44,14 +44,38 @@ export function foldOssStatuses(statuses) {
   return "PASS";
 }
 
-function extractDrug(intent) {
+/**
+ * Build the wire `drug` block.
+ *
+ * F7 (B0b) — TWO OF THESE READS WERE DEAD, AND ONE WOULD HAVE BEEN SMUGGLING. `drug_intent` in the
+ * FROZEN `pharm-intent.schema.json` is `additionalProperties:false` and has NO `rxnorm_code` and NO
+ * `atc_code`; the zod mirror (a plain z.object) silently STRIPS them:
+ *
+ *   in : {drug_name, drug_class, rxnorm_code:"4603", atc_code:"C03CA01", amt_snomed_code:"123"}
+ *   out: {drug_name, drug_class, amt_snomed_code:"123"}          ← the other two are gone
+ *
+ * So `di.rxnorm_code` / `di.atc_code` could never be populated through a validated intent — dead reads
+ * that created the ILLUSION the codes flow. Putting a code on the intent to "fix" that would be worse:
+ * the pipeline hands us the un-revalidated object, so the field WOULD reach the gateway — a value the
+ * frozen contract forbids, riding out because it bypassed validation. That is smuggling, and a frozen
+ * contract exists to stop exactly that.
+ *
+ * So the CODE arrives as an explicit ARGUMENT: the WIRE contract has `rxnorm_code`, the INTENT does
+ * not, and `pharm-intent` stays byte-frozen. `amt_snomed_code` IS on the frozen intent (it is the
+ * AU-native code) and is read from it — AMT is simply not harvested yet.
+ *
+ * @param {object} intent
+ * @param {{ rxnormCode?: string|null }} codes - settled by the caller from a SIGNED source, or null.
+ */
+function extractDrug(intent, { rxnormCode = null } = {}) {
   const di = intent && intent.drug_intent ? intent.drug_intent : {};
   return {
     drug_name: di.drug_name || intent.drug_name || intent.drug || "",
     drug_class: di.drug_class || intent.drug_class,
-    atc_code: di.atc_code,
-    rxnorm_code: di.rxnorm_code,
-    amt_snomed_code: di.amt_snomed_code,
+    // ATC is a therapeutic CLASSIFICATION, never an identity — V07AY alone covers ~70 distinct
+    // products (every bandage and dressing). It is not sent as a key and must never become one.
+    ...(rxnormCode ? { rxnorm_code: rxnormCode } : {}),
+    amt_snomed_code: di.amt_snomed_code, // the only code the frozen intent can actually carry
     route: di.route,
     schedule: di.schedule,
   };
@@ -69,11 +93,11 @@ function extractDrug(intent) {
  * @param {boolean} [opts.validated] - true only once staging-validated (A4). Drives receipt_mode.
  * @param {number} [opts.timeoutMs]
  */
-export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetchImpl, knowledgeModuleSet = DEFAULT_KM_SET, validated = false, timeoutMs = 5000 } = {}) {
+export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetchImpl, knowledgeModuleSet = DEFAULT_KM_SET, validated = false, timeoutMs = 5000, rxnormCode = null } = {}) {
   if (!endpoint) return blocked("HARD_FAIL", "OpenCDS gateway endpoint not provided");
 
   // 1. Build + validate the request. A malformed request never leaves the client.
-  const drug = extractDrug(intent || {});
+  const drug = extractDrug(intent || {}, { rxnormCode });
   const checks = Array.isArray(intent && intent.checks_requested) && intent.checks_requested.length ? intent.checks_requested : DEFAULT_CHECKS;
   const request = {
     request_id: `oss-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
