@@ -8,6 +8,16 @@
  *    silently read as a promoted/live source (mock-tagging discipline);
  *  - records is always an array, and any record present carries a provenance block
  *    (Guardrail 5 — an anonymous clinical fact cannot sit in the store);
+ *  - INTEGRITY SEAL (R-46): records_checksum, where present, actually MATCHES its records.
+ *    This assertion is the durable fix for R-46. The seal was WRITE-ONLY — written by
+ *    pharm-author/pharm-ingest/pharm-pbs-sync, verified by NOTHING — so this suite ran green
+ *    for months with 7 of 21 seals broken. A seal nobody checks is decoration, not integrity:
+ *    its entire purpose is to make "the signed records are the records the clinician signed"
+ *    PROVABLE, and that purpose is only real if something fails when it stops being true.
+ *    If this assertion reddens: find out WHY before re-sealing. A stale seal (a legitimate edit
+ *    that skipped re-sealing) and an unreviewed mutation are indistinguishable from the hash
+ *    alone — that is exactly what the seal is for. `node scripts/pharm-reseal.mjs --check` audits;
+ *    re-seal only deliberately, with --reason, once you know what changed.
  *  - data-sources.json: every source has a valid licence_status + use_restriction, and
  *    ids are unique. structure_only sources are the copyright-restricted ones.
  * Run from repo root: node test/contract-pharm-datastore.js
@@ -16,6 +26,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateProvenance } from "../mcp/servers/pharmacology/domain/model.js";
+import { checksumRecords } from "../scripts/pharm-author.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = join(__dirname, "..", "mcp", "servers", "pharmacology", "data");
@@ -77,6 +88,15 @@ for (const { file, capability } of DATASETS) {
     }
   }
   expect(Array.isArray(ds.records), `${file}: records must be an array`);
+  // R-46 — THE INTEGRITY SEAL MUST ACTUALLY VERIFY. Nothing checked this before 2026-07-15.
+  if (typeof ds.records_checksum === "string" && Array.isArray(ds.records)) {
+    const actual = checksumRecords(ds.records);
+    expect(actual === ds.records_checksum,
+      `${file}: records_checksum does NOT match its records — stored ${ds.records_checksum.slice(0, 12)}…, actual ${actual.slice(0, 12)}…. ` +
+      `The records differ from what was sealed. DO NOT just re-seal to clear this: find out WHAT changed and WHY first ` +
+      `(a stale seal after a legitimate edit and an unreviewed mutation look identical from the hash). ` +
+      `Audit: node scripts/pharm-reseal.mjs --check`);
+  }
   // Clinical-judgement datasets: every record carries provenance (Guardrail 5). The PBS
   // formulary is bulk open-data with DATASET-LEVEL governance (attestation + source_pull +
   // retained copyright), so its records are exempt from the per-record provenance rule.

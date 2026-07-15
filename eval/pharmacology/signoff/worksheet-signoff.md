@@ -40,3 +40,31 @@ This record previously described Kenneth Lee as a **registered pharmacist**. Tha
 **What did NOT change.** No attestation is re-opened and no record's `review_status` moves. The 88 + 308 worksheets, their signed blocks, the attesting person, and the dates all stand exactly as they were — the same clinician attested the same records on the same days. Only the description of his registration category is corrected. The `reviewer_id` (`Kenneth Lee (MED0001857758)`) was already correct and is untouched, so no `records_checksum` is affected.
 
 **Scope note (recorded, not resolved).** The gate reword slightly widens who may give the outstanding sign-off (any registered practitioner, not a pharmacist specifically). This is faithful to the wording's origin — no independent pharmacist-scope control was ever specified; the phrase simply meant "the owner, believed to be a pharmacist, signs off". If an independent pharmacist review of the classically pharmacy-scope datasets (administration_handling, counselling_points, warning_labels/CAL) is wanted, that is a NEW control to specify deliberately — it is not something this correction removed.
+
+---
+
+## Applying a sign-off — MANDATORY re-seal step (R-46, added 2026-07-15)
+
+**A sign-off MUTATES the records.** Setting `reviewed_by` / `review_status:"approved"` writes to each
+record's `provenance` block — so the dataset's `records_checksum`, computed at authoring/ingest time when
+those records were still `draft`, becomes stale the instant a sign-off is applied.
+
+That is precisely how R-46 happened: two worksheet passes (88 + 308 records) were applied faithfully, and
+**7 of 21 seals were silently invalidated** — undetected for months, because `records_checksum` was written
+by three scripts and verified by none. No data was harmed (the clinical content was later proven
+bit-identical to the sealed bytes); the *proof* was.
+
+**So: any process that applies a sign-off MUST re-seal afterwards.**
+
+```sh
+npm run pharm:seals          # audit every seal (exit 1 if any is broken)
+node scripts/pharm-reseal.mjs <file.json> --reason "applied worksheet <name>, <n> records attested by <id>" --utc <YYYY-MM-DD>
+```
+
+This is now **enforced, not merely documented**: `test/contract-pharm-datastore.js` asserts every seal on
+every `npm test` run, so a sign-off that skips the re-seal reddens CI immediately instead of decaying quietly.
+
+**If a seal breaks unexpectedly, do NOT just re-seal to clear the red.** A stale seal (a legitimate edit that
+skipped re-sealing) and an unreviewed mutation are indistinguishable from the hash alone — that is the entire
+point of the seal. Establish *what* changed first; `--reason` is required so the answer lands in
+`attestation.reseal_history[]` and not just in someone's memory.

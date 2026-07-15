@@ -4,6 +4,25 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## R-46 — the integrity seal now actually seals (2026-07-15)
+
+**Status:** operator-approved three-step fix. `npm test` (61 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` all EXIT=0. **All 21 seals verify.** No clinical record was re-reviewed, amended, or re-attested; nothing patient-facing moved.
+
+**Plain language.** Every pharmacology dataset carries a `records_checksum` — the seal that makes "the signed records are the records the clinician signed" *provable*. It turned out **nothing ever checked it**. It was written by three scripts and verified by none, so the suite ran green for months with **7 of 21 seals broken**. A seal nobody checks isn't integrity; it's decoration.
+
+**The cause was benign, and proven so before anything was touched.** The seal is computed at authoring/ingest time, when incoming records are FORCED to `review_status:"draft"`. The clinician sign-off (worksheets, 88 + 308 records) then sets `reviewed_by`/`review_status` **on the records** — and nothing re-sealed. Each of the 7 prior seals was reconstructed **bit-exactly** by reverting only the sign-off, and the clinical content was verified **bit-identical** to the sealed bytes. Not one clinical fact drifted. Nothing was tampered with. The writers were never at fault (`pharm-author.mjs:154` / `pharm-ingest.mjs:201` both seal `merged` and write `merged`) — the sign-off mutates records *outside* them.
+
+**The three-step fix.**
+1. **Re-sealed the 7** via the new `scripts/pharm-reseal.mjs`. A re-seal *blesses* whatever the records currently are, so the tool makes that a deliberate act: `--reason` is REQUIRED, `--utc` is required (Date.now() avoided per repo convention), and every re-seal appends prior+new checksum + reason to `attestation.reseal_history[]` — chain of custody in the artifact, not just in git. `--check` audits without writing.
+2. **THE DURABLE FIX — `test/contract-pharm-datastore.js` now asserts `checksumRecords(records) === records_checksum` for every sealed dataset.** Proven to have teeth: mutating one record's provenance → **EXIT=1**; restoring → **EXIT=0**. CI can never again go green on a broken seal. *The drift was only ever the symptom; the unverified field was the defect.*
+3. **Closed the loop on the sign-off path.** `eval/pharmacology/signoff/worksheet-signoff.md` now documents that applying a sign-off MUTATES records and MUST be followed by a re-seal — and (2) enforces it, so a sign-off that skips it reddens CI immediately rather than decaying quietly. New `npm run pharm:seals` audits every seal.
+
+**Guidance recorded in three places (the test message, the tool header, the worksheet record):** if a seal breaks, **do not re-seal to clear the red.** A stale seal after a legitimate edit and an unreviewed mutation are indistinguishable from the hash alone — which is precisely what the seal exists to make distinguishable. Establish what changed first; `--reason` forces the answer into the artifact.
+
+**Found by:** the FL dose-guidance C0 scoped re-scan. C0's design *asserts* these seals to prove no drift since sign-off — had C2 been built first, its export would have aborted on all 7. Correct behaviour, discovered at the worst possible moment.
+
+---
+
 ## FL dose-guidance C0 — schema, source registration, three defect fixes (2026-07-15)
 
 **Status:** operator-approved (`.planning/DOSE-GUIDANCE-PLAN.md`, C0 of C0–C4). **No dose was authored** — `dose-guidance.json` stays `records: []`. Nothing patient-facing; receipts stay `mock`. `npm test` (61 suites) + `npm run verification` (Pass: true) + `npm run trunk:stub:all` all green, EXIT=0.
