@@ -108,8 +108,28 @@ function withheld(n, reason, cds = null) {
     //
     // What the clinician sees is this ACCOUNT — what is held and why — never the doses themselves.
     // That is the distinction §1.1 draws itself: "it gates an ACTION, not evidence".
+    // ── D-A-2: the hold DECLARES what it is, so a machine can reason about it ──
+    // These were conventions dressed as mechanisms: the distinction lived in a FIELD NAME
+    // (`quarantined_text` vs `text`) and a comment. A validator cannot reason about a naming habit,
+    // and a test cannot enforce a comment.
+    //
+    // `cds_pre_load_hypothesis` reuses a register this system ALREADY has — M4: *"treat any claim the
+    // model cannot anchor to a retrievable reference as a hypothesis, not a finding."* This material
+    // is exactly that: staged, unanchored, not yet guidance. `pre_load` names the STATE (held, not
+    // delivered) rather than the content, which is what makes "in-waiting" a property of the data
+    // instead of a promise in prose.
+    hold_class: "cds_pre_load_hypothesis",
+    // The declared bar. `assertHoldNotInjected` enforces it; declaring it means a reader — and a
+    // schema — can see the rule without reading the enforcement.
+    context_injection: "forbidden",
     released: false,
     quarantined,
+    // ── D-A-4: the MEMO is abbreviated by construction, so a leak of it is harmless ──
+    // It names WHAT is held and WHY, and carries no dose. That is the point: today a single rendering
+    // bug is sufficient to put a blocked dose on screen. A memo that CANNOT contain one means two
+    // independent things must fail — the memo must leak AND it must have been built wrong — and
+    // `assertMemoUnactionable` makes the second impossible rather than unlikely.
+    memo: `${quarantined.length} item(s) held (${tally}) — released when the block clears`,
     note:
       `DOSE TEXT WITHHELD, NOT DISCARDED — ${why}. No dose is shown past a blocked firewall: that limit is ` +
       `absolute and has no override. ${quarantined.length} item(s) are HELD IN QUARANTINE (${tally}) and are ` +
@@ -335,6 +355,80 @@ const FOREIGN_SOURCED = ["international_label", "cds_dose_candidate", "literatur
  *
  * @throws if foreign-sourced dose text is being emitted as the authoritative dose.
  */
+/**
+ * D-A-3 — HELD GUIDANCE MUST NEVER REACH THE MODEL.
+ *
+ * ══ WHY THIS IS A DIFFERENT RISK FROM §1.1, AND THE MORE DANGEROUS ONE ══
+ * §1.1 protects the CLINICIAN from acting on a dose the firewall blocked. It says nothing about the
+ * MODEL, and until this bar existed, nothing did.
+ *
+ * A dose in a context packet is not a disclosure — it is an ANCHOR. It does not inform the model, it
+ * SETS it, and the output then flows back to the clinician wearing the authority of an independent
+ * read. That is the correlated-bias loop the trunk risk model was built to break: *"a system that
+ * lets the clinician's anchor propagate into the model, and the model's sycophancy back into the
+ * clinician, has engineered the correlation it should have been built to break."* M1 blocks a
+ * clinical_assessment anchor; this blocks a DOSE anchor, which is worse — it is a number, and a
+ * number is the most anchoring thing you can hand a next-token predictor.
+ *
+ * ══ WHY IT IS ASSERTED RATHER THAN ASSUMED ══
+ * The property already holds: `contextInjection(plan, receipts, meta)` is never handed `dose_evidence`,
+ * so the two planes cannot meet. That is an argument's worth of safety resting on a FUNCTION
+ * SIGNATURE — the exact shape M1 found and named: *"the property holds TODAY, BY CONSTRUCTION — and
+ * nothing asserts it. That is an accident, not a guarantee."*
+ *
+ * The day someone widens the packet to "give the model more context", this throws. Nothing else would:
+ * an anchored model does not look anchored. It looks confident.
+ *
+ * @param packet the validated ContextPacket — everything, and ONLY what, a trunk will see
+ * @param doseEvidence the clinician-plane evidence, including anything held
+ */
+/**
+ * D-A-4 — THE MEMO MUST CARRY NO DOSE.
+ *
+ * The memo and the `note` are what a clinician READS about a hold: what is held, and why. Neither may
+ * quote the guidance it describes.
+ *
+ * This is defence in depth against the bar directly above it. `assertQuarantineHeld` refuses to
+ * render held text — but it only runs on surfaces that call it, and a future export or patient view
+ * will not. A memo that CANNOT contain a dose is safe on a surface that forgot the bar. One bug is
+ * then insufficient: the renderer must leak AND the memo must have been built wrong.
+ *
+ * A prose memo is one careless template away from quoting what it describes. This makes that
+ * mechanical rather than a matter of care.
+ */
+export function assertMemoUnactionable(doseEvidence) {
+  for (const e of doseEvidence || []) {
+    if (e.released || !Array.isArray(e.quarantined)) continue;
+    const surfaces = [e.memo, e.note].filter(Boolean).join(" ␟ ");
+    for (const q of e.quarantined) {
+      if (q.quarantined_text && surfaces.includes(q.quarantined_text)) {
+        throw new Error(
+          `HOLD MEMO LEAK: the memo/note for ${e.ingredient} QUOTES the ${q.of} dose it is supposed to be withholding. ` +
+          `The memo exists to say WHAT is held and WHY, without carrying it — so that a surface which forgets ` +
+          `assertQuarantineHeld still cannot put a blocked dose in front of a clinician.`,
+        );
+      }
+    }
+  }
+}
+
+export function assertHoldNotInjected(packet, doseEvidence) {
+  const blob = JSON.stringify(packet ?? {});
+  for (const e of doseEvidence || []) {
+    if (e.released || !Array.isArray(e.quarantined)) continue;
+    for (const q of e.quarantined) {
+      if (q.quarantined_text && blob.includes(q.quarantined_text)) {
+        throw new Error(
+          `POSTURE VIOLATION: a ${q.of} dose for ${e.ingredient} is HELD (${e.status}) but its text is in the CONTEXT PACKET for trunk ${packet?.trunk_id}. ` +
+          `Held guidance is clinician-plane only and must never reach the model: a dose in a packet is not information, it is an ANCHOR — ` +
+          `it sets the model rather than informing it, and the output returns to the clinician looking like an independent read. ` +
+          `The quarantine exists so guidance can be DELIVERED when the block clears, not so it can be fed to a generator in the meantime.`,
+        );
+      }
+    }
+  }
+}
+
 export function assertNoAdvisoryInDose(pharmCheck, evidence) {
   const dose = pharmCheck?.dose_guidance?.safe_dose_range;
   if (!dose) return;

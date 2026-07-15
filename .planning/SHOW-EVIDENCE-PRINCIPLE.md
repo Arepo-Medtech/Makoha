@@ -30,10 +30,47 @@ clinician is the authority. The system's job is to make sure they are never deci
 The principle governs **what we show when we show**, and every **routing/binning** decision. It does **not**
 dissolve the firewall. Three limits, stated so "show evidence" is never quoted to erode them:
 
-1. **HARD_FAIL still blocks, unconditionally.** Dose guidance emits only on PASS/WARN — never on
-   HARD_FAIL / BLOCKED_NO_PROOF / paediatric. That is a frozen contract + a hard limit. It gates an
-   **ACTION**, not evidence. "Show the clinician everything" never becomes "show a dose the firewall
-   blocked". No override, no exception.
+1. **HARD_FAIL still blocks the ACTION, unconditionally.** Dose guidance emits only on PASS/WARN —
+   never on HARD_FAIL / BLOCKED_NO_PROOF / paediatric. It gates an **ACTION**, not evidence. "Show the
+   clinician everything" never becomes "show a dose the firewall blocked".
+
+   > **Amended 2026-07-15** (operator ruling, D-A-1..4). Not one clause is loosened. What changed is
+   > that this section used to say *"no override, no exception"* over six clauses of which **two were
+   > promises, not mechanisms** — and the trunk rewrite had just finished proving that an overclaiming
+   > constraint is worse than an honest one, because people trust it. So: the honest count.
+
+   **MECHANICAL — these throw or return null. You do not have to trust anyone:**
+   - `PharmCheck.dose_guidance` emits only on PASS/WARN, never paediatric — `engine.js`.
+   - An advisory dose can never occupy the AU dose field — `assertNoAdvisoryInDose()` throws.
+   - A gateway `dose_candidate` is dropped unless the composed verdict is PASS/WARN — the client.
+   - Held guidance is never rendered by the clinician portal — `assertQuarantineHeld()`, self-verified
+     inside `renderBundle`.
+   - **Held guidance never reaches the MODEL** — `assertHoldNotInjected()`, in the pipeline, between
+     the packet being sealed and generation seeing it.
+   - **The memo cannot quote what it withholds** — `assertMemoUnactionable()`.
+
+   **CONVENTIONAL — on these, nobody is watching but you:**
+   - **Any surface other than `renderBundle`.** An export, a PDF, a patient view or a future portal
+     that assembles a page another way will not run the quarantine bar. The bundle carries the held
+     text; only that one function refuses to print it. Registered: `dose-hold-surface-unenforced`.
+   - **Anything downstream of the ReviewBundle.** `bundle_sha256` records the held text. It does not
+     police who reads it.
+
+   **THE HOLD IS NOT A LICENCE.** Blocked guidance is **retained** (`hold_class:
+   cds_pre_load_hypothesis`, `released:false`) so it can be **delivered the moment the block clears** —
+   retention is not permission to display. *"We are asking and identifying, as opposed to
+   eradicating"* (operator, 2026-07-15): a hold says what it holds and why, so "withheld" is never
+   mistaken for "we hold nothing" — nor for "we destroyed it".
+
+   **AND IT NEVER TOUCHES THE MODEL.** `context_injection: "forbidden"`, declared on the hold and
+   enforced by `assertHoldNotInjected`. This is a **different risk from everything above**, and the
+   more dangerous one: a dose in a context packet is not a disclosure, it is an **anchor** — it does
+   not inform the model, it *sets* it, and the output returns to the clinician wearing the authority of
+   an independent read. That is the correlated-bias loop the trunk risk model exists to break. Every
+   other clause here fails **visibly**; this one fails **invisibly**, because an anchored model does
+   not look anchored. It looks confident.
+
+   If you are adding a surface, the bar is yours to call. Nothing will remind you.
 2. **International doses NEVER enter `PharmCheck.dose_guidance`.** Showing a US/EU label to a clinician,
    labelled non-AU, is evidence. Putting it in the AU dose field is the jurisdiction inversion wearing a
    new hat. Engine isolation on `international_dose_guidance` is absolute and stays.

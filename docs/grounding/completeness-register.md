@@ -789,6 +789,24 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ---
 
+
+```md
+- id: dose-hold-surface-unenforced
+  path: portal/server.js (assertQuarantineHeld — the only surface that enforces it) · .planning/SHOW-EVIDENCE-PRINCIPLE.md §1.1
+  component_type: other (safety bar)
+  state: PARTIAL
+  evidence: **Opened 2026-07-15 by the §1.1 amendment (D-A-1), which exists to make this gap VISIBLE rather than to create it.** W2 retained blocked dose text in the ReviewBundle (operator ruling: *"keep all guidance in an on-hold quarantine pathway, in-waiting to deliver when appropriate"*), so the text now EXISTS where it previously did not. `assertQuarantineHeld()` refuses to render it and `renderBundle` self-verifies through it — but that is ONE surface. An export, a PDF, a patient view, or a future portal that assembles a page another way would not run the bar. `bundle_sha256` records the held text as evidence; it does not police who reads it. The amended §1.1 says so plainly, in the trunks' own words: *"on this constraint, nobody is watching but you."* MITIGATED, not closed: the memo is mechanically unactionable (`assertMemoUnactionable`), so a surface that forgets the bar still cannot print a dose from the account — two independent things must fail, where before W2 one sufficed. The MODEL plane is separately and mechanically closed (`assertHoldNotInjected`).
+  blocks: nothing today — the portal is the only surface that renders dose evidence
+  safety_class: degrades_safe (the hold declares `released:false` + `patient_facing:false`; every gate keys on those)
+  invariant_exposure: show-evidence §1.1 — "no dose displayed past a blocked firewall" is MECHANICAL on the portal and CONVENTIONAL everywhere else
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: Any NEW surface that renders `dose_evidence` MUST call `assertQuarantineHeld(html, bundle)` — and should self-verify inside its own render function, as `renderBundle` does, rather than relying on a caller to remember. Re-rate **High** the day a second rendering surface exists. Alternative worth weighing then: move the bar into a shared render seam so a surface cannot be built without it.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
 ## MEDIUM
 
 ```md
