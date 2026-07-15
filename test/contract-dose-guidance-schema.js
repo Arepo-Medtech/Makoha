@@ -18,6 +18,7 @@
  * Run from repo root: node test/contract-dose-guidance-schema.js
  */
 import { DoseGuidanceSchema, validateDoseGuidance, InternationalDoseGuidanceSchema, validateInternationalDoseGuidance, CAPABILITY_VALIDATORS } from "../mcp/servers/pharmacology/domain/model.js";
+import { CAPABILITY_FILE } from "../scripts/pharm-author.mjs";
 
 const errors = [];
 const expect = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -153,6 +154,20 @@ expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), safe_dose_range: 
   "strict(): a foreign record must not carry safe_dose_range — that key belongs to AU dose_guidance alone");
 expect(CAPABILITY_VALIDATORS.international_dose_guidance === validateInternationalDoseGuidance,
   "international_dose_guidance must be registered in CAPABILITY_VALIDATORS");
+
+// ---- 5c. ROUTING (C1) — an AU dose may NEVER enter via the generic agent round-trip ---------
+// CAPABILITY_FILE is what scripts/pharm-ingest.mjs routes on. international_dose_guidance IS
+// routable: it is agent-retrieved from AMASS and engine-isolated, so ingesting it can never put a
+// foreign dose on the AU dose path (the dose_evidence precedent).
+expect(CAPABILITY_FILE.international_dose_guidance === "international-dose-guidance.json",
+  "international_dose_guidance must be routable through pharm-ingest (agent-retrieved, engine-isolated)");
+// dose_guidance must NOT be. This is DEFENCE IN DEPTH behind the AHPRA gate, and it matters: the
+// AHPRA check is a PATTERN check, not an identity check — MED0001857758 is committed all over this
+// repo, so an agent that could reach the generic round-trip could author a dev-package quoting it and
+// pass the schema. Keeping dose_guidance off the ingest route means an AU dose cannot enter that way
+// AT ALL: only clinician worksheet entry (Channel B) or a fetched TGA PI (Channel A).
+expect(CAPABILITY_FILE.dose_guidance === undefined,
+  "dose_guidance must NOT be routable through pharm-ingest — an AU dose enters ONLY via Channel B (clinician worksheet) or Channel A (fetched TGA PI). Adding it here would let an agent author a dose through the generic round-trip quoting a known AHPRA id.");
 
 // ---- 6. wiring ------------------------------------------------------------------------------
 expect(CAPABILITY_VALIDATORS.dose_guidance === validateDoseGuidance,

@@ -4,6 +4,28 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL dose-guidance C1 — plausibility guard + the international route (2026-07-15)
+
+**Status:** operator-approved. `npm test` (62 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` + `pharm:seals` all EXIT=0. **No dose authored; both dose registers still empty.** Nothing patient-facing; no network code; no new dependency.
+
+**The plan's C1 spec was architecturally wrong, and Phase 1 caught it.** It called for `scripts/pharm-dose-crosscheck.mjs` — "a script that queries AMASS RegulatoryCore". **A Node script cannot call an MCP connector**, and no script in this repo makes a live PubMed/AMASS call. The 261 dose-evidence records were not produced by one: they came from an **agent retrieval workflow** returned through the **chat↔repo round-trip** (`docs/pharmcheck-export/` out → agent authors a dev-package → `scripts/pharm-ingest.mjs` back in, schema-gated, FORCING draft). C1 now follows that precedent exactly and needs **no network code at all**.
+
+**Built — `domain/dose-plausibility.js`** (closes `dose-plausibility-guard-unbuilt`). This recovers the one real thing the removed divergence gate was incidentally catching — a transcription typo — **without resurrecting the veto**. The distinction it keeps, and whose conflation produced the bad gate: **congruence is a clinical judgement** ("the EU approved a different indication" is legitimate and shippable); **plausibility is arithmetic** (500 vs 5000 mg is a misplaced zero). This module does only the second.
+- **Fail-safe by construction.** A weight/BSA basis (mg/kg, mg/m²), non-mass units (IU/mL/%), or anything unreadable → **`unassessable`, never `plausible`** — and the note says *"this is NOT an all-clear"*. A guard that guesses is worse than no guard: it launders a non-check into reassurance.
+- **A WARN for a human, never a bin.** A genuine >10x jurisdictional difference is possible (loading vs maintenance dosing), so this must not block — the note says so explicitly.
+- Unit alternation is longest-first, so "microgram" cannot partial-match as "g" (a 1,000,000x error). The MAX amount is taken, not the first — a misplaced zero lands on the cap.
+- `test/contract-dose-plausibility.js` proves **both** directions: the 5000-vs-500 typo IS caught, and the legitimate `500 mg q8h` (AU) vs `875 mg BD` (US) difference — **which the removed gate would have binned** — passes untouched.
+
+**Routed `international_dose_guidance` through `pharm-ingest`** (added to `CAPABILITY_FILE`) — the same path `dose_evidence` uses. Proven end-to-end with a real AMASS record (EMA Jylamvo, methotrexate): 1 accepted, 0 rejected, dry-run wrote nothing. Ingesting it can never put a foreign dose on the AU dose path because the register is engine-isolated.
+
+**And a defence-in-depth invariant now has a test: `dose_guidance` must NEVER be routable through `pharm-ingest`.** This matters more than it first looks. The AHPRA gate is a **pattern check, not an identity check** — `MED0001857758` is committed throughout this repo, so an agent that could reach the generic round-trip could author a dev-package quoting it and pass the schema. Keeping `dose_guidance` off the ingest route means an AU dose cannot enter that way **at all**: only clinician worksheet entry (Channel B) or a fetched TGA PI (Channel A). The test pins it so nobody "helpfully" adds it later.
+
+**Congruence stays AUTHORED, not computed.** Whether a differing dose is "non-congruent" or merely "a different approved indication" is clinical judgement, not string comparison. The real protection is structural and already in place: `au_congruence.comparators[].dose_statement` is REQUIRED, so the clinician reads the foreign label verbatim beside the AU dose regardless of what the status claims.
+
+**Next:** C2 (Channel B — KL's Tier A adult rows through the worksheet → schema → plausibility → attestation) → C3 (drop the mock fallback with the first real dose) → C4 (TGA PI, operator-gated).
+
+---
+
 ## R-46 — the integrity seal now actually seals (2026-07-15)
 
 **Status:** operator-approved three-step fix. `npm test` (61 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` all EXIT=0. **All 21 seals verify.** No clinical record was re-reviewed, amended, or re-attested; nothing patient-facing moved.
