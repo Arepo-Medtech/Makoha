@@ -664,7 +664,15 @@ export const InternationalDoseGuidanceSchema = z
     dose_statement: z.string().min(3), // the label dose, as a cited fact — never prose
     amass_id: z.string().min(3),
     authorisation_name: z.string().optional(), // e.g. "Jylamvo" — the foreign brand, never an AU brand
+    // The authorisation's CURRENT status, as Amass reports it. REQUIRED and shown, because it is
+    // material: several older generics have no ACTIVE monosubstance authorisation at all, so the
+    // only citable label is a WITHDRAWN one. That is a fact to SURFACE, not to launder — a dose from
+    // a withdrawn label read as current is precisely the kind of quiet staleness this register exists
+    // to make visible.
+    authorization_status: z.string().min(3),
     source_url: z.string().optional(),
+    source_date: z.string().nullable().optional(), // the label's own revision date, where Amass parsed one
+    section_path: z.string().optional(), // e.g. "2.1" — WHICH label section the fact was copied from
     retrieved_utc: z.string().min(4),
     not_au_dose_guidance: z.literal(true), // structural label — foreign guidance, never an AU dose
     provenance: ProvenanceSchema,

@@ -182,6 +182,7 @@ const intl = () => ({
   ingredient: "methotrexate", jurisdiction: "EU", agency: "EMA",
   context: "Active rheumatoid arthritis in adults", dose_statement: "7.5 mg once weekly",
   amass_id: "AMRC_1b7jWbEDFeccd6RkJS01idTnGGk", authorisation_name: "Jylamvo",
+  authorization_status: "ACTIVE",
   retrieved_utc: "2026-07-15T00:00:00Z", not_au_dose_guidance: true,
   provenance: { ...provenance, source: "AMASS RegulatoryCore (EMA SmPC facts, cited)", source_ref: "amass-regulatory" },
 });
@@ -197,6 +198,13 @@ expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), safe_dose_range: 
   "strict(): a foreign record must not carry safe_dose_range — that key belongs to AU dose_guidance alone");
 expect(CAPABILITY_VALIDATORS.international_dose_guidance === validateInternationalDoseGuidance,
   "international_dose_guidance must be registered in CAPABILITY_VALIDATORS");
+// authorization_status is REQUIRED and shown (C2c). Several older generics have no ACTIVE
+// monosubstance authorisation at all — metformin's only citable FDA label is WITHDRAWN — so a dose
+// read as current when its label was withdrawn is exactly the quiet staleness this surfaces.
+expect(!InternationalDoseGuidanceSchema.safeParse({ ...intl(), authorization_status: undefined }).success,
+  "authorization_status is required — a withdrawn label must not be presented as current");
+expect(InternationalDoseGuidanceSchema.safeParse({ ...intl(), authorization_status: "WITHDRAWN_VOLUNTARY" }).success,
+  "a WITHDRAWN label record is ACCEPTED — it is real evidence, shown with its status, not hidden");
 
 // ---- 5c. ROUTING (C1) — an AU dose may NEVER enter via the generic agent round-trip ---------
 // CAPABILITY_FILE is what scripts/pharm-ingest.mjs routes on. international_dose_guidance IS

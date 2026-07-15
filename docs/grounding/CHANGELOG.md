@@ -20,6 +20,26 @@ And a second reason the operator did not need to give: **who would have written 
 
 ---
 
+## FL dose-guidance C2c — Tier A US/EU label doses retrieved (2026-07-15)
+
+**Status:** operator-approved. 12 records written to `international_dose_guidance`, all `review_status:"draft"`, **engine-isolated (re-proven: nothing reads the file)**. **No AU dose authored.** `npm test` (64) + verification + trunk:stub:all + licence:check + security:secrets + pharm:seals all EXIT=0.
+
+**Every dose is verbatim from a fetched label section. None was written from memory.** Retrieval ran through three agents under one absolute rule: copy from the `content` of a section you actually fetched, or return null and say why. **Returning nulls was defined as success** — and the discipline held under pressure: the rivaroxaban agent refused to reconstruct a dose it plainly knows, because AMASS mis-parses Xarelto's FDA section 2.1 as "Hazard Ratio" (COMPASS trial data) on *both* authorisations and exposes only paediatric dosing at EMA 4.2. **rivaroxaban is therefore absent from the register rather than fabricated into it.**
+
+**A correction I made twice on the way.** I first concluded AMASS "does not carry label doses" — reading the `therapeuticIndication` summary field (which holds sections 11/1/12.1, not dosing) and hitting a truncated EMA 4.2. Wrong: the doses live in `documentSections` (FDA `path:"2"`, EMA `path:"4.2"`), fetched individually. The pipeline works; the summary field is just not it.
+
+**THE STRUCTURAL FINDING — EMA centralised coverage is sparse for old generics.** Only **3 of 10** Tier A drugs have an EU label at all (methotrexate, apixaban, dabigatran). Carbamazepine, metformin, sulfasalazine, phenytoin and alendronate are **nationally authorised** in EU member states (MHRA/BfArM/ANSM) or exist centrally only as fixed-dose combinations — outside RegulatoryCore's scope by design. Result: **9 US doses, 3 EU doses.** This matters for D-SE-4: Case 4's "corroborated (US **and** EU)" rung will fire for a minority of drugs, and most will show as the "single foreign label = bare labelled fact" rung. **The design already anticipates this and is unchanged** — but the ratio is now measured rather than assumed.
+
+**What the labels we CAN cite actually are — surfaced, not laundered:**
+- **metformin**: no ACTIVE FDA monosubstance authorisation exists (Glucophage/Glumetza/Riomet all withdrawn; every active product is a combination). The only citable US label is **WITHDRAWN_VOLUNTARY**. So `authorization_status` is now a REQUIRED, shown field on `InternationalDoseGuidanceSchema` — a dose read as current when its label was withdrawn is precisely the quiet staleness this register exists to make visible.
+- **carbamazepine**: the citable US label is **Equetro — bipolar I mania, not epilepsy** (Tegretol's parsed label has no dosage section at all). The AU entry is epilepsy. Different indications.
+- **phenytoin**: the US dose is the **125 mg/5 mL oral suspension, expressed in mL** — not the capsule.
+- **apixaban EU**: Eliquis's EMA 4.2 holds only paediatric granules, so the citable EU adult text is from **Apixaban Accord**, a generic.
+
+**And the design validated itself.** Comparing AU (KL's APF22) against US shows non-congruence dominated by **indication mismatch**, exactly as predicted: apixaban AU is post-surgical VTE prophylaxis vs US NVAF; carbamazepine AU is epilepsy vs US bipolar. Meanwhile **alendronate is near-identical** (AU "10 mg daily or 70 mg weekly" / US "70 mg once weekly or 10 mg once daily"), and **simvastatin differs by range** (AU 10–40 mg / US 20–40 mg) — non-congruent yet plausible (both max 40 mg). That separation — congruence and plausibility answering different questions — is the whole point of the C0 amendment, and the real data behaves as designed. **The removed veto would have binned most of Tier A.**
+
+---
+
 ## FL dose-guidance C1 — plausibility guard + the international route (2026-07-15)
 
 **Status:** operator-approved. `npm test` (62 suites) + `verification` + `trunk:stub:all` + `licence:check` + `security:secrets` + `pharm:seals` all EXIT=0. **No dose authored; both dose registers still empty.** Nothing patient-facing; no network code; no new dependency.
