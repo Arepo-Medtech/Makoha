@@ -100,8 +100,16 @@ export function composeCdsVerdict(engineStatus, cdsResult) {
     // Null unless the CDS layer actually produced a dose AND its own hard rules allowed one: the
     // client already drops the dose on HARD_FAIL/NOT_RUN, so nothing here can surface a dose the
     // firewall blocked.
-    evidence: cds.dose_guidance
-      ? { dose_candidate: cds.dose_guidance, provider: cds.provider ?? null, km_set: cds.knowledge_module_set ?? null }
+    // W2: on a blocked verdict the candidate rides QUARANTINED rather than dying at the client. The
+    // evidence plane holds it (released:false) and the portal refuses to render it — retaining it is
+    // not permission to display it. On PASS/WARN it flows as it always has.
+    evidence: (cds.dose_guidance || cds.dose_candidate_quarantined)
+      ? {
+          dose_candidate: cds.dose_guidance ?? cds.dose_candidate_quarantined,
+          quarantined: !cds.dose_guidance,
+          provider: cds.provider ?? null,
+          km_set: cds.knowledge_module_set ?? null,
+        }
       : null,
   };
 }

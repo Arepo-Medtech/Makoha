@@ -66,18 +66,30 @@ const lc = (s) => String(s || "").toLowerCase();
  * the text is not. The clinician can see the block, see its reason (hard_stops), and see that
  * evidence exists behind it.
  */
-function withheld(n, reason) {
-  const counts = {
-    au_dose: load("dose-guidance.json").filter((r) => lc(r.ingredient) === n && r.provenance?.review_status === "approved").length,
-    international: load("international-dose-guidance.json").filter((r) => lc(r.ingredient) === n && r.dose_statement).length,
-    literature: load("dose-evidence.json").filter((r) => lc(r.ingredient) === n && r.dose_statement).length,
-  };
-  const held = counts.au_dose + counts.international + counts.literature;
-  if (!held) return []; // nothing held → nothing to declare withheld
+function withheld(n, reason, cds = null) {
+  const auDoses = load("dose-guidance.json").filter((r) => lc(r.ingredient) === n && r.provenance?.review_status === "approved");
+  const intl = load("international-dose-guidance.json").filter((r) => lc(r.ingredient) === n && r.dose_statement);
+  const lit = load("dose-evidence.json").filter((r) => lc(r.ingredient) === n && r.dose_statement);
+
+  // EVERY piece of guidance goes into the hold — including the second executor's candidate, which is a
+  // RUNTIME value and so could never appear in a file-count account. Before this, a blocked CDS dose
+  // vanished at the client and the clinician could not tell "a second executor also produced a dose,
+  // withheld" from "no second opinion exists".
+  const quarantined = [
+    ...auDoses.map((r) => ({ of: "au_dose_signed", quarantined_text: r.safe_dose_range, by: r.provenance?.reviewed_by ?? null })),
+    ...intl.map((r) => ({ of: "international_label", quarantined_text: r.dose_statement, by: r.jurisdiction ?? null })),
+    ...lit.map((r) => ({ of: "literature", quarantined_text: r.dose_statement, by: r.source_ref ?? null })),
+    ...(cds?.dose_candidate?.safe_dose_range
+      ? [{ of: "cds_dose_candidate", quarantined_text: cds.dose_candidate.safe_dose_range, by: `${cds.provider ?? "cds"} · ${cds.km_set ?? "?"}` }]
+      : []),
+  ];
+  if (!quarantined.length) return []; // nothing held → nothing to declare
 
   const why = reason === "paediatric"
     ? "the patient is under 18 and no paediatric dosing tables exist — this is flagged for in-person review (paediatric hard limit, unchanged)"
     : `the pharmacology firewall returned ${reason}`;
+  const tally = Object.entries(quarantined.reduce((a, q) => ({ ...a, [q.of]: (a[q.of] || 0) + 1 }), {}))
+    .map(([k, v]) => `${v} ${k}`).join(" · ");
 
   return [{
     kind: "held",
@@ -85,11 +97,24 @@ function withheld(n, reason) {
     ingredient: n,
     status: `dose_text_withheld:${reason}`,
     source: "dose-evidence-plane (firewall gate)",
+    // OPERATOR RULING 2026-07-15: *"retain — keep all guidance in an on-hold quarantine pathway,
+    // in-waiting to deliver when appropriate."* The guidance is HELD, not destroyed: the payload rides
+    // in `quarantined_text` with `released:false`, ready to deliver the moment the block clears.
+    //
+    // §1.1 IS UNCHANGED, AND IS WHY THE FIELD IS NAMED THAT WAY. `text` means "R-47b DEMANDS this is
+    // rendered"; `quarantined_text` means "assertQuarantineHeld DEMANDS it is NOT" — until released.
+    // Held guidance in `text` would make the two bars fight, and the rendering bar would win: a blocked
+    // dose on the clinician's screen. The field name is the barrier.
+    //
+    // What the clinician sees is this ACCOUNT — what is held and why — never the doses themselves.
+    // That is the distinction §1.1 draws itself: "it gates an ACTION, not evidence".
+    released: false,
+    quarantined,
     note:
-      `DOSE TEXT WITHHELD — ${why}. No dose is shown past a blocked firewall: that limit is absolute and ` +
-      `has no override. You are told what exists so that "withheld" is never mistaken for "we hold nothing": ` +
-      `${counts.au_dose} clinician-signed AU dose, ${counts.international} US/EU comparator label(s), ` +
-      `${counts.literature} literature record(s). Resolve the block (see hard_stops) and the evidence is shown in full.`,
+      `DOSE TEXT WITHHELD, NOT DISCARDED — ${why}. No dose is shown past a blocked firewall: that limit is ` +
+      `absolute and has no override. ${quarantined.length} item(s) are HELD IN QUARANTINE (${tally}) and are ` +
+      `delivered in full the moment the block is resolved (see hard_stops). You are told what is held so that ` +
+      `"withheld" is never mistaken for "we hold nothing".`,
     patient_facing: false,
   }];
 }
@@ -141,7 +166,9 @@ export function assembleDoseEvidence(drug, { firewallStatus = null, ageYears = n
   const blockedBy = DOSE_BLOCKED.includes(firewallStatus) ? firewallStatus
     : (typeof ageYears === "number" && ageYears < 18) ? "paediatric"
       : null;
-  if (blockedBy) return withheld(n, blockedBy);
+  // The CDS candidate rides INTO the hold: it is a runtime value, so a file-count account could never
+  // have known it existed.
+  if (blockedBy) return withheld(n, blockedBy, cdsDoseCandidate ? { dose_candidate: cdsDoseCandidate, provider: cdsProvider, km_set: cdsKmSet } : null);
 
   const out = [];
 

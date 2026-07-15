@@ -89,11 +89,36 @@ const OpenCdsDrugSchema = z.object({
 // Resolved facts mirror what engine.js consumes; all optional because a missing fact must
 // surface as NOT_RUN (→ BLOCKED_NO_PROOF), never be defaulted into a permissive value.
 const OpenCdsResolvedFactsSchema = z.object({
-  allergy_status: z.unknown().optional(),
+  // ══ W1 (F-C8, 2026-07-15) — these are the facts the CHECKS actually read ══
+  //
+  // This schema carried five fields, three of which matched what the checks consume. zod's z.object()
+  // STRIPS unknown keys silently, so `allergens`, `pregnancy_status`, `hepatic_impairment` and
+  // `s8_pdmp_checked` never left the client. `allergy_check` is one of the five DEFAULT_CHECKS, so
+  // with no allergens it returned NOT_RUN, which folds to BLOCKED_NO_PROOF — meaning the OSS CDS
+  // route COULD NOT RETURN PASS FOR ANY DRUG, EVER. Safe (it blocked) and useless (it always blocked).
+  // Nothing caught it until a real knowledge module was called for the first time (Phase C / C3): a
+  // HARD_FAIL masks it, so it only shows when you ask for a clean pass.
+  //
+  // THE NAMING TRAP, recorded so it is not rebuilt: engine.js reports the absent fact as
+  // `missing_facts_required: ["allergy_status"]` — that string is a LABEL FOR WHAT IS MISSING. The
+  // fact itself is `resolved.allergens`. This schema was written from the label, and the client
+  // dutifully mapped `allergy_status: resolvedFacts.allergy_status`, a field nothing has ever
+  // populated. `allergy_status` is REMOVED rather than left beside `allergens`: a field that looks
+  // like the allergy fact but is never populated is precisely what made this invisible for so long.
+  //
+  // The source of truth for these names is engine.js's `resolved.*` reads. test/contract-opencds-contract
+  // asserts this list against the KMs' actual reads, so the two cannot drift apart again.
+  allergens: z.array(z.string()).optional(),
   current_medications: z.array(z.string()).optional(),
   egfr_ml_min: z.number().optional(),
+  hepatic_impairment: z.boolean().optional(),
   nti_monitoring_documented: z.boolean().optional(),
   patient_age_years: z.number().optional(),
+  // An ENUM, not a free string: engine.js compares against exactly these two and anything else falls
+  // to the D-FL05-1 unknown branch. A typo must be a validation failure here, not a silent "unknown"
+  // that quietly relaxes a teratogen gate.
+  pregnancy_status: z.enum(["pregnant", "not_pregnant"]).optional(),
+  s8_pdmp_checked: z.boolean().optional(),
 });
 
 export const OpenCdsRequestSchema = z.object({

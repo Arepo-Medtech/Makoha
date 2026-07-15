@@ -165,17 +165,87 @@ for (const status of ["HARD_FAIL", "BLOCKED_NO_PROOF"]) {
   expect(!gated.some((e) => e.kind === "international_label"), `${status}: a foreign label must NOT be shown past a blocked firewall — it is dose text`);
   expect(!gated.some((e) => e.kind === "literature"), `${status}: literature dose statements must NOT be shown past a blocked firewall`);
   expect(!gated.some((e) => e.kind === "cds_dose_candidate"), `${status}: a CDS candidate must NOT be shown past a blocked firewall`);
-  // No dose TEXT anywhere in the gated payload — asserted against the real strings, not the kinds.
+  // ── W2 (operator ruling 2026-07-15): RETAIN, do not destroy ──────────────────────────────────
+  // *"Keep all guidance in an on-hold quarantine pathway, in-waiting to deliver when appropriate."*
+  //
+  // THIS CHANGES ONE BAR AND STRENGTHENS ANOTHER, and the difference is worth stating plainly because
+  // it is the difference between the old design and this one:
+  //
+  //   BEFORE — the text was ABSENT from the payload. Safe by destruction: nothing to leak, and
+  //            nothing to deliver either. A block meant the guidance was gone, and re-deriving it
+  //            meant re-running the pipeline.
+  //   NOW    — the text is HELD, in `quarantined_text`, with `released:false`. §1.1 is UNCHANGED:
+  //            no dose is DISPLAYED past a blocked firewall. What changed is that "not displayed" no
+  //            longer means "annihilated".
+  //
+  // Retention is only defensible because the refusal to display is MECHANICAL: portal
+  // assertQuarantineHeld throws on any quarantined text that reaches the HTML, and renderBundle
+  // self-verifies through it, so a page rendered another way cannot skip it.
+  //
+  // The FIELD NAME is the barrier. `text` means "R-47b DEMANDS this renders"; `quarantined_text`
+  // means "assertQuarantineHeld DEMANDS it does not". Held guidance in `text` would make the two bars
+  // fight — and R-47b would win, putting a blocked dose on screen.
   const blob = JSON.stringify(gated);
-  expect(!blob.includes(auDose.text), `${status}: the AU dose text must not leak through any field`);
-  expect(!blob.includes(labels[0].text), `${status}: the US label text must not leak through any field`);
+  expect(!gated.some((e) => e.text), `${status}: NOTHING may occupy the renderable \`text\` field past a blocked firewall — R-47b would force it onto the clinician's page`);
+  expect(gated.every((e) => e.released === false), `${status}: every held item must be marked released:false — that flag is what the display bar keys on`);
+
+  // The text IS retained — and is reachable ONLY through the quarantine channel.
+  const q = gated.flatMap((e) => e.quarantined || []);
+  expect(q.some((x) => x.quarantined_text === auDose.text), `${status}: the AU dose must be HELD (retained for delivery), not destroyed`);
+  expect(q.some((x) => x.quarantined_text === labels[0].text), `${status}: the US label must be held too — all guidance, one pathway`);
+  const outsideQuarantine = JSON.stringify(gated.map((e) => ({ ...e, quarantined: undefined })));
+  expect(!outsideQuarantine.includes(auDose.text), `${status}: the AU dose text must exist ONLY inside the quarantine channel — never loose in the payload where a renderer could find it`);
+  expect(!outsideQuarantine.includes(labels[0].text), `${status}: the US label text must exist ONLY inside the quarantine channel`);
+  void blob;
 }
 // …AND the withholding is STATED. A gated action is legitimate; a silent drop is the exact failure
 // the show-evidence principle names — "withheld" must never be indistinguishable from "we hold nothing".
 const gatedHF = assembleDoseEvidence("methotrexate", { firewallStatus: "HARD_FAIL" });
 expect(gatedHF.length === 1 && gatedHF[0].kind === "held", "a block must yield an ACCOUNT of what is withheld, not silence");
 expect(/WITHHELD/.test(gatedHF[0].note) && /HARD_FAIL/.test(gatedHF[0].note), "the account must name the reason");
-expect(/1 clinician-signed AU dose, 2 US\/EU comparator/.test(gatedHF[0].note), "the account must state WHAT exists behind the block, so withheld is never read as absent");
+expect(/HELD IN QUARANTINE/.test(gatedHF[0].note), "the account must say the guidance is HELD — 'withheld' must not read as 'destroyed' either");
+expect(/au_dose_signed/.test(gatedHF[0].note), "the account must state WHAT is held behind the block, so withheld is never read as absent");
+expect(/delivered in full the moment the block is resolved/.test(gatedHF[0].note), "…and that it is in-waiting: the clinician must know resolving the block delivers it, not that it is gone");
+
+// ---- 9b. THE QUARANTINE BAR MUST ACTUALLY RUN INSIDE renderBundle ------------------------------
+// A bar nobody invokes is decoration. Deleting `assertQuarantineHeld(html, bundle)` from renderBundle
+// left this suite GREEN until this test existed — the tamper sweep is the only reason I know.
+//
+// Proving the WIRING (not just the bar) needs a quarantined string the renderer genuinely puts on the
+// page. The ingredient name is exactly that: it is rendered, so a bundle whose held text IS the
+// ingredient must make renderBundle THROW — which it can only do if it calls the bar.
+{
+  const { renderBundle } = await import("../portal/server.js");
+  const { buildReviewBundle } = await import("../portal/review-bundle.js");
+  const { runPipeline } = await import("../verification/pipeline.js");
+  const ID = { verified: true, clinician_id: "KL", ahpra_registration: "MED0001857758", idp: "test" };
+  const base = buildReviewBundle(await runPipeline({ trunk: "8.0" }));
+
+  // The probe must be a string the renderer GENUINELY PRINTS, or the bar is not exercised and the
+  // test proves nothing. My first attempt used the ingredient name — which renderDoseEvidence does not
+  // print for a held row, so nothing leaked, the bar correctly stayed silent, and the "wiring test"
+  // was itself decoration. It prints `status`, `note` and `source`; `source` is the honest probe.
+  const leaking = {
+    ...base,
+    dose_evidence: [{
+      kind: "held", authority: "advisory", ingredient: "warfarin", status: "dose_text_withheld:HARD_FAIL",
+      source: "ZZ-LEAK-PROBE-ZZ", released: false,   // ← rendered, so this simulates a real leak
+      // Direction of error, deliberately: this bar false-POSITIVES toward throwing, which fails safe
+      // (no page). A missed leak fails unsafe. Given the choice, it throws.
+      quarantined: [{ of: "au_dose_signed", quarantined_text: "ZZ-LEAK-PROBE-ZZ", by: "KL" }],
+      note: "DOSE TEXT WITHHELD, NOT DISCARDED — held in quarantine, delivered when the block clears.",
+      patient_facing: false,
+    }],
+  };
+  expect(throws(() => renderBundle(leaking, ID)),
+    "renderBundle MUST self-verify through assertQuarantineHeld. If it does not, retaining blocked dose text is one rendering bug from a §1.1 violation — and retention is only defensible because the refusal to display is mechanical.");
+
+  // …and the honest case still renders: held text absent, the ACCOUNT present.
+  const honest = { ...base, dose_evidence: [{ ...leaking.dose_evidence[0], quarantined: [{ of: "au_dose_signed", quarantined_text: "ZZ-HELD-DOSE-TEXT-ZZ", by: "KL" }] }] };
+  const html = renderBundle(honest, ID);
+  expect(!html.includes("ZZ-HELD-DOSE-TEXT-ZZ"), "the held dose text must not be on the page");
+  expect(html.includes("WITHHELD"), "…but the clinician MUST be told it is held — silence is the failure the principle names");
+}
 
 // Paediatric — same shape, same reason, hard limit unchanged.
 const paed = assembleDoseEvidence("methotrexate", { firewallStatus: "PASS", ageYears: 9 });

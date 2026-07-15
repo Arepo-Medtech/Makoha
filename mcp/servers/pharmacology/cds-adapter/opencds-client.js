@@ -106,8 +106,9 @@ function extractDrug(intent, { rxnormCode = null } = {}) {
 /**
  * Query the OpenCDS gateway for a pharmacology verdict.
  * @param {object} intent - PharmIntent-shaped (or a loose {drug}); only coded fields are sent.
- * @param {object} resolvedFacts - the sanitised facts the checks consume (allergy_status,
- *   current_medications, egfr_ml_min, nti_monitoring_documented, patient_age_years).
+ * @param {object} resolvedFacts - the sanitised facts the checks consume, named as engine.js names
+ *   them: allergens, current_medications, egfr_ml_min, hepatic_impairment, nti_monitoring_documented,
+ *   patient_age_years, pregnancy_status, s8_pdmp_checked.
  * @param {object} opts
  * @param {string} opts.endpoint - validated gateway base URL (from cdsVendorAvailable).
  * @param {Function} [opts.fetchImpl] - injectable fetch (tests pass a fake gateway; default global fetch).
@@ -124,12 +125,18 @@ export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetch
   const request = {
     request_id: `oss-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     drug,
+    // W1 (F-C8): the facts the CHECKS read, named as engine.js names them. This block previously sent
+    // `allergy_status`, which nothing populates — so the gateway never saw an allergy history and
+    // allergy_check, a DEFAULT_CHECK, could only ever return NOT_RUN → BLOCKED_NO_PROOF.
     resolved_facts: {
-      allergy_status: resolvedFacts.allergy_status,
+      allergens: resolvedFacts.allergens,
       current_medications: resolvedFacts.current_medications,
       egfr_ml_min: resolvedFacts.egfr_ml_min,
+      hepatic_impairment: resolvedFacts.hepatic_impairment,
       nti_monitoring_documented: resolvedFacts.nti_monitoring_documented,
       patient_age_years: resolvedFacts.patient_age_years,
+      pregnancy_status: resolvedFacts.pregnancy_status,
+      s8_pdmp_checked: resolvedFacts.s8_pdmp_checked,
     },
     checks_requested: checks,
     knowledge_module_set: knowledgeModuleSet,
@@ -174,6 +181,17 @@ export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetch
   const flags = data.flags || [];
   const canDose = verdict === "PASS" || verdict === "WARN";
   const dose_guidance = canDose && data.dose_candidate ? data.dose_candidate : null; // never a dose on HARD_FAIL/NOT_RUN
+  // W2 — RETAIN, do not destroy. Operator ruling 2026-07-15: *"keep all guidance in an on-hold
+  // quarantine pathway, in-waiting to deliver when appropriate."* `dose_guidance` above is the ACTION
+  // and stays gated exactly as it was (§1.1, untouched). This is the same dose kept as EVIDENCE, held:
+  // it rides to the evidence plane's quarantine, is never rendered while blocked
+  // (portal assertQuarantineHeld), and is delivered the moment the block clears.
+  //
+  // Before this, the gateway's candidate was nulled here and the FACT IT EXISTED died with it — the
+  // clinician could not tell "a second executor also produced a dose, withheld" from "no second
+  // opinion exists". That is the failure the show-evidence principle names, applied to the one field
+  // §1.1 gates.
+  const dose_candidate_quarantined = !canDose && data.dose_candidate ? data.dose_candidate : null;
 
   const interactions = flags.filter((f) => f.flag_type === "interaction_severe" || f.flag_type === "interaction_moderate");
   const contraindications = flags.filter((f) =>
@@ -185,6 +203,7 @@ export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetch
     verdict,
     reason: verdict === "PASS" ? "AU_OSS_CDS (OpenCDS) verdict: PASS" : `AU_OSS_CDS (OpenCDS) verdict: ${verdict}`,
     dose_guidance,
+    dose_candidate_quarantined,
     interactions: interactions.length ? interactions : null,
     contraindications: contraindications.length ? contraindications : null,
     check_results: data.check_verdicts,
