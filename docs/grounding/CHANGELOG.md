@@ -20,6 +20,34 @@ And a second reason the operator did not need to give: **who would have written 
 
 ---
 
+## FL dose-guidance C2b/C2d + C3 — the first real AU doses, and the mock fallback removed (2026-07-15)
+
+**Status:** operator-approved. **11 AU dose records authored** (Tier A + amoxicillin), all `review_status:"draft"`, `clinical_sign_off:false` — **KL's attestation (C2d) still required**. Six gates EXIT=0; 23 seals verify; frozen contracts, `engine.js` and the HIST-2 path byte-unchanged.
+
+**The agent originated no dose.** Every `safe_dose_range` is the clinician's verbatim APF22 text, `entered_by: MED0001857758`, and the schema's substring bar proves mechanically that the script only ever cut, never wrote.
+
+**NOTHING WAS BINNED.** Every readable adult dose was written, carrying its plausibility state and its `au_congruence` appraisal. `implausible` is a WARN; `unassessable` states that no claim is made rather than implying an all-clear. Congruence **defaults to `non_congruent` when a comparator exists** — deliberately, because "congruent" is the *stronger* claim ("these agree, look no further") and is a clinical judgement the script has no standing to make. `non_congruent` simply puts both doses in front of the clinician, which is the desired outcome anyway; it ships freely and needs no note (AU primacy). KL may upgrade it at attestation.
+
+### The guard's first real catch was a bug in its own parser
+
+`assessPlausibility` flagged **metformin at 166×**. Investigating instead of dismissing it exposed a **1000× under-read in the parser itself**: the regex treated a comma as a DECIMAL separator, so **"1,000 mg" parsed as 1 mg** and **"3,000 mg" as 3 mg**. Verified against the corpus — **41 comma-groups, every one a thousands separator; ZERO decimal commas** before a unit (Australian orthography: period decimal, comma thousands). A test asserting `"3,75 mg" → 3.75` had encoded the wrong assumption; it was my invention, not from the data, and it is now corrected with the real metformin string as a regression case. **This is the argument for a guard that WARNS a human rather than quietly binning: a bin would have hidden its own defect.** metformin is now correctly `plausible` (3000 vs 2000 = 1.5×).
+
+Carbamazepine remains flagged at exactly 10× — AU *max* 2 g vs the US *initial* 200 mg. A max-vs-initial comparison, not a real discrepancy: the guard's precision depends on how complete the comparator extraction is, and the cost of the false positive is a human glance, not a blocked dose. Working as designed.
+
+### A silent-miss class found: ingredient-name normalisation
+
+**Only 336 of 471 (71%) APF ingredient names match the datastore exactly.** APF22 uses Australian orthography; the datastore uses the INN. Three are pure variants of drugs in BOTH — **amoxycillin/amoxicillin, cyclosporin/ciclosporin, pericyazine/periciazine** — and would be **silent misses**: a dose authored under "amoxycillin" is invisible to an engine looking up "amoxicillin". **The dose exists, is signed, and is never shown** — the same outcome as no dose, reached more expensively. This is the show-evidence failure mode in its purest form, and it surfaced only because amoxicillin is the drug `contract-pharmacology` uses. C2 mitigates with an EXPLICIT three-entry map whose every application is REPORTED (never a fuzzy matcher — fuzzy-matching drug names is how you dose the wrong drug); the remaining 29% needs a real normaliser on the already-registered-but-unbuilt `rxnorm-nlm`. Opened `pharm-ingredient-name-normalisation`.
+
+### C3 — the mock fallback removed, landing with the first real dose exactly as required
+
+`pharm-data-source.js` no longer falls through to `mock-data.json.dose_guidance_mock`. That fallback was honest while EVERY dose was mock (each self-labelled "(MOCK — not clinically validated)"); the moment C2 authored signed doses it would have silently mixed signed and mock on one path, with a string label as the only thing telling them apart. Absent record → null → no dose.
+
+**It made the test suite stronger rather than weaker.** `contract-pharmacology`'s "safe PASS should carry dose_guidance" previously passed on a MOCK amoxicillin dose; it now passes on **KL's verbatim APF22 text**. paracetamol/ibuprofen return NO dose yet remain KNOWN drugs (`knownDrug()` reaches scheduling/renal/nti/interactions/allergy) — the truth, not a regression. `contract-pharm-validation` 20/20 + adversarial 8/8 green.
+
+**Still gated:** C2d (KL's attestation → `clinical_sign_off`) needs **R-47a** — a worksheet showing the appraisal landscape, or he would be attesting blind. **`dose-guidance-empty-no-au-source` must NOT be resolved while R-47 is open.** Nothing patient-facing: datasets stay `-dev`, receipts stay `mock`.
+
+---
+
 ## FL dose-guidance C2c — Tier A US/EU label doses retrieved (2026-07-15)
 
 **Status:** operator-approved. 12 records written to `international_dose_guidance`, all `review_status:"draft"`, **engine-isolated (re-proven: nothing reads the file)**. **No AU dose authored.** `npm test` (64) + verification + trunk:stub:all + licence:check + security:secrets + pharm:seals all EXIT=0.

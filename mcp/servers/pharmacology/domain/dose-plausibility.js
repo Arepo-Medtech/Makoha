@@ -34,7 +34,16 @@ const UNIT_MG = {
 // A dose amount: a number, a mass unit, and OPTIONALLY a per-weight / per-BSA denominator.
 // The unit alternation is LONGEST-FIRST so "microgram" cannot be partially matched as "g".
 // The denominator is captured PER AMOUNT — see parseDoseAmounts for why that matters.
-const AMOUNT_RE = /(\d+(?:[.,]\d+)?)\s*(micrograms|microgram|milligrams|milligram|grams|gram|mcg|µg|ug|mg|g)\b(\s*\/\s*(?:kg|kilogram|m²|m2|m\^2)|\s+per\s+(?:kg|kilogram|m²|m2|m\^2)\b)?/gi;
+// THE NUMBER PATTERN IS NOT INCIDENTAL. It tries `1,000`-style groups FIRST (comma = THOUSANDS
+// separator), then a plain/decimal number. An earlier version used `\d+(?:[.,]\d+)?`, treating a
+// comma as a DECIMAL separator — so "1,000 mg" parsed as **1 mg** and "3,000 mg" as **3 mg**: a
+// silent 1000x UNDER-read affecting 41 real dose amounts in the clinician's corpus. It was caught
+// ONLY because the plausibility guard flagged metformin at 166x and the flag was investigated rather
+// than dismissed — the guard's first real catch was a bug in its own parser. That is the argument for
+// a guard that WARNS a human instead of quietly binning: a bin would have hidden its own defect.
+// Verified against the corpus: 41 comma-groups, ALL thousands separators; ZERO decimal commas
+// (`\d,\d{1,2}` before a unit never occurs). Australian orthography: period decimal, comma thousands.
+const AMOUNT_RE = /(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(micrograms|microgram|milligrams|milligram|grams|gram|mcg|µg|ug|mg|g)\b(\s*\/\s*(?:kg|kilogram|m²|m2|m\^2)|\s+per\s+(?:kg|kilogram|m²|m2|m\^2)\b)?/gi;
 
 // "units" (insulin, heparin) are not a mass and cannot be converted to mg.
 const NON_MASS_RE = /\b(?:international\s+)?units?\b|\biu\b|\bmL\b|\b%\b/i;
@@ -66,7 +75,7 @@ export function parseDoseAmounts(statement) {
   const flat = [];
   const weight = [];
   for (const m of s.matchAll(AMOUNT_RE)) {
-    const n = Number(String(m[1]).replace(",", "."));
+    const n = Number(String(m[1]).replace(/,/g, "")); // commas are THOUSANDS separators here — never decimals
     const mult = UNIT_MG[m[2].toLowerCase()];
     if (!Number.isFinite(n) || mult === undefined) continue;
     if (m[3]) weight.push(m[0].trim()); // carries a /kg or /m² denominator → different scale

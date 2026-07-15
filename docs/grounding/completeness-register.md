@@ -1535,11 +1535,28 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: pharm-ingredient-name-normalisation
+  path: scripts/pharm-dose-author.mjs (APF_TO_DATASTORE explicit map) · mcp/servers/pharmacology/data/data-sources.json (rxnorm-nlm, registered but unbuilt) · mcp/servers/pharmacology/sources/pharm-data-source.js (all getters key on lowercased ingredient)
+  component_type: other (identity normalisation)
+  state: PARTIAL
+  evidence: Found 2026-07-15 during C2 authoring. The datastore keys every clinical fact on a lowercased ingredient STRING, with NO normaliser — `rxnorm-nlm` is registered in data-sources.json as providing "drug_normalisation, synonyms, ingredient_identity" and is NOT built. Measured against the clinician's APF22 transcription: **only 336 of 471 APF ingredients (71%) match a datastore name exactly.** APF22 uses Australian/British orthography; the datastore uses the INN. Three are pure orthographic variants of drugs present in BOTH and would be SILENT MISSES: **amoxycillin/amoxicillin, cyclosporin/ciclosporin, pericyazine/periciazine**. This is a SHOW failure, not a data failure: a dose authored under "amoxycillin" is invisible to an engine looking up "amoxicillin" — the dose exists, is signed, and is never shown, which is the same outcome as no dose, reached more expensively. Caught only because amoxicillin is the drug `contract-pharmacology` uses to prove a safe PASS carries a dose.
+  blocks: authoring beyond the hand-mapped set; any future ingest keyed on a source with different orthography
+  safety_class: degrades_safe
+  invariant_exposure: none directly — a miss yields NO dose (fail-safe), never a WRONG one. The hazard is the opposite of fabrication: silent omission of signed clinical content, invisible because nothing errors.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: C2 mitigates with an EXPLICIT three-entry map (APF_TO_DATASTORE) whose every application is REPORTED, never silent — deliberately NOT a fuzzy matcher (fuzzy-matching drug names is how you dose the wrong drug). That does not scale: the remaining 29% needs a real normaliser built on the already-registered rxnorm-nlm (INN + synonym resolution), with unmatched names REPORTED and REFUSED rather than written as orphan records a clinician can never see. Until then, any authoring pass MUST print its normalisations and its misses.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: dose-guidance-empty-no-au-source
   path: mcp/servers/pharmacology/data/dose-guidance.json · mcp/servers/pharmacology/domain/model.js (DoseGuidanceSchema) · mcp/servers/pharmacology/data/data-sources.json (tga-pi, amass-regulatory, apf22) · scripts/pharm-dose-{crosscheck,author}.mjs (C1/C2, unbuilt)
   component_type: dataset
-  state: EMPTY
-  evidence: FL dose-guidance C0 (2026-07-15, plan .planning/DOSE-GUIDANCE-PLAN.md). dose-guidance.json holds `records: []` with clinical_sign_off:false — it is the ONLY datastore capability that becomes a dose (engine.js emits it via PharmCheck.dose_guidance on PASS/WARN), and it has never been populated. NOT an oversight and NOT an authoring backlog: it is the collision of two hard constraints — (a) the AU dose authorities are licence-restricted (APF22/AusDI are use_restriction:structure_only, content_licence_held:false; AMH is not a registered source at all; PBS's own registry note says it does NOT provide dosing), and (b) "no dosages from the LLM" bars the agent authoring one. The empty file is the fail-safe working. Research: .planning/DOSE-GUIDANCE-RESEARCH.md. Distinct from dose-evidence (261 KL-signed records) — that is a citation register of literature FINDINGS, engine-isolated by design (no accessor), NOT a dose source; the two are different epistemic categories and dose-evidence cannot be promoted into this file.
+  state: PARTIAL
+  evidence: **ADVANCED to PARTIAL 2026-07-15 (C2): 11 Tier A + amoxicillin AU dose records authored from the clinician's own APF22 Section D transcription, all review_status:draft, entered_by MED0001857758.** dose-guidance.json previously held `records: []` with clinical_sign_off:false — it is the ONLY datastore capability that becomes a dose (engine.js emits it via PharmCheck.dose_guidance on PASS/WARN), and it has never been populated. NOT an oversight and NOT an authoring backlog: it is the collision of two hard constraints — (a) the AU dose authorities are licence-restricted (APF22/AusDI are use_restriction:structure_only, content_licence_held:false; AMH is not a registered source at all; PBS's own registry note says it does NOT provide dosing), and (b) "no dosages from the LLM" bars the agent authoring one. The empty file is the fail-safe working. Research: .planning/DOSE-GUIDANCE-RESEARCH.md. Distinct from dose-evidence (261 KL-signed records) — that is a citation register of literature FINDINGS, engine-isolated by design (no accessor), NOT a dose source; the two are different epistemic categories and dose-evidence cannot be promoted into this file.
   blocks: any dose emitted from the clinician-signed datastore (the engine currently falls back to 3 self-labelled mock doses — see dose-mock-fallback-mixing); FL-34 Phase B's dose-range KM (deliberately not built for this reason)
   safety_class: degrades_safe
   invariant_exposure: no-dosages-from-the-LLM / no-autonomous-prescription — the invariant this capability exists to protect. C0 makes the bar MECHANICAL rather than conventional: DoseGuidanceSchema admits exactly two origin channels (tga_pi | clinician_apf_attestation), requires an AHPRA registration id on the clinician channel (an agent string cannot match, so an agent-authored dose is UNREPRESENTABLE), and (AMENDED 2026-07-15) records an `au_congruence` APPRAISAL against the US/EU labels that is mandatory but ANNOTATES rather than vetoes — the original "omit diverges so a differing dose cannot be written" gate was removed as an inversion of the jurisdiction rule (a foreign regulator has no standing to veto an AU dose) and as over-triage (AU/US/EU labels legitimately differ).
@@ -1555,16 +1572,16 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 - id: dose-mock-fallback-mixing
   path: mcp/servers/pharmacology/sources/pharm-data-source.js:170 (getDoseGuidance → mock-data.json.dose_guidance_mock)
   component_type: other (data source fallback)
-  state: PARTIAL
+  state: COMPLETE
   evidence: FL dose-guidance C0 scan (2026-07-15). getDoseGuidance() returns the datastore record if present, ELSE falls through to mock-data.json.dose_guidance_mock (3 entries: amoxicillin, paracetamol, ibuprofen). SAFE TODAY and correctly classified degrades_safe: every mock dose self-labels inside the string ("500 mg PO every 8 hours (MOCK — not clinically validated)") and dose-guidance.json is empty, so ALL doses are mock and none masquerades as signed. LATENT, NOT CURRENT: the defect activates the moment dose-guidance C2 authors its first real record — the fallback would then silently mix clinician-signed and mock doses on one path, and the self-label becomes the only thing distinguishing them at the point a clinician reads a dose beside real ones.
   blocks: nothing today — this is a precondition ON dose-guidance C2, not a blocker of it
   safety_class: degrades_safe
   invariant_exposure: mock-never-as-live (Guardrail 4) — not breached today (self-labelled, uniformly mock); WOULD be exposed at C2 if the fallback survives
   risk: Medium
   blocks_patient_facing: false
-  build_action: Remove the mock fallback in the SAME increment as the first real dose (dose-guidance plan C3): absent record → null → no dose. Strictly safety-improving (fail-safe default: missing proof → no dose, never a mock one). Verify contract-pharm-validation (20/20 + 8/8 adversarial) stays green and add a test asserting an unknown drug yields no dose. Do NOT resolve this item before C2 — while the store is empty the fallback is the only dose path the mock/dev pipeline has.
+  build_action: **RESOLVED 2026-07-15 (C3, landed with C2's first real dose exactly as required).** The fallback is removed: absent record → null → no dose. Verified: amoxicillin now returns KL's verbatim APF22 text through the engine (not a MOCK string) and `contract-pharmacology`'s "safe PASS should carry dose_guidance" assertion PASSES on real signed data — a strictly stronger test than the mock it replaced; paracetamol/ibuprofen return NO dose yet remain KNOWN drugs (knownDrug() reaches scheduling/renal/nti/interactions/allergy), which is the truth rather than a regression. `contract-pharm-validation` 20/20 + adversarial 8/8 green; engine.js byte-unchanged (C3 touched the SOURCE, not the engine).
   gap_register_link: none (Medium)
-  status: open
+  status: resolved
   last_scanned: 2026-07-15
 ```
 
