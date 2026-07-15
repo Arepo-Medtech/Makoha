@@ -124,7 +124,7 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   path: mcp/servers/pharmacology/{index.js,schemas.js,engine.js,domain/model.js,sources/pharm-data-source.js,data/*.json}, scripts/pharm-{author,pbs-sync,validate}.mjs, eval/pharmacology/, test/contract-pharm-*.js
   component_type: mcp-server
   state: COMPLETE
-  evidence: SELF-BUILD VALIDATED — FL-30 Steps 2–5 (2026-07-13). Engine output conforms to the frozen pharm-check schema (ajv-gated, contract-pharm-schema-conformance); internal domain model + PharmDataSource seam (SyntheticSelfDevelopedSource + LicensedFeedSource stub); PHARM_CDS third state SYNTHETIC_SELF_DEVELOPED (does NOT unlock the cds-adapter E7 floor). Curated CLINICIAN-SIGNED (KL 2026-07-13) datastore — 16 NTI (incl. warfarin+DOACs, KL-directed), 16 renal, 6 interactions, 3 allergy groups, 13 AU scheduling; fail-closed authoring pipeline; PBS Public API v3 cached-sync adapter (live pull input-gated on the deploy secrets backend). Engine WIRED through the seam (Step 4) — the signed datastore drives PharmCheck (proven: dabigatran/methadone signed-only HARD_FAIL). nti_check + unknown-drug escalation added (FL-30 §4.4). STAGING VALIDATION (Step 5): 20/20 cases pass, 8/8 adversarial fail-safe, A/B parity + gate integrity ✓ (eval/pharmacology/validation-report + validation-signoff.md, signed KL 2026-07-13). Receipts stay mode=mock / heydoc-pharm-synthetic-dev: (no mock-as-live) until regulatory sign-off flips them.
+  evidence: SELF-BUILD VALIDATED — FL-30 Steps 2–5 (2026-07-13). Engine output conforms to the frozen pharm-check schema (ajv-gated, contract-pharm-schema-conformance); internal domain model + PharmDataSource seam (SyntheticSelfDevelopedSource + LicensedFeedSource stub); PHARM_CDS third state SYNTHETIC_SELF_DEVELOPED (does NOT unlock the cds-adapter E7 floor). Curated CLINICIAN-SIGNED (KL 2026-07-13) datastore — 16 NTI (incl. warfarin+DOACs, KL-directed), 16 renal, 6 interactions, 3 allergy groups, 13 AU scheduling; fail-closed authoring pipeline; PBS Public API v3 cached-sync adapter (live pull input-gated on the deploy secrets backend). Engine WIRED through the seam (Step 4) — the signed datastore drives PharmCheck (proven: dabigatran/methadone signed-only HARD_FAIL). nti_check + unknown-drug escalation added (FL-30 §4.4). STAGING VALIDATION (Step 5): 20/20 cases pass, 8/8 adversarial fail-safe, A/B parity + gate integrity ✓ (**NB — "A/B parity" HERE means the signed datastore vs the mock source, both producing contract-valid PharmChecks. It is NOT FL-34 Phase D's engine-vs-gateway parity (`opencds-ab-parity`), which compares two independent IMPLEMENTATIONS of the same specification. Two different claims, one phrase; disambiguated 2026-07-15 so neither is read as the other.**) (eval/pharmacology/validation-report + validation-signoff.md, signed KL 2026-07-13). Receipts stay mode=mock / heydoc-pharm-synthetic-dev: (no mock-as-live) until regulatory sign-off flips them.
   blocks: (self-build complete + staging-validated) — patient-facing readiness now tracked by SEPARATE items below, not this one
   safety_class: degrades_safe
   invariant_exposure: no-autonomous-prescription (doses only here) + no-HARD_FAIL-override — enforced mechanically and validated
@@ -803,6 +803,24 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   blocks_patient_facing: false
   build_action: Any NEW surface that renders `dose_evidence` MUST call `assertQuarantineHeld(html, bundle)` — and should self-verify inside its own render function, as `renderBundle` does, rather than relying on a caller to remember. Re-rate **High** the day a second rendering surface exists. Alternative worth weighing then: move the bar into a shared render seam so a surface cannot be built without it.
   gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-15
+```
+
+
+```md
+- id: opencds-ab-parity
+  path: verification/executor-parity.js · test/contract-executor-parity.js · test/parity-opencds-gateway.js (env-gated)
+  component_type: test
+  state: PARTIAL
+  evidence: **BUILT 2026-07-15 (FL-34 Phase D).** A/B parity between the two executors — the in-process `engine.js` (the SPECIFICATION) and the OpenCDS gateway (a second implementation). Live against a real container: **86/86** agree on composed status, per-check verdicts, findings and dose text; the dose was compared on 77 cases. **PARITY WAS ALREADY CLEAN when first measured** — the bugs were found in Phases B and C, by BUILDING (the route could not return PASS at all; OpenCDS rejected every hook; a KM collapsed N interaction findings into one). None would have been found by comparing outputs. So this is a REGRESSION NET, not a discovery, and it is worth saying so rather than dressing 86/86 up as a finding. **CATCHES A REAL REGRESSION, PROVEN:** rebuilding the container with C1's defect reintroduced (per-hit interaction flags collapsed to one) makes it report `warfarin · FLAGS — 1 only the engine reported`. It would have caught C1. The comparison rules are unit-tested WITHOUT a container (12 cases), so the live run is only the data: contract shape is not a divergence (the wire is deliberately narrower — `flag_id`/`renal_threshold`/`au_reference` and the PBS dose keys cannot ride), an unrequested check is the ASK not a defect (F-D2), a requested-but-unanswered one IS a defect, and the report never claims WHICH side is wrong — both executors read the same signed records, so it cannot know.
+  blocks: nothing — it is a net, not a dependency
+  safety_class: none (reads both executors; writes nothing, emits no dose, changes no verdict)
+  invariant_exposure: none — the harness is read-only over two existing paths
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **REMAINING:** it runs on a laptop against a local container and SKIPS GREEN in CI (the C4/smoke-llm precedent) — so a green CI run does NOT mean parity holds, it means nobody asked. Wire it into a job that actually has a gateway (A4/FL-12 staging), and re-rate the skip then. Default coverage is a deterministic 43-of-451 sample plus 8 pinned adversarial drugs; `--all` sweeps the full set (451 × 2 profiles × 8 checks) and is not the default because a harness too slow to run is a harness nobody runs. Coverage is printed on every run — a silent sample reads as exhaustive.
+  gap_register_link: R-22
   status: open
   last_scanned: 2026-07-15
 ```
