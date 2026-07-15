@@ -239,6 +239,46 @@ function renderDoseEvidence(bundle) {
  *
  * @throws Error naming the item and the missing evidence.
  */
+/**
+ * THE QUARANTINE BAR — the mirror image of R-47b, and it exists because they would otherwise fight.
+ *
+ * OPERATOR RULING 2026-07-15: *"retain — keep all guidance in an on-hold quarantine pathway,
+ * in-waiting to deliver when appropriate."* Blocked guidance is no longer destroyed: it rides in the
+ * bundle, held, ready to release the moment the firewall clears.
+ *
+ * That retention is only defensible because something MECHANICALLY refuses to display it. §1.1 is
+ * unchanged and absolute — *"never becomes 'show a dose the firewall blocked'. No override, no
+ * exception."* — and the whole point of holding the text rather than dropping it is that it is now one
+ * rendering bug away from the screen. This is that bug's tripwire.
+ *
+ * R-47b says: an item with `text` is RECORDED and must be DISPLAYED.
+ * This says:  an item with `quarantined_text` is RECORDED and must NOT be — until `released`.
+ *
+ * They never collide because the FIELD NAME is the barrier: held guidance never occupies `text`. What
+ * the clinician sees is the `note` — what is held, and why — which this bar also requires, because a
+ * silent withholding is the failure the show-evidence principle names.
+ */
+export function assertQuarantineHeld(html, bundle) {
+  for (const e of bundle.dose_evidence || []) {
+    if (e.released || !Array.isArray(e.quarantined)) continue;
+    for (const q of e.quarantined) {
+      if (q.quarantined_text && html.includes(esc(q.quarantined_text))) {
+        throw new Error(
+          `§1.1 VIOLATION: a ${q.of} dose for ${e.ingredient} is QUARANTINED (${e.status}) but its text is ON THE PAGE. ` +
+          `No dose is shown past a blocked firewall — that limit is absolute and has no override. The guidance is ` +
+          `retained so it can be delivered the moment the block clears; retaining it is not permission to display it.`,
+        );
+      }
+    }
+    if (e.note && !html.includes(esc(e.note.slice(0, 40)))) {
+      throw new Error(
+        `R-47: ${e.ingredient} — guidance is held in quarantine but the clinician is NOT TOLD. "Withheld" must never be ` +
+        `indistinguishable from "we hold nothing": the account of what is held, and why, is the one thing that MUST render.`,
+      );
+    }
+  }
+}
+
 export function assertDoseEvidenceRendered(html, bundle) {
   for (const e of bundle.dose_evidence || []) {
     if (e.text && !html.includes(esc(e.text))) {
@@ -294,6 +334,11 @@ ${decided ? `<p><strong>Latest decision on this hash:</strong> ${esc(decided.dec
   // M4 — the same bar, applied to the CLAIMS: recorded-but-not-displayed is the R-47 failure, and
   // an unanchored claim shown without its register reads as a finding.
   assertEvidenceClaimsRendered(html, bundle);
+  // W2 — the MIRROR of R-47b. Quarantined guidance is retained so it can be delivered when the block
+  // clears, which means it is now one rendering bug from the screen. This runs HERE, inside
+  // renderBundle, for the same reason the others do: a bar a caller must remember to invoke is a bar
+  // that stops running the first time someone renders a page another way.
+  assertQuarantineHeld(html, bundle);
   return html;
 }
 

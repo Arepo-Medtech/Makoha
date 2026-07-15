@@ -19,7 +19,7 @@ import { runPharmCheck, canonicaliseDrugName } from "../mcp/servers/pharmacology
 import { queryCds, composeCdsVerdict } from "../mcp/servers/pharmacology/cds-adapter/index.js";
 // The evidence plane is imported HERE (the portal/audit channel), never by engine.js — that is what
 // keeps international_dose_guidance structurally isolated from the AU dose path.
-import { assembleDoseEvidence, assertNoAdvisoryInDose } from "../mcp/servers/pharmacology/dose-evidence-plane.js";
+import { assembleDoseEvidence, assertNoAdvisoryInDose, assertHoldNotInjected, assertMemoUnactionable } from "../mcp/servers/pharmacology/dose-evidence-plane.js";
 import { pharmCdsState } from "../config/flags.js";
 import { gradeConcern, composeTriage, buildAbcdeRecord } from "./ppp-ttt/index.js";
 
@@ -292,6 +292,9 @@ export async function runPipeline(options = {}) {
       cdsKmSet: cdsEvidence?.km_set ?? null,
     });
     assertNoAdvisoryInDose(pc, dose_evidence);
+    // D-A-4 — the memo may not quote what it withholds. Runs beside the advisory bar because both
+    // answer the same question: did content reach a field that must never carry it?
+    assertMemoUnactionable(dose_evidence);
 
     if (firewall_status === "HARD_FAIL") {
       hardStopReceipt = pc.receipt.request_id;
@@ -320,6 +323,12 @@ export async function runPipeline(options = {}) {
 
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
   const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content }));
+
+  // D-A-3 — HELD GUIDANCE MUST NEVER REACH THE MODEL. Runs HERE, between the packet being sealed and
+  // generation seeing it, because this is the last moment the two planes are both in scope. Held text
+  // in a packet is an ANCHOR, not information — and unlike a rendering leak, an anchored model does
+  // not look anchored, it looks confident. Nothing else in the system would catch it.
+  assertHoldNotInjected(packet, dose_evidence);
 
   // Step 4 — Generation (LIVE_PLAN L3). The hook receives ONLY the sealed
   // packet — the packet-only bar is the calling convention here AND the
