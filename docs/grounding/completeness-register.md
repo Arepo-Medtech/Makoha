@@ -1552,6 +1552,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: evidence-claims-recorded-not-displayed
+  path: portal/server.js (renderEvidenceClaims + assertEvidenceClaimsRendered) · portal/review-bundle.js (evidence_claims) · mcp/schemas/portal-review-bundle.schema.json
+  component_type: other (clinician surface)
+  state: COMPLETE
+  evidence: **FOUND + FIXED 2026-07-15 (M4). R-47's failure mode, in code I had already touched.** `evidence_claims` has always been in the ReviewBundle schema, populated by `buildReviewBundle`, and hashed into `bundle_sha256` — and it was **rendered ZERO times**. Every claim a trunk made, with its supports, was RECORDED AND NEVER DISPLAYED: "satisfies every schema and every test, READS as done because the data is right there in the record, and quietly defeats Guardrail 2". E3 built `renderDoseEvidence` for the dose evidence and never noticed the claims sitting beside it. Verified on the real pipeline: 4 claims carried, 0 displayed. **And `supports: []` is representable** (the schema sets no `minItems`), so an UNANCHORED claim is a real case, not a hypothetical one.
+  blocks: nothing — additive
+  safety_class: degrades_safe
+  invariant_exposure: no-autonomous-diagnosis / human-in-the-loop (Guardrail 2 — disposal presumes SIGHT). A model has **no calibrated internal uncertainty signal it can surface honestly**: fluency and correctness are decoupled, so it states a fabricated threshold in exactly the voice it uses for well-established fact. A clinician scanning well-written output has nothing to separate a receipt-backed claim from a confabulated one — unless the surface tells them, which it now does.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DONE.** `renderEvidenceClaims()` displays every claim with a register **derived from GROUNDING, never from wording**: `supports.length > 0` → receipt-backed; `supports.length === 0` → **HYPOTHESIS — anchored to nothing**, with the count surfaced in the heading rather than buried in a row. `assertEvidenceClaimsRendered()` is the bar (the third of its kind, after R-47a's `assertEvidenceRendered` and R-47b's `assertDoseEvidenceRendered`), and `renderBundle` self-verifies through it. **The subtle failure is the one that matters and is asserted separately: an unanchored claim DISPLAYED WITHOUT its register is worse than one not displayed at all** — it then reads as a finding, and a naive "is it rendered?" check passes. Tamper-proven THREE ways: dropping the claims THROWS; dropping the register on an unanchored claim THROWS; marking everything receipt-backed (register from wording, not grounding) THROWS. Two identically-worded claims — one anchored, one not — are asserted to land in different registers, because if wording could move the register the model's fluency would be steering it, which is the bug. The claims ride INSIDE `bundle_sha256`, so what the clinician saw and in which register is part of the medicolegal record (asserted: stripping them breaks the hash).
+  gap_register_link: none (Medium)
+  status: resolved
+  last_scanned: 2026-07-15
+```
+
+```md
 - id: positional-stability-unchecked
   path: verification/positional-stability.js · test/contract-positional-stability.js · verification/pipeline.js (generate_candidate(packet)) · integration/generation-backend.js
   component_type: verifier

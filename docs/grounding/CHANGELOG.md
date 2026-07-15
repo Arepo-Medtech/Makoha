@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## M4 — fluency is not confidence: the claims were never displayed (2026-07-15)
+
+**Status:** `npm test` (EXIT=0, 71 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged.
+
+**R-47's failure mode, found in code I had already touched.** `evidence_claims` has always been in the ReviewBundle schema, populated by `buildReviewBundle`, hashed into `bundle_sha256` — and **rendered zero times**. Verified on the real pipeline: **4 claims carried, 0 displayed**. E3 built `renderDoseEvidence` for the dose evidence and never noticed the claims sitting right beside it. *"Satisfies every schema and every test, READS as done because the data is right there in the record, and quietly defeats Guardrail 2."*
+
+**Why it matters, in the operator's words:** *"The model has no calibrated internal uncertainty signal it can surface honestly; fluency and correctness are decoupled. A hesitant human clinician telegraphs doubt ('I'm not sure, but…'). An LLM will state a fabricated drug interaction or a non-existent guideline threshold in the same register it uses for well-established fact."*
+
+**So the register cannot come from the prose — it comes from the grounding.** `supports.length > 0` → receipt-backed. `supports.length === 0` → **HYPOTHESIS, anchored to nothing**. And `supports: []` is representable (no `minItems`), so the unanchored claim is a real case, not a hypothetical one.
+
+**The subtle failure is the one that matters.** An unanchored claim *displayed without its register* is **worse** than one not displayed at all — it then reads as a finding, in exactly the voice the model uses for fact, and a naive "is it rendered?" check passes. That is asserted separately.
+
+**Tamper-proven three ways:** dropping the claims throws; dropping the register on an unanchored claim throws; marking everything receipt-backed (register from wording, not grounding) throws. Two identically-worded claims — one anchored, one not — are asserted to land in **different** registers: if wording could move the register, the model's fluency would be steering it, which is the bug.
+
+**Verification note:** the first tamper pass reported nothing and I nearly filed it as a pass — the bar fails by **throwing** from `renderBundle`'s self-verify, so my grep for `FAIL:` lines found nothing. Re-checked by exit code. That is the second time this session a green tamper result was actually a broken tamper.
+
+**The four are complete:** M1 (blind commit) breaks the anchor→model half · M2 (descent guard) pins the model→clinician half until there is a flow to break · M3 (positional stability) sees a glitch no human reviewer can · M4 separates fluency from confidence. The bars are now real where R1 could only make them honest.
+
 ## M3 — positional stability: the glitch no clinician will catch (2026-07-15)
 
 **Status:** `npm test` (EXIT=0, 70 suites) + `verification` (Pass: true) + `trunk:stub:all` (EXIT=0). Frozen contracts byte-unchanged — no schema field, no verifier check added.
