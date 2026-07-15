@@ -24,17 +24,41 @@
  * methotrexate/metronidazole, dexamphetamine/dexamethasone); typos refuse ("amoxicilin", "amlodipin"
  * → no match). Normalized search (search=2) was rejected precisely because it DID resolve "amlodipin".
  *
- * THE DEFAULT IS OFF, AND THAT IS DELIBERATE. A name→ingredient map is a drug-IDENTITY assertion. This
- * repo's own precedent (APF_TO_DATASTORE) is that identity assertions are REPORTED, never silent, and
- * are "data a clinician can read and correct". So `resolveIngredient()` REFUSES to redirect a lookup
- * using an unsigned map unless the caller explicitly passes `allowUnsigned` — which nothing on the
- * engine path does. Until KL reviews the map, this changes no behaviour: it is authored for review,
- * not switched on behind him. That is not a brake on the feature; it is the same gate every other
- * dataset in this repo passes through.
+ * ══ THIS MODULE NO LONGER STEERS ANYTHING (2026-07-15) ══
+ * It used to export `resolveIngredient()` — the E6 fix, which redirected an AU spelling variant to the
+ * canonical dose, gated on the map's `clinical_sign_off`. That function is GONE. It was superseded
+ * twice (E7's `also_known_as`, resolved once at the engine's own boundary; then E8's drug vocabulary,
+ * which is signed and does the work), and by the time it was removed it had ZERO production callers.
  *
- * FAIL-SAFE DIRECTION: an unresolved name returns null and the caller's existing behaviour stands
- * (BLOCKED_NO_PROOF). Resolution can only ever ADD reach to content a clinician already signed; it can
- * never invent a dose, and it can never pick between two candidates — an ambiguous name is REFUSED.
+ * It was removed rather than wired, and the reason is the point: wiring it would have created a
+ * SECOND canonicaliser beside the vocabulary's. Two things resolving identity independently is the E6
+ * defect itself — a dose found under one spelling while the interaction check missed under another —
+ * which is why B0/B0b settle identity ONCE, upstream, before either executor runs. An orphan that
+ * would be a hazard if reconnected is not a spare part; it is a loaded gun in a drawer.
+ *
+ * ITS SAFETY TESTS DID NOT GO WITH IT. "Never fuzzy" (amlodipine/amiodarone, hydralazine/hydroxyzine,
+ * a typo resolving to nothing) is a property of whatever steers TODAY, and that is now
+ * `canonicalise()`. Those assertions were MIGRATED to `contract-drug-vocabulary` before this function
+ * was deleted — deleting them with it would have left the property holding by construction and
+ * asserted by nobody, which is precisely how a safety property quietly stops being one.
+ *
+ * ══ WHAT REMAINS, AND WHY ══
+ * `doseIdentitySplit()` — the engine's live use, and the opposite risk. It reads this map to BLOCK
+ * (fail-safe) when a drug's dose and its safety data sit under different spellings. It reads the map
+ * EVEN WHILE UNSIGNED, deliberately: blocking on a suspected identity costs a spurious block a
+ * clinician resolves, whereas STEERING on an unverified one doses the wrong drug. Same data, opposite
+ * risk, opposite gate. `loadIdentityMap` / `SAFETY_CAPABILITIES` support it; `identityCollisions` is
+ * the audit read.
+ *
+ * The map's `clinical_sign_off` now gates NOTHING — `resolveIngredient` was the only thing it gated.
+ * It is pure provenance, which is exactly what its attestation says it is ("WHAT THIS UNLOCKS:
+ * nothing"). `loadIdentityMap` no longer surfaces a `signed` field for the same reason `allergy_status`
+ * was removed from the wire (F-C8): a field that LOOKS like it gates something, and does not, is how
+ * the next reader is misled.
+ *
+ * FAIL-SAFE DIRECTION, unchanged: an unresolved name returns null and the caller's existing behaviour
+ * stands (BLOCKED_NO_PROOF). Nothing here invents a dose, and nothing here picks between two
+ * candidates — an ambiguous name is REFUSED.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -63,7 +87,6 @@ export function loadIdentityMap(path = DATA_PATH) {
   _cache = {
     path,
     present: !!ds,
-    signed: ds?.attestation?.clinical_sign_off === true,
     dataset_version: ds?.dataset_version ?? null,
     byName,
     byRxcui,
@@ -73,38 +96,6 @@ export function loadIdentityMap(path = DATA_PATH) {
 
 /** Test seam. */
 export function _resetIdentityCache() { _cache = null; }
-
-/**
- * Resolve an inbound drug name to a canonical ingredient present in `candidates`.
- *
- * @param {string} inbound - the name as supplied (prescriber/trunk/intent)
- * @param {(name:string)=>boolean} isCanonical - does the datastore hold this exact ingredient name?
- * @param {{ allowUnsigned?: boolean, map?: object }} opts
- * @returns {{ canonical: string, rxcui: string, via: string, from: string } | null}
- *   null = do not redirect. The caller's existing (fail-safe) behaviour stands.
- */
-export function resolveIngredient(inbound, isCanonical, { allowUnsigned = false, map = null } = {}) {
-  const n = String(inbound || "").trim().toLowerCase();
-  if (!n) return null;
-
-  // Already canonical — nothing to resolve. The common path does no work and takes no risk.
-  if (isCanonical(n)) return null;
-
-  const m = map || loadIdentityMap();
-  if (!m.present) return null;                      // no map → no resolution
-  if (!m.signed && !allowUnsigned) return null;     // THE GATE: an unsigned identity map does not steer a dose lookup
-
-  const rxcui = m.byName.get(n);
-  if (!rxcui) return null;                          // unknown name → BLOCKED_NO_PROOF stands
-
-  // Every OTHER name RxNorm gives the same concept id, that the datastore actually holds.
-  const siblings = (m.byRxcui.get(rxcui) || [])
-    .map((r) => r.name)
-    .filter((x) => x !== n && isCanonical(x));
-
-  if (siblings.length !== 1) return null;           // 0 → nothing to point at; >1 → AMBIGUOUS, never pick
-  return { canonical: siblings[0], rxcui, via: "rxnorm-nlm", from: n };
-}
 
 /**
  * The datastore files the engine's eight accessors actually key on. A name split across THESE is not
@@ -141,7 +132,8 @@ export const SAFETY_CAPABILITIES = [
  *   - An unsigned identity map may **BLOCK**. "RxNorm says these two names are one drug, so I cannot
  *     prove this check ran against the right identity" is a FAIL-SAFE conclusion. Being wrong costs a
  *     spurious BLOCKED_NO_PROOF, which a clinician resolves.
- *   - An unsigned identity map may **NOT STEER** (see `resolveIngredient`). Redirecting a dose lookup
+ *   - An unsigned identity map may **NOT STEER** (the vocabulary's `canonicalise()` holds that gate now;
+ *     this module's own steerer was removed 2026-07-15). Redirecting a dose lookup
  *     on an unverified identity claim is not fail-safe: being wrong doses the wrong drug.
  * Same data, opposite risk profile, opposite gate. Blocking needs no sign-off; steering does.
  *
