@@ -866,6 +866,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ## MEDIUM
 
 ```md
+- id: deploy-user-holds-worm-write
+  path: (AWS IAM, not repo code) user `heydoc-deploy-cli` ← policy `HeydocWormAudit` (s3:PutObject, s3:PutObjectRetention) on bucket `heydoc-medicolegal-audit` · exercised by test/smoke-worm-live.js
+  component_type: other (access control / deploy posture)
+  state: PARTIAL
+  evidence: **DELIBERATE STAGING-ONLY CHOICE, logged 2026-07-16 so it resurfaces at the production gate rather than being rediscovered by an auditor.** FL-11's live validation needed a real WORM write from the operator's machine, so `HeydocWormAudit` (the same policy the running app's `heydoc-staging-instance-role` carries) was attached to the deploy user `heydoc-deploy-cli`. It remains attached: `test/smoke-worm-live.js` is a designed, repeatable test that must be runnable after any adapter change, and it writes. **Blast radius, measured not assumed:** Object Lock COMPLIANCE means a holder of this credential **cannot rewrite or delete history** — verified by direct observation this pass (`get-object-retention` on the first ledger object: Mode COMPLIANCE, RetainUntilDate 2033-07-16; bucket ObjectLockEnabled: Enabled; Versioning: Enabled). The worst case is APPENDING a bogus object, which breaks the hash chain and is reported LOUDLY by `npm run verify:worm` (`contract-worm-integrity` proves a bucket edit → BROKEN with the seq). Integrity is preserved by the store's design, not by trusting the credential. Read-only diagnostics were deliberately split OUT rather than folded in: `HeydocWormDiagnostics` (GetObjectRetention/GetObjectVersion/GetBucketObjectLockConfiguration/GetBucketVersioning/ListBucketVersions) is attached to `heydoc-deploy-cli` ONLY — widening the shared `HeydocWormAudit` would have silently granted the RUNNING APP retention-read permissions it has no use for.
+  blocks: nothing today — this is a posture item, not a defect
+  safety_class: none (integrity is enforced by Object Lock + the hash chain, not by this credential's scope)
+  invariant_exposure: auditability (trust boundary 5) — not breached; the question is provenance-of-trust, not tamper-resistance. "Who COULD have appended to the medicolegal ledger" is a question a TGA/ISO 27001 auditor may reasonably ask of the production trail, and "the deploy user could" is a worse answer than it needs to be.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **DECIDE AT THE PRODUCTION GATE (surface, don't decide — charter `<regulatory_posture>`).** Options as understood today: (a) detach `HeydocWormAudit` from `heydoc-deploy-cli` and re-attach only for the minutes a live smoke needs it (tighter provenance, more friction, risks the smoke not being run — the M1 shape); (b) keep the staging grant but ensure the PRODUCTION bucket's write path is reachable only by the instance role, with the live smoke run against staging only; (c) keep as-is and document the reasoning in the audit narrative. **Recommendation: (b)** — it preserves the repeatable live test where it belongs (staging) and gives the production trail the cleanest provenance answer. Not decided here; the operator owns it, and the four patient-facing release blockers gate it regardless.
+  gap_register_link: R-39
+  status: open (deliberate for staging; production posture undecided)
+  last_scanned: 2026-07-16
+```
+
+```md
 - id: pregnancy-hepatic-check-unwired
   path: mcp/servers/pharmacology/engine.js, mcp/servers/pharmacology/sources/pharm-data-source.js, mcp/servers/pharmacology/data/{pregnancy-risk,hepatic}.json, test/contract-pharm-pregnancy-hepatic.js
   component_type: mcp-server
