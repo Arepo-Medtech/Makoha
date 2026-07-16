@@ -900,6 +900,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: omnibus-descent-underspecified
+  path: data/digital_tablet_omnibus.json (Part C: CarePlan, Goal, RiskAssessment, + new Communication)
+  component_type: dataset
+  state: PARTIAL
+  evidence: **OPENED + PART-CLOSED 2026-07-16 (Case Corpus v2 Phase 2b).** MEASURED asymmetry: the digital tablet was richly specified on the ASCENT (Observation 522 leaf fields, MedicationRequest 91) and thin on the DESCENT (CarePlan 26, ClinicalImpression 22) — one ascent resource carried more than the entire care-planning suite. The map was adorned to the summit and blank on the way down. v1.1 adds the four functional descent structures the notes carry, each `_fhir_tier`-tagged: Communication (safety-net advice, Tier 2), CarePlan.safety_netting_escalation (the ordered rung ladder self-care→ED, Tier 2), RiskAssessment.prognostic_factors (resolution vs complication, Tier 1), CarePlan.behaviour_change_activities (Tier 1). `contract-omnibus-descent` (13 bars) pins them present, tiered, additive, and free of fabricated bindings; the kit was rebuilt (derived). Additive: every v1.0 ascent resource survives; nothing validates cases against the omnibus, and node field-maps still resolve.
+  blocks: the eval's ability to score the descent (management/safety-netting); a case as a full clinical RECORD, not just an intake
+  safety_class: none
+  invariant_exposure: none — additive vocabulary; SNOMED codes appear only in labelled *_examples maps (candidates, receipt-gated), never asserted as this-case truth
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **PART DONE** — the four structures exist. REMAINING (protocol v2 / 2d): make a transformer REACH FOR them, so the descent is populated in new cases, not just representable. The population %s (`case-corpus-field-population-thin`) are the acceptance test.
+  gap_register_link: none (Medium)
+  status: in-progress
+  last_scanned: 2026-07-16
+```
+
+```md
 - id: case-qc-harness-unbuilt
   path: scripts/case-qc.mjs (NEW) · test/contract-case-qc.js (NEW)
   component_type: test

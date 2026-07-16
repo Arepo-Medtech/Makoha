@@ -3,7 +3,7 @@
   "id": "digital-tablet-omnibus-v1",
   "_digitalTablet": {
     "title": "Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema",
-    "version": "1.0",
+    "version": "1.1",
     "created": "2026-06-23",
     "author": "Generated in conversation with Ken Lee, GP Registrar, RACGP AGPT",
     "purpose": "Self-describing clinical schema capsule. Paste this JSON into a new Claude chat to restore full clinical context, field mappings, SNOMED codes, LOINC codes, and AU-specific extensions. All placeholders use [[FIELD_NAME]] notation.",
@@ -80,7 +80,12 @@
       "Practitioner — HPI-I + AHPRA + Medicare provider + prescriber number",
       "Organization — HPI-O + ABN + practice details",
       "Composition — document container + LOINC section codes + SMART on FHIR scopes"
-    ]
+    ],
+    "_descent_expansion": {
+      "added": "2026-07-16",
+      "rationale": "v1.0 was richly specified on the ASCENT (Observation 522 fields) and thin on the DESCENT (CarePlan 26). This adds the management/safety-netting map the notes carry — measured asymmetry, Case Corpus v2. Each addition is FHIR-tiered: 1=native R4 home, 2=standard composition, 3=documented local extension (FHIR R4 has no native safety-netting resource).",
+      "_tier_key": "_fhir_tier mirrors the schemas' x-fhir-tier in the omnibus's own _-prefixed idiom"
+    }
   },
   "meta": {
     "versionId": "1",
@@ -1911,6 +1916,43 @@
           "allied_health_referrals": "[[Who referred to|when|purpose|expected number of visits]]",
           "review_schedule": "[[How often care plan reviewed — 3-monthly|6-monthly|annual]]",
           "patient_agreement": "[[Patient consent to care plan documented|discussed]]"
+        },
+        "safety_netting_escalation": {
+          "_fhir_tier": 2,
+          "_purpose": "The escalation ladder as ordered rungs, self-care -> phone -> GP -> urgent care -> ED. Each rung composes to a CarePlan.activity + ServiceRequest to a level of care. Ordered: index is the rung.",
+          "_warrant": "clinician",
+          "rung_levels": "self_care | telehealth_recontact | gp_same_day | after_hours_gp | urgent_care_clinic | emergency_department | ambulance_000",
+          "rung_shape": {
+            "level": "one of rung_levels",
+            "trigger": "the warning sign / threshold that moves the patient to THIS rung",
+            "action": "what the patient should do",
+            "timeframe": "how soon",
+            "_fhir_mapping": "CarePlan.activity.detail (kind=ServiceRequest) + Communication for the trigger"
+          }
+        },
+        "behaviour_change_activities": {
+          "_fhir_tier": 1,
+          "_purpose": "Positive behaviour-change steps as CarePlan.activity + Goal.target. Distinct from medication — the non-pharmacological half of the plan the notes carry richly.",
+          "_warrant": "clinician",
+          "_snomed_examples": {
+            "smoking_cessation": {
+              "snomed": "225323000"
+            },
+            "physical_activity": {
+              "snomed": "229065009"
+            },
+            "dietary_modification": {
+              "snomed": "410177006"
+            },
+            "alcohol_reduction": {
+              "snomed": "415110009"
+            }
+          },
+          "activity_shape": {
+            "action": "the behaviour-change step",
+            "goal_reference": "[[Link to a Goal.target]]",
+            "_fhir_mapping": "CarePlan.activity.detail (kind=Task) + Goal"
+          }
         }
       },
       "Goal": {
@@ -2204,6 +2246,13 @@
           "SPIKES_protocol": {
             "description": "Breaking bad news — structured communication framework"
           }
+        },
+        "prognostic_factors": {
+          "_fhir_tier": 1,
+          "_purpose": "Factors that shape the DESCENT: what favours resolution vs what favours complication or delayed recovery. Maps to RiskAssessment.prediction[].qualitativeRisk + .rationale.",
+          "_warrant": "clinician",
+          "factors_affecting_resolution": "[[Array — factors favouring uncomplicated recovery (good adherence expected, single morbidity, early presentation, etc.)]]",
+          "factors_favouring_complication": "[[Array — factors favouring complication or delayed recovery (polypharmacy, frailty, comorbidity burden, social barriers, red-flag proximity)]]"
         }
       },
       "SDOH_Observations": {
@@ -3062,6 +3111,25 @@
           "AU eRequesting — referral and order",
           "AU Core Clinical Notes"
         ]
+      },
+      "Communication": {
+        "_fhir_resource": "Communication",
+        "_fhir_tier": 2,
+        "_snomed": "386453008 | Provision of information about condition | / 311401005 | Patient education |",
+        "_purpose": "The safety-net advice the clinician gives — 'what to watch for, and what it means'. FHIR R4 has no safety-netting resource; the ADVICE composes to Communication + a SNOMED 'advice given' code (receipt-gated, never fabricated).",
+        "status": "preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown",
+        "category": "instruction | alert | notification | reminder",
+        "warning_signs_advice": "[[Array of specific patient-facing warning signs, each with the sign and the action it should trigger — pairs with the CarePlan safety_netting_escalation rungs]]",
+        "_snomed_advice_examples": {
+          "seek_urgent_care_advice": {
+            "snomed": "183948009",
+            "description": "Advice to seek medical attention if symptoms worsen"
+          },
+          "return_if_no_improvement": {
+            "snomed": "410269006",
+            "description": "Follow-up advice — return if not improving in stated timeframe"
+          }
+        }
       }
     }
   }
