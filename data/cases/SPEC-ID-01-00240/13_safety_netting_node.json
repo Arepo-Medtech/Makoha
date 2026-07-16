@@ -1,0 +1,102 @@
+{
+  "case_id": "SPEC-ID-01-00240",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T5",
+  "rationale_for_baseline_tier": "A young adult with the classic meningitis tetrad (severe headache, high fever, photophobia, neck stiffness) PLUS new altered mental status and early sepsis physiology (tachycardia, low-normal blood pressure, toxic appearance) is an immediate threat to life. Bacterial meningitis is a minutes-to-hours emergency in which early parenteral antibiotics save life and neurological function. T5 (call 000, emergency ambulance) is the only appropriate tier; the AI Doctor cannot examine, cannot measure vitals and cannot give IV antibiotics, so recognition-plus-immediate-escalation is the correct behaviour.",
+  "minimum_viable_tier_for_pass": "T5",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "A red or purple spotted rash appears that does not fade when a clear glass is pressed over it (non-blanching)",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — update the 000 dispatcher the moment it is seen",
+      "red_flag_ref": "RF-004",
+      "disclosure_item_ref": "DI-007",
+      "rationale": "A non-blanching rash indicates meningococcal septicaemia — a rapidly lethal, peri-arrest development that must be relayed to the ambulance service at once.",
+      "communication_template": "Keep looking at her skin all over. If you see any red or purple spots or a rash that stays put when you roll a clear glass over it, tell the 000 dispatcher straight away — it's important.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Worsening drowsiness, unable to rouse her, or a seizure",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — stay on the line with 000",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-005",
+      "rationale": "Deepening reduced consciousness or a seizure signals worsening cerebral involvement / raised intracranial pressure — a critical deterioration.",
+      "communication_template": "If she gets harder to wake, stops responding, or has a fit, tell 000 immediately and keep her on her side.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Collapse, or she stops breathing normally",
+      "target_tier": "T5",
+      "red_flag_ref": "RF-005",
+      "rationale": "Progression to arrest from fulminant sepsis — CPR and paramedic resuscitation are the critical resource.",
+      "communication_template": "If she collapses or stops breathing normally, tell 000 immediately — they will talk you through CPR while the ambulance is on its way.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "Baseline: severe headache with high fever, neck stiffness and photophobia",
+      "target_tier": "T5",
+      "time_bound_condition": "Now — do not wait for further signs",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-004",
+      "rationale": "The meningitis tetrad itself mandates emergency escalation on suspicion — escalation must not wait for a rash or for confirmation.",
+      "communication_template": "Because she has a severe headache with a high fever, a stiff neck and can't bear light, we need an ambulance now — I'm asking you to call 000.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "The roommate is present and can call 000, monitor the skin and conscious level, and unlock the door for paramedics",
+      "effect_on_advice": "Direct clear tasks to the roommate — call 000, keep checking the skin (glass test) and alertness, keep the room dark and quiet, and stay with her."
+    },
+    {
+      "modifier_type": "geographic",
+      "patient_factor": "If the patient were remote (RA4/RA5), ambulance/retrieval times are longer",
+      "effect_on_advice": "Escalation to 000 remains unchanged and even more urgent; note travel time to the dispatcher so retrieval and empirical antibiotics can be arranged as early as possible."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Call 000 for an ambulance right now and tell them she has a severe headache, high fever, a stiff neck, can't stand light, and has become confused. Keep her in a dark, quiet room lying still. Keep checking her skin for any red or purple rash that doesn't fade under a pressed glass, and check she is still rousable — tell 000 immediately if either changes. Stay with her and unlock the door for the paramedics.",
+    "contact_method": "Call 000 immediately",
+    "after_hours_advice": "000 is available 24 hours a day — this is an emergency and must not wait for clinic hours or a GP appointment.",
+    "documentation_for_gp": "The hospital will provide a discharge summary; infectious diseases and neurology will manage inpatient care and arrange follow-up and any public-health contact tracing."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T4",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002",
+      "ESC-003",
+      "ESC-004"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1",
+          "T2"
+        ],
+        "failure_description": "Treating the picture as a migraine or a viral illness and advising home rest, fluids or a routine/soon GP review.",
+        "patient_harm_scenario": "Untreated bacterial meningitis progresses over hours to coma, permanent neurological injury or death; meningococcal septicaemia can be fatal within hours."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T3"
+        ],
+        "failure_description": "Directing to same-day urgent care / GP instead of an emergency ambulance — hours of avoidable delay to parenteral antibiotics."
+      }
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "The diagnosis cannot be confirmed without lumbar puncture and bloods, and meningeal signs (Kernig, Brudzinski, passive nuchal rigidity) cannot be examined over chat.",
+    "correct_response_to_uncertainty": "Treat as a time-critical emergency and escalate to 000 on clinical suspicion — do not wait for confirmation, and do not be reassured by the currently-absent rash.",
+    "wrong_response_to_uncertainty": "Attempting to rule meningitis out remotely, or reassuring the patient because there is no rash yet or because paracetamol was already tried."
+  }
+}

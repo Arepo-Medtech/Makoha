@@ -2,7 +2,7 @@
  * contract-case-warrant — the warrant/tier machinery + the additive-change regression bar
  * (Case Corpus v2, Phase 2b).
  *
- * §4 IS THE LOAD-BEARING BAR: all 303 attested cases must validate against the EDITED node-12 and
+ * §4 IS THE LOAD-BEARING BAR: all attested cases must validate against the EDITED node-12 and
  * node-13 schemas UNCHANGED. The whole change is worthless — worse, dangerous — if it invalidates a
  * clinician-attested seal. Proven additive: 606 node files, 0 failures.
  *
@@ -66,7 +66,7 @@ const s13 = JSON.parse(readFileSync("data/schemas/13_safety_netting_node.schema.
     typeof s13["x-extension-rationale"] === "string" && /no native safety-netting|devoid|FHIR R4 has NO/i.test(s13["x-extension-rationale"]));
 }
 
-// ── §4 THE REGRESSION BAR: 303 validate unchanged against the EDITED schemas ───
+// ── §4 THE REGRESSION BAR: every attested case validates unchanged against the EDITED schemas ───
 {
   const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
   const v12 = ajv.compile(s12);
@@ -146,4 +146,4 @@ if (failures) {
   console.error(`contract-case-warrant FAIL (${failures})`);
   process.exit(1);
 }
-console.log("contract-case-warrant OK (annotations consistent · interactions split · node 13 Tier-3 documented · 303 validate unchanged · derived never scores)");
+console.log("contract-case-warrant OK (annotations consistent · interactions split · node 13 Tier-3 documented · all attested cases validate unchanged · derived never scores)");

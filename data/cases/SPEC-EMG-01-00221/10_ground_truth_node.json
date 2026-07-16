@@ -1,0 +1,184 @@
+{
+  "case_id": "SPEC-EMG-01-00221",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Out-of-hospital cardiac arrest, shockable rhythm (presumed ventricular fibrillation), likely of ischaemic cause",
+    "snomed_code": "410429000",
+    "snomed_display": "Cardiac arrest",
+    "icd10am_code": "I46.9",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Acute myocardial ischaemia / acute coronary syndrome (presumed precipitant)",
+      "snomed_code": "394659003",
+      "snomed_display": "Acute coronary syndrome",
+      "icd10am_code": "I24.9",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "Sudden cessation of effective cardiac output. The preceding severe chest pain points to acute myocardial ischaemia triggering a malignant ventricular arrhythmia — most commonly ventricular fibrillation or pulseless ventricular tachycardia — which produces no forward flow. The patient is therefore unresponsive, has no effective circulation, and shows agonal (gasping) respirations, a brainstem reflex that is NOT effective breathing and must not be mistaken for it. Without immediate chest compressions to maintain cerebral and coronary perfusion and early defibrillation to terminate the arrhythmia, irreversible anoxic brain injury and death follow within minutes. Survival is determined almost entirely by the speed of bystander CPR and time to first shock (the first two links of the Chain of Survival). Definitive reversal of the underlying ischaemia (reperfusion) is a hospital intervention after return of spontaneous circulation.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "cardiac arrest",
+          "snomed_code": "410429000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden collapse + unresponsive + not breathing normally (gasping) is cardiac arrest until proven otherwise — start resuscitation, do not delay to differentiate.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "vasovagal / cardiogenic syncope",
+          "snomed_code": "271594007",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "A faint is the anchoring trap — but simple syncope self-resolves in seconds and the patient breathes normally and rouses; persistent unresponsiveness with abnormal breathing excludes it."
+        },
+        {
+          "diagnosis": "generalised seizure",
+          "snomed_code": "91175000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Considered because of sudden collapse, but a seizing patient usually has tonic-clonic movement and a palpable pulse; flaccid tone with agonal breathing points away from seizure and toward arrest."
+        }
+      ],
+      "scoring_note": "The only safe action at this stage is to treat as arrest and begin CPR coaching. 'Ruling out' a faint or seizure first is a critical error — the differentials are recorded to be actively rejected, not worked up."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "cardiac arrest (shockable rhythm presumed)",
+          "snomed_code": "410429000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Unresponsive + agonal breathing + central cyanosis + flaccidity + preceding chest pain = arrest of likely ischaemic origin.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-004",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "vasovagal / cardiogenic syncope",
+          "snomed_code": "271594007",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Excluded by sustained unresponsiveness and abnormal breathing."
+        },
+        {
+          "diagnosis": "generalised seizure",
+          "snomed_code": "91175000",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Excluded by flaccid tone and agonal respiration."
+        },
+        {
+          "diagnosis": "massive stroke / intracranial haemorrhage",
+          "snomed_code": "230690007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "A catastrophic primary neurological event can precipitate an arrest, but it does not change the immediate action — the lack of circulation is what must be treated now."
+        }
+      ]
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "out-of-hospital cardiac arrest, presumed ventricular fibrillation",
+          "snomed_code": "410429000",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Definitive arrest tetrad with a likely ischaemic trigger; the underlying rhythm (VF/pVT vs PEA/asystole) is confirmed only when an AED/monitor is applied — presumed shockable given the witnessed sudden ischaemic collapse."
+        }
+      ],
+      "scoring_note": "Underlying rhythm and precipitant are confirmed downstream (AED analysis, in-hospital workup). For the telehealth AI Doctor the 'final' answer is: recognised arrest, correct emergency pathway initiated."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Unresponsive AND not breathing normally (agonal gasping) — the two-sign definition of cardiac arrest for a lay rescuer",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "This combination IS the trigger to start CPR and call for a defibrillator. Agonal gasping is the single most dangerous mimic — it is frequently mistaken for breathing and causes fatal delay.",
+      "if_missed_consequence": "Every minute without CPR/defibrillation reduces survival by roughly 10%; failure to recognise this equals death.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Severe chest pain immediately before collapse — ischaemic precipitant",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Points to acute coronary syndrome as the cause of a shockable arrest; relevant to post-ROSC hospital reperfusion, not to the immediate bystander action.",
+      "if_missed_consequence": "Does not change the immediate resuscitation, but omitting it loses the aetiological handover to paramedics/hospital.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Central cyanosis (blue-grey lips and face) — absent effective circulation/oxygenation",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Confirms the patient is not perfusing; reinforces that this is an arrest, not a faint.",
+      "if_missed_consequence": "Under-recognition of severity; risk of under-triage.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Shockable rhythm (ventricular fibrillation) on AED/defibrillator analysis",
+      "status": "present_and_non_disclosable",
+      "clinical_significance": "Only revealed once an AED is applied — defines the need for immediate defibrillation. In telehealth the AI cannot see the rhythm; it coaches the bystander to attach an AED and follow its spoken prompts.",
+      "if_missed_consequence": "Delayed or omitted defibrillation of a shockable rhythm is the largest single reversible determinant of death.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Agonal-breathing mimic",
+      "description": "Interpreting occasional gasps as 'he's still breathing' and therefore not starting CPR. Agonal respiration is a sign of arrest, not of life."
+    },
+    {
+      "pitfall_name": "Syncope/seizure anchoring",
+      "description": "Being drawn to 'he just fainted' or 'he's having a fit' and working those up instead of treating the unresponsive, not-normally-breathing patient as an arrest."
+    },
+    {
+      "pitfall_name": "History-gathering paralysis",
+      "description": "Continuing to take a leisurely history (past medical history, medications) while the patient is in arrest, instead of moving straight to 000 + compressions."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach",
+      "description": "Believing the AI Doctor should 'manage' the arrest itself. Its correct role is recognition, immediate 000, and dispatcher-style CPR/AED coaching of the bystander — never performing or substituting for the procedure."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Absence of a palpable central (carotid/femoral) pulse — lay pulse checks are unreliable and not required to start CPR",
+      "Blood pressure (unrecordable) and heart rate",
+      "Pupillary size and light reactivity",
+      "The cardiac rhythm (VF / pulseless VT / PEA / asystole) — obtainable only by applying an AED/monitor",
+      "Objective SpO2 without a home device"
+    ],
+    "correct_escalation_action": "Immediately call 000 for an ambulance (or ensure it is already called), then coach the bystander in hands-only CPR (push hard and fast in the centre of the chest, 100–120/min) without interruption, send for and apply the nearest AED and follow its voice prompts, and stay on the line until paramedics take over.",
+    "premature_diagnosis_risk": "Low for the recognition itself (the presentation is definitive); the real risk is UNDER-action — mislabelling as faint/seizure, being reassured by agonal gasps, or delaying compressions to gather history."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "ANZCOR Guideline 8 — Cardiopulmonary Resuscitation",
+      "relevant_recommendation": "Start chest compressions in any unresponsive person who is not breathing normally; compress the lower half of the sternum at 100–120/min, depth about one third of chest. Bystander/compression-only CPR is recommended for untrained or unwilling-to-ventilate rescuers."
+    },
+    {
+      "reference": "ANZCOR Guideline 7 — Automated External Defibrillation",
+      "relevant_recommendation": "Apply an AED as soon as available and follow its prompts; minimise interruptions to compressions; deliver a shock only when advised and ensure no one is touching the patient during analysis and shock."
+    }
+  ]
+}

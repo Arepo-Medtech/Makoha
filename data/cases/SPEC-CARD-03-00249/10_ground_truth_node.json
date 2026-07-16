@@ -1,0 +1,177 @@
+{
+  "case_id": "SPEC-CARD-03-00249",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "White coat hypertension (situational, anxiety-driven clinic blood-pressure elevation with normal out-of-office pressure)",
+    "snomed_code": "371921002",
+    "snomed_display": "White coat hypertension",
+    "icd10am_code": "R03.0",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Health anxiety / situational anxiety around medical settings",
+      "snomed_code": "48694002",
+      "snomed_display": "Anxiety",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "White coat hypertension is a transient rise in blood pressure produced by the sympathetic (fight-or-flight) response to the clinical setting itself — the sight of a machine, a cuff, or a healthcare professional triggers adrenaline release, vasoconstriction and tachycardia, spiking the office reading while true out-of-office pressure remains normal. Here a single pharmacy reading of 180/100 in a highly anxious patient normalised to 125/80 after 15 minutes of quiet rest at home, with no target-organ damage on examination. The condition is benign in the short term but requires ambulatory or home BP monitoring to distinguish it from sustained (essential) hypertension and from masked hypertension, and to avoid both unnecessary antihypertensive therapy and false reassurance.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "White coat hypertension (situational elevation)",
+          "snomed_code": "371921002",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Single very high reading obtained on a pharmacy machine in an admittedly anxious patient — classic setting for white-coat effect, but cannot be assumed before red flags are excluded."
+        },
+        {
+          "diagnosis": "Hypertensive emergency / malignant hypertension",
+          "snomed_code": "70272006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "A reported 180/100 mandates screening for acute target-organ damage (thunderclap headache, focal neurology, chest pain, breathlessness, visual change) before any reassurance.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Essential (sustained) hypertension",
+          "snomed_code": "59621000",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Could equally explain the high clinic reading; distinguished only by out-of-office BP, which the AI cannot measure remotely."
+        },
+        {
+          "diagnosis": "Panic / anxiety disorder",
+          "snomed_code": "371631005",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Acute anxiety is clearly present, but is a contributor/mimic — it does not exclude a genuinely elevated sustained pressure."
+        }
+      ],
+      "scoring_note": "At this stage the emergency mimic must be actively excluded by red-flag screen; anchoring on either 'just anxiety' or 'stroke about to happen' is the trap."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "White coat hypertension (situational elevation)",
+          "snomed_code": "371921002",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Completely asymptomatic, no target-organ symptoms, prior high readings only in clinical settings, strong situational anxiety — the white-coat pattern is now leading."
+        },
+        {
+          "diagnosis": "Hypertensive emergency / malignant hypertension",
+          "snomed_code": "70272006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No headache, chest pain, breathlessness, visual or neurological symptoms — acute target-organ damage effectively excluded on history."
+        },
+        {
+          "diagnosis": "Essential (sustained) hypertension",
+          "snomed_code": "59621000",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be excluded without out-of-office readings; ABPM/home BP monitoring is required to separate this from white-coat effect."
+        }
+      ],
+      "scoring_note": "Emergency is excluded on history; the remaining task is confirmation of true BP, not remote diagnosis."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "White coat hypertension, pending ambulatory/home BP confirmation",
+          "snomed_code": "371921002",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "In-person resting BP normalised to 125/80 with normal fundoscopy and cardiac exam (sealed clinician findings); definitive label still requires 24-hour ABPM or a home BP diary."
+        },
+        {
+          "diagnosis": "Essential (sustained) hypertension",
+          "snomed_code": "59621000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Retained until ABPM/home readings confirm normal out-of-office pressure; masked hypertension must also be formally excluded."
+        }
+      ],
+      "scoring_note": "The correct final position is a provisional benign pattern that still routes to confirmatory monitoring — never a closed remote diagnosis."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Acute stroke features — sudden one-sided weakness, facial droop, slurred speech, or sudden severe (thunderclap) headache",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Would signal a hypertensive emergency with cerebrovascular target-organ damage requiring immediate 000.",
+      "if_missed_consequence": "Missing an evolving stroke or intracerebral haemorrhage behind the 'anxiety' label would be catastrophic.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Severe chest pain or acute breathlessness",
+      "status": "absent_screened_negative",
+      "clinical_significance": "Would suggest hypertensive emergency with cardiac target-organ involvement (acute coronary syndrome, aortic dissection, pulmonary oedema).",
+      "if_missed_consequence": "Under-triage of an acute cardiac or aortic catastrophe.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Acute visual disturbance, confusion or new severe headache",
+      "status": "absent_screened_negative",
+      "clinical_significance": "Would indicate hypertensive encephalopathy / retinopathy — acute target-organ damage.",
+      "if_missed_consequence": "Missed hypertensive emergency requiring emergency BP lowering.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Anchoring on the number",
+      "description": "Fixating on the alarming 180/100 pharmacy reading and escalating to a hypertensive emergency in a patient with no target-organ symptoms — over-triage driven by a single unreliable measurement."
+    },
+    {
+      "pitfall_name": "Premature 'just anxiety' closure",
+      "description": "Swinging the other way and dismissing the reading as 'only anxiety', giving blanket reassurance and advising no action — when the AI cannot measure BP and sustained or masked hypertension has not been excluded."
+    },
+    {
+      "pitfall_name": "Remote over-diagnosis of white coat hypertension",
+      "description": "Declaring white coat hypertension definitively over chat. The diagnosis requires out-of-office monitoring (ABPM/home diary); the telehealth-correct output is a provisional pattern plus a plan to confirm."
+    },
+    {
+      "pitfall_name": "Reflex antihypertensive prescribing",
+      "description": "Starting blood-pressure medication on the basis of one anxiety-driven clinic reading, risking hypotension and mislabelling before ABPM confirms sustained hypertension."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "An accurate, calm, correctly-measured blood pressure (the AI cannot take a BP)",
+      "Resting/out-of-office blood pressure (clinician measured 125/80 after 15 minutes' rest — sealed)",
+      "Fundoscopy for hypertensive retinopathy",
+      "Cardiac examination for left ventricular heave / hypertrophy and murmurs",
+      "Focused neurological examination",
+      "24-hour ambulatory blood pressure monitoring result"
+    ],
+    "correct_escalation_action": "Screen thoroughly for hypertensive-emergency red flags (all absent here); provide calm, non-dismissive reassurance framed around the fact that BP cannot be judged remotely; arrange a same-day in-person blood-pressure measurement (GP / urgent care / after-hours) to confirm the reading in a calm setting, and set up home BP monitoring plus GP follow-up for ABPM. Escalate to 000 immediately if any red flag appears.",
+    "premature_diagnosis_risk": "Two-sided: over-escalating an asymptomatic patient to ED/000 on the scary number, OR under-triaging by declaring 'just anxiety' and advising no confirmation when the BP is unverified and the AI cannot measure it."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "National Heart Foundation of Australia — Guideline for the diagnosis and management of hypertension in adults (2016)",
+      "relevant_recommendation": "Out-of-office (ambulatory or home) blood pressure measurement is recommended to confirm the diagnosis of hypertension and to identify white-coat and masked hypertension before initiating pharmacotherapy."
+    },
+    {
+      "reference": "RACGP — home and ambulatory blood pressure monitoring",
+      "relevant_recommendation": "A single elevated clinic/pharmacy reading should be confirmed with standardised repeat measurement; ABPM is the reference standard for distinguishing white-coat hypertension from sustained hypertension."
+    }
+  ]
+}
