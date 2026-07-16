@@ -42,6 +42,39 @@ The omnibus is the **FHIR field vocabulary** — it defines the `fhir_path` valu
 
 ---
 
+## 1a. Two standing rules (operator rulings, 2026-07-16) — read before §2
+
+**RULE 1 — the `case_id` is a NAME, not a claim.**
+The id is an **opaque partition key** assigned at ingest. **`case_metadata` is authoritative.** Where
+they disagree, the id is just a name — never derive specialty or difficulty from it, and never
+rename a case to "fix" a disagreement.
+
+*This is not a new policy; it is a description of what has always been true.* `eval-case-gate.mjs`
+reads `case_metadata.difficulty_tier`, never the id. And the corpus proves it: the taxonomy code
+`OPHTHAL` is 7 characters, the id regex allows `[A-Z]{2,6}`, so **six live cases carry
+`SPEC-OPHTH-…` while their metadata says `["OPHTHAL"]`**. They have disagreed since ingest and
+nothing broke, because nothing reads the id. The id cannot represent the taxonomy — it is a
+constrained slot — which is exactly why it must not be trusted to.
+
+**Why ids are never re-cut:** `case_id` appears inside all seven node files. Changing it rewrites
+every file, breaks every sha256, and leaves the **clinician's attestation no longer covering the
+bytes they signed**. That is a trust-chain operation, not a rename. Classification lives in
+`case_metadata.specialty_tags` (multi-valued) and `coverage_matrix_tags`, both revisable at zero
+cost to the seal.
+
+**RULE 2 — 60/30/10 is a GUIDE, not a gate.**
+The difficulty mix and the coverage matrix are design heuristics. `eval:cases` reports them and
+must never block on them. **Do not re-derive a strict reading from planning artifacts** — that
+reading is precisely what turned a heuristic into a defect classification (the register carried
+`case-set-underpopulated` / "blocks: full 60/30/10 mix" against a set that was 301/301 attested,
+gated and receipted). Author for **clinical value and test power**, not to hit a ratio; the rare and
+the dangerous carry a set's teeth, and epidemiological realism tells you what is *common*, not what
+is *hard*.
+
+The canonical vocabulary for both rules is `data/taxonomy/case-taxonomy.json` (versioned +
+checksummed). Both rules are carried inside it as data (`id_rule`, `distribution_rule`) so they
+travel with the dataset rather than living only in prose someone can miss.
+
 ## 2. The mental model — what a Breath-Ezy case is
 
 A case is a folder `data/cases/<CASE_ID>/` containing:

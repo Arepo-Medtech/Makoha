@@ -50,6 +50,8 @@
           "amt_snomed_code": {
             "type": "string",
             "description": "Optional. AMT (Australian Medicines Terminology) SNOMED CT code. From Digital Tablet MedicationRequest.medicationCode.example_AMT_SNOMED. When populated, must match a valid AMT code — validates against terminology server in production.",
+            "x-warrant": "derived",
+            "x-fhir-tier": 1,
             "examples": ["7947003", "387517004", "372687004", "109081006", "372756006"]
           },
 
@@ -100,12 +102,16 @@
           "pbs_item_code": {
             "type": "string",
             "description": "Optional. PBS item code. Maps to Digital Tablet MedicationRequest.extensions.PBS_item_code.",
+            "x-warrant": "derived",
+            "x-fhir-tier": 1,
             "examples": ["8134B", "5550J", "2025L"]
           },
 
           "pbs_authority_required": {
             "type": "boolean",
-            "description": "Optional. Whether a PBS authority prescription is required. Maps to Digital Tablet MedicationRequest.extensions.authority_number."
+            "description": "Optional. Whether a PBS authority prescription is required. Maps to Digital Tablet MedicationRequest.extensions.authority_number.",
+            "x-warrant": "derived",
+            "x-fhir-tier": 1
           },
 
           "requires_prescription": {
@@ -117,7 +123,9 @@
           "schedule": {
             "type": "string",
             "enum": ["S2", "S3", "S4", "S4D", "S8", "unscheduled"],
-            "description": "Optional. Australian scheduling classification. S8 items must have documented PDMP check in same consultation. Maps to Digital Tablet MedicationRequest.extensions.schedule_8_controlled."
+            "description": "Optional. Australian scheduling classification. S8 items must have documented PDMP check in same consultation. Maps to Digital Tablet MedicationRequest.extensions.schedule_8_controlled.",
+            "x-warrant": "derived",
+            "x-fhir-tier": 1
           },
 
           "contraindications_in_this_case": {
@@ -134,12 +142,34 @@
           "interactions_to_check": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Optional. Current medications from presentation_layer that must be cross-checked for interactions before recommending this drug. Used to score pharmacology safety checking behaviour.",
+            "description": "DEPRECATED (Case Corpus v2, 2026-07-16): one field name hid two different clinical objects — a clinician's judgment of what matters HERE, and a datastore lookup of everything present. Split into interactions_flagged_for_this_patient (clinician, scoreable) + interactions_present_reference (derived, reference). RETAINED optional so the pre-v2 cases that populated it still validate; v2 cases use the two successors. Not removed — removing it would break attested cases.",
+            "x-warrant": "clinician",
+            "x-deprecated": true,
             "examples": [
               ["warfarin — NSAIDs increase bleeding risk"],
               ["metformin — check eGFR before continuing"],
               ["lithium — NSAIDs increase lithium toxicity risk"]
             ]
+          },
+
+          "interactions_flagged_for_this_patient": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional (Case Corpus v2). The interactions THIS clinician judged relevant to THIS patient — clinical judgment, not a lookup. SCOREABLE: 'did the AI flag what mattered here?'. Successor to interactions_to_check.",
+            "x-warrant": "clinician",
+            "x-fhir-tier": 1,
+            "examples": [
+              ["warfarin + NSAID — bleeding risk, relevant because patient is anticoagulated"],
+              ["lithium + NSAID — toxicity risk, relevant given this patient's lithium therapy"]
+            ]
+          },
+
+          "interactions_present_reference": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional (Case Corpus v2). Every interaction the named drugs carry, per the pharmacology datastore — a DERIVED lookup, receipt-gated. REFERENCE ONLY, NEVER SCORED: scoring it would grade PharmCheck against PharmCheck (the circularity the scoring-store firewall exists to prevent). The scorer is structurally barred from reading any x-warrant:derived field.",
+            "x-warrant": "derived",
+            "x-fhir-tier": 1
           },
 
           "deprescribing_note": {

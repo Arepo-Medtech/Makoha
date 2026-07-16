@@ -164,12 +164,20 @@ if (attested < MIN_ATTESTED_CASES) {
   failures.push(`attested conforming cases: ${attested} < required ${MIN_ATTESTED_CASES}`);
 }
 
-// Distribution vs 60/30/10 (warn-only until the M6 top-up lands).
+// Distribution vs 60/30/10 — REPORTED, never a gate, and deliberately not phrased as a task.
+//
+// OPERATOR RULING 2026-07-16: "60/30/10 was a LOOSE GUIDE, not a strict enforcement — and it has
+// at times been applied very literally." This line is where a reader meets the number, so it is
+// where the misreading started: it used to end "author atypical/complex cases (M6 top-up)",
+// which reads as an instruction to close a gap that was never open. The code was always
+// warn-only; the PROSE is what calcified a guide into a defect class (it reached the register as
+// `case-set-underpopulated`, "blocks: full 60/30/10 mix", and a tracker item). Report the shape;
+// let a human decide whether it matters for the question they are asking.
 const scored = bands.straightforward + bands.atypical + bands.complex;
 const pct = (n) => (scored ? Math.round((n / scored) * 100) : 0);
-const distLine = `straightforward ${bands.straightforward} (${pct(bands.straightforward)}%) / atypical ${bands.atypical} (${pct(bands.atypical)}%) / complex ${bands.complex} (${pct(bands.complex)}%) vs 60/30/10 design`;
+const distLine = `straightforward ${bands.straightforward} (${pct(bands.straightforward)}%) / atypical ${bands.atypical} (${pct(bands.atypical)}%) / complex ${bands.complex} (${pct(bands.complex)}%)`;
 if (pct(bands.atypical) < 30 || pct(bands.complex) < 10) {
-  warnings.push(`difficulty distribution skew: ${distLine} — author atypical/complex cases (M6 top-up)`);
+  warnings.push(`difficulty mix: ${distLine} — vs the 60/30/10 GUIDE (a design heuristic, not a requirement; ruling 2026-07-16). Informational.`);
 }
 if (tiers.size < 3) warnings.push(`coverage: only ${tiers.size} difficulty tiers present (evaluation-guide minimum: 3)`);
 if (categories.size < 3) warnings.push(`coverage: only ${categories.size} diagnosis categories present (minimum: 3)`);

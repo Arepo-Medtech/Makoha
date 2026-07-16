@@ -866,6 +866,75 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ## MEDIUM
 
 ```md
+- id: case-taxonomy-unbuilt
+  path: data/taxonomy/case-taxonomy.json + .schema.json (NEW) · data/schemas/00_case_envelope.schema.json (specialty_tags $ref, category_tags) · scripts/ingest-case-bundles.mjs · test/contract-case-taxonomy.js
+  component_type: dataset
+  state: UNBUILT
+  evidence: **OPENED 2026-07-16 (Phase 0 scan, Case Corpus v2).** There is no canonical, versioned taxonomy: `case_metadata.specialty_tags` carries a raw JSON-Schema `enum` of 19 codes described in prose inside the schema's own `description` field ("Code list: CARD=cardiology, RESP=respirator…"), so every taxonomy change is a schema bump and no consumer can resolve a code to a display name or an axis. The operator's corpus is two tranches with INCOMPATIBLE taxonomies — tranche 1 = 30 MIXED-AXIS categories (Cardiovascular=specialty, Geriatric & Frailty=cohort, Undifferentiated Subclinical Clusters=presentation, DEI=equity), tranche 2 = 60 CLEAN specialties (Electrophysiology, Maternal-Foetal Medicine, Interventional Radiology). **Two tranches, two shapes, and a third plausible — which is the whole argument for a versioned dataset over an id or a schema enum.** Note the corpus ALREADY organises by tranche-1 category: the 303 ingested cases are 5 of the 30 (AMS/CVD/CIA/CFE/DST, named in `case-set-underpopulated`'s batch history) — the taxonomy is the de-facto batch structure, just unwritten.
+  blocks: tranche-1 expansion (~25 categories remaining, ~1150 notes); multi-axis coverage reporting; FL-40 Phase 3 (M3 long-list cases need selection criteria a taxonomy can express)
+  safety_class: none
+  invariant_exposure: none — classification metadata; the scoring-store firewall and every sealed-node schema are untouched
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: BUILD — a versioned dataset (`taxonomy_version` + `records_checksum`, the `<engineering_standards>` shape) carrying `specialty[]` (60, with the existing 19 mapped), `category_tags[]` (30, each with an `axis` field so mixed axes coexist honestly), `difficulty_tier[]` (mapped to the EXISTING 7-value enum, not replaced). Schemas `$ref` it; ingest validates against it. **REGRESSION BAR: all 303 existing cases must validate unchanged** — a failure means the mapping is wrong, not the case. **The case_id is NOT opened** (operator decision 2026-07-16): rewriting ids would rewrite every node file, break every sha256, and leave 303 CLINICIAN ATTESTATIONS no longer covering the bytes they signed — a trust-chain operation, not a volume one.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-16
+```
+
+```md
+- id: case-corpus-field-population-thin
+  path: data/cases/*/12_management_plan_node.json (850 medication entries across 303 cases)
+  component_type: dataset
+  state: PARTIAL
+  evidence: **OPENED 2026-07-16 — MEASURED, not inferred.** The node-12 `medications[]` schema was designed for exactly the pharmacology-rich resource the corpus is meant to be, and is then inhabited at ~5%. Population across all 850 medication entries: `contraindications_in_this_case` 303 (35%) · `dose_route_frequency` 269 (31%) · `schedule` 40 (4%) · **`amt_snomed_code` 11 (1%)** · **`interactions_to_check` 2 (0.2%)** · **`deprescribing_note` 4 (0.5%)** · **`pbs_item_code` 0 (0%)**. The one well-inhabited part is the most clinically valuable: **194 `necessity: not_indicated_here` entries** — explicit errors of commission, which is where an eval set's teeth are. **The schema is not the constraint; the first transformation run was quota-driven** (operator, 2026-07-16: the initial run "was to meet an immediate need to reach the minimum case quota", with de-anchoring and telehealth reprojection applied retrospectively). Protocol v2 targets these columns as the deliverable.
+  blocks: the eval set's ability to test pharmacology/management depth; FL-40's clinical-quality dimension has little coded management to score against
+  safety_class: none
+  invariant_exposure: none — under-population is silence, not fabrication; an absent field is never a claim
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: PROTOCOL v2 — selection criteria (polypharmacy / multi-morbidity / long differential, the M3 shape) + field-population requirements aimed at the 1%/0% columns + multi-axis tagging. Then re-measure: this record's percentages ARE the acceptance test. Note the kit is DERIVED (`node scripts/build-case-transformation-kit.mjs`) — rebuilding it is free; the expensive input last time was intent, not tooling.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-16
+```
+
+```md
+- id: omnibus-descent-underspecified
+  path: data/digital_tablet_omnibus.json (Part C: CarePlan, Goal, RiskAssessment, + new Communication)
+  component_type: dataset
+  state: PARTIAL
+  evidence: **OPENED + PART-CLOSED 2026-07-16 (Case Corpus v2 Phase 2b).** MEASURED asymmetry: the digital tablet was richly specified on the ASCENT (Observation 522 leaf fields, MedicationRequest 91) and thin on the DESCENT (CarePlan 26, ClinicalImpression 22) — one ascent resource carried more than the entire care-planning suite. The map was adorned to the summit and blank on the way down. v1.1 adds the four functional descent structures the notes carry, each `_fhir_tier`-tagged: Communication (safety-net advice, Tier 2), CarePlan.safety_netting_escalation (the ordered rung ladder self-care→ED, Tier 2), RiskAssessment.prognostic_factors (resolution vs complication, Tier 1), CarePlan.behaviour_change_activities (Tier 1). `contract-omnibus-descent` (13 bars) pins them present, tiered, additive, and free of fabricated bindings; the kit was rebuilt (derived). Additive: every v1.0 ascent resource survives; nothing validates cases against the omnibus, and node field-maps still resolve.
+  blocks: the eval's ability to score the descent (management/safety-netting); a case as a full clinical RECORD, not just an intake
+  safety_class: none
+  invariant_exposure: none — additive vocabulary; SNOMED codes appear only in labelled *_examples maps (candidates, receipt-gated), never asserted as this-case truth
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: **PART DONE** — the four structures exist. REMAINING (protocol v2 / 2d): make a transformer REACH FOR them, so the descent is populated in new cases, not just representable. The population %s (`case-corpus-field-population-thin`) are the acceptance test.
+  gap_register_link: none (Medium)
+  status: in-progress
+  last_scanned: 2026-07-16
+```
+
+```md
+- id: case-qc-harness-unbuilt
+  path: scripts/case-qc.mjs (NEW) · test/contract-case-qc.js (NEW)
+  component_type: test
+  state: UNBUILT
+  evidence: **OPENED 2026-07-16.** Nothing checks a clinician-authored management plan against the clinician-signed pharmacology knowledge base. Both exist; they have never met. The FL-34 gateway is live and validated (A4, 902/902), so the check is now runnable — 850 medication entries is trivial against a service that answered 902 parity comparisons in ~15s.
+  operator_ruling_2026_07_16: **"VALIDATE, NEVER AUTHOR."** The harness FLAGS disagreements; it never fills a field. The reason is the eval's whole validity: if node 12's dose came from PharmCheck and the AI Doctor's dose comes from PharmCheck reading the same signed datastore, then scoring "did it recommend the right dose" measures PLUMBING, not correctness — the system marking its own homework, and the FL-40 clinical gate would be decorative. Shared VOCABULARY (SNOMED/AMT/Ontoserver) is fine — a dictionary is not an answer. Shared ANSWERS are fatal. Corollary recorded: the answer key's provenance is the SOAP note's clinician, independent of our knowledge base.
+  blocks: corpus quality assurance at volume; the backward quality signal into the pharmacology datastore
+  safety_class: degrades_safe (read-only by construction; a disagreement is a report, never a mutation)
+  invariant_exposure: **scoring-store firewall — REINFORCED, not threatened.** The harness reads node 12 (a sealed node) in a process with no trunk and no write path to a case; the contract test proves it cannot write to `data/cases/`. This is the same two-process discipline FL-40's judge will need.
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: BUILD — every node-12 medication through PharmCheck (live gateway) + terminology; emit a disagreement worksheet for clinician ruling. **The first run over the existing 303 is itself a finding, whichever way it lands:** every disagreement is a case-authoring error, a DATASTORE error, or a clinical nuance the datastore lacks — the flow running backwards into the knowledge base. Ratio unknown, which is why it is worth running.
+  gap_register_link: none (Medium)
+  status: open
+  last_scanned: 2026-07-16
+```
+
+```md
 - id: deploy-user-holds-worm-write
   path: (AWS IAM, not repo code) user `heydoc-deploy-cli` ← policy `HeydocWormAudit` (s3:PutObject, s3:PutObjectRetention) on bucket `heydoc-medicolegal-audit` · exercised by test/smoke-worm-live.js
   component_type: other (access control / deploy posture)
@@ -1301,22 +1370,23 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   component_type: dataset
   state: PARTIAL
   evidence: M6 2026-07-03 — receipts + gate DONE; atypical top-up INGESTED (pending attestation); complex + attestation remain. (1) **All 336 candidate codes across the 101 manifest-bearing cases receipted** via `cases:verify-codes` (per-code receipt; status unverified_pending_terminology_receipt → **mock_verified_pending_live_ncts**; honest — mock echoes bind, live NCTS revalidates at M11/F5; mode:"mock" blocks them as proof in any live context; idempotent). (2) **Deterministic eval gate CI-BLOCKING** (`eval:cases`): ≥45 attested conforming (51 PASS); per-file sha256 integrity (re-asserts ingest schema+firewall without parsing sealed nodes); 00/01/02 schema-valid; all codes receipted; attestation required to count. (3) **ATYPICAL TOP-UP INGESTED 2026-07-03** — 50 new AMS (Autoimmune Mild Severity) casebundles ingested from operator-supplied source (`.../Autoimmune Mild Severity/.../AMS Ingest Cases`): 1 tier-02 + 37 tier-03 + 12 tier-04, new specialties RHEUM/HAEMAT, all firewall+schema clean (OK_DRY_RUN 50/50, 0 collisions). Distribution moved **88/12/0 → 45/55/0**; difficulty-tier coverage 2 → **4 tiers** (minimum 3 CLEARED); specialties 17 → 19. The 50 were ATTESTED 2026-07-04 (operator KL, written in-session; bulk_clinician_attestation in each manifest review block — node files + sha256 untouched). (4) **CVD (Cardiovascular) batch ingested 2026-07-04** — 49 of 50 operator-supplied CVD bundles (1 skipped: id collision, see `case-id-cross-series-collision`): brings the first COMPLEX-tier cases (5 × rare_condition, tier 05) and the 3rd diagnosis category (`zebra_rare`). 373 codes receipted (store total 709). Distribution now **68 straightforward / 77 atypical / 5 complex = 45/51/3**; **coverage 5 tiers · 3 diagnosis categories · 19 specialties — the 3-category + 3-tier minimums CLEARED**. The 49 CVD + the re-id'd AFib case (SPEC-CARD-01-00099) were ATTESTED 2026-07-04 (operator KL) → 151/151 attested. (5) **CIA (Common Infections & Afflictions) batch 2026-07-04** — 43 of 50 operator-supplied CIA bundles ingested (all straightforward/tier-01; 47 common + 3 important_not_to_miss categories); 190 codes receipted (store total **911**). 7 NOT ingested: **3 cross-series id collisions** (Burn/Laryngitis/Aphthous-Stomatitis vs existing AUC cases — see `case-id-cross-series-collision`) and **4 FIREWALL-REFUSED** (full diagnosis name leaked into AI-Doctor-readable text — see `cia-source-firewall-leaks`). Distribution **45/51/3 → 58/40/3** (194 cases; straightforward toward 60%, atypical over-weight pulled toward 30%; complex still 3%). The 43 CIA were ATTESTED 2026-07-04 (operator KL). (6) **4 firewall-remediated CIA bundles ingested 2026-07-04** (the previously-refused DERM-01-00036/EMG-01-00037/GI-01-00027/MH-01-00044 — operator removed the diagnosis name from injectable fields; see `cia-source-firewall-leaks` → resolved); 16 codes receipted (store total **927**). 198 cases now, and the 4 remediated CIA were ATTESTED 2026-07-04 (operator KL). (7) **3 re-id'd CIA collision cases ingested 2026-07-04** (the DERM/RESP/GI collisions → -00099 per bucket; see `case-id-cross-series-collision` — all 4 instances now resolved); 13 codes receipted (store total **940**); 201 cases. Distribution 59/39/3 → **59/38/2** (3 more straightforward dilute complex). The 3 re-id'd cases were ATTESTED 2026-07-04 (operator KL). (8) **CFE (Complex Fatigue Entities) batch, operator-RE-TIERED, ingested 2026-07-04** — after an initial recon showed the batch was under-tiered (genuinely complex entities labelled tier-03), the operator re-tiered at source; 49 well-formed bundles ingested (band split of the well-formed set: 36 atypical + 14 complex — rare_condition/05 + multi_morbidity_complex/06). 345 codes receipted (store total **1285**); 250 cases. **Distribution 59/38/2 → 48/45/8 — complex band jumped 2% → 8% (near the 10% target); coverage 5 → 6 difficulty tiers.** The 49 were ATTESTED 2026-07-05 (operator KL; scope guarded to the CFE ingest commit). The CFE collision case was re-id'd → SPEC-DERM-03-00099, ingested, and ATTESTED 2026-07-05 (operator KL). **eval:cases: attested conforming 251 (≥45), 0 unreviewed, PASS; distribution 47/45/8.** NOT ingested from the CFE batch (handed back to operator): 1 well-formed collision `SPEC-DERM-03-00041` (re-id'd → SPEC-DERM-03-00099, attested) and 13 operator-retired bundles (`cfe-malformed-bundles` → resolved, deleted). (10) **DST (Dermatology & Soft Tissue) batch, operator-re-tiered, ingested 2026-07-05** — 40 well-formed new bundles (20 straightforward + 19 atypical + 1 communication_barrier/complex); 233 codes receipted (store total **1524**); 291 cases. Distribution 47/45/8 → **48/45/7**; **coverage 6 → 7 difficulty tiers** (communication_barrier/07 added). The 40 pending_clinician_review. The **10 DERM collisions were then ingested 2026-07-05 via the new `--reseq` global-seq scheme** (→ SPEC-DERM-01-00100..00106 + SPEC-DERM-03-00107..00109; `case-id-cross-series-collision` resolved); 56 codes receipted (store total **1580**); **301 cases**; distribution 48/45/7 → **49/45/7**. Still handed back: **9 malformed stub bundles** (`dst-malformed-bundles`) + stray `_probe.tmp`. The 50 DST cases (40 direct + 10 reseq'd) were ATTESTED 2026-07-05 (operator KL) → **301/301 attested, 0 unreviewed**; the 9 DST malformed stubs + `_probe.tmp` deleted (`dst-malformed-bundles` resolved). **eval:cases: attested conforming 301 (≥45), 0 unreviewed, PASS; distribution 49/45/7.** Source `.txt` never entered the repo.
-  blocks: full 60/30/10 mix (complex now 8% vs 10% — nearly closed; straightforward under- / atypical over-weight remain)
+  blocks: (nothing — see the 2026-07-16 ruling below)
   safety_class: none
   invariant_exposure: test_and_evaluation_gates
   risk: Medium
   blocks_patient_facing: false
-  build_action: SOLE REMAINING (input-gated, optional/polish): further rebalance toward 60/30/10 (straightforward under-weight at 49%, complex 7%). Everything required for a usable, gated, fully-attested eval set is DONE — 301/301 cases attested, gated, receipted; collisions auto-resolve (`--reseq`); malformed/stub findings resolved.
+  operator_ruling_2026_07_16: **"60/30/10 was a LOOSE GUIDE, not a strict enforcement — and it has at times been applied very literally."** That is exactly what happened here, and this record is the evidence: its `blocks` line read "full 60/30/10 mix", its `build_action` called rebalancing the "SOLE REMAINING" work, and its very **id — `case-set-underpopulated` — is now a misnomer**: the set is 301/301 clinician-attested, gated, receipted, 7 difficulty tiers, 3 diagnosis categories, 19 specialties. A soft heuristic hardened into a defect classification and a backlog item (FL-22). The id STAYS (ids are names, not claims — the same rule this pass writes down for `case_id`); the claims around it are corrected. **The code was never wrong:** `eval-case-gate.mjs` has always treated the distribution as WARN-ONLY and reads `case_metadata.difficulty_tier`, never the id. The calcification was in the prose, the register, and the plan — which is where this class of error always lives.
+  build_action: **RESOLVED 2026-07-16.** Everything this item required is DONE: 301/301 attested, gated, receipted; ≥45 minimum cleared 6× over; collisions auto-resolve (`--reseq`); malformed/stub findings resolved. The distribution "remainder" is not required work under the operator's ruling — it is a guide, and the set is within it. **Corpus EXPANSION (tranche 1's remaining ~25 categories, protocol v2, the taxonomy contract, the QC harness) is NEW work with its own records** (`case-taxonomy-unbuilt`, `case-corpus-field-population-thin`, `case-qc-harness-unbuilt`) — not a continuation of this one. FL-22 should be explicitly WAIVED rather than left ambiguous.
   gap_register_link: R-23
-  status: open (301/301 attested; ONLY optional distribution polish remains — no blocking work)
-  last_scanned: 2026-07-05
+  status: resolved
+  last_scanned: 2026-07-16
 ```
 
 ```md
 - id: case-id-cross-series-collision
   path: data/cases/ SPEC id scheme (SPEC-{specialty}-{difficulty}-{seq}); scripts/ingest-case-bundles.mjs
   component_type: dataset
-  state: PARTIAL
+  state: COMPLETE
   evidence: FOUND 2026-07-04 — the SPEC case_id derives seq from the source case number within a series, but seq is NOT unique ACROSS source series: CVD "Atrial Fibrillation CDV-005.txt" and the already-ingested AUC "Acute Coronary Syndrome AUC-005.txt" both mapped to SPEC-CARD-01-00005. cases:ingest failed safe (COLLISION, no --force) and skipped the AFib case. INSTANCE RESOLVED 2026-07-04 (operator-authorised): the AFib bundle was re-id'd (blind literal id-string swap on a scratchpad COPY — source archive untouched, clinical content never read) to **SPEC-CARD-01-00099** (free globally; deliberately above the source-number-derived 1–51 range to mark it manually disambiguated) and ingested; 12 codes receipted; gate PASS. The existing SPEC-CARD-01-00005 (ACS) was never touched. SYSTEMIC gap remains: the id SCHEME is still not unique across series, so a future overlapping series would collide again.
   evidence_addendum: 2026-07-04 — the CIA batch produced 3 MORE cross-series collisions (all distinct cases, all skipped safely). ALL 3 NOW RESOLVED 2026-07-04 (operator-authorised, same re-id method → free per-specialty seq 00099): SPEC-DERM-01-00021 (CIA "Localised First-Degree Burn") → SPEC-DERM-01-00099; SPEC-RESP-01-00003 (CIA "Acute Viral Laryngitis") → SPEC-RESP-01-00099; SPEC-GI-01-00010 (CIA "Aphthous Stomatitis") → SPEC-GI-01-00099. Re-id on scratchpad copies (source archive + the 3 existing AUC cases verified untouched); dry-run 3/3 OK; ingested; 13 codes receipted; gate PASS. **All 4 known collision INSTANCES across 3 series are now resolved (AFib + these 3).** The 3 re-id'd cases are pending_clinician_review. Convention emerged: seq 00099 in a specialty bucket = a manually disambiguated re-id.
   evidence_addendum_2: 2026-07-04/05 — CFE batch produced a 5th collision, SPEC-DERM-03-00041 (CFE "Psoriasis Severe Plaque with Systemic Fatigue" vs AMS "Scalp Psoriasis (Mild)"); RESOLVED 2026-07-05 via re-id → SPEC-DERM-03-00099 (per-bucket convention; scratchpad copy; existing AMS case verified untouched; ingested; 6 codes receipted; gate PASS). SPEC-GI-03-00028 (CFE MCAS vs AMS Microscopic Colitis) was a 6th collision but the CFE bundle was operator-RETIRED and deleted 2026-07-05 (`cfe-malformed-bundles`), so that collision is moot. **All 5 well-formed collision INSTANCES across 4 series now resolved via re-id.** Systemic scheme weakness still recurs with every overlapping series.
