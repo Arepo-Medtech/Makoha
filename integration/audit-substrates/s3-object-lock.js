@@ -40,6 +40,10 @@
  * auditRetentionPolicy() reporter agrees.
  */
 import { execFileSync } from "node:child_process";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { registerAuditSubstrate } from "../../verification/audit-store.js";
 import { registerGateRecordSubstrate } from "../../portal/gate-record-store.js";
 import { registerPppTttLedgerSubstrate } from "../../verification/ppp-ttt/ledger.js";
@@ -80,9 +84,37 @@ export function extractSeq(line) {
 
 // --- CLI porcelain -----------------------------------------------------------
 
-/** Default executor: run the AWS CLI synchronously, body via stdin. */
+/**
+ * Default executor: run the AWS CLI synchronously.
+ *
+ * WHY A TEMP FILE AND NOT `--body /dev/stdin`: the AWS CLI **v2** validates blob
+ * parameters as real files and REFUSES a pipe — `Error parsing parameter
+ * '--body': Blob values must be a path to a file`. The original shape (pipe the
+ * body to stdin, point --body at /dev/stdin) was contract-tested only through an
+ * INJECTED exec, so it never met a real CLI: verified broken on the Mac (v2.35.21)
+ * and inside the deploy image (v2.32.7, alpine) during FL-11's live validation,
+ * 2026-07-16. `aws s3 cp -` does accept stdin but carries no Object-Lock flags, so
+ * `s3api put-object` with a path is the only route to a WORM write.
+ *
+ * The file holds the exact record bytes for the duration of one CLI call: created
+ * 0600 in the OS temp dir, unlinked in `finally` even if the CLI throws. That is a
+ * transient on-disk touch on a medicolegal/PHI path — acceptable because the same
+ * bytes are already in this process's memory, and no smaller-footprint synchronous
+ * route to an Object-Lock write exists (the SDK's is async; the seam is not).
+ */
 function defaultExec(args, input) {
-  return execFileSync("aws", args, { encoding: "utf8", input, maxBuffer: 64 * 1024 * 1024 });
+  if (input === undefined) {
+    return execFileSync("aws", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  }
+  const tmp = join(tmpdir(), `heydoc-worm-${randomUUID()}`);
+  try {
+    writeFileSync(tmp, input, { mode: 0o600 });
+    const bodyIdx = args.indexOf("--body");
+    const argv = bodyIdx === -1 ? args : [...args.slice(0, bodyIdx + 1), tmp, ...args.slice(bodyIdx + 2)];
+    return execFileSync("aws", argv, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  } finally {
+    try { unlinkSync(tmp); } catch { /* already gone — the record is in S3, not here */ }
+  }
 }
 
 /** Run the CLI through the (possibly injected) executor. An absent CLI (ENOENT)
