@@ -2,8 +2,9 @@
 
 **Augmented Digital Tablet — synthetic case ingestion instructions for Claude Chat**
 
-- Protocol version: `case-transform-protocol:v1.2.0:2026-07-01`
-- Companion (attach alongside this file): `digital_tablet_omnibus.json` (`Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema` v1.0)
+- Protocol version: `case-transform-protocol:v2.0.0:2026-07-16`
+- Companion (attach alongside this file): `digital_tablet_omnibus.json` (`Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema` v1.1 — the descent expansion)
+- **v2.0.0 (Case Corpus v2):** the DESCENT now matters as much as the ascent — a case is a clinical *record*, not just an intake. New in v2: the descent-completeness discipline (§4a), the three warrants (§1b + §8), the versioned taxonomy, and the "what this corpus is / is not" page (§1b). A v2 transform REACHES FOR the management + safety-netting map, captures codes aggressively as derived, and never lets a tool author the answer.
 - Target repo: `kenleefreo/breath-ezy` — case-set at `data/cases/<CASE_ID>/`
 - Target schema version: case-set node schemas `1.0.0` (`data/schemas/*.schema.json`)
 
@@ -75,6 +76,24 @@ The canonical vocabulary for both rules is `data/taxonomy/case-taxonomy.json` (v
 checksummed). Both rules are carried inside it as data (`id_rule`, `distribution_rule`) so they
 travel with the dataset rather than living only in prose someone can miss.
 
+## 1b. What this corpus is, and is not (v2 — read before authoring the descent)
+
+Three facts fix what your work is worth. Getting them wrong is expensive at 300 cases and ruinous at
+14,000.
+
+- **The model is FROZEN. Cases MEASURE the system; they do not TRAIN it.** The AI Doctor's behaviour
+  comes from the knowledge datasets, the trunk prompts and the pharmacology datastore — never from
+  this corpus. So your job is not to "teach the model the answer" — it is to record, faithfully and
+  independently, what a competent clinician did, so the system can be *measured* against it.
+- **These cases are SYNTHETIC.** What makes the corpus safe to grow is that it is synthetic (no real
+  patient), schema-valid, hash-sealed, and code-receipted — NOT that it is de-identified (there is
+  nothing to de-identify). Never write a real patient's data into a case.
+- **One principle, three hats.** The scoring-store firewall (§5), "validate never author" (§8), and —
+  for any future ML use of this corpus — "never test a model on data it trained on" are the SAME
+  rule: *the thing being measured must not contaminate the measurement.* This is why a tool may
+  translate and fact-check but must never author the answer. Every case you build with clean
+  provenance stays uncontaminated for whatever it is later pointed at.
+
 ## 2. The mental model — what a Breath-Ezy case is
 
 A case is a folder `data/cases/<CASE_ID>/` containing:
@@ -136,6 +155,51 @@ This is the core routing table. **Left = where the source content lives. Right =
 | SMS INFORMATION / SMS EDUCATION | `12` patient_education_points (channel-tagged) or note | 🔴 | Optional; capture as education points. |
 
 ---
+
+## 4a. Descent completeness (v2 — the way down matters as much as the climb)
+
+**The problem v2 exists to fix:** earlier transforms were richly detailed on the ASCENT (the climb to
+a diagnosis — history, symptoms, differentials) and nearly blank on the DESCENT (the management plan
+and safety-netting the patient actually leaves with). Measured: across the existing set, node-12
+`dose_route_frequency` was populated 31% of the time, `amt_snomed_code` 1%, `interactions_to_check`
+0.2%, `pbs_item_code` 0%. The map was adorned to the summit and blank on the way down. A note that
+richly describes a management plan and yields a case with an empty `12`/`13` has **left its most
+valuable content on the table** — and behind an attested seal, recoverable later only at
+re-attestation cost.
+
+**So, for every case, actively HARVEST the descent.** If the source note contains it, it goes in:
+
+- **Medication, fully:** `drug_name`, `dose_route_frequency`, `duration`, `necessity`,
+  `indication_rationale`, `contraindications_in_this_case`, and — where management is *stopping* a
+  drug — `deprescribing_note`. (Dose rules unchanged: only from the note/guideline, never synthesised;
+  no paediatric dose — flag for in-person review.)
+- **Interactions — mind the split (v2):** `interactions_flagged_for_this_patient` = the interactions
+  the note's clinician judged relevant to THIS patient (clinical judgment — scoreable). Do NOT dump
+  every interaction the drug has; that is `interactions_present_reference`, a derived lookup you leave
+  for the QC harness, not something you author.
+- **The escalation ladder (`13`):** the safety-netting rungs the note gives —
+  self-care → telehealth re-contact → GP same-day → after-hours → urgent care → ED → 000 — each with
+  its trigger and timeframe. Maps to the omnibus `CarePlan.safety_netting_escalation` (Tier 2).
+- **The warning-signs advice (`13`):** "what to watch for, and what it means." Maps to omnibus
+  `Communication` (Tier 2).
+- **Prognostic factors (`10`/`13`):** factors favouring resolution vs favouring complication / delayed
+  recovery. Maps to omnibus `RiskAssessment.prognostic_factors` (Tier 1).
+- **Behaviour-change steps (`12`):** the non-pharmacological plan — the omnibus
+  `CarePlan.behaviour_change_activities` (Tier 1).
+- **Follow-up + alternate management if first-line fails (`12`):** review timing and the "if this
+  doesn't work, then…" branch.
+
+**Codes — capture AGGRESSIVELY, as derived (v2).** For any drug/condition the *clinician named*,
+assign the AMT / PBS / SNOMED / schedule candidate codes (§8). These are **derived** (a fact about the
+thing named), not authored answers — capture them richly. What you must NOT do is let a code choose
+the clinical content: `drug_name: "amoxicillin"` → its AMT code is fine; a code deciding *that
+amoxicillin is the answer* is forbidden. The line is in §8 and §1b.
+
+**The two questions every descent field answers** (mirrors the schema's `x-warrant` / `x-fhir-tier`):
+*who makes it trustworthy* — the clinician (scoreable) or a terminology receipt (derived, reference) —
+and *how FHIR represents it* — a native R4 home (Tier 1), a standard composition (Tier 2, e.g. safety-
+netting = Communication + CarePlan.activity), or a documented local extension (Tier 3, e.g. node 13
+as a whole, because FHIR R4 has no native safety-netting resource).
 
 ## 5. Firewall partition rules (hard constraints)
 
@@ -294,7 +358,7 @@ This is the "hashing + grounding" record. **You do not compute hashes and you do
   "case_id": "<CASE_ID>",
   "case_set_version": "case-set:vNEXT",
   "schema_version": "1.0.0",
-  "protocol_version": "case-transform-protocol:v1.2.0:2026-07-01",
+  "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
   "generator": {
     "model": "<claude-sonnet-5 | claude-opus-4-8>",
     "generated_at_utc": "<YYYY-MM-DDThh:mm:ssZ>"
@@ -351,7 +415,7 @@ Why one JSON envelope (not a delimited-text file with banner headers): the repo 
   "_bundle": {
     "format": "breath-ezy-casebundle",
     "bundle_version": "1.0.0",
-    "protocol_version": "case-transform-protocol:v1.2.0:2026-07-01",
+    "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
     "case_id": "<CASE_ID>",
     "split_map": {
       "00_case_envelope":         "00_case_envelope.json",
@@ -395,7 +459,19 @@ Why one JSON envelope (not a delimited-text file with banner headers): the repo 
 
 ---
 
-## 8. Code grounding — candidate, never verified
+## 8. Code grounding — candidate, never verified; derived, never authored (v2)
+
+**The v2 warrant frame.** A field is trustworthy for exactly one of two reasons, and the reason fixes
+whether it may grade the AI Doctor:
+- **Clinician-warranted** — the note's clinician authored it (dose, necessity, the interactions they
+  flagged, the escalation plan). This is the answer key; it is **scoreable**.
+- **Derived** — a terminology receipt, not a human choice (AMT/PBS/SNOMED/schedule codes, the
+  full interactions-present lookup). Captured **aggressively** because uncaptured metadata is value
+  welded to an attested seal — but **never scored**, because grading the AI against a lookup from the
+  same knowledge base it reads is the system marking its own homework (`interactions_present_reference`
+  and the code fields carry `x-warrant: derived` in the schema; the scorer is structurally barred from
+  reading them).
+- **The line:** derive a code from what the clinician *named*; never let a tool choose *what to name*.
 
 - Assign SNOMED CT-AU, ICD-10-AM, LOINC, and AMT codes from your knowledge as **candidates**, and register **every one** in `codes_manifest` with `verification_status: "unverified_pending_terminology_receipt"`.
 - **Never state or imply a code is verified, current, or NCTS-confirmed.** You have no live terminology connection. The repo's terminology server is the only thing that can turn a candidate into a receipted, trusted code.

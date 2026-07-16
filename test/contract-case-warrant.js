@@ -98,6 +98,50 @@ const s13 = JSON.parse(readFileSync("data/schemas/13_safety_netting_node.schema.
   check("§5 there ARE derived fields to protect (the bar is not vacuous)", derived.size >= 3, `${derived.size} derived`);
 }
 
+// ── §6 MECHANICAL v2 acceptance: a descent-populated node validates (protocol v2 / 2d) ──
+// The CLINICAL pilot (real SOAP notes → bundle) is the operator's gate; it needs clinical
+// authorship this test must not fake. What IS mechanically provable: the ingest pipeline ACCEPTS
+// a case that populates the new v2 descent fields — so a v2 transform's output is not rejected on
+// arrival. This constructs a minimal, clearly-SYNTHETIC medications entry exercising the split +
+// derived codes and asserts it validates against the (edited) node-12 schema.
+{
+  const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
+  const v12 = ajv.compile(s12);
+  const v2Case = {
+    case_id: "SPEC-CARD-01-00002", // an existing valid id shape; this object is not written anywhere
+    node_type: "management_plan",
+    medications: [
+      {
+        drug_name: "amoxicillin",
+        necessity: "recommended_first_line",
+        indication_rationale: "synthetic fixture — mechanical acceptance test only",
+        dose_route_frequency: "500mg PO TDS for 5 days",
+        amt_snomed_code: "387517004", // derived (candidate)
+        pbs_item_code: "8134B", // derived (candidate)
+        schedule: "S4", // derived
+        interactions_flagged_for_this_patient: ["warfarin + amoxicillin — INR monitoring, relevant as patient is anticoagulated"], // clinician / scoreable
+        interactions_present_reference: ["amoxicillin + methotrexate — reduced clearance"] // derived / reference
+      }
+    ],
+    follow_up_plan: {
+      interval: "5 days",
+      modality: "telehealth",
+      trigger_for_earlier_review: "worsening fever, spreading erythema, or systemic symptoms — see escalation ladder"
+    },
+    scoring_rubric: {
+      must_include_items: ["amoxicillin"],
+      errors_of_omission: ["failing to give safety-net advice"],
+      errors_of_commission: ["prescribing an NSAID as first-line here"]
+    }
+  };
+  const ok = v12(v2Case);
+  check("§6 a v2 descent-populated node-12 (interactions split + derived codes) VALIDATES", ok,
+    JSON.stringify(v12.errors?.slice(0, 2)));
+  check("§6 …and it populates BOTH successors of the split",
+    "interactions_flagged_for_this_patient" in v2Case.medications[0] && "interactions_present_reference" in v2Case.medications[0]);
+  console.log("     (mechanical acceptance only — the CLINICAL 3-case pilot is the operator's gate: real SOAP notes through the v2 kit)");
+}
+
 if (failures) {
   console.error(`contract-case-warrant FAIL (${failures})`);
   process.exit(1);
