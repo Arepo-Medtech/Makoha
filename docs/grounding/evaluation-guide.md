@@ -9,6 +9,32 @@ This guide defines how to run a rigorous scoring evaluation of the AI Doctor aga
 
 ---
 
+## Standing rulings (operator, 2026-07-16) — read before the coverage sections
+
+**The 60/30/10 difficulty mix and the coverage matrix in this guide are GUIDES, not gates.**
+`eval:cases` reports them; it must never block on them, and it never has. The operator's ruling is
+verbatim: *"this was a loose guide, not a strict enforcement, as it has at times been applied very
+literally."*
+
+That literal application is documented rather than hidden, because it is instructive: a heuristic in
+this guide became "blocks: full 60/30/10 mix" in the Completeness Register, an item literally named
+`case-set-underpopulated`, and a tracker task (FL-22) — all aimed at a set that was **301/301
+clinician-attested, gated, receipted, spanning 7 difficulty tiers, 3 diagnosis categories and 19
+specialties**. Nothing in the code was ever wrong. The prose calcified, and the prose is where this
+class of error always lives. **Author for clinical value and test power, not to hit a ratio.**
+
+**The `case_id` is a name, not a claim.** It is an opaque partition key assigned at ingest;
+`case_metadata` is authoritative; where they disagree the id is just a name. Coverage analysis reads
+`case_metadata` (`specialty_tags`, `difficulty_tier`) and `coverage_matrix_tags` — never the id. See
+`docs/case-authoring/case-transformation-protocol.md` §1a and `data/taxonomy/case-taxonomy.json`
+(`id_rule`), which carries the rule as data.
+
+**The canonical vocabulary** for specialties, corpus categories (with their axis) and difficulty
+tiers is `data/taxonomy/case-taxonomy.json` — versioned and checksummed. A taxonomy change is a
+version bump, never a schema migration and never an id re-cut.
+
+---
+
 ## Overview: What Is Being Evaluated
 
 HeyDoc evaluation measures five independent competencies, each grounded in a specific set of schema nodes:

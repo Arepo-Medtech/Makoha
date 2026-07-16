@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breath-ezy.local/schemas/case-taxonomy.schema.json",
+  "title": "Case Taxonomy",
+  "description": "The canonical, versioned classification vocabulary for the evaluation corpus. Referenced by 00_case_envelope; validated at ingest. THE CASE_ID IS NOT PART OF THIS CONTRACT — it is an opaque partition key; case_metadata is authoritative (see id_rule).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["taxonomy_version", "id_rule", "distribution_rule", "axes", "specialty", "category_tags", "difficulty_tier", "records_checksum"],
+  "properties": {
+    "taxonomy_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver. A taxonomy change is a version bump + re-checksum, NEVER a schema migration — the whole reason this is a dataset."
+    },
+    "id_rule": {
+      "type": "string",
+      "description": "The demotion rule, carried as data so it travels with the taxonomy rather than living only in prose someone can miss."
+    },
+    "distribution_rule": {
+      "type": "string",
+      "description": "Operator ruling 2026-07-16: the difficulty mix is a GUIDE, not a gate. Carried here because the strict reading previously calcified out of planning artifacts."
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["specialty", "cohort", "presentation", "context", "equity"] },
+      "description": "The axes a category_tag may classify on. Their existence is the point: tranche 1's categories are not one taxonomy, and pretending they are would make coverage across any of them meaningless."
+    },
+    "specialty": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Specialty codes. A SUPERSET: tranche 2's 60 clinical specialties ∪ legacy codes still carried by attested cases.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "display"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,8}$",
+            "description": "Up to 8 chars — deliberately WIDER than the case_id's [A-Z]{2,6}. OPHTHAL (7) is exactly why: the code must not be constrained by an identifier slot it is not stored in."
+          },
+          "display": { "type": "string", "minLength": 1 },
+          "legacy": {
+            "type": "boolean",
+            "description": "true = present in the pre-taxonomy 00_case_envelope enum and carried by attested cases. Load-bearing: removing or renaming one invalidates clinician-attested cases."
+          },
+          "legacy_only": {
+            "type": "boolean",
+            "description": "true = legacy with NO tranche-2 equivalent (e.g. MSK, which tranche 2 splits across ORTHO/SPORTS/RHEUM/PAIN/REHAB). Kept because attested cases carry it, not because the taxonomy wants it."
+          },
+          "id_prefixes": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z]{2,6}$" },
+            "description": "Recorded ONLY where the id segment cannot equal the code. Exists so a reader who greps SPEC-OPHTH lands somewhere that explains why — NOT so anyone may resume deriving meaning from an id."
+          }
+        }
+      }
+    },
+    "category_tags": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Tranche 1's corpus categories. Each declares its axis, because they are not mutually comparable: Cardiovascular is an organ system, Geriatric & Frailty is a cohort, DEI is an axis of inequity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "display", "axis"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z]{2,6}$" },
+          "display": { "type": "string", "minLength": 1 },
+          "axis": { "type": "string", "enum": ["specialty", "cohort", "presentation", "context", "equity"] },
+          "ingested": { "type": "boolean", "description": "true = a batch already in data/cases/. Its code is the operator's, recorded in the batch history — load-bearing, not chosen here." },
+          "expansion_unconfirmed": { "type": "boolean", "description": "true = the display name is INFERRED from source-corpus naming and content, and awaits operator confirmation. Flagged rather than asserted." }
+        }
+      }
+    },
+    "difficulty_tier": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The EXISTING 7-value enum, mapped not replaced.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "display"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["straightforward", "atypical_presentation", "red_herring_laden", "atypical_presentation_high_risk", "rare_condition", "multi_morbidity_complex", "communication_barrier"]
+          },
+          "display": { "type": "string", "minLength": 1 },
+          "id_digit": {
+            "type": "string",
+            "pattern": "^0[1-7]$",
+            "description": "DESCRIPTIVE ONLY — the historical id correspondence. case_metadata.difficulty_tier is authoritative; a re-rated case is NOT renamed."
+          }
+        }
+      }
+    },
+    "records_checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 over {specialty, category_tags, difficulty_tier}, computed with the repo's own checksumRecords (imported, never re-implemented — a second implementation is a second answer)."
+    }
+  }
+}
