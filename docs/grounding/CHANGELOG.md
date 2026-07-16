@@ -4,6 +4,18 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-12's first live deploy found what "syntax-checked" cannot (2026-07-16)
+
+**The B2 scaffolding met a real App Runner for the first time and failed twice — both defects were dormant since 2026-07-11 because the deploy path had only ever been syntax-checked, never executed.**
+
+**Defect 1 — runbook (operator-fixed in IAM, README corrected).** The instance-role recipe granted `secretsmanager:GetSecretValue` on `anthropic.key-*` only. But App Runner fetches the `RuntimeEnvironmentSecrets` portal token wearing the *same instance role*, so service creation died `AccessDenied` before the app ever ran. `HeydocSecretsRead` now covers both `aws.sm/heydoc/*` secrets; `deploy/README.md` prerequisite 1 says so and says why.
+
+**Defect 2 — code (`deploy/bootstrap.mjs`).** The bootstrap bare-imported the server module, relying on import-starts-the-server — but both `portal/server.js` and `patient/consult-server.js` gained a main-module guard (`import.meta.url === file://argv[1]`) in later work, so an import from the bootstrap started *nothing*: secrets registered, WORM registered, module imported, process exited with no listener, every instance failed `/healthz`, service `CREATE_FAILED`. The application log's tell: the SDK's node-version warning printing once per restart and never a `portal_started` line. The bootstrap now imports **and explicitly calls** the exported starter (`startPortal()` / `startConsult()`); verified locally via `node deploy/bootstrap.mjs` in mock mode — `portal_started` and `patient_consult_started` both print and `/healthz` answers.
+
+**Register:** `deployment-runtime-unbuilt` (R-35) evidence updated with both live-run findings; state stays PARTIAL/open pending the operator's redeploy reaching RUNNING (+ B1 WORM validation and the later CI-deploy step). The mode posture is unchanged — staging stays fail-closed; nothing patient-facing moved.
+
+---
+
 ## The identity map is signed, and the orphan it gated is gone (2026-07-15)
 
 **`resolve-ingredient-orphan` → REMOVED/resolved.** `resolveIngredient()` — the E6 fix, superseded by E7's aliases and E8's signed vocabulary, with zero production callers — is deleted. **Removed rather than wired**, and the reason is the point: wiring it would have created a **second canonicaliser** beside the vocabulary's, which is the E6 defect itself and precisely what B0/B0b exist to prevent by settling identity once, upstream, before either executor runs. An orphan that would be a hazard if reconnected is not a spare part.
