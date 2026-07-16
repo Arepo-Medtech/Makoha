@@ -288,10 +288,28 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: observability_and_audit (append-only, tamper-evident, retention) — enforced at the S3 layer
   risk: High
   blocks_patient_facing: true
-  build_action: OPERATOR — create the Object-Lock+versioning bucket, grant the instance role S3 perms, set HEYDOC_WORM_* env (apprunner-create.sh does) + select s3-object-lock on all three HEYDOC_{AUDIT,GATE_RECORD,PPP_TTT}_SUBSTRATE vars, run verify:rehash --integrity in staging against it.
+  build_action: **RESOLVED 2026-07-16 (FL-11) — live-validated against the real bucket, and the run found a defect no fake could.** Operator half done: Object-Lock bucket `heydoc-medicolegal-audit` (lock enabled at creation, no bucket default retention — the adapter stamps per object), `HeydocWormAudit` on the instance role, `HEYDOC_WORM_*` set by apprunner-create.sh. ENG half: `scripts/worm-integrity.mjs` (`npm run verify:worm`) verifies ALL FOUR chains (audit + content-hash recompute, gate records, PPP-TTT, consent — note the register/tracker previously said THREE; consent joined at L12) against the registered substrate; `test/contract-worm-integrity.js` proves its logic on a fake bucket (13 bars: empty=valid-and-said-so · append verifies · content drift caught · a bucket edit is LOUD). **LIVE EVIDENCE:** integrity over the real bucket → four chains VALID; one synthetic record written through the designed seam (`recordRun`) → read back → audit chain 0→1 entries, VALID, zero drift; both objects present in S3 (`heydoc-audit/ledger/000000000000.json` + its content blob), written with `--object-lock-mode COMPLIANCE --object-lock-retain-until-date 2033-07-16` (S3 accepts those flags only on a lock-enabled bucket, so the accepted write IS the retention proof; reading retention metadata back needs `s3:GetObjectRetention`, which the least-privilege deploy user deliberately lacks). **THE DEFECT (see `worm-write-path-fake-tested-only` below):** the write path had never met a real AWS CLI and was broken — fixed in the same pass, then re-proven live.
   gap_register_link: R-39
-  status: in-progress
-  last_scanned: 2026-07-12
+  status: resolved
+  last_scanned: 2026-07-16
+```
+
+```md
+- id: worm-write-path-fake-tested-only
+  path: integration/audit-substrates/s3-object-lock.js (defaultExec) · test/smoke-worm-live.js
+  component_type: other (audit substrate)
+  state: COMPLETE
+  evidence: **FOUND AND FIXED 2026-07-16 by FL-11's live run — opened and closed in the same pass.** The adapter passed every record body as `--body /dev/stdin` (piping via execFileSync's `input`). **AWS CLI v2 refuses a pipe for a blob parameter** — `Error parsing parameter '--body': Blob values must be a path to a file` — so EVERY WORM WRITE FAILED, in every environment: reproduced on the Mac (v2.35.21) and inside the deploy image (v2.32.7, alpine). Proof the diagnosis was the mechanism, not a guess: the same call with `--body <tempfile>` against a nonexistent bucket returns `NoSuchBucket` (parsing OK, nothing written) while `/dev/stdin` returns `ParamValidation`. **Live at the moment of discovery:** `breath-ezy-portal` was RUNNING with `HEYDOC_AUDIT_SUBSTRATE=s3-object-lock` — reads worked (which is why it booted and why the first integrity run passed), and the first audit WRITE would have thrown. **Fail-closed held:** the CLI failure throws synchronously into the caller (the seam is sync by design), so the pipeline refuses rather than proceeding un-audited — an availability defect on the audit path, never an integrity one; nothing was lost, nothing was silently written elsewhere. **FIX:** `defaultExec` writes the body to a 0600 temp file, substitutes its path for the `--body` argument, and unlinks in `finally`. `aws s3 cp -` accepts stdin but carries no Object-Lock flags, so `s3api put-object` + a path is the only synchronous route to a WORM write. Re-proven live: `test/smoke-worm-live.js` OK (baseline verified · one synthetic record written through the real CLI · read back · four chains valid · zero drift).
+  root_cause_class: **the missing TEST CLASS, not the missing test.** `contract-audit-worm-s3` and `contract-worm-integrity` both inject a fake `exec`: they prove the adapter's LOGIC (keys, retention args, chain order, refusals) and are structurally incapable of proving the CLI's PARAMETER GRAMMAR. The broken shape passed every one of them for four days. This is the THIRD defect of this exact family on 2026-07-16 alone — `deploy/bootstrap.mjs` bare-importing servers that no longer self-start (PR #84), the instance-role policy that covered one secret of two, and this. Each was built, fake-tested, and never executed live. The lesson is now mechanical, not cultural: `test/smoke-worm-live.js` is env-gated (skips green with `HEYDOC_WORM_BUCKET` unset — the smoke-opencds-gateway precedent) and is the only test that can catch this class, because only a real CLI can prove a real CLI. **A green CI run does not mean it passed; it means nobody asked.**
+  blocks: (resolved) — FL-11's live validation; would have blocked FL-40's first live eval run and any real staging consult
+  safety_class: degrades_safe
+  invariant_exposure: auditability (trust boundary 5) — the medicolegal ledger could not be written. Threatened availability, never integrity: hashing untouched, append-only untouched, no path to a silent write or a non-WORM fallback (a non-local substrate with no registered adapter still REFUSES).
+  risk: High
+  blocks_patient_facing: false
+  build_action: RESOLVED — temp-file body + the env-gated live smoke. **Standing rule this establishes:** any adapter that shells out to a real binary needs one env-gated live test; a fake-exec suite is necessary and never sufficient. Transient-disk note (accepted, surfaced to the operator before implementation): the temp file holds the exact record bytes for one CLI call at 0600, unlinked in `finally` — the same bytes are already in process memory, and no smaller-footprint synchronous Object-Lock write exists.
+  gap_register_link: R-39
+  status: resolved
+  last_scanned: 2026-07-16
 ```
 
 ```md
