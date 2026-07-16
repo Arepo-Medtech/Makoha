@@ -220,10 +220,10 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: none — three-environment one-way promotion config-enforced (mode.js); staging fail-closed (portal token required; non-local audit substrate without a WORM adapter refuses)
   risk: High
   blocks_patient_facing: false
-  build_action: REMAINING — operator runs build-and-push.sh + apprunner-create.sh with the two role ARNs + portal-token secret; B1 WORM before production; optional CI deploy job (OIDC).
+  build_action: **OPERATOR HALF DONE 2026-07-16 (FL-12):** service `breath-ezy-portal` RUNNING (ap-southeast-2), `/healthz` → `{"ok":true,"mode":"live"}`; full prerequisite set live (two roles, portal-token secret, Object-Lock WORM bucket `heydoc-medicolegal-audit`, ECR). The fail-closed boot makes the serving live portal mechanical proof of token + WORM substrate registration. REMAINING: B1 WORM live integrity validation (`verify:rehash --integrity` against the bucket — FL-11's ENG half); optional CI deploy job (OIDC, operator infra) — schedule or waive.
   gap_register_link: R-35
-  status: open (runtime + App Runner scaffolding built; operator runs the deploy + B1 WORM for production)
-  last_scanned: 2026-07-11
+  status: open (deployed and live-enforced in staging; open pending WORM live validation + the optional CI job decision)
+  last_scanned: 2026-07-16
 ```
 
 ```md
@@ -935,19 +935,19 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: opencds-gateway-shim
-  path: (sibling repo) breath-ezy-cds-gateway @ 6f032d3 — shim/{map.mjs,server.mjs,map.test.mjs} + Dockerfile + entrypoint.sh; breath-ezy: test/smoke-opencds-gateway.js (env-gated, C4)
+  path: (sibling repo) breath-ezy-cds-gateway — shim/{map.mjs,server.mjs,map.test.mjs,auth.test.mjs} + Dockerfile + entrypoint.sh; breath-ezy: test/smoke-opencds-gateway.js (env-gated, C4), test/contract-cds-token.js
   component_type: other
-  state: PARTIAL
-  evidence: **BUILT 2026-07-15 (Phase C: C1-C3 + W1/W2).** The Node sidecar translating our locked JSON ↔ CDS Hooks R4, in ONE container with Tomcat (operator ruling 2026-07-14). `node:http` only — no dependency. Pure `map.mjs` (every fail-safe provable without a container) + a thin IO edge. PROVEN AGAINST A REAL CONTAINER with the real client: discovery lists 9 KMs, 0 SEVERE; warfarin+amiodarone+aspirin → interaction_check HARD_FAIL with TWO flags (one per finding, each naming both drugs); the gateway OFFERED a dose and the CLIENT dropped it on HARD_FAIL; paracetamol clean → **PASS**. 23/23 shim + 73/73 JUnit + 12/12 export fixtures; ten bars tamper-proven by exit code. **REMAINING (why PARTIAL, not COMPLETE):** (a) the C4 env-gated smoke is not yet committed, so the end-to-end proof above is an ad-hoc script rather than a repeatable test — evidence nobody can re-run is not evidence anyone else has; (b) no endpoint is wired: the `cds-adapter` slot stays EMPTY→HARD_FAIL until A4 staging-validates one. Built and proven; not deployed and not repeatably tested.
+  state: COMPLETE
+  evidence: **BUILT 2026-07-15 (Phase C: C1-C3 + W1/W2).** The Node sidecar translating our locked JSON ↔ CDS Hooks R4, in ONE container with Tomcat (operator ruling 2026-07-14). `node:http` only — no dependency. Pure `map.mjs` (every fail-safe provable without a container) + a thin IO edge. PROVEN AGAINST A REAL CONTAINER with the real client: discovery lists 9 KMs, 0 SEVERE; warfarin+amiodarone+aspirin → interaction_check HARD_FAIL with TWO flags (one per finding, each naming both drugs); the gateway OFFERED a dose and the CLIENT dropped it on HARD_FAIL; paracetamol clean → **PASS**. 23/23 shim + 73/73 JUnit + 12/12 export fixtures; ten bars tamper-proven by exit code. **A4 STAGING VALIDATION PASSED 2026-07-16 — the two former REMAINING items are closed:** (a) the C4 smoke was committed into `npm test` (PR #77 lane) and has now been run against the DEPLOYED gateway; (b) the endpoint exists: App Runner service `breath-ezy-cds-gateway` (ap-southeast-2, port 8081 = shim, 2 vCPU/4 GB, image digest 791091b2…) — smoke OK live (warm AND cold-start) and **A/B parity 902/902** (451 ingredients × 2 profiles, all 8 checks; status, per-check verdicts, findings and dose text identical to the in-process engine, over the wire). **A4 field finding, closed in-pass:** a cold JVM's first evaluations exceed the shim's 5s default timeout → NOT_RUN → BLOCKED_NO_PROOF — the fail-safe HELD (nothing wrong was ever answered; availability suffered); fixed with `SHIM_TIMEOUT_MS=15000` on the service and re-proven against a stone-cold fresh instance. **Exposure control added (operator-approved 2026-07-16):** the shim now enforces an optional shared bearer token (`SHIM_TOKEN`, constant-time compare, `/healthz` never gated — `shim/auth.test.mjs` 3/3); the client sends it from `HEYDOC_PHARM_CDS_TOKEN` (`test/contract-cds-token.js` in `npm test`: opts token sent · env token threaded · absent token sends nothing · 401 is fail-closed transport). The token is exposure control for a public staging URL, never a safety boundary. Receipts stay `mode=mock` (the pipeline does not pass `validated`; FL-50 owns that flip).
   blocks: FL-34 A4 staging validation
   safety_class: degrades_safe
   invariant_exposure: none by design (a dumb mapper; the client re-validates fail-closed and re-applies every hard rule) — **with one exception the build FOUND and closed: F-C3.** The register's own prior `build_action` said the shim *"Echoes km_set"*, which would have made the client's KB-version cross-check TAUTOLOGICAL: it can never fail if the value is sourced from the request, so a gateway running stale v1 knowledge would answer PASS on a lie. Demonstrated against the real client before the shim existed. `km_set` is now read from the KMs' OWN CARDS; verified live — v1 gateway → BLOCKED_NO_PROOF, v2 → PASS, v3 → BLOCKED_NO_PROOF.
   risk: Medium
   blocks_patient_facing: false
-  build_action: **CORRECTED 2026-07-15.** (1) NOT "echoes km_set" — that spec would defeat the cross-check it sits inside (F-C3); the shim reads the version from the cards, and a disagreeing deploy poisons the whole response to `unknown`. (2) The prior text pinned `fl30-kb:v1`; the bundle is now `fl30-kb:v2` (the sign-off populated the identity sidecar — 522 codes). (3) REMAINING: the C4 env-gated smoke (skips green in CI, LLM-smoke precedent) to make the end-to-end proof repeatable, then A4 for a staging endpoint.
+  build_action: **RESOLVED 2026-07-16 — A4 passed against the deployed service** (smoke warm+cold OK, parity 902/902, cold-start finding closed with SHIM_TIMEOUT_MS=15000, bearer-token exposure control added and contract-tested both sides). Deploy config recorded in the gateway repo README Phase E. FL-34's remaining work is NOT this item: live PBS pull, AusDI 3b, and the FL-50 receipt flip live on their own records. *(Prior corrections retained: (1) NOT "echoes km_set" — F-C3; the shim reads the version from the cards. (2) The bundle is `fl30-kb:v2`.)*
   gap_register_link: R-22
-  status: in-progress
-  last_scanned: 2026-07-15
+  status: resolved
+  last_scanned: 2026-07-16
 ```
 
 ```md

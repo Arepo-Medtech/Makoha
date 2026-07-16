@@ -4,6 +4,18 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## A4: the deployed gateway agrees with the engine, 902 times out of 902 (2026-07-16)
+
+**FL-34's staging validation is done — the OSS-CDS lane is now deployed infrastructure, not just proven code.** The pinned gateway image (Tomcat + the 9 `fl30-kb:v2` KMs + the Node shim, digest 791091b2…) runs as App Runner service `breath-ezy-cds-gateway` (ap-southeast-2, port 8081 = shim, 2 vCPU/4 GB, no secrets, no instance role). Against the LIVE URL: the C4 smoke passes (clean case PASSes, the four once-dead checks fire, a stale `km_set` BLOCKS, the advisory dose is dropped on HARD_FAIL, no dose for a child) and **A/B parity is 902/902** — 451 clinician-signed ingredients × 2 fact profiles, all 8 checks, the deployed gateway and the in-process engine identical on status, verdicts, findings and dose text. Register: `opencds-gateway-shim` → COMPLETE/resolved. Deploying the OSS gateway also *takes* the commercial-vendor-vs-OSS DECIDE the tracker has carried since 2026-07-14.
+
+**The first live run failed, and the failure is the system working.** A cold JVM's first evaluations exceed the shim's 5s timeout; every timeout degraded to NOT_RUN and the client answered BLOCKED_NO_PROOF. Nothing wrong was ever said — the fail-safe held its first field test — but a freshly-scaled instance would greet its first requests the same way, so the service sets `SHIM_TIMEOUT_MS=15000`, re-proven against a stone-cold fresh instance. (CloudShell footnote: this image cannot be built there — OpenCDS's Berkeley-DB test store demands 5 GB free disk; the build now runs on the operator's machine, which also validated the image locally before any push.)
+
+**Exposure control, operator-approved:** the gateway URL is public, so the shim now enforces an optional shared bearer token — `SHIM_TOKEN` gateway-side (constant-time compare, `/healthz` never gated, `shim/auth.test.mjs`), `HEYDOC_PHARM_CDS_TOKEN` client-side (`test/contract-cds-token.js`, in `npm test`: opts token sent · env token threaded · absent token sends nothing · **401 is fail-closed transport**). It is an exposure control for a public staging URL — the safety boundary remains the fail-closed client, which re-validates every response regardless.
+
+**What this does NOT move:** receipts stay `mode=mock` — the pipeline never passes `validated`; FL-50 owns that flip. Blocker #1 stays RED pending live PBS, AusDI 3b, and FL-50. R-35 (`deployment-runtime-unbuilt`) also refreshed this pass: FL-12's operator half recorded done, REMAINING narrowed to B1 WORM live validation + the optional OIDC CI job.
+
+---
+
 ## FL-12's first live deploy found what "syntax-checked" cannot (2026-07-16)
 
 **The B2 scaffolding met a real App Runner for the first time and failed twice — both defects were dormant since 2026-07-11 because the deploy path had only ever been syntax-checked, never executed.**

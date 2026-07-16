@@ -115,8 +115,9 @@ function extractDrug(intent, { rxnormCode = null } = {}) {
  * @param {string} [opts.knowledgeModuleSet] - required KB version; response must echo it.
  * @param {boolean} [opts.validated] - true only once staging-validated (A4). Drives receipt_mode.
  * @param {number} [opts.timeoutMs]
+ * @param {string|null} [opts.token] - bearer token for the deployed shim (default: HEYDOC_PHARM_CDS_TOKEN).
  */
-export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetchImpl, knowledgeModuleSet = DEFAULT_KM_SET, validated = false, timeoutMs = 5000, rxnormCode = null } = {}) {
+export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetchImpl, knowledgeModuleSet = DEFAULT_KM_SET, validated = false, timeoutMs = 5000, rxnormCode = null, token = (process.env.HEYDOC_PHARM_CDS_TOKEN || "").trim() || null } = {}) {
   if (!endpoint) return blocked("HARD_FAIL", "OpenCDS gateway endpoint not provided");
 
   // 1. Build + validate the request. A malformed request never leaves the client.
@@ -156,7 +157,10 @@ export async function queryOpenCds(intent, resolvedFacts = {}, { endpoint, fetch
   try {
     const res = await doFetch(`${endpoint}/pharm-check`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      // The bearer token (HEYDOC_PHARM_CDS_TOKEN / opts.token) is the deployed shim's exposure
+      // control, not a safety boundary — a 401 lands in the same fail-closed transport path as
+      // any other gateway failure (BLOCKED_NO_PROOF below).
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(validReq),
       ...(fetchImpl ? {} : { signal: AbortSignal.timeout(timeoutMs) }),
     });

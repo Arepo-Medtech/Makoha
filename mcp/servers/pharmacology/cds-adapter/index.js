@@ -58,7 +58,7 @@ export async function queryCds(intent, { env = process.env, resolvedFacts = {}, 
   if (avail.provider === "au_oss_cds") {
     // Track A: route to the OpenCDS client. It is fail-closed and re-applies the hard rules;
     // receipt mode stays 'mock' until staging validation (A4).
-    return queryOpenCds(intent, resolvedFacts, { endpoint: avail.endpoint, fetchImpl, knowledgeModuleSet, validated, rxnormCode });
+    return queryOpenCds(intent, resolvedFacts, { endpoint: avail.endpoint, fetchImpl, knowledgeModuleSet, validated, rxnormCode, token: (env.HEYDOC_PHARM_CDS_TOKEN || "").trim() || null });
   }
   // Commercial FILLED path: a validated vendor client would run here. Not built in this
   // increment — fail closed rather than emit unvalidated content.
