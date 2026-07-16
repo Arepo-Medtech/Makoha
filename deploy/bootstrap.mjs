@@ -58,9 +58,17 @@ if (wormSelected) {
   await registerWormAudit({ bucket, region, retentionYears, mode });
 }
 
+// Start the chosen server EXPLICITLY. Both server modules carry a
+// main-module guard (`import.meta.url === file://argv[1]`) so a bare import
+// starts nothing when argv[1] is this bootstrap — the guard sees a non-main
+// import and returns. First observed live on App Runner (FL-12, 2026-07-16):
+// the container booted, registered its backends, imported the portal, then
+// exited with no listener — health check failed on every instance.
 const service = String(process.env.HEYDOC_SERVICE || "portal").trim().toLowerCase();
 if (service === "consult") {
-  await import("../patient/consult-server.js");
+  const { startConsult } = await import("../patient/consult-server.js");
+  startConsult();
 } else {
-  await import("../portal/server.js");
+  const { startPortal } = await import("../portal/server.js");
+  startPortal();
 }

@@ -39,9 +39,12 @@ The Dockerfile + the two scripts here stand up a running **staging** service
 
 **Prerequisites (once):**
 1. **Instance role** — the role the app assumes at runtime. Attach the
-   `HeydocSecretsRead` policy (Secrets Manager `GetSecretValue` on
-   `aws.sm/heydoc/anthropic.key`) **and** the WORM-audit policy below. Its trust
-   policy must allow `tasks.apprunner.amazonaws.com`.
+   `HeydocSecretsRead` policy (Secrets Manager `GetSecretValue` on **both**
+   `aws.sm/heydoc/anthropic.key-*` **and** `aws.sm/heydoc/portal.token-*` — App
+   Runner fetches the RuntimeEnvironmentSecrets portal token with this same
+   instance role, so covering only the anthropic key fails service creation
+   with AccessDenied; found live 2026-07-16) **and** the WORM-audit policy
+   below. Its trust policy must allow `tasks.apprunner.amazonaws.com`.
 2. **Access role** — lets App Runner pull the image from ECR. Attach the AWS
    managed policy `AWSAppRunnerServicePolicyForECRAccess`; trust
    `build.apprunner.amazonaws.com`.
