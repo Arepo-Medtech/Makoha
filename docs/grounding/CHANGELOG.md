@@ -16,6 +16,8 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 Register: `worm-substrate-adapter-unbuilt` → COMPLETE/resolved with the live evidence; `worm-write-path-fake-tested-only` opened and closed in the same pass. Portal blocker #2 now waits on FL-43 alone.
 
+**Immutability, observed rather than inferred.** With `HeydocWormDiagnostics` attached (read-only, deploy user only — deliberately NOT a widening of the app's shared `HeydocWormAudit`, which would have granted the running portal retention reads it has no use for), the first ledger object reports `Mode: COMPLIANCE, RetainUntilDate: 2033-07-16`, the bucket `ObjectLockEnabled: Enabled`, versioning `Enabled`. Until this read, immutability was an *inference* from S3 having accepted the lock flags — sound, but the same inference-shaped gap that let `--body /dev/stdin` sit broken for four days. One posture item logged rather than left implicit: `deploy-user-holds-worm-write` (Medium) — the deploy user retains `PutObject` on the medicolegal bucket because the live smoke needs it, which Object Lock renders unable to rewrite history and the chain check renders unable to append quietly; the production answer to "who *could* have appended" is an operator decision surfaced for the production gate, not taken here.
+
 ---
 
 ## A4: the deployed gateway agrees with the engine, 902 times out of 902 (2026-07-16)
