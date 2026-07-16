@@ -1,7 +1,7 @@
 /**
  * contract-case-taxonomy — the versioned classification vocabulary (Case Corpus v2, Phase 1).
  *
- * THE LOAD-BEARING BAR IS §3: all 303 clinician-attested cases must validate against the
+ * THE LOAD-BEARING BAR IS §3: all clinician-attested cases must validate against the
  * taxonomy UNCHANGED. A failure there means the mapping is wrong, not the case. It already
  * earned its keep: the first build dropped MSK (29 attested cases, no tranche-2 equivalent)
  * and this bar is what would have caught it.

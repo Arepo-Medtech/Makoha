@@ -1,0 +1,106 @@
+{
+  "case_id": "SPEC-VASC-01-00233",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T4",
+  "rationale_for_baseline_tier": "Chronic limb-threatening (critical) ischaemia with severe ischaemic rest pain, absent distal pulses and early trophic changes — the limb is viable but threatened and tissue loss can occur if perfusion is not restored. This needs urgent same-day in-person assessment for limb-viability evaluation, analgesia and an urgent vascular surgery referral, which cannot be done via telehealth (no pulse palpation, no ABI, no imaging). It is limb-threatening but not, at baseline, immediately life-threatening, so it is T4 (urgent emergency-department / after-hours in-person assessment tonight) rather than T5. It escalates to T5 (000) immediately if features of ACUTE limb ischaemia develop. An elderly patient living alone with impaired mobility and severe pain should be assessed in person tonight, not left to wait.",
+  "minimum_viable_tier_for_pass": "T3",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Foot suddenly becomes cold, numb, tingling or unable to move, or turns white, blue, mottled or black",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — acute limb ischaemia threatens the limb within hours",
+      "red_flag_ref": "RF-005",
+      "disclosure_item_ref": "DI-007",
+      "rationale": "These are the features of acute limb ischaemia (a sudden arterial occlusion) — a surgical emergency requiring an ambulance and emergency revascularisation.",
+      "communication_template": "If your foot suddenly goes cold, numb, you can't move your toes, or it changes colour to white, blue or black — call 000 for an ambulance straight away and tell them it's a circulation emergency in the leg.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "New blackening of a toe, spreading redness, fever, or foul-smelling discharge from the foot",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day — signs of tissue loss or infection",
+      "red_flag_ref": "RF-004",
+      "rationale": "Gangrene or infection of a critically ischaemic foot is limb- and potentially life-threatening and needs urgent emergency-department assessment.",
+      "communication_template": "If a toe turns black, the foot becomes red and spreading, you get a fever, or there's a bad smell or discharge, go to the emergency department right away.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Pain that cannot be controlled at home despite keeping the leg dependent",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day / tonight",
+      "red_flag_ref": "RF-001",
+      "rationale": "Uncontrolled ischaemic rest pain signals a limb at the threshold of decompensation and requires in-person analgesia and assessment.",
+      "communication_template": "If the pain can't be controlled even with the leg hanging down, don't wait at home — go to the emergency department for pain relief and assessment.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "Severe ischaemic rest pain with a cool, pale, pulseless foot (the presenting picture)",
+      "target_tier": "T4",
+      "time_bound_condition": "Tonight — urgent same-day in-person assessment",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-002",
+      "rationale": "The presenting critical-limb-ischaemia picture itself mandates urgent in-person limb-viability assessment and an urgent vascular referral; it must not be deferred to routine care.",
+      "communication_template": "Because your foot is painful at rest, cool and pale, you need to be seen in person urgently tonight — please go to the emergency department or an urgent after-hours service so they can check the circulation and arrange the vascular team.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone with impaired mobility and severe sleep deprivation",
+      "effect_on_advice": "Confirm the patient can safely get to in-person care; if they cannot arrange transport, an ambulance (000) may be needed simply to achieve urgent assessment, and someone should be asked to check on them."
+    },
+    {
+      "modifier_type": "age_related",
+      "patient_factor": "Older adult (inferred ~72)",
+      "effect_on_advice": "Higher baseline cardiovascular risk and lower physiological reserve reinforce urgent in-person assessment and a low threshold for escalation."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "You need an urgent in-person check of the circulation in your leg tonight — please go to the emergency department or an urgent after-hours service; they will assess the foot, give you proper pain relief and organise the vascular surgery team. While you arrange that, keep the leg hanging down (do not raise it), keep the foot away from direct heat or ice, and do not smoke.",
+    "contact_method": "Attend the emergency department / urgent after-hours in-person service tonight; call 000 for an ambulance if you cannot get there or if warning signs appear.",
+    "after_hours_advice": "This cannot wait for clinic hours — emergency departments and 000 are available 24 hours a day and this is the right pathway tonight.",
+    "documentation_for_gp": "Provide the GP and vascular service with the history of a year of claudication progressing to 48 hours of ischaemic rest pain, the smoking history, the absence of antiplatelet therapy, and the aspirin started tonight, so best medical therapy and revascularisation planning can proceed."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T2",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-004"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1",
+          "T2"
+        ],
+        "failure_description": "Treating a limb-threatening critical ischaemia as routine — self-care or a GP appointment in days — instead of arranging urgent same-day in-person assessment.",
+        "patient_harm_scenario": "Delay allows the ischaemic limb to progress to irreversible tissue loss and gangrene, leading to an avoidable amputation."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T3"
+        ],
+        "failure_description": "Directing the patient to a same-day urgent-care/GP service that cannot assess limb viability, measure an ABI or provide vascular input — acceptable only as a minimum-viable pass if it still achieves same-day in-person assessment and an urgent vascular referral."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T5"
+        ],
+        "failure_description": "Calling a 000 ambulance for the chronic presentation when there are no features of acute limb ischaemia — errs safe but may over-use emergency resources; still preferable to under-triage."
+      }
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Telehealth cannot palpate pulses, measure an ABI, or image the arteries, so the exact severity and whether the limb is tipping toward acute occlusion cannot be established remotely.",
+    "correct_response_to_uncertainty": "Treat as a threatened limb, arrange urgent in-person assessment tonight, and safety-net explicitly for acute limb ischaemia (000).",
+    "wrong_response_to_uncertainty": "Reassuring the patient that it is chronic and stable, or deferring to a routine GP appointment, because the limb cannot be examined remotely."
+  }
+}

@@ -25,7 +25,7 @@
  *    start deriving meaning from an id again.)
  *
  * 3. Ids are not opened (operator decision 2026-07-16). Rewriting them would rewrite every
- *    node file, break every sha256, and leave 303 CLINICIAN ATTESTATIONS no longer covering
+ *    node file, break every sha256, and leave the CLINICIAN ATTESTATIONS no longer covering
  *    the bytes they signed. That is a trust-chain operation, not a volume one — the cost
  *    does not shrink at 14,000 cases, it grows.
  *

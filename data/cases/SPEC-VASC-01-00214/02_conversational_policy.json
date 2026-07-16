@@ -1,0 +1,128 @@
+{
+  "case_id": "SPEC-VASC-01-00214",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Rapid onset of unilateral swelling and a deep aching pain in one calf over about 24 hours",
+      "fhir_path": "Condition._freetext_HPC_tags.onset",
+      "ros_category": "Vascular",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What's been happening with your leg?",
+        "When did the swelling and pain start?"
+      ],
+      "patient_response_template": "My right calf started aching yesterday and it's swollen right up — about twice the size of my other leg now.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001",
+        "red_flag_ref": "RF-003"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Recently returned from a 14-hour long-haul flight three days before symptom onset (prolonged immobility)",
+      "fhir_path": "Condition._freetext_HPC_tags.risk_context",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you done any long trips or long periods sitting still recently?",
+        "Any recent flights, long drives or time off your feet?"
+      ],
+      "patient_response_template": "Yes — I flew back from overseas three days ago, it was a 14-hour flight and I barely moved the whole time.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Redness, warmth and tightness of the skin over the affected calf",
+      "fhir_path": "Condition._freetext_HPC_tags.associated",
+      "ros_category": "Vascular",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is the skin over your calf red or warm?",
+        "Does the leg feel hot or tight?"
+      ],
+      "patient_response_template": "The skin is red and it feels warm and tight, more than the other leg.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No shortness of breath, no chest pain (including on breathing in), and no coughing up blood",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you had any shortness of breath or chest pain?",
+        "Any coughing, especially coughing up blood, or feeling faint?"
+      ],
+      "patient_response_template": "No, my breathing's fine and I haven't had any chest pain or coughed up anything.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Not taking any anticoagulant or oral contraceptive; no previous clots or leg problems",
+      "fhir_path": "MedicationStatement._freetext_tags.reconciliation",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are you on any regular medicines, like blood thinners or the pill?",
+        "Have you ever had a clot in your leg or lungs before?"
+      ],
+      "patient_response_template": "I'm not on any regular medicines, no blood thinners and not on the pill, and I've never had a clot before.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid"
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Lives alone and mobility is currently limited by the painful leg",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map.living_situation",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is there someone at home with you?",
+        "How are you managing to get around?"
+      ],
+      "patient_response_template": "I live on my own, and getting around is hard right now because I'm limping so badly.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "late",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-002"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 20,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-004"
+    ]
+  }
+}

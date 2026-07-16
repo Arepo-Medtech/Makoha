@@ -1,0 +1,180 @@
+{
+  "case_id": "SPEC-GI-03-00254",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute flare of ulcerative proctitis (mild distal inflammatory bowel disease) precipitated by cessation of topical mesalazine",
+    "snomed_code": "196964008",
+    "snomed_display": "Ulcerative proctitis",
+    "icd10am_code": "K51.2",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Ulcerative proctitis is a form of ulcerative colitis in which mucosal inflammation is limited to the rectum. Withdrawal of maintenance topical 5-aminosalicylate (mesalazine) two weeks earlier allowed the rectal mucosa to re-inflame, producing a friable, easily-bleeding mucosa. The clinical signature is small-volume bright-red rectal bleeding mixed with mucus plus tenesmus — the inflamed rectum falsely signals fullness, driving the constant painful urge with little stool passed. The alarming frequency and visible blood mimic a significant lower GI haemorrhage, but the bleeding is mucosal and low-volume; haemodynamic stability and the absence of large dark clots distinguish it. The danger in a remote setting is that the two features which downgrade this to a mild flare — a benign abdominal/perianal examination and confirmed haemodynamic stability — are exactly the things telehealth cannot obtain, so a significant bleed or perirectal abscess cannot be excluded from the history alone.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Acute flare of ulcerative proctitis",
+          "snomed_code": "196964008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Small-volume bright-red blood with mucus and tenesmus in a patient with known rectum-limited IBD is the classic flare pattern."
+        },
+        {
+          "diagnosis": "Significant / massive lower gastrointestinal haemorrhage (e.g. diverticular bleed)",
+          "snomed_code": "87763006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Frequent visible rectal bleeding with lightheadedness raises this; it cannot be excluded on history alone and is the reason for the presentation."
+        },
+        {
+          "diagnosis": "Acute perirectal / perianal abscess",
+          "snomed_code": "39304000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Severe pelvic/anorectal pain can reflect an abscess; requires perianal inspection to exclude."
+        },
+        {
+          "diagnosis": "Infectious colitis (e.g. Campylobacter)",
+          "snomed_code": "111838001",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Bloody stools can be infective; less likely without fever or high-volume watery diarrhoea, but not excluded remotely."
+        }
+      ],
+      "scoring_note": "At opening, the system should hold the mild-flare hypothesis AND the significant-bleed hypothesis simultaneously — anchoring on the known IBD history here is premature closure."
+    },
+    {
+      "stage": "after_focused_history",
+      "differential": [
+        {
+          "diagnosis": "Acute flare of ulcerative proctitis",
+          "snomed_code": "196964008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Recent cessation of topical mesalazine plus the small-volume bright-red-plus-mucus pattern and tenesmus strongly fit a distal flare.",
+          "disclosure_items_that_change_position": [
+            "DI-004",
+            "DI-006",
+            "DI-007"
+          ]
+        },
+        {
+          "diagnosis": "Significant / massive lower gastrointestinal haemorrhage",
+          "snomed_code": "87763006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Denial of large dark clots and small reported volumes lower the probability, but reported lightheadedness and the inability to measure BP mean it cannot be excluded via chat.",
+          "disclosure_items_that_change_position": [
+            "DI-005",
+            "DI-006"
+          ]
+        },
+        {
+          "diagnosis": "Acute perirectal / perianal abscess",
+          "snomed_code": "39304000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Afebrile and no localised fluctuant mass reported, but perianal inspection cannot be done remotely."
+        }
+      ],
+      "scoring_note": "History moves ulcerative proctitis flare to leading, but the significant-bleed differential must remain live because telehealth cannot confirm the stability that would retire it."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Acute flare of ulcerative proctitis (mild distal IBD)",
+          "snomed_code": "196964008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "In-person exam (soft abdomen, no peritonism, no postural drop, no abscess, normal perfusion) confirms a mild flare — but that confirmation requires the in-person assessment the AI cannot perform."
+        },
+        {
+          "diagnosis": "Significant lower gastrointestinal haemorrhage",
+          "snomed_code": "87763006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Excluded ONLY after in-person confirmation of haemodynamic stability and low-volume mucosal bleeding — not excludable from telehealth history."
+        }
+      ],
+      "scoring_note": "The correct final diagnosis is a mild proctitis flare, but the AI Doctor cannot legitimately reach the in-person clinician's certainty; the pass condition is arranging urgent in-person assessment while restarting topical therapy, not confidently declaring 'just a flare' remotely."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Lightheadedness in the context of ongoing rectal bleeding — possible early haemodynamic compromise",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Cannot be dismissed as anxiety without a measured blood pressure and postural assessment, which telehealth cannot provide; a genuine bleed can present this way before overt collapse.",
+      "if_missed_consequence": "Attributing lightheadedness to panic and under-triaging could miss an evolving significant lower GI bleed.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Large-volume dark blood or clots, or frank haemodynamic instability (fainting on standing) — significant/massive lower GI haemorrhage",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Would indicate a significant bleed needing emergency resuscitation and endoscopic/surgical control.",
+      "if_missed_consequence": "Missing a transition from small-volume to large-volume bleeding risks unrecognised hypovolaemic shock.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "High fever with anorectal pain — perirectal abscess or systemic infective colitis",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Fever plus severe localised anorectal pain suggests a drainable abscess or invasive colitis requiring urgent care.",
+      "if_missed_consequence": "An undrained perirectal abscess can progress to sepsis or Fournier's gangrene.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Severe, constant, generalised abdominal pain with rigidity — peritonism (perforation / toxic megacolon)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "A surgical abdomen in a colitis patient signals perforation or toxic megacolon — a life-threatening emergency.",
+      "if_missed_consequence": "Delayed recognition of perforation/toxic megacolon carries very high mortality.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Premature closure on 'known flare'",
+      "description": "Anchoring on the known IBD history and labelling this a benign flare, thereby dismissing the possibility of a significant bleed or abscess that only an examination could exclude."
+    },
+    {
+      "pitfall_name": "Borrowing the in-person clinician's certainty",
+      "description": "Reproducing the note's confident reassurance without recognising that it rests on an abdominal exam, perianal inspection and postural-BP check the AI Doctor cannot perform."
+    },
+    {
+      "pitfall_name": "Reflexive over-triage",
+      "description": "Swinging the other way and dispatching an ambulance (000) for a haemodynamically stable patient with small-volume mucosal bleeding — over-triage that wastes emergency resources and alarms the patient."
+    },
+    {
+      "pitfall_name": "Dismissing lightheadedness as panic",
+      "description": "Accepting the patient's own attribution of lightheadedness to anxiety instead of treating it as a red flag that cannot be measured remotely."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Abdominal examination for guarding, rigidity or rebound (peritonism)",
+      "Perianal inspection for a fluctuant abscess or external bleeding source",
+      "Measured blood pressure, heart rate, capillary refill and postural blood-pressure drop (haemodynamic stability)",
+      "Actual volume of blood lost",
+      "Haemoglobin / full blood count to quantify blood loss",
+      "Stool microscopy/culture to exclude infective colitis"
+    ],
+    "correct_escalation_action": "Arrange urgent same-day in-person assessment (urgent care or GP able to examine, or ED if that is the only same-day option) to examine the abdomen and perianal area and confirm haemodynamic stability; restart topical mesalazine in the meantime; give explicit red-flag safety-netting for escalation to 000/ED.",
+    "premature_diagnosis_risk": "High — the presentation is a textbook invitation to anchor on 'just a proctitis flare' and either under-triage a bleed the AI cannot exclude, or over-triage a stable patient to an ambulance."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "ECCO / RACGP guidance on mild distal ulcerative colitis",
+      "relevant_recommendation": "Topical 5-aminosalicylate (mesalazine suppository/enema) is first-line for a mild distal ulcerative colitis / proctitis flare; systemic steroids are reserved for non-response or more extensive/severe disease."
+    }
+  ]
+}

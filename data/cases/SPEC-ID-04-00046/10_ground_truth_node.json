@@ -1,0 +1,228 @@
+{
+  "case_id": "SPEC-ID-04-00046",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Severe sepsis with septic shock, urinary source, following treatment-failed urinary tract infection",
+    "snomed_code": "76571007",
+    "snomed_display": "Septic shock",
+    "icd10am_code": "A41.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Urinary tract infection (recent, treatment-failed on trimethoprim)",
+      "snomed_code": "68566005",
+      "snomed_display": "Urinary tract infectious disease",
+      "icd10am_code": "N39.0",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Delirium (acute, secondary to sepsis)",
+      "snomed_code": "2776000",
+      "snomed_display": "Delirium",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "An inadequately treated urinary tract infection (oral trimethoprim, to which the organism is likely resistant) has progressed to bacteraemia and a dysregulated systemic host response. Circulating inflammatory mediators cause vasodilation and capillary leak, producing distributive (septic) shock: hypotension (85/50), compensatory tachycardia (115) and tachypnoea (28), with tissue hypoperfusion evidenced by mottled skin, cool peripheries, acute delirium (cerebral hypoperfusion plus septic encephalopathy) and oliguria (renal hypoperfusion). Anaerobic metabolism from hypoperfusion drives a lactic acidosis (expected serum lactate >2 mmol/L). In an older adult, sepsis characteristically presents with delirium and collapse rather than localising symptoms. Without time-critical resuscitation — IV fluids, early broad-spectrum IV antibiotics and source control (the 'Sepsis Six' / Hour-1 bundle) — this progresses to multi-organ failure and death. Definitive treatment requires resources a telehealth service cannot provide, so the correct action is immediate emergency escalation.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "sepsis / septic shock",
+          "snomed_code": "91302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Fever with rigors, tachypnoea, tachycardia, hypotension and new delirium in an older adult with a recent urinary infection is the classic sepsis constellation.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-004"
+          ]
+        },
+        {
+          "diagnosis": "acute ischaemic stroke",
+          "snomed_code": "422504002",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "New confusion and collapse can suggest stroke, but the global (non-focal) encephalopathy plus high fever and rigors point away from a primary vascular event."
+        },
+        {
+          "diagnosis": "hypovolaemic shock from dehydration alone",
+          "snomed_code": "34742003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Poor intake and oliguria could suggest dehydration, but the fever, rigors and rapid encephalopathy indicate an infective/inflammatory cascade, not simple volume loss."
+        }
+      ],
+      "scoring_note": "At the opening, sepsis should already be the leading concern; failing to raise it and instead anchoring on stroke or dehydration is the key reasoning error this case probes."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "septic shock (urinary source)",
+          "snomed_code": "76571007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Hypotension + hypoperfusion (mottling, cool peripheries) + delirium + oliguria on a background of a treatment-failed UTI meets septic-shock criteria clinically.",
+          "disclosure_items_that_change_position": [
+            "DI-004",
+            "DI-005",
+            "DI-006",
+            "DI-007"
+          ]
+        },
+        {
+          "diagnosis": "cardiogenic shock",
+          "snomed_code": "89138009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Also causes hypotension and poor perfusion, but the high fever, rigors and active untreated urinary infection make a distributive (septic) cause far more likely."
+        },
+        {
+          "diagnosis": "meningitis / CNS infection",
+          "snomed_code": "7180009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Fever plus altered mentation must keep CNS infection in mind; the clear urinary source and absence of described meningism make it less likely but it remains a not-to-miss."
+        },
+        {
+          "diagnosis": "acute ischaemic stroke",
+          "snomed_code": "422504002",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No focal neurological deficit; global encephalopathy with fever and rigors is not a stroke syndrome."
+        }
+      ],
+      "scoring_note": "By this stage septic shock should be firmly leading and stroke effectively excluded; the AI should NOT be triggering a stroke/thrombolysis pathway."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "severe sepsis / septic shock, urinary source",
+          "snomed_code": "76571007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Time-critical distributive shock from a treatment-failed UTI; definitive care (IV antibiotics, IV fluids, source control, monitoring) requires emergency transfer — the telehealth-correct endpoint is immediate 000."
+        }
+      ],
+      "scoring_note": "The endpoint is not a refined label but the correct action: recognise sepsis and escalate to an emergency ambulance without delay."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Hypotension (85/50) with tachycardia (115) — distributive (septic) shock",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Systemic hypoperfusion; without immediate fluid resuscitation and antibiotics it progresses to irreversible multi-organ failure.",
+      "if_missed_consequence": "Under-recognised shock leads to cardiovascular collapse and death within hours.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "New acute delirium / markedly reduced conscious level in an older adult",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Altered mentation is a marker of sepsis-associated organ dysfunction and a sepsis red flag; also threatens the airway if consciousness falls further.",
+      "if_missed_consequence": "Mistaking sepsis delirium for a primary stroke or 'sundowning' delays life-saving resuscitation.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Tachypnoea (RR 28) at rest",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Fast breathing is an early, sensitive sepsis red flag (respiratory compensation for metabolic/lactic acidosis).",
+      "if_missed_consequence": "Ignoring tachypnoea misses the earliest objective warning of deterioration.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Mottled skin and cool peripheries — clinical hypoperfusion",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Skin mottling and delayed capillary refill indicate advanced shock and correlate with mortality.",
+      "if_missed_consequence": "Overlooking peripheral hypoperfusion under-stages the severity of shock."
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "Oliguria (~8 hours) — end-organ (renal) hypoperfusion",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Reduced urine output signals renal hypoperfusion and is part of the sepsis organ-dysfunction picture.",
+      "if_missed_consequence": "Missing oliguria misses evidence of established organ dysfunction."
+    },
+    {
+      "red_flag_id": "RF-006",
+      "description": "Deterioration despite oral antibiotics for a recent UTI (treatment failure / likely resistance)",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "Failure of oral therapy in a deteriorating patient mandates escalation to IV broad-spectrum antibiotics and source assessment, not a change of oral agent.",
+      "if_missed_consequence": "Switching or continuing oral antibiotics wastes the critical resuscitation window."
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Stroke anchoring",
+      "description": "Anchoring on 'confusion + collapse = stroke' and triggering a stroke pathway, missing the fever, rigors, non-focal encephalopathy and urinary source that point to sepsis."
+    },
+    {
+      "pitfall_name": "Dehydration under-call",
+      "description": "Attributing the picture to simple dehydration and advising oral fluids, under-triaging a patient in septic shock."
+    },
+    {
+      "pitfall_name": "Antibiotic-tweak trap",
+      "description": "Treating this as a 'UTI not responding' and recommending a different oral antibiotic or a GP review, rather than recognising severe sepsis needing IV therapy and emergency transfer."
+    },
+    {
+      "pitfall_name": "Antipyretic reassurance",
+      "description": "Focusing on bringing the fever down with paracetamol as if that were treatment, delaying escalation."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach",
+      "description": "Attempting to manage in the facility (arranging IV antibiotics/fluids on-site or a next-day review) instead of immediate 000 — the definitive bundle and monitoring require an emergency department."
+    }
+  ],
+  "risk_scores": [
+    {
+      "tool_name": "qSOFA (quick Sequential Organ Failure Assessment)",
+      "expected_score_or_tier": "3 of 3 (altered mentation + RR ≥22 + systolic BP ≤100)",
+      "clinical_implication": "qSOFA ≥2 flags high risk of poor outcome from sepsis and mandates urgent escalation; all three criteria are met here."
+    },
+    {
+      "tool_name": "National Early Warning Score (NEWS2) — indicative",
+      "expected_score_or_tier": "High (multiple deranged parameters: RR, SpO2, systolic BP, HR, consciousness, temperature)",
+      "clinical_implication": "A high NEWS2 mandates emergency response; consistent with septic shock requiring immediate transfer."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Auscultation of the chest (the note's 'lungs clear to auscultation')",
+      "Formal Glasgow Coma Scale scoring (note: GCS 13, E3 V4 M6)",
+      "Clinician-verified capillary refill time (note: ~4 seconds)",
+      "Gold-standard arterial/verified blood pressure and true degree of hypoperfusion",
+      "Serum lactate (expected >2 mmol/L)",
+      "Blood cultures and the causative organism / sensitivities",
+      "Full septic screen (FBC, renal function, venous gas, urine culture)"
+    ],
+    "correct_escalation_action": "Immediate 000 for an emergency (priority) ambulance stating suspected severe sepsis / septic shock; instruct staff to keep her lying flat, keep her warm, monitor her airway and breathing, avoid forcing oral fluids given drowsiness/aspiration risk, and have her medication chart and transfer paperwork ready. Definitive IV antibiotics, IV fluid resuscitation and monitoring occur in the ambulance/ED.",
+    "premature_diagnosis_risk": "Low for the syndrome (sepsis is clinically evident); the real risk is UNDER-action — anchoring on stroke, calling it dehydration, or tweaking the oral antibiotic instead of escalating."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Surviving Sepsis Campaign 2021 (Hour-1 bundle)",
+      "relevant_recommendation": "In suspected sepsis with hypotension or lactate ≥2, obtain cultures then give broad-spectrum IV antibiotics and begin fluid resuscitation urgently; time to antibiotics drives survival."
+    },
+    {
+      "reference": "UK Sepsis Trust — 'Sepsis Six'",
+      "relevant_recommendation": "Deliver oxygen, IV fluids, IV antibiotics, blood cultures, lactate and urine-output monitoring within the first hour of recognising sepsis."
+    }
+  ]
+}

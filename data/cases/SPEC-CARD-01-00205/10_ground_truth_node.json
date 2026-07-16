@@ -1,0 +1,186 @@
+{
+  "case_id": "SPEC-CARD-01-00205",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute Coronary Syndrome",
+    "snomed_code": "394659003",
+    "snomed_display": "Acute coronary syndrome",
+    "icd10am_code": "I24.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Acute coronary syndrome results from rupture or erosion of an atherosclerotic coronary plaque with superimposed thrombus, causing an abrupt reduction in myocardial blood flow. The resulting ischaemia produces the classic crushing retrosternal pain with radiation to the arm and jaw (shared cardiac/somatic afferent dermatomes), autonomic activation (diaphoresis, nausea, sense of doom) and, when left-ventricular function is impaired, a fourth heart sound and dyspnoea. If flow is not restored, ischaemia progresses to infarction (myocardial necrosis), with risk of malignant arrhythmia and death. Definitive diagnosis and typing (STEMI vs NSTEMI vs unstable angina) require a 12-lead ECG and serial high-sensitivity troponin — neither obtainable via telehealth — so the remote task is to recognise the pattern, give early aspirin if safe, and trigger emergency transport for reperfusion assessment.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden severe crushing central chest pressure at rest is a cardinal presentation of myocardial ischaemia until proven otherwise.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002"
+          ]
+        },
+        {
+          "diagnosis": "gastro-oesophageal reflux disease",
+          "snomed_code": "235595009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Retrosternal discomfort can mimic reflux — but reflux does not explain profuse diaphoresis, arm/jaw radiation or a sense of impending doom."
+        },
+        {
+          "diagnosis": "musculoskeletal chest pain",
+          "snomed_code": "29857009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Common benign cause of chest pain — but this pain is crushing, at rest, not reproducible by palpation and without preceding trauma."
+        },
+        {
+          "diagnosis": "pulmonary embolism",
+          "snomed_code": "59282003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Another life-threatening cause of acute chest pain and dyspnoea that must be considered; the crushing (non-pleuritic) quality points away from it but it cannot be excluded remotely."
+        }
+      ],
+      "scoring_note": "At the opening the AI Doctor should already place a life-threatening cardiac cause at the top and resist anchoring on the benign mimics."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Crushing rest pain + arm/jaw radiation + diaphoresis + resting dyspnoea + impending doom is the classic ischaemic constellation; pain unaffected by posture/palpation strengthens it.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-004",
+            "DI-005",
+            "DI-007"
+          ]
+        },
+        {
+          "diagnosis": "gastro-oesophageal reflux disease",
+          "snomed_code": "235595009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Diaphoresis, radiation and doom are not features of reflux; retaining it as the working diagnosis would be a dangerous anchoring error."
+        },
+        {
+          "diagnosis": "musculoskeletal chest pain",
+          "snomed_code": "29857009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Pain not reproducible by chest-wall palpation and unchanged by movement excludes a musculoskeletal cause."
+        },
+        {
+          "diagnosis": "pulmonary embolism",
+          "snomed_code": "59282003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Remains a can't-miss alternative that also mandates emergency assessment; final discrimination needs ECG, troponin and imaging."
+        }
+      ],
+      "scoring_note": "Both surviving branches (ACS and PE) demand the same immediate action — T5 emergency transport — so triage should not wait on discriminating between them."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "acute coronary syndrome (suspected myocardial infarction)",
+          "snomed_code": "394659003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Time-critical suspected MI; definitive typing (STEMI/NSTEMI/unstable angina) awaits ECG and serial troponin in hospital. No reperfusion is possible at home."
+        }
+      ],
+      "scoring_note": "The correct remote endpoint is a confident presumptive suspicion of a heart attack driving immediate 000 escalation — not a confirmed subtype."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Crushing retrosternal chest pain at rest radiating to the left arm and jaw",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Hallmark of myocardial ischaemia; radiation to arm/jaw markedly raises the likelihood of an acute coronary event.",
+      "if_missed_consequence": "Missed myocardial infarction — irreversible myocardial necrosis, malignant arrhythmia and death.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Profuse diaphoresis with the chest pain",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Autonomic activation is a strong discriminator of cardiac from benign chest pain and predicts a serious event.",
+      "if_missed_consequence": "Under-appreciating severity and reassuring the patient inappropriately.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Resting dyspnoea with a sense of impending doom",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Dyspnoea suggests left-ventricular impairment; a sense of doom is a recognised harbinger of a catastrophic cardiac event.",
+      "if_missed_consequence": "Failure to escalate an evolving infarct with impaired ventricular function.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Cardiac arrest risk — potential loss of consciousness / cessation of normal breathing before ambulance arrival",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "ACS can precipitate malignant ventricular arrhythmia and arrest at any moment; bystander CPR readiness is essential.",
+      "if_missed_consequence": "Unwitnessed arrest without prompt CPR — near-certain death.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Reflux anchoring",
+      "description": "Accepting 'retrosternal discomfort' as reflux and recommending an antacid — ignoring diaphoresis, radiation and doom, and fatally delaying escalation."
+    },
+    {
+      "pitfall_name": "Musculoskeletal dismissal",
+      "description": "Attributing the pain to a strain and advising simple analgesia and rest, despite the pain being at rest, crushing and not reproducible by palpation."
+    },
+    {
+      "pitfall_name": "Telehealth over-management",
+      "description": "Attempting to 'monitor at home' or arrange a next-day GP review instead of calling 000 — no reperfusion, ECG or troponin is available remotely, so any delay is dangerous."
+    },
+    {
+      "pitfall_name": "Aspirin harm oversight",
+      "description": "Instructing aspirin without a quick check for aspirin allergy or active bleeding — the benefit is large in suspected MI but a known contraindication must not be ignored."
+    }
+  ],
+  "risk_scores": [
+    {
+      "tool_name": "HEART score (chest pain risk stratification)",
+      "expected_score_or_tier": "High risk (history strongly suspicious; ECG and troponin pending in hospital)",
+      "clinical_implication": "History alone places the patient in a high-risk band mandating emergency assessment; the score cannot be completed remotely without ECG and troponin."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "12-lead ECG for ST-segment changes",
+      "High-sensitivity cardiac troponin",
+      "Auscultated fourth heart sound (S4) gallop and lung fields",
+      "Objective blood pressure, heart rate, respiratory rate and oxygen saturation without a connected device"
+    ],
+    "correct_escalation_action": "Call 000 immediately for a Priority 1 ambulance; instruct the patient to chew 300 mg aspirin now if it is available and there is no aspirin allergy or active bleeding; keep the patient at complete rest, seated upright; ready the spouse for CPR if the patient collapses.",
+    "premature_diagnosis_risk": "Low for recognising a life-threatening cardiac cause (the constellation is classic); the real risk is UNDER-action — mislabelling it as reflux or musculoskeletal pain, or arranging non-urgent review instead of an ambulance."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "NHFA/CSANZ Australian Clinical Guidelines for the Management of Acute Coronary Syndromes 2016",
+      "relevant_recommendation": "Suspected ACS requires immediate emergency assessment with 12-lead ECG within 10 minutes and troponin; give aspirin 300 mg (chewed/dispersible) early unless contraindicated."
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "case_id": "SPEC-ENDO-04-00035",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T5",
+  "rationale_for_baseline_tier": "An older diabetic with capillary glucose above the meter's readable limit, progressive obtundation (not rousable to name), profound dehydration and hypotension (90/55) with tachycardia is in a life-threatening hyperglycaemic emergency at imminent risk of coma, acute kidney injury and thrombosis. Definitive treatment is careful hospital IV fluid resuscitation. This mandates T5 — call 000 for an emergency (Priority 1) ambulance now. The insidious, days-long onset must not be allowed to disguise the acuity.",
+  "minimum_viable_tier_for_pass": "T5",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Very high ('HI') glucose with confusion/drowsiness and signs of severe dehydration (low BP, fast pulse, dry tented skin)",
+      "target_tier": "T5",
+      "time_bound_condition": "Call 000 now — do not wait for routine daytime care",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-005",
+      "rationale": "This constellation is a hyperglycaemic emergency requiring urgent IV fluids that only hospital can deliver; delay sharply increases mortality.",
+      "communication_template": "His blood sugar is off the top of the meter and he's severely dehydrated and confused — this is an emergency. Call 000 now for an ambulance and tell them it's a diabetic emergency with a dangerously high sugar and altered consciousness.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Further drop in consciousness — becomes completely unrousable or comatose",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately, while awaiting the ambulance",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-002",
+      "rationale": "A falling conscious level threatens the airway; positioning and airway protection are the only levers available to carers until paramedics arrive.",
+      "communication_template": "If he becomes completely unresponsive, roll him onto his side into the recovery position, keep his airway clear, stay with him and tell 000 straight away that he has deteriorated.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Vomiting, choking, or noisy/obstructed breathing in a drowsy patient",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately",
+      "red_flag_ref": "RF-002",
+      "rationale": "Aspiration is a real risk in an obtunded, dehydrated patient; recovery positioning and airway clearance are urgent while paramedics are en route.",
+      "communication_template": "If he vomits or his breathing becomes noisy, turn him onto his side, clear his mouth, and keep 000 on the line.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "age_related",
+      "patient_factor": "Frail, dependent older adult in residential aged care with multiple risks (coma, AKI, thrombosis)",
+      "effect_on_advice": "Escalate without hesitation; do not trial any watch-and-wait. The insidious onset means he is sicker than he looks, and physiological reserve is low."
+    },
+    {
+      "modifier_type": "carer_burden",
+      "patient_factor": "Facility nursing staff are present and can act on instructions and take basic observations",
+      "effect_on_advice": "Leverage the on-site nurses to position him, protect the airway, monitor him continuously and relay changes to 000, but the definitive treatment remains hospital IV fluids — do not substitute facility measures for transfer."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Call 000 for an emergency ambulance right now and tell them it is a diabetic emergency — his blood sugar is above the meter's limit and he is confused and severely dehydrated. While you wait: lay him flat with his legs raised to support his blood pressure, keep monitoring his breathing, and if he becomes unresponsive roll him onto his side into the recovery position. Do not give him his diabetes tablets, and do not try to force him to drink while he is this drowsy. Stay with him and unlock the door for the paramedics.",
+    "contact_method": "Call 000 immediately (Priority 1 ambulance)",
+    "after_hours_advice": "000 operates 24 hours a day — this is a life-threatening emergency and must not wait for daytime or routine care.",
+    "documentation_for_gp": "Send his medication list (including metformin and gliclazide), the 'HI' glucose reading, the observed vital signs, and the timeline of thirst, urination and increasing drowsiness with the patient; flag for post-discharge geriatric and diabetes review with a documented sick-day plan."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T4",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "failure_description": "Treating a hyperglycaemic emergency with altered consciousness as a GP or urgent-care problem rather than calling an ambulance.",
+        "patient_harm_scenario": "Delayed fluid resuscitation allows progression to coma, acute kidney injury, thromboembolism and death."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T4"
+        ],
+        "failure_description": "Advising self-transport to the emergency department instead of a 000 ambulance for an obtunded, hypotensive patient — deterioration or airway compromise during unsupported transport."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T5"
+        ],
+        "failure_description": "No meaningful over-triage risk exists here — T5 is correct; this field is retained for schema completeness."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": false
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Whether this is a pure hyperosmolar state, DKA, or a mixed picture cannot be settled without hospital bloods (ketones, gas, osmolality).",
+    "correct_response_to_uncertainty": "Escalate to 000 regardless — the emergency transfer and hospital work-up are the same first action for any severe hyperglycaemic emergency with altered consciousness; resolve the HHS-vs-DKA distinction with hospital biochemistry, not at home.",
+    "wrong_response_to_uncertainty": "Delaying escalation to 'confirm' the exact diagnosis, or committing to home DKA-style insulin, before the patient is in hospital."
+  }
+}
