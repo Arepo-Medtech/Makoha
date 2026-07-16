@@ -1,0 +1,132 @@
+{
+  "case_id": "SPEC-ID-01-00204",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Sore throat was preceded by 48 hours of coryzal symptoms — runny nose, cough and watery irritated eyes",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_features",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "When did this start and how did it begin?",
+        "Do you have any other symptoms like a cold, cough or runny nose?"
+      ],
+      "patient_response_template": "It started like a normal cold two days ago — runny nose, a cough and my eyes were watery and irritated — and then the throat got really bad.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Severe throat pain has stopped all oral fluid intake for about 12 hours, with light-headedness and weakness",
+      "fhir_path": "Condition._freetext_HPC_tags.severity",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Are you able to drink fluids?",
+        "How much have you had to drink today?"
+      ],
+      "patient_response_template": "The pain is so bad I haven't been able to drink anything all day, and now I feel weak and a bit light-headed.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-008",
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No difficulty opening the mouth, no drooling, no voice change and no unilateral throat swelling",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "HEENT",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Can you open your mouth fully?",
+        "Are you drooling or does your voice sound muffled?",
+        "Is one side of your throat more swollen than the other?"
+      ],
+      "patient_response_template": "No, I can open my mouth okay, I'm not drooling, my voice sounds normal to me, and it doesn't feel worse on one side.",
+      "patient_deflection_template": "I hadn't really thought about that — let me check... no, none of that.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Breathing is comfortable — no noisy breathing, no difficulty getting air in",
+      "fhir_path": "Condition._freetext_HPC_tags.pertinent_negatives",
+      "ros_category": "Respiratory",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is your breathing noisy or hard?",
+        "Do you feel like your throat is closing when you breathe?"
+      ],
+      "patient_response_template": "No, my breathing is fine — it's just swallowing that's the problem.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Has not taken any pain relief because of fear of swallowing tablets",
+      "fhir_path": "MedicationStatement._freetext_tags.adherence",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you taken anything for the pain?",
+        "What have you tried so far?"
+      ],
+      "patient_response_template": "I haven't taken anything — I've been too scared to swallow pills when it hurts this much.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-008"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "Feels feverish with generalised fatigue but a home thermometer reads only low-grade (37.8)",
+      "fhir_path": "Observation._freetext_tags.constitutional",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you feel hot or feverish?",
+        "Have you been able to check your temperature?"
+      ],
+      "patient_response_template": "I feel feverish and really tired; when I checked, my thermometer said 37.8.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-009"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 20,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-003",
+      "DI-004"
+    ]
+  }
+}

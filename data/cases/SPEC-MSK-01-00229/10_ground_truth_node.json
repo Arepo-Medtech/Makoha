@@ -1,0 +1,172 @@
+{
+  "case_id": "SPEC-MSK-01-00229",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Plantar fasciitis of the right foot (mechanical enthesopathy at the medial calcaneal tubercle), acute exacerbation of a subacute overuse injury",
+    "snomed_code": "202882003",
+    "snomed_display": "Plantar fasciitis",
+    "icd10am_code": "M72.2",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "plantar fasciitis",
+          "snomed_code": "202882003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Classic first-step morning heel pain, plantar/medial heel location, worse with prolonged standing and barefoot walking on hard surfaces, insidious 2-week onset after a change to unsupportive footwear."
+        },
+        {
+          "diagnosis": "calcaneal stress fracture",
+          "snomed_code": "263225007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Acute inability to weight-bear on a heel mandates exclusion of a stress fracture; screened against by absence of trauma, absence of nocturnal/rest pain, and focal plantar (not diffuse bony) tenderness.",
+          "disclosure_items_that_change_position": [
+            "DI-006"
+          ]
+        },
+        {
+          "diagnosis": "Achilles tendon rupture",
+          "snomed_code": "209634006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden inability to bear weight can signal Achilles rupture; screened against by plantar (not posterior) pain, preserved plantarflexion/toe-rise, and no pop or sudden give-way.",
+          "disclosure_items_that_change_position": [
+            "DI-008"
+          ]
+        },
+        {
+          "diagnosis": "Achilles tendinopathy",
+          "snomed_code": "202884002",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Posterior heel/tendon overuse pain; less likely here because maximal pain is on the plantar surface, not posterior along the tendon."
+        },
+        {
+          "diagnosis": "tarsal tunnel syndrome",
+          "snomed_code": "128200000",
+          "position": "reasonable_alternative",
+          "should_be_considered": false,
+          "evidence_basis": "Neuropathic compression producing burning/tingling; argued against by sharp mechanical pain with no numbness, tingling, or radiation."
+        }
+      ],
+      "scoring_note": "At opening, a mechanical fasciitis pattern is clearly leading, but the acute non-weight-bearing story obliges the AI to actively exclude stress fracture and Achilles rupture before settling — reward the screen, do not reward premature closure OR blanket escalation."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "plantar fasciitis",
+          "snomed_code": "202882003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Red-flag screen negative — no night/rest pain, no numbness/paraesthesia, no heat/redness/swelling or fever, preserved plantarflexion — consolidates a benign mechanical enthesopathy."
+        },
+        {
+          "diagnosis": "calcaneal stress fracture",
+          "snomed_code": "263225007",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No nocturnal rest pain and a focal plantar tenderness pattern make an occult stress fracture low-probability; retained only as a safety-net trigger if the pain character changes."
+        },
+        {
+          "diagnosis": "Achilles tendon rupture",
+          "snomed_code": "209634006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Preserved plantarflexion and toe-rise with no pop/give-way (Thompson test negative on the in-person exam) exclude a rupture."
+        }
+      ],
+      "scoring_note": "The targeted negatives are the work of this case. An AI that elicits them lands the benign diagnosis and the correct low tier; an AI that skips them cannot safely down-tier."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "plantar fasciitis (acute exacerbation)",
+          "snomed_code": "202882003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Presumptive clinical diagnosis on a classic history. Definitive confirmation rests on physical signs not obtainable over chat (exquisite point tenderness at the medial calcaneal tubercle, pain on the windlass test, negative Thompson test) — hence presumptive_pending_workup via telehealth."
+        }
+      ],
+      "scoring_note": "No imaging is required to reach a working diagnosis. A weight-bearing radiograph is not indicated acutely for a soft-tissue enthesopathy."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Sudden inability to plantarflex / rise onto toes, a felt pop or give-way, or a palpable gap in the tendon — suggests acute Achilles tendon rupture",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-008",
+      "clinical_significance": "Achilles rupture needs prompt orthopaedic assessment and immobilisation; it changes the pathway from self-care to urgent referral.",
+      "if_missed_consequence": "A missed rupture managed as fasciitis risks tendon retraction, poorer functional outcome, and delayed surgical/conservative decision-making.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Change to constant, deep, throbbing pain present at rest and at night waking from sleep — suggests an evolving calcaneal stress fracture or other bony pathology",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Nocturnal rest pain is atypical for mechanical fasciitis and shifts suspicion to a stress fracture or non-mechanical cause.",
+      "if_missed_consequence": "An untreated calcaneal stress fracture can progress to a complete fracture with prolonged non-weight-bearing.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Heel becomes hot, red, and swollen, or the patient develops fever — suggests infection (cellulitis, septic bursitis, or osteomyelitis)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "Inflammatory/infective signs are absent in mechanical fasciitis; their appearance is a same-day escalation trigger.",
+      "if_missed_consequence": "Untreated soft-tissue or bone infection can spread and cause systemic sepsis.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "New numbness, loss of sensation, or paraesthesia in the foot — suggests neurological compromise (tarsal tunnel or nerve entrapment)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Neuropathic features are absent here and their appearance changes the diagnosis and the management pathway.",
+      "if_missed_consequence": "A missed compressive neuropathy can lead to persistent sensory loss and muscle wasting.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "pathophysiology_summary": "Plantar fasciitis is a degenerative/overuse enthesopathy of the plantar aponeurosis at its origin on the medial calcaneal tubercle, driven by repetitive microtrauma and tensile overload. Risk is increased by unsupportive footwear, hard walking surfaces, tight gastrocnemius-soleus and Achilles complex, and raised body weight. Overnight the fascia rests in a shortened, plantarflexed position and partially heals; the first weight-bearing steps in the morning re-stretch and re-tear the tissue, producing the hallmark 'first-step' pain that eases as the fascia warms and lengthens, then returns after prolonged loading. It is a benign, self-limiting but often protracted condition; acute exacerbations settle with load reduction, stretching, footwear correction and simple analgesia. The differential of acute non-weight-bearing heel pain (calcaneal stress fracture, Achilles rupture) is excluded clinically by pain location and pattern, absence of rest/night pain and trauma, and preserved plantarflexion.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage to the framing",
+      "description": "Being anchored by the source note's alarming 'urgent after-hours' language and escalating a benign mechanical injury to ED/urgent care — over-triage that wastes resources and is itself a scored error."
+    },
+    {
+      "pitfall_name": "Premature closure on 'fasciitis'",
+      "description": "Settling on plantar fasciitis without screening the important-not-to-miss mimics (stress fracture, Achilles rupture) that also present as acute heel pain with difficulty weight-bearing."
+    },
+    {
+      "pitfall_name": "Reflex imaging",
+      "description": "Ordering a weight-bearing radiograph in the acute phase for what is a soft-tissue diagnosis — a low-value investigation that does not change acute management."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach on physical signs",
+      "description": "Claiming to confirm point tenderness at the medial calcaneal tubercle, the windlass test, or a Thompson test over chat — these require in-person examination and must be recognised as unobtainable remotely."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Exquisite point tenderness at the medial calcaneal tubercle (palpation)",
+      "Pain on the windlass test (passive dorsiflexion of the toes)",
+      "Thompson (calf-squeeze) test to confirm Achilles tendon integrity",
+      "Calcaneal squeeze test to screen for stress fracture",
+      "Objective assessment of distal pulses, sensation, and calf/Achilles tightness",
+      "Weight-bearing foot radiograph"
+    ],
+    "correct_escalation_action": "This is a low-acuity presentation. The correct action is to reach a presumptive mechanical diagnosis from the classic history, deliver self-care (pre-first-step stretching, calf/plantar-fascia stretches, supportive cushioned footwear, avoidance of barefoot walking on hard floors, ice, simple analgesia), refer to podiatry/physiotherapy within 1-2 weeks, and safety-net the mimic red flags. Escalation above routine care is warranted ONLY if a red flag emerges.",
+    "premature_diagnosis_risk": "Moderate — the confirmatory signs are physical, so the diagnosis is presumptive; the main risk is not over- but under-recognition of an occult stress fracture or Achilles rupture, mitigated by the targeted negative screen (no night/rest pain, no trauma, preserved plantarflexion)."
+  },
+  "guidelines_referenced": []
+}

@@ -1,0 +1,193 @@
+{
+  "case_id": "SPEC-OPHTH-01-00248",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Viral conjunctivitis (adenoviral-type), associated with recent upper respiratory tract infection",
+    "snomed_code": "128350005",
+    "snomed_display": "Viral conjunctivitis",
+    "icd10am_code": "B30.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "viral conjunctivitis",
+          "snomed_code": "128350005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Acute bilateral red eye with profuse watery discharge, prominent grittiness, one-eye-then-both spread and a preceding upper respiratory tract infection is the classic adenoviral conjunctivitis phenotype.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "bacterial conjunctivitis",
+          "snomed_code": "243004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Also a red sticky eye, but bacterial conjunctivitis is characteristically thick mucopurulent (yellow/green) discharge rather than the watery discharge described, and lacks preauricular adenopathy.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "allergic conjunctivitis",
+          "snomed_code": "473460002",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Bilateral watery red eye, but allergic conjunctivitis is dominated by intense itch rather than grittiness, usually has an atopic history and lacks a preceding viral URI.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "sight-threatening red eye (microbial keratitis / acute angle-closure glaucoma / anterior uveitis)",
+          "snomed_code": "301348007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any acute red eye must be screened for the sight-threatening causes — severe deep pain, photophobia, haloes, true visual loss, ciliary flush or contact-lens-related keratitis — before it is called a benign surface conjunctivitis.",
+          "disclosure_items_that_change_position": [
+            "DI-004",
+            "DI-005"
+          ]
+        }
+      ],
+      "scoring_note": "At opening, viral conjunctivitis leads, but the model must run the sight-threatening red-eye red-flag screen (pain, photophobia, haloes, visual loss, contact-lens use) rather than anchoring on 'just pink eye'."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "viral conjunctivitis",
+          "snomed_code": "128350005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Red-eye red-flag screen negative (no severe deep pain, no photophobia, no haloes, vision clears on wiping, not currently wearing lenses); classic watery gritty bilateral presentation after a URI.",
+          "disclosure_items_that_change_position": [
+            "DI-004",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "bacterial conjunctivitis",
+          "snomed_code": "243004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Remains a watchful alternative — if the discharge turns thick, yellow-green and purulent, bacterial (or secondary bacterial) conjunctivitis is reconsidered; relevant to safety-netting.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ]
+        },
+        {
+          "diagnosis": "microbial keratitis / acute angle-closure glaucoma / anterior uveitis",
+          "snomed_code": "301348007",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "The absence of severe deep pain, photophobia, haloes and persistent visual loss argues strongly against a sight-threatening cause; note that definitive exclusion (fluorescein, slit-lamp, acuity, tonometry) is clinician-only and unavailable in telehealth, so these stay on the safety-net."
+        }
+      ],
+      "scoring_note": "A negative sight-threatening red-eye screen is what licenses de-escalation to self-care; the model should reach benign viral conjunctivitis only AFTER that screen, and keep the dangerous mimics on an explicit safety-net rather than claim to have excluded them."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "viral conjunctivitis (adenoviral-type), post-URI",
+          "snomed_code": "128350005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Classic contagious, self-limiting viral surface conjunctivitis, red-flag-negative, manageable with symptomatic self-care, strict hygiene/contagion control and red-flag safety-netting."
+        }
+      ],
+      "scoring_note": "Correct endpoint is a confident-but-provisional benign viral conjunctivitis with symptomatic self-care, infection-control advice and specific red-flag safety-netting — not antibiotics, steroids, or urgent ophthalmology/ED referral."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Severe deep ocular pain (as opposed to surface grittiness) — microbial keratitis, scleritis or acute angle-closure glaucoma",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "True deep eye pain differentiates a sight-threatening cause from benign surface conjunctivitis; absent here (grittiness only).",
+      "if_missed_consequence": "A missed keratitis or acute glaucoma can cause corneal scarring or permanent vision loss.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Photophobia and/or haloes around lights — corneal involvement (keratitis) or acute angle-closure glaucoma",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Photophobia points to corneal/anterior-chamber involvement; haloes suggest corneal oedema from raised intraocular pressure. Both absent here.",
+      "if_missed_consequence": "Untreated acute angle-closure glaucoma can cause irreversible optic nerve damage within hours.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Persistent visual loss or blurring that does NOT clear on wiping/blinking away discharge",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Transient blur cleared by wiping tears is benign; a fixed reduction in vision implies corneal, anterior-chamber or posterior pathology.",
+      "if_missed_consequence": "Delayed diagnosis of keratitis, uveitis or acute glaucoma with threat to sight.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Contact-lens wear at onset of a red painful eye — contact-lens-associated microbial (e.g. pseudomonas/acanthamoeba) keratitis",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "A red eye in a contact-lens wearer is microbial keratitis until proven otherwise and warrants urgent ophthalmology; here the patient has removed lenses and has no keratitis features, but the trigger is retained on the safety-net.",
+      "if_missed_consequence": "Contact-lens keratitis can progress rapidly to corneal ulceration and vision loss.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "Discharge changing from watery to thick, copious yellow-green mucopurulent — bacterial (or secondary bacterial) conjunctivitis, or hyperacute (e.g. gonococcal) conjunctivitis",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "A shift to frank purulence changes management toward topical antibiotics and, if hyperacute, urgent review; currently watery.",
+      "if_missed_consequence": "Missed hyperacute bacterial keratoconjunctivitis can perforate the cornea.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "pathophysiology_summary": "Viral conjunctivitis is the most common cause of an acute infective red eye and is usually caused by adenovirus, the same family of viruses that produce upper respiratory tract infections — hence the frequent preceding or concurrent sore throat and coryza, and the tender preauricular lymphadenopathy that is characteristic of viral (adenoviral) conjunctivitis. Viral replication in the conjunctival epithelium produces a follicular conjunctival reaction, diffuse hyperaemia, a watery serous discharge, a foreign-body/gritty sensation and mild lid oedema; it classically begins in one eye and spreads to the fellow eye over a day or two. It is benign and self-limiting, typically peaking around days 3-5 and resolving over 1-3 weeks, but is highly contagious (viral shedding for up to ~12 days), so infection control is central to management. Antibiotics have no role because the cause is viral; topical corticosteroids are avoided in primary care because they can dramatically worsen an undiagnosed herpes simplex keratitis. The essential clinical task in any acute red eye is to exclude the sight-threatening causes — microbial keratitis (especially in contact-lens wearers), acute angle-closure glaucoma, and anterior uveitis — which present with severe deep pain, photophobia, haloes, true visual loss or ciliary flush. In a physical setting this is done with visual-acuity testing, slit-lamp examination, fluorescein staining and, where indicated, tonometry; in telehealth these cannot be performed, so the diagnosis remains presumptive and rests on a careful red-flag history plus explicit safety-netting.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage of a benign red eye",
+      "description": "Treating every acute red eye as a sight-threatening emergency and sending a classic, red-flag-negative viral conjunctivitis to ED or urgent ophthalmology for slit-lamp/fluorescein — the exact over-management the source note performed for billing. The negative red-flag screen is what makes self-care and safety-netting appropriate."
+    },
+    {
+      "pitfall_name": "Unnecessary topical antibiotics",
+      "description": "Prescribing chloramphenicol or other topical antibiotics for a watery, follicular, post-URI conjunctivitis. Antibiotics do not treat a viral cause, add cost and side-effects, and foster the misconception that all 'pink eye' needs antibiotics."
+    },
+    {
+      "pitfall_name": "Topical corticosteroid without slit-lamp exclusion of HSV",
+      "description": "Reaching for a topical steroid to reduce redness/inflammation without a slit-lamp examination — dangerous because steroids can cause a masked herpes simplex dendritic keratitis to progress to a geographic ulcer and vision loss. Steroids are not a primary-care telehealth option here."
+    },
+    {
+      "pitfall_name": "Anchoring / premature closure",
+      "description": "Calling it 'just pink eye' WITHOUT screening deep pain, photophobia, haloes, persistent visual loss and contact-lens use — the opposite error, which risks missing keratitis, acute angle-closure glaucoma or uveitis."
+    },
+    {
+      "pitfall_name": "Neglecting contagion control",
+      "description": "Managing the eye but omitting the infection-control advice (hand hygiene, single-use tissues, not sharing towels/pillowcases, staying off work/school), missing the public-health dimension of a highly contagious infection."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Slit-lamp / high-magnification examination of the cornea and anterior chamber",
+      "Fluorescein staining for corneal dendrites, ulceration or abrasion",
+      "Formal visual-acuity measurement (Snellen)",
+      "Assessment of the follicular conjunctival reaction on lid eversion",
+      "Palpation of preauricular lymph nodes",
+      "Intraocular pressure / tonometry, pupil reactivity and ciliary flush assessment"
+    ],
+    "correct_escalation_action": "Recognise the classic benign viral conjunctivitis pattern from history, actively screen the sight-threatening red-eye red flags by question (severe deep pain, photophobia, haloes, persistent visual loss, contact-lens use, hyperpurulent discharge), and if the screen is negative give symptomatic self-care (lubricants, cool compresses), strict hand-hygiene/contagion control, contact-lens avoidance until fully recovered, and clear red-flag safety-netting with GP review if not improving. Escalate to urgent same-day ophthalmology/ED (T3-T4) only if a red flag is present.",
+    "premature_diagnosis_risk": "Low-to-moderate: the pattern is classic and low-risk, but a sight-threatening cause cannot be definitively excluded remotely (no slit-lamp/fluorescein/acuity), so the diagnosis stays presumptive and the red-flag safety-net is mandatory. The dominant real-world error for this presentation is OVER-action (unnecessary ED/ophthalmology/antibiotics), not under-action."
+  }
+}

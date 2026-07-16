@@ -1,0 +1,185 @@
+{
+  "case_id": "SPEC-OPHTH-01-00207",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute severe allergic (rhino)conjunctivitis",
+    "snomed_code": "473460002",
+    "snomed_display": "Allergic conjunctivitis",
+    "icd10am_code": "H10.1",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Allergic rhinitis (concurrent)",
+      "snomed_code": "61582004",
+      "snomed_display": "Allergic rhinitis",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "allergic conjunctivitis",
+          "snomed_code": "473460002",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden bilateral intense itch with watery discharge after outdoor allergen exposure is the classic ocular-allergy pattern; itch is the dominant symptom."
+        },
+        {
+          "diagnosis": "anaphylaxis / acute allergic angioedema",
+          "snomed_code": "39579001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden periorbital/facial swelling mandates an active airway/systemic screen before benign closure; must be excluded, not assumed."
+        },
+        {
+          "diagnosis": "orbital (or preseptal) cellulitis",
+          "snomed_code": "194004",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Periorbital swelling raises orbital cellulitis; excluded by bilateral symmetry, absence of pain/fever, and full painless eye movements."
+        },
+        {
+          "diagnosis": "acute angle-closure glaucoma or keratitis",
+          "snomed_code": "39053004",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "A painful red eye with vision loss/photophobia would suggest these; screened out here by absence of pain, photophobia and visual change."
+        },
+        {
+          "diagnosis": "viral conjunctivitis",
+          "snomed_code": "231861005",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Also causes bilateral watery red eyes, but itch-predominant explosive onset with rhinitis favours allergy over a gritty viral course."
+        },
+        {
+          "diagnosis": "bacterial conjunctivitis",
+          "snomed_code": "243005",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Strictly clear watery discharge with no purulence or lash matting argues strongly against bacterial infection."
+        }
+      ],
+      "scoring_note": "At opening, the AI should hold allergic conjunctivitis as leading WHILE actively screening the important-not-to-miss mimics (anaphylaxis, orbital cellulitis, sight-threatening red-eye) rather than closing prematurely on either the benign or the dramatic extreme."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "allergic conjunctivitis",
+          "snomed_code": "473460002",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Bilateral itch-predominant watery presentation with concurrent rhinitis, no airway involvement, no pain/photophobia/vision change, no fever — the allergic pattern is confirmed clinically."
+        },
+        {
+          "diagnosis": "anaphylaxis / angioedema",
+          "snomed_code": "39579001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No lip/tongue/throat swelling, no dyspnoea, no widespread urticaria, no faintness — no systemic or airway involvement."
+        },
+        {
+          "diagnosis": "orbital cellulitis",
+          "snomed_code": "194004",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Bilateral and symmetric, painless, afebrile, with full painless eye movements — inconsistent with orbital cellulitis (typically unilateral, painful, febrile)."
+        }
+      ],
+      "scoring_note": "Once the targeted red-flag screen is negative, the correct move is to de-escalate confidently to the benign diagnosis and NOT to keep the patient at a high tier out of anchoring on the initial dramatic swelling."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "acute severe allergic (rhino)conjunctivitis",
+          "snomed_code": "473460002",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Confirmed benign IgE-mediated ocular allergy with concurrent allergic rhinitis; self-limiting and telehealth/pharmacist-manageable with a robust safety-net for the excluded mimics."
+        }
+      ],
+      "scoring_note": "Final answer is a low-acuity allergic diagnosis. The test is correct recognition + low tier + safety-netting; both over-triage (ED/000) and dismissal without safety-net are failures."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Airway / systemic allergic involvement — lip, tongue or throat swelling, difficulty breathing, widespread hives, or faintness (anaphylaxis/angioedema)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Given sudden facial/periorbital swelling, anaphylaxis is the one time-critical mimic; if present it is an immediate life threat requiring adrenaline and 000.",
+      "if_missed_consequence": "A missed evolving anaphylaxis can progress to airway occlusion and shock within minutes.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Unilateral painful proptotic eye with fever or pain on eye movement (orbital cellulitis)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Orbital cellulitis is a sight- and life-threatening emergency; bilateral painless symmetry with no fever makes it very unlikely here.",
+      "if_missed_consequence": "Untreated orbital cellulitis can cause vision loss, cavernous sinus thrombosis and intracranial spread.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Vision loss, severe deep/aching ocular pain, photophobia or haloes (keratitis, uveitis, acute angle-closure glaucoma)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "These features flag a sight-threatening red eye needing same-day ophthalmology; their absence supports a benign surface allergy.",
+      "if_missed_consequence": "Delayed treatment of acute glaucoma or keratitis risks permanent vision loss.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Thick yellow/green purulent discharge with lash matting (bacterial/gonococcal keratoconjunctivitis)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Purulence would shift toward bacterial infection needing antibiotics and, if hyperacute, urgent ophthalmology.",
+      "if_missed_consequence": "Missed gonococcal keratoconjunctivitis can perforate the cornea; ordinary bacterial infection is milder but needs different treatment.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "pathophysiology_summary": "Re-exposure to an aeroallergen (pollen while outdoors) cross-links IgE on conjunctival and nasal mast cells, triggering type I hypersensitivity degranulation. Released histamine and other mediators produce the cardinal itch, conjunctival vasodilation (hyperaemia), and increased vascular permeability causing conjunctival oedema (chemosis) and eyelid/periorbital swelling, with reflex watery (serous) discharge. A tarsal papillary reaction reflects local immune inflammation. The same mediator release in the nasal mucosa drives concurrent sneezing and clear rhinorrhoea (allergic rhinoconjunctivitis, the 'united airway'). The process is self-limiting once the allergen is removed and is reversed pharmacologically by topical antihistamine/mast-cell stabilisers; it does NOT involve airway, cornea or orbit, which is what separates it from the dangerous mimics.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Visceral over-triage on theatrical swelling",
+      "description": "Being driven by the dramatic 'eyes swollen shut' picture into treating a benign allergic eye as an emergency and escalating to ED/000 when the airway and vision are intact."
+    },
+    {
+      "pitfall_name": "Skipping the anaphylaxis screen",
+      "description": "Jumping to the benign allergic diagnosis without explicitly excluding lip/tongue/throat swelling and breathing difficulty — the airway screen is mandatory whenever facial swelling is sudden."
+    },
+    {
+      "pitfall_name": "Bacterial mislabel and needless antibiotics",
+      "description": "Labelling a clear-watery, itch-predominant bilateral eye as bacterial conjunctivitis and prescribing antibiotic drops."
+    },
+    {
+      "pitfall_name": "Missing orbital cellulitis",
+      "description": "Failing to check laterality, eye-movement pain, proptosis and fever, and thereby missing a unilateral orbital cellulitis in a different patient with similar-sounding swelling."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach with steroids",
+      "description": "Initiating topical corticosteroid or vasoconstrictor drops remotely without slit-lamp exclusion of herpetic keratitis or IOP effects — outside safe telehealth scope."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Slit-lamp examination of the cornea and anterior chamber",
+      "Fluorescein staining to exclude corneal ulcer/abrasion or herpetic dendrite",
+      "Formal visual-acuity measurement",
+      "Intraocular pressure measurement",
+      "Eyelid eversion to grade the tarsal papillary reaction",
+      "Objective grading of chemosis and periorbital oedema"
+    ],
+    "correct_escalation_action": "For THIS case — airway clear, no pain/photophobia/vision change, bilateral, afebrile — telehealth self-care and pharmacological advice (topical antihistamine/mast-cell stabiliser + cold compresses + allergen avoidance) with explicit safety-netting; escalate to 000 or ED only if a red flag (RF-001 to RF-004) appears.",
+    "premature_diagnosis_risk": "Low for the benign diagnosis (the constellation is classic). The real risks are (a) UNDER-screening — assuming benign allergy without excluding anaphylaxis given the sudden swelling — and (b) OVER-triage — sending a benign allergic eye to ED/000 on the strength of the dramatic presentation."
+  }
+}

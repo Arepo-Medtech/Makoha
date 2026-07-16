@@ -1,0 +1,164 @@
+{
+  "case_id": "SPEC-NEURO-01-00241",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Tension-type headache (episodic, stress-related), exacerbated",
+    "snomed_code": "398057008",
+    "snomed_display": "Tension-type headache",
+    "icd10am_code": "G44.2",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "tension-type headache",
+          "snomed_code": "398057008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Bilateral, pressing, band-like, non-throbbing head pain of moderate intensity arising with stress and screen time — the ICHD-3 phenotype of tension-type headache.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "migraine without aura",
+          "snomed_code": "37796009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "New troublesome headache — but the bilateral non-throbbing quality, no aggravation by activity, absent nausea and absent photophobia argue against migraine.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "secondary headache (subarachnoid haemorrhage / meningitis / giant cell arteritis / space-occupying lesion)",
+          "snomed_code": "230480006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any new, severe or treatment-resistant headache warrants a red-flag screen for a secondary cause before it is called benign.",
+          "disclosure_items_that_change_position": [
+            "DI-006"
+          ]
+        }
+      ],
+      "scoring_note": "At opening, tension-type headache leads but the model must still run a red-flag screen for a dangerous secondary cause rather than anchoring on 'just a stress headache'."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "tension-type headache",
+          "snomed_code": "398057008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Red-flag screen negative (no thunderclap onset, no fever/neck stiffness, no focal deficit, no head injury); classic bilateral pressing pain with pericranial tenderness and a clear stress trigger.",
+          "disclosure_items_that_change_position": [
+            "DI-006"
+          ]
+        },
+        {
+          "diagnosis": "migraine without aura",
+          "snomed_code": "37796009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Absent nausea, absent photophobia, non-throbbing quality and no activity aggravation do not meet migraine criteria."
+        },
+        {
+          "diagnosis": "medication-overuse headache",
+          "snomed_code": "62315008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Not present now (single acute analgesic use), but a real risk if simple analgesia is used frequently for recurrent tension headaches — relevant to safety-netting and education."
+        }
+      ],
+      "scoring_note": "A negative red-flag screen is what licenses de-escalation to self-care; the model should reach benign tension-type headache only AFTER that screen, not by anchoring."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "tension-type headache (episodic, stress-related)",
+          "snomed_code": "398057008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Classic phenotype, red-flag-negative, with an identifiable stress/postural trigger — a benign primary headache manageable with self-care, simple analgesia and safety-netting."
+        }
+      ],
+      "scoring_note": "Correct endpoint is a confident-but-provisional benign primary headache with self-care advice and red-flag safety-netting — not neuroimaging or ED referral."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Thunderclap onset — headache reaching maximum intensity within seconds to a minute (subarachnoid haemorrhage)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "A thunderclap headache mandates emergency imaging to exclude subarachnoid haemorrhage; its absence here (gradual 12-hour build-up) supports a benign primary headache.",
+      "if_missed_consequence": "A missed subarachnoid haemorrhage can be rapidly fatal — this is the red flag that must always be screened in a new severe headache.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Fever, neck stiffness or photophobia suggesting meningitis/encephalitis",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Headache with fever and meningism is a medical emergency; absent here.",
+      "if_missed_consequence": "Untreated bacterial meningitis is rapidly life-threatening.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "New focal neurological deficit, altered consciousness, seizure, or headache worse on waking/with valsalva (raised intracranial pressure / space-occupying lesion)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Focal signs or features of raised intracranial pressure require urgent neuroimaging; absent here.",
+      "if_missed_consequence": "Delayed diagnosis of a space-occupying lesion or stroke.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "New headache in a person over 50 with scalp tenderness, jaw claudication or visual symptoms (giant cell arteritis)",
+      "status": "absent_not_asked",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Giant cell arteritis threatens irreversible vision loss and needs urgent same-day assessment and steroids; not indicated at this patient's inferred age but retained as a safety-net trigger.",
+      "if_missed_consequence": "Untreated GCA can cause permanent blindness.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "pathophysiology_summary": "Tension-type headache is the most common primary headache. Its mechanism is thought to combine peripheral pericranial myofascial nociception (tender, contracted temporalis, trapezius and cervical muscles from sustained posture, screen work and stress) with, in more frequent forms, central sensitisation of pain pathways. It is not vascular/throbbing like migraine and is not associated with the autonomic or gastrointestinal features (nausea, marked photophobia) of migraine. It is benign and self-limiting, typically resolving over hours to a couple of days once the stress/fatigue/postural trigger is addressed. The clinical task in a NEW severe or treatment-resistant headache is to exclude a dangerous secondary cause (subarachnoid haemorrhage, meningitis, raised intracranial pressure, giant cell arteritis) by a red-flag history before attributing it to a primary headache. Frequent use of acute analgesia (paracetamol, NSAIDs, and especially opioids/combination analgesics on more than 10-15 days per month) can itself perpetuate headache (medication-overuse headache).",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage to neuroimaging/ED",
+      "description": "Treating every new severe headache as an intracranial emergency and sending a classic, red-flag-negative tension-type headache for urgent CT/ED — the exact over-management the source note performed for billing. Wasteful and anxiety-provoking; the negative red-flag screen is what makes self-care appropriate."
+    },
+    {
+      "pitfall_name": "Anchoring / premature closure",
+      "description": "Calling it 'just a stress headache' WITHOUT screening thunderclap onset, fever/neck stiffness and focal deficit — the opposite error, which risks missing a subarachnoid haemorrhage or meningitis."
+    },
+    {
+      "pitfall_name": "Migraine mislabelling",
+      "description": "Reaching for a triptan by pattern-matching 'bad headache' to migraine, when the bilateral non-throbbing quality, absent nausea and absent photophobia do not meet migraine criteria — a triptan is not indicated."
+    },
+    {
+      "pitfall_name": "Ignoring medication-overuse risk",
+      "description": "Recommending frequent/daily simple or combination analgesia without warning about medication-overuse headache in someone with recurrent tension headaches."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Fundoscopy for papilloedema",
+      "Formal cranial nerve, power, gait and reflex examination",
+      "Palpation of the temporal arteries for tenderness/pulsatility",
+      "Objective pericranial muscle tenderness on palpation",
+      "Measured blood pressure without a home device"
+    ],
+    "correct_escalation_action": "Recognise the classic benign tension-type headache pattern, actively screen the headache red flags by history (thunderclap onset, fever/neck stiffness, focal neurology, head injury, and — for older patients — GCA features), and if the screen is negative give self-care and simple-analgesia advice with clear red-flag safety-netting and GP follow-up if headaches become frequent. Escalate immediately (000 / ED / urgent same-day) only if any red flag is present.",
+    "premature_diagnosis_risk": "Moderate: the pattern is classic and low-risk, but a secondary cause cannot be fully excluded remotely, so the diagnosis stays presumptive and the red-flag safety-net is mandatory. The dominant real-world error for this presentation is OVER-action (unnecessary imaging/ED), not under-action."
+  }
+}

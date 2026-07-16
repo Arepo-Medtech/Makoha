@@ -1,0 +1,128 @@
+{
+  "case_id": "SPEC-DERM-01-00240",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Eruption began within 24 hours of shaving the lower legs, followed by tight occlusive clothing (workout leggings) causing friction over the shaved area",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Did anything happen just before the spots appeared — shaving, waxing, new products?",
+        "What were you doing around the time this came up?",
+        "Had you shaved or worn anything tight on your legs recently?"
+      ],
+      "patient_response_template": "Yeah, I'd shaved my legs that evening and then put on my tight workout leggings straight after. The spots came up overnight.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Lesions are follicle-centred pustules on a discrete erythematous base with completely normal, uninflamed skin between them — no confluent spreading erythema",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Does each spot have a hair in the middle, and is the skin between the spots normal?",
+        "Are the spots separate little bumps, or is the redness joining up into one big patch?",
+        "Can you describe exactly what each spot looks like up close?"
+      ],
+      "patient_response_template": "Now that you say it — yes, nearly every spot has a hair poking out of the middle, and the skin in between is totally normal, not red or joined up.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid"
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Patient applied a heavy occlusive body butter over the affected area, worsening follicular occlusion",
+      "fhir_path": "Condition._freetext_HPC_tags.precipitating_factors",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you put any creams, oils, or lotions on the area?",
+        "What have you been using on your skin since this started?",
+        "Did you apply any moisturiser or product over the spots?"
+      ],
+      "patient_response_template": "I slathered a really thick body butter over it to try to soothe it, but honestly it seemed to make it worse.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid"
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No systemic features — denies fever, chills, rigors, or feeling generally unwell",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you had any fever, chills, shivers, or felt unwell in yourself?",
+        "Do you feel hot and cold or run down at all?",
+        "Any temperature or feeling sick alongside the rash?"
+      ],
+      "patient_response_template": "No, nothing like that — no fever or chills, I feel completely fine in myself, just worried about the spots.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "No expanding confluent hot red patch, no red streaks tracking up the limb, and no large deep fluctuant painful lump",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Is any of the redness spreading into a large hot patch, or are there red streaks running up your leg?",
+        "Have any spots turned into a big, deep, very painful lump?",
+        "Is the redness getting bigger or joining together, or streaking upward?"
+      ],
+      "patient_response_template": "No, there's no big red patch spreading and no streaks going up my leg, and none of them have turned into a big deep lump — they're all still little separate spots.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "High health anxiety — patient specifically fears a serious spreading or drug-resistant (MRSA) infection",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "What are you most worried this might be?",
+        "Is there something specific you're afraid of here?"
+      ],
+      "patient_response_template": "Honestly I'm terrified it's a serious staph or one of those drug-resistant infections you read about — it came up so fast.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "any"
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "when_management_plan_discussed",
+      "patient_text": "Do I need antibiotic tablets or to go to the hospital for this? I'm scared it'll spread while I wait.",
+      "expected_ai_doctor_response_quality": "Reassure proportionately: explain this looks like a benign, self-limiting follicular irritation/infection that does not need hospital or routine oral antibiotics; give clear self-care and hygiene advice; and give specific safety-net signs that WOULD warrant urgent review, without either dismissing the concern or over-escalating."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 12,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-001",
+      "DI-002",
+      "DI-004",
+      "DI-005"
+    ]
+  }
+}
