@@ -1,0 +1,109 @@
+{
+  "case_id": "SPEC-ENDO-01-00038",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T2",
+  "rationale_for_baseline_tier": "The patient is systemically well (afebrile, no vomiting, no Kussmaul breathing, alert, tolerating fluids) with a Risk-Level-Low presentation: symptomatic hyperglycaemia in the pre-diabetic range plus a localised candidal intertrigo. This needs prompt attention — fasting venous bloods arranged for the next morning, a topical antifungal, and a GP review within 24–48 hours to assess the rash and results — but not urgent same-day in-person assessment (T3), an ED visit (T4) or a 000 ambulance (T5). Per the T4/T5 ceiling discipline, there is no patient-reportable time-critical emergency feature, so T2 (prompt GP) is the conservative-but-appropriate tier.",
+  "minimum_viable_tier_for_pass": "T1",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "The groin redness spreads rapidly down the leg or beyond the fold, the area becomes hot, hard and swollen, or a fever above 38 C develops",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately, at any point — do not wait for the GP appointment",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-009",
+      "rationale": "These indicate a severe secondary bacterial infection / spreading cellulitis with sepsis risk, which is an emergency.",
+      "communication_template": "If the redness starts spreading quickly down your leg, the area turns hot, hard and swollen, or you spike a fever over 38 degrees, go to the emergency department or call 000 straight away — that means the infection has turned serious.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Vomiting, deep or rapid breathing, drowsiness or confusion, severe abdominal pain, fruity-smelling breath, or being unable to keep fluids down",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — call 000",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-010",
+      "rationale": "These are features of a hyperglycaemic emergency (DKA or hyperosmolar hyperglycaemic state), which is life-threatening and needs an ambulance.",
+      "communication_template": "If you start vomiting, breathing fast and deep, feel drowsy or confused, get bad tummy pain, or can't keep fluids down, call 000 immediately — that can mean your blood sugar has become dangerously high.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "The rash is no better or worse after 48 hours of antifungal treatment, or the fatigue and urinary symptoms worsen despite the plan",
+      "target_tier": "T3",
+      "time_bound_condition": "Within 24 hours of noticing no improvement",
+      "rationale": "Treatment failure or symptomatic worsening warrants an urgent same-day in-person review to reassess the rash (possible bacterial superinfection) and glycaemic status.",
+      "communication_template": "If the rash hasn't started improving in a couple of days on the cream, or you feel worse, book an urgent same-day appointment to be seen in person.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "No emergency or treatment-failure features — routine progression of the plan",
+      "target_tier": "T2",
+      "rationale": "Baseline pathway: fasting bloods tomorrow morning and GP review within 24–48 hours to check the rash and results.",
+      "communication_template": "Otherwise, get your fasting bloods done first thing tomorrow and see your GP within the next day or two to check the rash and go over the results.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone and called out of hours; no one else present to monitor deterioration overnight",
+      "effect_on_advice": "Make the emergency triggers concrete and easy to self-check, and confirm the patient can call 000 and reach pathology/the GP independently the next day."
+    },
+    {
+      "modifier_type": "comorbidity",
+      "patient_factor": "Undiagnosed impaired glucose regulation with glycosuria predisposing to infection",
+      "effect_on_advice": "Lower the threshold for re-contact if the skin infection changes character, given impaired glucose control slows healing and raises bacterial-superinfection risk."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Get a fasting blood test (fasting glucose, HbA1c and lipids) first thing tomorrow morning — nothing but water from midnight — and see your GP within the next day or two to review the rash and the results. Use the antifungal cream twice a day and keep the area clean and dry. Stop sugary drinks now and try a short walk after your biggest meal.",
+    "contact_method": "Book a GP appointment within 24–48 hours; attend the pathology collection centre tomorrow morning.",
+    "after_hours_advice": "If any emergency signs appear overnight — spreading hot swollen redness or fever, or vomiting/deep breathing/drowsiness — call 000; otherwise the fasting bloods and GP review are next-day, not overnight, tasks.",
+    "documentation_for_gp": "Telehealth assessment of symptomatic hyperglycaemia (impaired-glucose-regulation pattern with insulin-resistance stigmata) and candidal intertrigo. Fasting glucose/HbA1c/lipids requested; topical antifungal advised; lifestyle counselling given; GP to confirm glycaemic category, treat/monitor the rash, review blood pressure and consider a GPMP."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T1",
+    "over_triage_threshold": "T4",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1"
+        ],
+        "failure_description": "Treating the presentation as pure self-care with no arranged testing and no safety-netting, dismissing the symptomatic hyperglycaemia and the skin infection.",
+        "patient_harm_scenario": "Missed progression to frank diabetes or an unrecognised deterioration of the skin infection into cellulitis/sepsis, or an undetected hyperglycaemic emergency."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Failing to arrange any glycaemic testing or skin treatment and giving no follow-up plan."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T4",
+          "T5"
+        ],
+        "failure_description": "Sending a stable, systemically-well pre-diabetes presentation to the emergency department or calling a 000 ambulance — unnecessary emergency resource use for a Risk-Level-Low metabolic screening presentation."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": true
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Whether the patient has pre-diabetes or has already crossed into frank type 2 diabetes cannot be resolved via telehealth — it needs a fasting venous glucose and HbA1c.",
+    "correct_response_to_uncertainty": "Name the metabolic pattern as suspected (not confirmed), arrange the fasting labs, treat the skin infection, give lifestyle advice and safety-net — deferring the definitive glycaemic label to the laboratory result.",
+    "wrong_response_to_uncertainty": "Either declaring frank diabetes (or starting a hypoglycaemic drug) on a single random reading, or falsely reassuring the patient that no testing is needed."
+  }
+}
