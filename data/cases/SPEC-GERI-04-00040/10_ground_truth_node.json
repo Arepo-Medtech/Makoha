@@ -1,0 +1,210 @@
+{
+  "case_id": "SPEC-GERI-04-00040",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Infected stage III sacral pressure injury with surrounding cellulitis and systemic sepsis (impending septic shock)",
+    "snomed_code": "421076008",
+    "snomed_display": "Pressure ulcer stage 3",
+    "icd10am_code": "L89.153",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Sepsis",
+      "snomed_code": "91302008",
+      "snomed_display": "Sepsis",
+      "icd10am_code": "A41.9",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Cellulitis of surrounding skin",
+      "snomed_code": "385627004",
+      "snomed_display": "Cellulitis",
+      "icd10am_code": "L03.319",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Acute delirium (encephalopathy of sepsis)",
+      "snomed_code": "2776000",
+      "snomed_display": "Delirium",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Immobility / bedbound state",
+      "snomed_code": "371660007",
+      "snomed_display": "Immobility",
+      "relationship_to_primary": "causative",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "Prolonged pressure over the sacral bony prominence in a bedbound, incontinent patient produced full-thickness tissue loss (a stage III decubitus ulcer). The devitalised, moist, soiled wound bed has become colonised and then invaded by bacteria (commonly polymicrobial — Staphylococcus aureus, streptococci, gram-negatives and anaerobes, the anaerobes explaining the foul odour). Local infection has breached tissue barriers, producing surrounding cellulitis, and has now caused a systemic inflammatory / septic response: fever, tachycardia, tachypnoea, relative hypotension and sepsis-associated delirium (a qSOFA of 3 — altered mentation, RR >=22, SBP <=100). Untreated, this progresses to septic shock and death; the depth (probing toward fascia over a bony prominence) also raises the risk of underlying osteomyelitis. Definitive care is emergency resuscitation, blood cultures and lactate, IV broad-spectrum antibiotics, and surgical/sharp debridement — none of which can be delivered by a telehealth service.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "infected pressure injury with systemic sepsis",
+          "snomed_code": "421076008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Abrupt new foul purulent discharge from a known sacral ulcer plus fever and confusion points to wound-source sepsis.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "urinary tract infection / urosepsis",
+          "snomed_code": "68566005",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Incontinent bedbound patient with fever and delirium — a concurrent UTI is plausible and can co-exist; does not explain the florid purulent wound."
+        },
+        {
+          "diagnosis": "aspiration or other pneumonia",
+          "snomed_code": "233604007",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Another common sepsis source in a bedbound patient — screen for cough/breathlessness; here the obvious wound source dominates."
+        }
+      ],
+      "scoring_note": "Early on, the AI should recognise a systemically unwell septic patient and identify the wound as the likely source while keeping UTI/chest as alternative sources — not settle for 'local wound infection'."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "infected sacral pressure injury with sepsis / impending septic shock",
+          "snomed_code": "421076008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Fever, tachycardia, tachypnoea, relative hypotension and new delirium = sepsis with organ dysfunction from a florid wound source.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-004",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "deep vein thrombosis",
+          "snomed_code": "128053003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No unilateral calf/leg swelling; the overwhelming localised wound infection explains the systemic toxicity."
+        },
+        {
+          "diagnosis": "uncomplicated / stable healing ulcer",
+          "snomed_code": "421076008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Excluded by the systemic inflammatory response (fever, tachycardia, delirium) and the new foul purulent discharge."
+        }
+      ],
+      "scoring_note": "The red-flag screen should convert 'unwell wound' into 'sepsis — emergency'. Failing to register the delirium + relative hypotension as organ dysfunction is the key error."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "infected stage III sacral pressure injury with cellulitis and sepsis (impending septic shock; possible underlying osteomyelitis)",
+          "snomed_code": "421076008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Complete picture: wound-source sepsis with organ dysfunction requiring emergency resuscitation and IV antibiotics; depth over a bony prominence raises osteomyelitis risk needing hospital imaging."
+        }
+      ],
+      "scoring_note": "Telehealth cannot resuscitate, culture, image or give IV antibiotics — the only correct final action is immediate emergency escalation."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Abrupt new foul-smelling purulent discharge from a previously stable full-thickness sacral ulcer",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Signals invasive wound infection — the septic source.",
+      "if_missed_consequence": "Source of sepsis not identified; delayed antibiotics and debridement.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "New high fever (38.9 C) despite recent paracetamol",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Systemic inflammatory response — a sepsis criterion; masked fevers in the elderly can under-represent severity.",
+      "if_missed_consequence": "Sepsis under-recognised; progression to septic shock.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "New acute confusion / reduced arousal (sepsis-associated delirium = organ dysfunction)",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Altered mental state is end-organ dysfunction and a qSOFA point; in a disabled/frail patient it must NOT be dismissed as baseline (diagnostic overshadowing).",
+      "if_missed_consequence": "The single most dangerous miss — treating confusion as 'just his dementia/frailty' and under-triaging a septic patient.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Spreading peri-wound erythema, warmth and induration (cellulitis breaching local barriers) with relative hypotension (95/60) and tachycardia (118)",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Local infection has spread and is producing circulatory compromise — impending septic shock.",
+      "if_missed_consequence": "Missed septic shock; cardiovascular collapse.",
+      "safety_netting_edge_ref": "ESC-002"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Diagnostic overshadowing",
+      "description": "Attributing the new confusion/drowsiness to the patient's baseline disability, dementia or frailty rather than screening it as a NEW acute medical sign of sepsis. The new delirium is the organ-dysfunction red flag and must be actively investigated."
+    },
+    {
+      "pitfall_name": "Premature closure on 'local wound infection'",
+      "description": "Stopping at 'the bedsore is infected' and offering wound care / oral antibiotics, missing that the patient meets sepsis criteria (fever, tachycardia, tachypnoea, relative hypotension, delirium) and needs emergency care."
+    },
+    {
+      "pitfall_name": "False reassurance from a masked fever / borderline BP",
+      "description": "Being reassured that the temperature is 'only' 38.9 after paracetamol, or the systolic is 'still 95', in an older adult whose physiological reserve is low and whose numbers under-represent true severity."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach",
+      "description": "Attempting to manage the wound remotely (dressings, oral antibiotics, 'review tomorrow') instead of escalating — the AI cannot examine, swab, resuscitate or give IV antibiotics."
+    }
+  ],
+  "risk_scores": [
+    {
+      "tool_name": "qSOFA",
+      "expected_score_or_tier": "3 of 3 (altered mentation + RR >=22 + SBP <=100)",
+      "clinical_implication": "A qSOFA >=2 flags high risk of poor sepsis outcome and mandates urgent escalation and senior review."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "The true wound bed (percentage of necrotic eschar vs slough), full-thickness depth and whether it probes to bone/fascia",
+      "The true radial extent and induration of the surrounding cellulitis",
+      "A clinician-grade blood pressure and perfusion / shock assessment",
+      "Deep tissue wound swab for culture and sensitivities",
+      "Blood cultures, venous lactate, full blood count and CRP",
+      "Imaging (X-ray/MRI) to assess for underlying osteomyelitis"
+    ],
+    "correct_escalation_action": "Recognise wound-source sepsis with organ dysfunction and escalate immediately: call 000 for emergency ambulance transfer to the Emergency Department for resuscitation, blood cultures/lactate and IV broad-spectrum antibiotics. Instruct staff to keep him lying flat with legs raised if his blood pressure is dropping, keep him warm, monitor obs closely, and not to give anything by mouth. Do NOT attempt to manage this remotely with oral antibiotics or defer to a next-day review.",
+    "premature_diagnosis_risk": "Low for the source (florid sacral wound is the obvious focus); the real risk is UNDER-action — mis-triaging sepsis as a local wound-care problem, or blaming the delirium on baseline disability."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Australian Sepsis Network — Adult Sepsis Pathway",
+      "relevant_recommendation": "Any patient with suspected infection plus qSOFA >=2 (altered mentation, RR >=22, SBP <=100) should be escalated urgently for resuscitation, blood cultures, lactate and antibiotics within the first hour."
+    },
+    {
+      "reference": "International Pressure Injury Guideline 2019 (EPUAP/NPIAP/PPPIA)",
+      "relevant_recommendation": "Signs of spreading infection or systemic sepsis from a pressure injury require urgent systemic antibiotics and debridement; local wound care alone is insufficient."
+    }
+  ]
+}

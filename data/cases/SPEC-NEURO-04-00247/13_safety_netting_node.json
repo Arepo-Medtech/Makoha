@@ -1,0 +1,118 @@
+{
+  "case_id": "SPEC-NEURO-04-00247",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T5",
+  "rationale_for_baseline_tier": "A 6-month-old with SMA type 1 in acute respiratory decompensation — severe tachypnoea, paradoxical breathing, an ineffective cough with retained secretions, feeding refusal, exhaustion and borderline hypoxia — is at imminent risk of mucus plugging and hypercapnic respiratory arrest. He cannot clear secretions and has minimal respiratory reserve. This is a life-threatening paediatric emergency requiring an emergency ambulance and PICU-level non-invasive ventilation. T5 (call 000) is the only appropriate tier; the telehealth service cannot examine, measure a blood gas, or provide ventilatory support.",
+  "minimum_viable_tier_for_pass": "T5",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Severe tachypnoea with paradoxical see-saw breathing and exhaustion in an SMA infant",
+      "target_tier": "T5",
+      "time_bound_condition": "Now — call 000 immediately, do not wait",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-002",
+      "rationale": "A failing respiratory pump in an infant with no reserve progresses to arrest within minutes to a short time; only paramedic + PICU support can rescue it.",
+      "communication_template": "This is an emergency. Call 000 now for an ambulance and tell them your baby has spinal muscular atrophy and is in severe breathing difficulty. Stay on the line with them and with me.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Retained secretions with a weak cough the infant cannot clear",
+      "target_tier": "T5",
+      "time_bound_condition": "While waiting for the ambulance",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-007",
+      "rationale": "Mucus plugging can cause sudden complete obstruction; the family's own trained cough-assist device is the immediate mechanical clearance tool until paramedics arrive.",
+      "communication_template": "If you're trained on his cough-assist machine, use it now at his usual care-plan settings to help clear the mucus while the ambulance is on the way. Keep him upright and bring the machine and his care plan to hospital.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Feeding refusal / weak swallow — aspiration risk",
+      "target_tier": "T5",
+      "red_flag_ref": "RF-003",
+      "disclosure_item_ref": "DI-004",
+      "rationale": "Oral intake during respiratory distress with a weak swallow risks aspiration that would worsen airway compromise.",
+      "communication_template": "Do not try to feed or give him anything to drink by mouth — it could go into his lungs. Keep him upright and wait for the paramedics.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "Colour change/cyanosis, pauses in breathing (apnoea), becoming unrousable, or stops breathing",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — keep 000 on the line",
+      "red_flag_ref": "RF-004",
+      "rationale": "Signals arrest or pre-arrest; dispatcher-guided infant CPR and immediate paramedic resuscitation are required.",
+      "communication_template": "If he turns blue, stops breathing, has pauses in his breathing, or you can't wake him — tell 000 straight away; they will guide you through infant CPR while the ambulance arrives.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "age_related",
+      "patient_factor": "6-month-old infant, ~6 kg, non-verbal — cannot self-report and has minimal respiratory reserve",
+      "effect_on_advice": "Lower the threshold for escalation: all information is caregiver/video-derived and deterioration is rapid. No weight-based drug dose may be given — any medication question is flagged for in-person/specialist determination."
+    },
+    {
+      "modifier_type": "comorbidity",
+      "patient_factor": "Known SMA type 1 with severe intercostal weakness and ineffective cough",
+      "effect_on_advice": "Any intercurrent respiratory illness is a potential emergency; a normally trivial cold warrants urgent action because the infant cannot clear secretions."
+    },
+    {
+      "modifier_type": "carer_burden",
+      "patient_factor": "Parents have a home cough-assist device but are frightened to use it forcefully",
+      "effect_on_advice": "Reassure and, if they are trained, coach confident use per the care plan while awaiting the ambulance; never let hesitation replace calling 000."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Call 000 for an ambulance right now and say your baby has spinal muscular atrophy and severe breathing difficulty. Keep him upright and calm, do not feed him anything by mouth, and if you are trained on his cough-assist machine use it at his usual settings to help clear the mucus. Keep his oxygen monitor on, unlock the door for the paramedics, and stay on the line. Bring the cough-assist machine and his SMA care plan and emergency directives to the hospital.",
+    "contact_method": "Call 000 immediately (emergency ambulance)",
+    "after_hours_advice": "000 operates 24 hours a day — this is an emergency and must not wait for clinic hours or a GP appointment.",
+    "documentation_for_gp": "Hospital will provide a PICU/ED discharge summary; ensure the SMA neuromuscular and respiratory team, GP and care coordinator receive it and that the home airway-clearance plan is reviewed and reinforced."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T4",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002",
+      "ESC-003",
+      "ESC-004"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "failure_description": "Treating the deterioration as a routine chest cold or 'just the SMA' and advising home management / a GP appointment instead of an emergency ambulance.",
+        "patient_harm_scenario": "Mucus plugging and fatigue progress to hypercapnic respiratory arrest and death before help arrives."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T4"
+        ],
+        "failure_description": "Advising self-transport to an emergency department rather than a 000 ambulance — the infant could arrest in a private car with no equipment or trained responder."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [],
+        "failure_description": "Over-triage is not a meaningful risk here — the correct tier is already the maximum (T5)."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": false
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "The AI cannot auscultate, measure a blood gas, or quantify the true respiratory reserve remotely.",
+    "correct_response_to_uncertainty": "Treat the visible red flags (paradoxical breathing, ineffective cough, exhaustion, hypoxia) as sufficient to escalate to 000 immediately — do not seek remote certainty first.",
+    "wrong_response_to_uncertainty": "Delaying escalation to gather more data, arrange community tests, or trial home management because the picture 'might improve'."
+  }
+}
