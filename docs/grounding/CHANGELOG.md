@@ -4,6 +4,20 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Case Corpus v2: the v1 303 retired — each clinical scenario now appears once, not twice (2026-07-17)
+
+**The duplication this closes.** The six operator source folders (AUC 51 · AMS 50 · CVD/CDV 50 · CIA 50 · CFE 50 · DST 50 = 301) are the SOAP notes the original v1 303 eval cases were built from. Across PRs #95/#96/#97 the v2 telehealth-reprojected refresh of those same folders was ingested alongside the v1 originals, so `main` reached **604 case dirs carrying every scenario twice** — 303 v1 (`case-transform-protocol:v1.2.0`) + 301 v2 (`v2.0.0`). A duplicated eval set double-counts each scenario in the `eval:cases` case-set gate. Operator ruling (2026-07-17): **v2 supersedes v1 — retire the originals.**
+
+**What was retired, and what was proven first.** A read-only supersession map (`docs/grounding/v1-v2-supersession-map.md`) pairs every v1 to its v2 successor by shared source note (original_case_id → filename → diagnosis). Result: **301 v1 → v2 pairs, every v2 successor distinct (0 collisions), 0 v2 orphans.** The 301 superseded v1 dirs were `git rm`'d (history is the archive). Retiring them removes **zero clinical coverage** — each scenario survives in its v2 form.
+
+**The two v1 orphans KEPT (no v2 successor — the 303−301 delta).** `SPEC-CARD-04-00001` (NSTEMI) — the documented worked example, hard-wired into `README.md`, `CLAUDE.md`, `contract-context-allowlist.js`, `contract-case-ingest.js`, `eval-case-gate.mjs`; no folder source, so no v2. `SPEC-CARD-06-00000` (acute decompensated heart failure) — hand-authored demo, no source note, so no provable 1:1 successor; conservative posture keeps an unmatched scenario rather than dropping it. Both were already carried as the reference/unreviewed pair in the case-set records.
+
+**Post-retirement corpus: 303 dirs = 301 v2 (attested) + 2 kept v1, zero duplication.** Verification: `npm test` exit 0 · `npm run verification` Pass:true · `npm run eval:cases` PASS (303 dirs, 301 attested ≥45, 2 unreviewed = the orphans surfaced as informational warnings, 0 failures). The two retire-set ids that appear in code (`SPEC-CARD-01-00002`, `SPEC-CARD-01-00005`) are a synthetic in-test id-shape literal ("not written anywhere") and a code comment respectively — neither reads the removed dirs, so nothing reddened. Firewall/hashing/schemas/servers/trunks untouched — a data + docs change only.
+
+Register: `case-set-underpopulated` (already `resolved`) carries a `retirement_2026_07_17` note; R-23 closes the duplication; the supersession map is the evidence artifact. Source `.txt` never entered the repo.
+
+---
+
 ## FL-11: the medicolegal chain is durable — and the run that proved it found the write path had never worked (2026-07-16)
 
 **FL-11's ENG half is done and live-validated.** `npm run verify:worm` (`scripts/worm-integrity.mjs`) registers the `s3-object-lock` substrate against the real Object Lock bucket exactly as the deploy bootstrap does, selects it on all **four** medicolegal seams, and verifies every chain end to end: audit ledger (plus recomputing every persisted content hash), clinician gate records, PPP-TTT triage, consent records. Four, not the three the tracker and register both said — consent joined at L12 and nobody updated the count; a validator that checked three of four chains would have reported a green that meant less than it looked.
