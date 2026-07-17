@@ -1,0 +1,102 @@
+{
+  "case_id": "SPEC-DERM-01-00235",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T2",
+  "rationale_for_baseline_tier": "T2 (prompt telehealth/GP management, script issued today, routine review ~2 weeks): classic scabies in an immunocompetent adult with an affected household contact. Despite the alarming out-of-hours framing (agonising nocturnal itch, skin scratched raw and bleeding, a distressed spouse), the red-flag screen is NEGATIVE — afebrile, systemically well, and explicitly no honey-coloured crusting, fluctuance or spreading erythema to indicate secondary bacterial infection. The definitive treatment (whole-body topical permethrin with simultaneous whole-household treatment), the itch/sleep relief, and environmental decontamination are all deliverable via a telehealth prescription and advice. This is not an emergency; over-escalation to ED/000 is a defect. Secondary-infection risk is handled by explicit, time-bound safety-netting edges, not by baseline escalation.",
+  "minimum_viable_tier_for_pass": "T2",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "The scratched areas become bright red, hot or swollen, start weeping thick yellow crust or pus, or a painful lump develops",
+      "target_tier": "T3",
+      "time_bound_condition": "Same day",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-005",
+      "rationale": "These signs indicate secondary bacterial impetiginisation/early cellulitis or an abscess, which needs in-person assessment and likely oral antibiotics — beyond what topical scabicide can manage.",
+      "communication_template": "If the scratched areas on your arms or stomach become bright red, hot or swollen, or start weeping thick yellow crust or pus, get seen by a GP or urgent care the same day.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Fever, feeling generally unwell, rapidly spreading redness, or red streaks tracking away from the skin",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day — go to the emergency department",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-004",
+      "rationale": "Systemic features or lymphangitic streaking indicate cellulitis with systemic involvement, needing ED assessment and likely IV antibiotics.",
+      "communication_template": "If you develop a fever, feel generally unwell, or the redness spreads quickly or you see red streaks running from the skin, go to the nearest emergency department today.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Thick, widespread crusting or scaling of the skin, or a poor response after completing both correctly-applied treatments and treating all contacts",
+      "target_tier": "T3",
+      "time_bound_condition": "Within a few days — arrange GP review",
+      "red_flag_ref": "RF-003",
+      "rationale": "Thick crusting could indicate crusted (Norwegian) scabies needing specialist-guided management; genuine treatment failure after correct whole-household treatment needs review of technique, contacts and diagnosis.",
+      "communication_template": "If the skin becomes thickly crusted or scaly, or the itch and rash aren't improving a couple of weeks after you and everyone in the house have completed both treatments, see your GP for review.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "carer_burden",
+      "patient_factor": "High household transmission risk — patient and spouse share a bed and living spaces, the spouse is already symptomatic, and the household must coordinate simultaneous treatment",
+      "effect_on_advice": "Emphasise simultaneous same-night treatment of every household member and environmental decontamination; without this the infestation ping-pongs back and treatment fails."
+    },
+    {
+      "modifier_type": "comorbidity",
+      "patient_factor": "Severe 72-hour sleep deprivation with daytime fatigue affecting work and safety",
+      "effect_on_advice": "Prioritise effective itch/sleep relief tonight (sedating antihistamine) and caution about fatigue-related risks such as driving while exhausted; the sleep loss is a wellbeing concern, not an indication for emergency escalation."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "This can be treated from home today. Apply permethrin 5% cream tonight over your whole body from the jawline down — including finger-webs, wrists, tummy, genitals and under the nails — leave it on for 8-14 hours, then wash it off, and repeat the whole thing in exactly 7 days. Your wife and anyone else in the house must apply the cream on the SAME night, even if they aren't itching. Take a sedating anti-itch tablet at night to help you sleep. In the morning, hot-wash all bedding, towels and recently worn clothes. Expect the itch to keep going for 2-4 weeks after treatment — that's normal and does NOT mean you need more cream. Book a routine GP review in about 2 weeks.",
+    "contact_method": "Telehealth/GP for the script today; routine GP review in ~2 weeks. For after-hours advice call 13 HEALTH (13 43 25 84).",
+    "after_hours_advice": "After hours: call 13 HEALTH (13 43 25 84) for advice. Go to the nearest emergency department for a fever with spreading redness or red streaks from the skin; the itch and sleep loss on their own do not need an emergency visit.",
+    "documentation_for_gp": "Note the 3-week onset with nocturnal itch, the affected household contact, that whole-household permethrin treatment and a sedating antihistamine were advised, and any signs of secondary infection, to hand over to the GP."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T0",
+    "over_triage_threshold": "T4",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Dismissing this as trivial self-care with no treatment — misses that scabies needs an active scabicide and whole-household treatment, and misses monitoring for secondary infection of the raw skin.",
+        "patient_harm_scenario": "Untreated infestation persists and spreads, excoriated skin becomes secondarily infected, and the household re-infests each other indefinitely."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T1"
+        ],
+        "failure_description": "Pure self-care advice without arranging the scabicide is slightly too low — scabies requires an active treatment and whole-household coordination, not watchful waiting."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "failure_description": "Sending an afebrile, systemically-well patient with classic scabies and no infection signs for same-day in-person review (T3) is unnecessary when telehealth-prescribed whole-household treatment is appropriate; escalating to the emergency department or calling an ambulance (T4/T5) is a gross over-triage of a non-emergency dermatological infestation — resource-wasting and distressing."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": true
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Telehealth cannot dermatoscopically confirm the burrows, examine the genital nodules, or palpate the excoriations for early secondary infection.",
+    "correct_response_to_uncertainty": "Diagnose classic scabies clinically from the characteristic history and video-observable findings, treat the whole household, and give clear time-bound safety-netting for secondary infection and treatment failure — rather than defaulting to ED because the skin cannot be examined in person.",
+    "wrong_response_to_uncertainty": "Either falsely reassuring with no scabicide/whole-household treatment and no infection safety-netting, or over-escalating an afebrile, systemically-well patient to ED/000 because the skin cannot be examined despite a negative red-flag screen."
+  }
+}
