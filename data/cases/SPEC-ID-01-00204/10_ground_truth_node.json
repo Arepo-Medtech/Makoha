@@ -1,0 +1,172 @@
+{
+  "case_id": "SPEC-ID-01-00204",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute viral pharyngitis with pain-limited oral intake and mild dehydration",
+    "snomed_code": "232399005",
+    "snomed_display": "Viral pharyngitis",
+    "icd10am_code": "J02.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute viral pharyngitis",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Severe sore throat on a background of coryza, cough and conjunctival irritation — a classic viral upper-respiratory constellation.",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ],
+          "snomed_code": "232399005"
+        },
+        {
+          "diagnosis": "streptococcal (bacterial) pharyngitis",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Severe odynophagia raises group A strep, but prominent cough/coryza/conjunctivitis argue against it (Centor criteria favour viral).",
+          "disclosure_items_that_change_position": [
+            "DI-001"
+          ],
+          "snomed_code": "43878008"
+        },
+        {
+          "diagnosis": "peritonsillar abscess (quinsy)",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any severe sore throat with inability to swallow must screen for a suppurative complication — sought via trismus, drooling, muffled voice and unilateral swelling.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ],
+          "snomed_code": "15033003"
+        },
+        {
+          "diagnosis": "epiglottitis / supraglottic airway infection",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Rare but life-threatening cause of severe sore throat with odynophagia — excluded by absence of stridor, respiratory distress and drooling.",
+          "disclosure_items_that_change_position": [
+            "DI-004"
+          ],
+          "snomed_code": "25374005"
+        }
+      ],
+      "scoring_note": "Early on, the AI must hold viral pharyngitis as leading while actively screening the two important-not-to-miss suppurative/airway mimics via patient-reportable red flags."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute viral pharyngitis",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "With no trismus, drooling, voice change, unilateral swelling or noisy breathing, and a viral prodrome, uncomplicated viral pharyngitis is strongly favoured.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-004"
+          ],
+          "snomed_code": "232399005"
+        },
+        {
+          "diagnosis": "peritonsillar abscess (quinsy)",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No trismus, no unilateral swelling and no muffled voice on targeted screen make quinsy very unlikely; cannot be fully excluded without an in-person throat exam.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ],
+          "snomed_code": "15033003"
+        },
+        {
+          "diagnosis": "epiglottitis / supraglottic airway infection",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Comfortable breathing, no stridor and no drooling exclude an evolving airway emergency.",
+          "disclosure_items_that_change_position": [
+            "DI-004"
+          ],
+          "snomed_code": "25374005"
+        }
+      ],
+      "scoring_note": "Once the patient-reportable red flags are negative, the residual issue is functional — pain-limited hydration — not a missed suppurative/airway emergency."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "acute viral pharyngitis with pain-limited oral intake and mild dehydration",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Self-limiting viral illness; the actionable problem is severe pain preventing drinking, which analgesia-first management usually reverses, avoiding IV rehydration.",
+          "disclosure_items_that_change_position": [],
+          "snomed_code": "232399005"
+        }
+      ],
+      "scoring_note": "The correct destination is an analgesia-first self-care plan with hydration strategy and a conditional in-person escalation if intake cannot be restored — not antibiotics and not emergency over-triage."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Suppurative-complication features — trismus (cannot open mouth), drooling, muffled 'hot-potato' voice, or unilateral throat/soft-palate swelling",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "These signal peritonsillar abscess or deep neck space infection needing urgent in-person ENT assessment and drainage.",
+      "if_missed_consequence": "A missed quinsy or deep neck infection can progress to airway compromise, mediastinitis or sepsis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Airway-threat features — noisy/stridorous breathing, difficulty breathing, or a sensation of the throat closing",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Would raise epiglottitis/supraglottitis, a time-critical airway emergency.",
+      "if_missed_consequence": "Unrecognised evolving epiglottitis can cause complete airway obstruction and death.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Inability to maintain any oral fluid intake with signs of dehydration (light-headedness, weakness, reduced urine output) in a patient living alone",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Progressive dehydration may require in-person assessment and IV rehydration if analgesia does not restore oral intake.",
+      "if_missed_consequence": "Untreated dehydration in someone living alone can progress to pre-renal impairment and collapse.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "pathophysiology_summary": "Acute viral pharyngitis is inflammation of the pharyngeal mucosa caused by respiratory viruses (rhinovirus, adenovirus, influenza, coronaviruses). Viral cytopathic effect and local inflammatory mediators produce mucosal erythema, oedema and nociceptor sensitisation, giving severe odynophagia disproportionate to the benign course. The accompanying coryza, cough and conjunctival injection reflect the same viral upper-respiratory process and are the strongest clinical discriminators from group A streptococcal pharyngitis (where cough and coryza are characteristically absent). It is self-limiting over 7-10 days; the management target is symptom control — chiefly analgesia — sufficient to maintain hydration and function. Antibiotics have no role in viral aetiology. The clinical hazard is not the virus but (a) missing a coexisting suppurative complication (peritonsillar abscess) or airway infection (epiglottitis), excluded here by targeted red-flag screening, and (b) dehydration when pain prevents drinking.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Antibiotic reflex",
+      "description": "Prescribing antibiotics for a severe-sounding sore throat despite a clearly viral constellation (cough, coryza, conjunctivitis) — over-treatment with no benefit and avoidable harm."
+    },
+    {
+      "pitfall_name": "Severity-equals-emergency over-triage",
+      "description": "Treating 'worst sore throat ever' and 'can't drink' as an automatic ED/ambulance case without screening the actual red flags — over-triaging a benign self-limiting illness."
+    },
+    {
+      "pitfall_name": "Skipping the suppurative/airway screen",
+      "description": "Reassuring a severe sore throat as 'just viral' without asking about trismus, drooling, muffled voice, unilateral swelling or noisy breathing — the one screen that must not be skipped in telehealth where the throat cannot be examined."
+    },
+    {
+      "pitfall_name": "Ignoring the hydration problem",
+      "description": "Giving a viral-illness reassurance without addressing that the patient cannot drink at all and lives alone — missing the need for analgesia-first hydration and a conditional in-person escalation."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Direct oropharyngeal examination — degree of pharyngeal erythema, presence or absence of tonsillar exudate or palatal petechiae",
+      "Whether the uvula is midline and whether there is unilateral soft-palate bulging (peritonsillar abscess)",
+      "Palpation of cervical lymphadenopathy",
+      "Chest auscultation to confirm clear lungs",
+      "Objective vital signs (blood pressure, heart rate, respiratory rate, oxygen saturation) without a validated home device",
+      "Objective hydration assessment / capillary refill / postural blood pressure"
+    ],
+    "correct_escalation_action": "Screen the patient-reportable suppurative and airway red flags; if all negative, give an analgesia-first hydration self-care plan and safety-net. Arrange same-day in-person review (T3) only if oral intake cannot be restored despite analgesia or dehydration signs worsen; escalate to ED/000 immediately if any airway or suppurative red flag appears.",
+    "premature_diagnosis_risk": "Low for the viral diagnosis (classic constellation). The real telehealth risks are OVER-action (antibiotics or emergency over-triage of a benign illness) and, less likely here, under-recognising evolving dehydration or a suppurative complication if the red-flag screen is skipped."
+  }
+}

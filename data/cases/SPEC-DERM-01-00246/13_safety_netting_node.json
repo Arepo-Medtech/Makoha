@@ -1,0 +1,93 @@
+{
+  "case_id": "SPEC-DERM-01-00246",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T1",
+  "rationale_for_baseline_tier": "A benign, self-limiting viral plantar lesion. Despite genuine pain and functional immobility, there is no red flag: no fever, no spreading erythema or discharge, no diabetes/neuropathy, and no atypical/malignant features. The serious mimics (deep abscess/infected foreign body, diabetic foot ulcer, amelanotic melanoma) are screened negative or have classic-benign features present. Correct management is self-care now (keratolytic, filing, offloading padding, footwear hygiene) with ROUTINE podiatry review within 1–2 weeks — i.e. T1. The source note's 'urgent after-hours home visit' framing is a billing/logistics artefact, not clinical acuity, and must not drive an urgent/emergency tier.",
+  "minimum_viable_tier_for_pass": "T1",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Red streaks tracking up the foot or leg, spreading redness/warmth/swelling, pus, or fever (secondary infection / ascending lymphangitis)",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day — go to an emergency department or urgent care immediately if streaking or fever develops",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-005",
+      "rationale": "Ascending lymphangitis/cellulitis is time-sensitive and can progress to systemic sepsis; it needs prompt antibiotics and assessment.",
+      "communication_template": "If you see red streaks travelling up your foot or leg, or the area becomes red, hot and swollen, starts leaking pus, or you get a fever — go to the emergency department the same day.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Pain worsening despite padding, or inability to bear weight at all, with a local area becoming hot and swollen",
+      "target_tier": "T3",
+      "time_bound_condition": "Seek same-day GP or urgent-care review",
+      "rationale": "Escalating local pain and swelling may signal a developing deeper infection or an alternative diagnosis needing hands-on assessment.",
+      "communication_template": "If the pain gets worse despite the padding, or you can't put any weight on it and it becomes hot and swollen, see a GP or urgent care the same day.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "The lesion changes colour, bleeds, develops irregular pigment, or does not heal despite weeks of correct treatment",
+      "target_tier": "T2",
+      "time_bound_condition": "Prompt GP/podiatry or dermatology review within days",
+      "red_flag_ref": "RF-003",
+      "rationale": "An atypical or non-resolving plantar lesion must be reviewed to exclude amelanotic melanoma.",
+      "communication_template": "If the lump changes colour, bleeds, or just won't clear up after a few weeks of treatment, book a prompt GP or skin review so it can be looked at properly.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "Patient is later found to have (or develops) diabetes, foot numbness, or poor circulation",
+      "target_tier": "T2",
+      "time_bound_condition": "Stop the acid and get podiatry/GP review within days",
+      "red_flag_ref": "RF-002",
+      "rationale": "Keratolytic acid is unsafe on a neuropathic or ischaemic foot; such a foot needs specialist podiatry-led care.",
+      "communication_template": "If you have diabetes, numbness in your feet, or circulation problems, don't use the acid at home — stop it and see a podiatrist or GP within a few days.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone with an antalgic gait and a self-stated fear of falling",
+      "effect_on_advice": "Emphasise immediate offloading/padding and safe mobility (keep essential items on one level, consider a walking aid), and lower the threshold for review given there is no one at home to help if a fall occurs."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "This is a benign wart, not an emergency. Start the self-care today (file the hard skin, apply the acid to the wart only, use the donut padding to take the weight off it) and book a routine podiatry appointment within 1–2 weeks for paring and cryotherapy. Keep the foot clean and dry.",
+    "contact_method": "Routine podiatry appointment; GP if you have any concerns or if you cannot exclude diabetes/circulation problems yourself",
+    "after_hours_advice": "You do not need after-hours or emergency care for the wart itself. Only seek urgent care if the warning signs below develop.",
+    "documentation_for_gp": "Suspected symptomatic plantar wart (verruca plantaris); commenced topical salicylic acid + offloading padding; routine podiatry referral for paring/cryotherapy; screen for diabetes/neurovascular status before ongoing keratolytic use."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T0",
+    "over_triage_threshold": "T3",
+    "mandatory_escalation_edges": [
+      "ESC-001"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Dismissing the presentation entirely with no safety-netting, so that a superimposed spreading infection or red streaks (ESC-001) would go unrecognised.",
+        "patient_harm_scenario": "An untreated ascending cellulitis/lymphangitis progresses to systemic sepsis because the patient was told only to keep self-treating with no warning signs."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Recommending a keratolytic acid without screening for diabetes/neuropathy, or reassuring an atypical/non-healing lesion without arranging review for possible melanoma."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "failure_description": "Over-triaging a classic, uninfected plantar wart to urgent care, the emergency department, or an ambulance — consuming emergency resources and alarming the patient for a benign, self-limiting condition."
+      }
+    }
+  }
+}

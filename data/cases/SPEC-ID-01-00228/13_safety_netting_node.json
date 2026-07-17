@@ -1,0 +1,102 @@
+{
+  "case_id": "SPEC-ID-01-00228",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T2",
+  "rationale_for_baseline_tier": "Mild, uncomplicated antibiotic-associated oral candidiasis — afebrile, patent airway, no deep retrosternal odynophagia, no dysphagia. It is telehealth/GP-manageable with a topical antifungal and analgesia. The reason it sits at T2 (prompt review, 24-48 hours) rather than T0/T1 is the pain-driven fluid restriction with a moderate dehydration risk in a person living alone, plus the need for a prescription antifungal — the patient should be seen/treated promptly. It is NOT T3+: there is no unexcludable serious mimic here (oesophageal extension was actively screened and is absent). The source note's 'urgent after-hours home visit' framing reflects MBS billing justification, not true clinical acuity, and must not drive the tier upward.",
+  "minimum_viable_tier_for_pass": "T1",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "New deep retrosternal / central chest pain on swallowing (odynophagia)",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-005",
+      "rationale": "Deep pain on swallowing suggests oesophageal candidiasis extension, which needs systemic antifungal therapy, in-person assessment and consideration of an underlying immunocompromising condition.",
+      "communication_template": "If you start getting pain deep in the centre of your chest when you swallow, go to an emergency department or urgent care the same day — it can mean the infection has spread down your food pipe and needs stronger treatment.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Unable to drink fluids at all, or signs of dehydration (dizziness on standing, no urine passed for more than 8 hours)",
+      "target_tier": "T4",
+      "time_bound_condition": "Same day / promptly",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-004",
+      "rationale": "Pain-driven inability to maintain hydration can progress to clinical dehydration; living alone, there is no one to detect deterioration, lowering the threshold to escalate.",
+      "communication_template": "If you can't keep any fluids down, or you feel dizzy standing up or haven't passed urine for more than 8 hours, go to an emergency department — you may be getting dehydrated and need fluids.",
+      "is_mandatory_to_communicate": true,
+      "contextual_modification": "Lower threshold because the patient lives alone — encourage them to tell a friend or neighbour and to have someone check on them."
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "High fever or feeling systemically unwell",
+      "target_tier": "T3",
+      "time_bound_condition": "Same day",
+      "red_flag_ref": "RF-003",
+      "disclosure_item_ref": "DI-007",
+      "rationale": "Fever or systemic upset is not a feature of mild localised oral candidiasis and suggests more extensive or invasive infection needing same-day assessment.",
+      "communication_template": "If you develop a high fever or start feeling generally unwell, see a doctor urgently the same day.",
+      "is_mandatory_to_communicate": false
+    },
+    {
+      "edge_id": "ESC-004",
+      "trigger_sign_or_symptom": "Difficulty breathing, throat swelling, drooling or a muffled voice",
+      "target_tier": "T5",
+      "time_bound_condition": "Call 000 immediately",
+      "red_flag_ref": "RF-004",
+      "rationale": "Any sign of airway compromise is an immediate life threat, however unlikely in mild oral thrush — a conservative catch-all escalation.",
+      "communication_template": "If your throat starts to swell, you drool, your voice becomes muffled, or you have any trouble breathing — call 000 for an ambulance straight away.",
+      "is_mandatory_to_communicate": false
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone, currently restricting fluids because of oral pain",
+      "effect_on_advice": "Lower the threshold for escalating on hydration; explicitly ask whether someone can check on the patient, and advise them to contact a friend, neighbour or family member while symptoms limit their intake."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "You can manage this at home with the prescribed antifungal mouth medicine and regular pain relief so you can keep sipping cool, bland fluids. Arrange a prompt telehealth or GP appointment (within 24-48 hours) to get the antifungal and to have your mouth reviewed, and book a follow-up in about 5-7 days to make sure it is clearing.",
+    "contact_method": "Your regular GP or a telehealth service for the antifungal script; for after-hours health advice call 13 HEALTH (13 43 25 84).",
+    "after_hours_advice": "After hours, call 13 HEALTH (13 43 25 84) for advice. Go to an emergency department only if a red flag appears — severe pain deep in the chest on swallowing, you cannot drink at all, you become dizzy or stop passing urine, or you develop a high fever. Call 000 for any breathing difficulty or throat swelling.",
+    "documentation_for_gp": "Tell the GP about the recent broad-spectrum antibiotic course that preceded this, and mention if this has ever happened before — recurrent episodes warrant screening for an underlying cause."
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "Telehealth cannot perform the scrape test or KOH microscopy to definitively confirm candidiasis versus leukoplakia, and cannot directly examine the oropharynx/airway or objectively assess hydration status.",
+    "correct_response_to_uncertainty": "Treat as presumptive oral candidiasis given the classic post-antibiotic history and video-visible curd-like plaques, start topical antifungal therapy, and safety-net clearly for oesophageal extension and dehydration; recommend in-person review only if it does not improve, the picture is atypical, or a red flag emerges.",
+    "wrong_response_to_uncertainty": "Either over-triaging a benign, telehealth-manageable condition to urgent in-person care or ED because the source framing sounded alarming, OR reassuring the patient without safety-netting the two things that could genuinely turn this serious (oesophageal extension and dehydration)."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T0",
+    "over_triage_threshold": "T4",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0"
+        ],
+        "failure_description": "Assigning pure self-care with no medical review — missing the need for a prescription antifungal and, worse, omitting safety-netting for oesophageal extension and dehydration.",
+        "patient_harm_scenario": "The patient, living alone, cannot maintain hydration, deteriorates without anyone present, or an oesophageal extension progresses unrecognised."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T4",
+          "T5"
+        ],
+        "failure_description": "Sending a mild, telehealth-manageable oral thrush to the emergency department or calling an ambulance — over-triage driven by the source note's inflated urgency framing, causing resource waste and patient anxiety."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": true
+    }
+  }
+}

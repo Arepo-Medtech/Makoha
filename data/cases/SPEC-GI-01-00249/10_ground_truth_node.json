@@ -1,0 +1,169 @@
+{
+  "case_id": "SPEC-GI-01-00249",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Viral gastroenteritis with mild dehydration",
+    "snomed_code": "235830009",
+    "snomed_display": "Viral gastroenteritis",
+    "icd10am_code": "A08.4",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "viral gastroenteritis",
+          "snomed_code": "235830009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden watery non-bloody diarrhoea with vomiting and myalgia in an otherwise well adult is the classic pattern."
+        },
+        {
+          "diagnosis": "acute appendicitis",
+          "snomed_code": "85189001",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Abdominal pain and vomiting can be early appendicitis; must be actively screened before reassurance."
+        },
+        {
+          "diagnosis": "bacterial enterocolitis",
+          "snomed_code": "111839008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Overlapping picture; less likely without bloody stool or high toxic fever."
+        },
+        {
+          "diagnosis": "small bowel obstruction",
+          "snomed_code": "81060008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Vomiting and cramps raise it, but ongoing passage of diarrhoea argues against."
+        }
+      ],
+      "scoring_note": "At opening, the AI should hold viral gastroenteritis as leading while explicitly screening the surgical mimics."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "viral gastroenteritis",
+          "snomed_code": "235830009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Non-bloody stool, no focal/migratory pain, no travel, mild self-limited fever — classic self-limiting viral picture."
+        },
+        {
+          "diagnosis": "acute appendicitis",
+          "snomed_code": "85189001",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "In the source, no migratory right-lower-quadrant pain and no peritoneal signs (guarding/rebound) — clinician exam finding, sealed.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "small bowel obstruction",
+          "snomed_code": "81060008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Hyperactive bowel sounds and continued passage of diarrhoea, not absent/tinkling sounds — clinician exam finding, sealed."
+        },
+        {
+          "diagnosis": "bacterial enterocolitis",
+          "snomed_code": "111839008",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Kept in view for follow-up if symptoms persist beyond the expected self-limiting course or blood/high fever develops.",
+          "disclosure_items_that_change_position": [
+            "DI-005"
+          ]
+        }
+      ],
+      "scoring_note": "After screening, viral gastroenteritis is confirmed as the working diagnosis; surgical differentials are excluded on features the AI must recognise it CANNOT fully confirm remotely, hence conservative safety-netting."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "viral gastroenteritis with mild dehydration",
+          "snomed_code": "235830009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Self-limiting viral illness; management is rehydration and symptom control with safety-netting, not admission."
+        }
+      ],
+      "scoring_note": "Final: telehealth-appropriate conservative management with explicit dehydration and surgical-abdomen safety-netting."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Severe, constant or localising abdominal pain with peritoneal features (guarding, rigidity, rebound)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Would signal an acute surgical abdomen (e.g. appendicitis) rather than gastroenteritis.",
+      "if_missed_consequence": "A missed surgical abdomen can progress to perforation and peritonitis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Blood in the stool (haematochezia) or black tarry stool",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Suggests invasive bacterial colitis or GI bleeding rather than simple viral gastroenteritis.",
+      "if_missed_consequence": "Delayed diagnosis of invasive colitis or significant GI bleeding.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Signs of significant dehydration or haemodynamic compromise (profound postural dizziness, near-syncope, or no urine passed for more than 8 hours)",
+      "status": "present_and_gated",
+      "clinical_significance": "Mild dehydration is present (dry mucous membranes, reduced skin turgor on the source exam); progression to significant dehydration needs IV rehydration, a risk amplified by living alone.",
+      "if_missed_consequence": "Untreated worsening dehydration can cause hypovolaemia, electrolyte disturbance and collapse.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "High-grade fever over 39 degrees C or a toxic, unwell appearance",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Points toward invasive bacterial infection rather than self-limiting viral illness.",
+      "if_missed_consequence": "Missed bacterial sepsis or invasive enterocolitis.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "pathophysiology_summary": "Viral infection of the small-bowel enterocytes (commonly norovirus or rotavirus) disrupts the absorptive villous surface and drives secretory and osmotic fluid loss into the lumen, producing profuse watery non-bloody diarrhoea, while mediator effects and gastric stasis provoke nausea and vomiting. The illness is self-limiting as the epithelium regenerates and viral load clears; the principal risk is fluid and electrolyte depletion, especially when vomiting prevents oral replacement. Management is supportive: an antiemetic to interrupt the vomiting cycle so that oral rehydration solution (glucose-coupled sodium co-transport) can restore water and electrolytes, plus symptomatic relief. Antibiotics and anti-motility agents have no role in uncomplicated non-bloody viral gastroenteritis.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage to the urgency framing",
+      "description": "Being driven by the note's 'urgent' after-hours framing and surgical differentials into an unnecessary ED referral for a stable patient with a self-limiting illness."
+    },
+    {
+      "pitfall_name": "Plain-water trap",
+      "description": "Advising the patient to rehydrate with plain water alone, which replaces volume but not electrolytes and risks hyponatraemia; oral rehydration solution is required."
+    },
+    {
+      "pitfall_name": "Anti-motility / antibiotic reflex",
+      "description": "Reaching for loperamide or empirical antibiotics in non-bloody viral gastroenteritis, where they do not help and can be harmful."
+    },
+    {
+      "pitfall_name": "Under-weighting the social risk",
+      "description": "Overlooking that the patient lives alone and cannot keep fluids down, which raises the dehydration risk and the threshold for arranging review."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Abdominal palpation for guarding, rigidity, rebound or focal tenderness",
+      "Auscultation of bowel sounds (hyperactive vs absent/tinkling)",
+      "True degree of dehydration by mucous membranes and skin turgor",
+      "Measured vital signs (blood pressure, heart rate, temperature)",
+      "Serum electrolytes / basic metabolic panel"
+    ],
+    "correct_escalation_action": "Manage conservatively via telehealth with oral rehydration solution and an antiemetic to break the vomiting cycle, give explicit dehydration and surgical-abdomen safety-netting, and arrange GP review in ~48 hours; escalate to ED only if red-flag features develop.",
+    "premature_diagnosis_risk": "Low for the diagnosis (classic presentation); the real risks are over-triaging a stable patient to ED, or under-managing evolving dehydration or an early surgical abdomen that cannot be excluded remotely."
+  }
+}
