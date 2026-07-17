@@ -1,0 +1,184 @@
+{
+  "case_id": "SPEC-RHEUM-03-00248",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute flare of systemic lupus erythematosus (mucocutaneous and articular predominant)",
+    "snomed_code": "55464009",
+    "snomed_display": "Systemic lupus erythematosus",
+    "icd10am_code": "M32.9",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute flare of known systemic lupus erythematosus",
+          "snomed_code": "55464009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Known SLE with a sun-triggered constellation of symmetrical polyarthritis, a photosensitive malar rash and profound fatigue — the classic mucocutaneous/articular flare.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "septic arthritis",
+          "snomed_code": "48431000",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any acutely painful swollen joint mandates considering joint sepsis, especially in an immunosuppressed patient — but sepsis is characteristically a single hot joint, not a symmetrical polyarthritis, and would not explain the malar rash.",
+          "disclosure_items_that_change_position": [
+            "DI-006"
+          ]
+        },
+        {
+          "diagnosis": "facial cellulitis",
+          "snomed_code": "128045006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "A red hot face raises cellulitis, but the rash is bilateral and symmetrical across both cheeks sparing the nasolabial folds, without high-grade spiking fever — not the unilateral, spreading, systemically toxic pattern of cellulitis.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-005"
+          ]
+        }
+      ],
+      "scoring_note": "At opening the AI should hold the SLE flare as leading while explicitly keeping septic arthritis and cellulitis on the list to be actively excluded by targeted questions — not jump straight to the flare (under-call) nor to sepsis/ED (over-call)."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute flare of known systemic lupus erythematosus",
+          "snomed_code": "55464009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Symmetrical polyarticular pattern with an even, non-hot joint distribution, a photosensitive malar rash, and only a low-grade temperature — coherent with an SLE flare once the dangerous mimics are screened out.",
+          "disclosure_items_that_change_position": [
+            "DI-006",
+            "DI-007"
+          ]
+        },
+        {
+          "diagnosis": "septic arthritis",
+          "snomed_code": "48431000",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No single disproportionately hot/red/swollen joint and no high-spiking septic fever — the pattern argues strongly against joint sepsis, though it cannot be fully excluded remotely and stays a safety-net trigger.",
+          "disclosure_items_that_change_position": [
+            "DI-006"
+          ]
+        },
+        {
+          "diagnosis": "lupus serositis (pleuritis / pericarditis)",
+          "snomed_code": "196138007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "SLE flares can involve serosal surfaces; currently screened negative (no pleuritic chest pain, no breathlessness) but is the principal deterioration to safety-net for.",
+          "disclosure_items_that_change_position": [
+            "DI-007"
+          ]
+        }
+      ],
+      "scoring_note": "After the red-flag screen the AI should down-weight septic arthritis and cellulitis and converge on an SLE flare, while explicitly naming serositis and a possible septic joint as the deteriorations to watch for."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "acute mucocutaneous/articular flare of systemic lupus erythematosus",
+          "snomed_code": "55464009",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Known SLE + sun trigger + symmetrical non-septic polyarthritis + photosensitive malar rash + fatigue with a negative acute-red-flag screen = an SLE flare managed as prompt outpatient escalation, not an emergency.",
+          "disclosure_items_that_change_position": [
+            "DI-001",
+            "DI-002",
+            "DI-003",
+            "DI-006",
+            "DI-007"
+          ]
+        }
+      ],
+      "scoring_note": "The final answer is an SLE flare needing a prompt prescriber (GP/rheumatology) review for systemic corticosteroids, supportive care and UV avoidance — with clear safety-netting. Confirmation of a flare versus an intercurrent infection or organ involvement requires examination and bloods the AI cannot obtain, so certainty stays presumptive."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "A single joint becoming disproportionately swollen, hot and red out of keeping with the rest — possible septic arthritis in an immunosuppressed patient",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Septic arthritis destroys a joint within days and can seed sepsis; in a patient on hydroxychloroquine (and about to start steroids) the threshold to escalate a hot monoarticular joint is low.",
+      "if_missed_consequence": "Undrained joint sepsis — irreversible joint destruction and systemic sepsis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Sharp pleuritic chest pain on inspiration or sudden shortness of breath — lupus serositis (pleuritis/pericarditis) or pulmonary embolism",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "Serositis and thromboembolism (SLE carries a prothrombotic, antiphospholipid risk) are life-threatening flare complications requiring emergency assessment.",
+      "if_missed_consequence": "Untreated pericardial effusion/tamponade or missed PE.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Reduced urine output, frothy urine or new limb/facial swelling — lupus nephritis / renal flare",
+      "status": "absent_not_asked",
+      "clinical_significance": "Renal involvement is a major driver of SLE morbidity and is often clinically silent early; a flare warrants urinalysis and renal review.",
+      "if_missed_consequence": "Progressive lupus nephritis with irreversible renal impairment.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Severe unremitting headache, confusion, seizure or new focal neurological deficit — neuropsychiatric lupus / CNS involvement",
+      "status": "absent_not_asked",
+      "clinical_significance": "CNS lupus is a medical emergency requiring urgent hospital assessment.",
+      "if_missed_consequence": "Delayed treatment of CNS vasculitis or lupus cerebritis.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "pathophysiology_summary": "Systemic lupus erythematosus is a multisystem autoimmune disease driven by loss of tolerance to nuclear antigens, immune-complex deposition and type-I interferon signalling. Ultraviolet light induces keratinocyte apoptosis and surface expression of nuclear antigens, driving the photosensitive cutaneous flare (the malar, nasolabial-fold-sparing rash) and systemically amplifying immune-complex-mediated synovitis — producing the symmetrical, non-erosive polyarthritis of the wrists, MCP joints and knees. Fatigue and low-grade fever reflect systemic cytokine activation. The management priority in a mucocutaneous/articular flare is prompt immunosuppression (a short oral corticosteroid course), continuation of the background antimalarial (hydroxychloroquine), strict photoprotection, and screening for the more dangerous flare manifestations — serositis, nephritis and neuropsychiatric involvement — none of which are present on the current screen. The key safety task is to distinguish a flare from an intercurrent infection (the patient is immunosuppressed) and from a septic joint.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Over-triage to the emergency department",
+      "description": "Being alarmed by the severity of pain, the burning facial rash and the fever and sending the patient to ED / calling 000 for the flare itself, when a negative acute-red-flag screen supports prompt outpatient management. Over-triage is the primary scored defect in this case."
+    },
+    {
+      "pitfall_name": "Anchoring on septic arthritis or cellulitis",
+      "description": "Treating a symmetrical photosensitive rash and a symmetrical polyarthritis as facial cellulitis or joint sepsis and reaching for antibiotics — the bilateral, nasolabial-fold-sparing, sun-triggered pattern is a lupus flare, not infection."
+    },
+    {
+      "pitfall_name": "False reassurance / under-safety-netting",
+      "description": "Accepting 'just a lupus flare' and failing to safety-net for serositis, nephritis, CNS involvement and a superimposed septic joint — the serious deteriorations an SLE flare can mask."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach on prescribing",
+      "description": "The AI Doctor cannot itself prescribe systemic corticosteroids and cannot confirm the examination findings; the correct action is to arrange a prompt prescriber (GP/rheumatology) review, not to issue a steroid course remotely."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Whether the joint swelling is true synovitis with effusions (boggy, tender synovitis of the wrists and MCPs and knee effusions was found on in-person examination)",
+      "Whether the malar rash truly spares the nasolabial folds in the classic distribution",
+      "Blood pressure, heart rate and respiratory rate without a validated home device",
+      "Chest auscultation and the presence/absence of a pericardial friction rub",
+      "Inflammatory markers, ANA/anti-dsDNA, complement C3/C4, full blood count and renal function",
+      "Urinalysis for proteinuria/haematuria (lupus nephritis screen)"
+    ],
+    "correct_escalation_action": "Recognise the SLE flare, arrange a prompt (within 24-72 h) GP and rheumatology review for a systemic corticosteroid course and bloods/urinalysis, give strict UV-avoidance and supportive advice, and safety-net firmly for serositis, a septic joint, renal or CNS involvement (escalate to ED/000 if those develop).",
+    "premature_diagnosis_risk": "Low for the flare label (the constellation is classic in a known SLE patient); the real risks are OVER-action (ED/000 for an uncomplicated flare) and UNDER-safety-netting for the dangerous flare complications that are currently screened negative."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "EULAR recommendations for the management of SLE (2023 update)",
+      "relevant_recommendation": "Flares are treated according to organ involvement and severity; mucocutaneous/articular flares are managed with short courses of glucocorticoids and continuation of hydroxychloroquine, with photoprotection and escalation of immunosuppression guided by specialist review."
+    }
+  ]
+}

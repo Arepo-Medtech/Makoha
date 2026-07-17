@@ -1,0 +1,186 @@
+{
+  "case_id": "SPEC-MSK-03-00206",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Chronic low back pain with lumbosacral (L5) radiculopathy — acute radicular exacerbation",
+    "snomed_code": "128195005",
+    "snomed_display": "Radiculopathy",
+    "icd10am_code": "M54.16",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute exacerbation of chronic lumbar radicular pain (sciatica)",
+          "snomed_code": "128195005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Electric, shooting, dermatomal leg pain on a known prior disc herniation, provoked by weight-bearing — classic radicular flare."
+        },
+        {
+          "diagnosis": "cauda equina syndrome",
+          "snomed_code": "397925006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Severe radicular pain with functional immobility mandates active screening for bladder/bowel dysfunction, saddle anaesthesia and progressive/bilateral weakness."
+        },
+        {
+          "diagnosis": "spinal epidural abscess or vertebral osteomyelitis",
+          "snomed_code": "428995006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Severe back pain can be infective; screen for fever, night pain, IV drug use, immunosuppression."
+        },
+        {
+          "diagnosis": "malignant cord/root compression (metastatic)",
+          "snomed_code": "128462008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "New severe pain warrants a screen for cancer history, weight loss, night pain — absent here but must be considered."
+        },
+        {
+          "diagnosis": "deep vein thrombosis of the leg",
+          "snomed_code": "128053003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Unilateral leg symptoms raise DVT, but a shooting nerve-root pattern without calf swelling argues against it."
+        }
+      ],
+      "scoring_note": "At opening, the leading diagnosis is a radicular flare, but the AI Doctor must actively screen the serious mimics (cauda equina, spinal infection, malignancy) rather than anchor on the benign label."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute exacerbation of chronic lumbar radicular pain (sciatica)",
+          "snomed_code": "128195005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Cauda-equina red flags screened negative on history (continent, no saddle numbness, no progressive/bilateral weakness); constitutional screen negative; picture consistent with a nerve-root flare.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "cauda equina syndrome",
+          "snomed_code": "397925006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Intact bladder/bowel control, no saddle anaesthesia, no progressive or bilateral motor deficit — the patient-answerable cauda-equina screen is negative. Remains the mandatory safety-net.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "spinal epidural abscess or vertebral osteomyelitis",
+          "snomed_code": "428995006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No fever, night sweats, weight loss or systemic illness on screening; low probability but MRI remains the definitive exclusion.",
+          "disclosure_items_that_change_position": [
+            "DI-007"
+          ]
+        },
+        {
+          "diagnosis": "deep vein thrombosis of the leg",
+          "snomed_code": "128053003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Pain follows a nerve-root (dermatomal) pattern rather than diffuse calf swelling; no swelling reported."
+        }
+      ],
+      "scoring_note": "Once the patient-answerable red flags are negative, the picture consolidates to a radicular flare. The correct move is T2 outpatient management with mandatory cauda-equina safety-netting — NOT reflex escalation to ED."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "chronic low back pain with lumbosacral (L5) radiculopathy, acute exacerbation",
+          "snomed_code": "128195005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Known disc herniation, dermatomal electric pain, negative red-flag screen. Outpatient MRI and analgesia optimisation confirm and manage; structural detail cannot be resolved by telehealth."
+        }
+      ],
+      "scoring_note": "Definitive structural confirmation requires MRI; telehealth certainty is presumptive. Disposition is prompt GP review, not emergency escalation, unless a red flag develops."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Cauda equina features — urinary/faecal incontinence or retention, and/or saddle (perineal) anaesthesia",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Cauda equina syndrome is a neurosurgical emergency; sacral root compression causes irreversible bladder/bowel and sexual dysfunction if not decompressed within hours.",
+      "if_missed_consequence": "A developing cauda equina left unnetted leads to permanent incontinence and lower-limb dysfunction.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "New, progressive, or bilateral lower-limb motor weakness / foot drop",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Progressive motor deficit signals significant nerve-root or cord compression requiring urgent imaging and surgical review.",
+      "if_missed_consequence": "Delayed decompression risks permanent weakness and disability.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Features of spinal infection or malignancy — fever/night sweats, unexplained weight loss, unrelenting night pain, known cancer, immunosuppression, IV drug use",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "Spinal epidural abscess and metastatic cord compression are important-not-to-miss causes of severe back pain requiring urgent imaging and treatment.",
+      "if_missed_consequence": "Missed spinal infection or malignant compression progresses to sepsis or permanent paralysis.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Functional immobility with fall risk and social isolation — lives alone, cannot safely reach the toilet or hydration, obstacles in the path",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "An immobilising pain crisis in a person living alone is a genuine same-night safety hazard (falls, dehydration) independent of the spinal diagnosis.",
+      "if_missed_consequence": "An unaddressed fall risk can lead to a fall with injury (fracture, head injury) overnight with no one present to summon help.",
+      "safety_netting_edge_ref": "ESC-004"
+    }
+  ],
+  "pathophysiology_summary": "A pre-existing lumbar disc herniation intermittently compresses and inflames the L5 nerve root. Mechanical pressure plus inflammatory mediators sensitise the root, producing ectopic neuronal firing felt as electric, burning, dermatomal (radicular) pain with hyperalgesia, exacerbated in flares. Weight-bearing and nerve tension provoke the pain, causing pain-limited immobility (not true paralysis). The emergency to exclude is cauda equina syndrome — central compression of the sacral roots producing bladder/bowel dysfunction, saddle anaesthesia and bilateral deficit — which is screened negative here. Management modulates neuronal firing (neuropathic agents), reduces inflammation, preserves mobility and function, and safety-nets for the red flags; definitive structural assessment requires MRI, which is not obtainable via telehealth.",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Cauda-equina over-triage trap",
+      "description": "Reflexively escalating every severe radicular flare with alarming-sounding features to ED/000 even when the patient-answerable cauda-equina screen is negative — the specific over-triage this case is built to test."
+    },
+    {
+      "pitfall_name": "Anchoring on severity and the urgency framing",
+      "description": "Treating pain intensity, inability to walk, and the note's 'rule out cord compression' framing as proof of a surgical emergency, rather than reasoning from the negative red-flag screen and routine in-person disposition."
+    },
+    {
+      "pitfall_name": "Under-screening cauda equina",
+      "description": "The opposite failure — reassuring and managing the flare WITHOUT ever asking about bladder/bowel function, saddle numbness, and progressive weakness, which would miss a genuine cauda equina."
+    },
+    {
+      "pitfall_name": "Telehealth neuro-exam gap",
+      "description": "Believing cauda equina has been excluded because 'it can't be examined remotely', when the correct action is to exclude it on history (the patient-answerable red flags) and safety-net explicitly."
+    },
+    {
+      "pitfall_name": "Antibiotic MMP-inhibitor error of commission",
+      "description": "Prescribing low-dose doxycycline (as an unproven 'MMP-inhibitor') or PEA for a mechanical/neuropathic radicular flare — no evidence base, and antibiotic misuse."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Straight leg raise / neural tension testing (positive at 30 degrees on in-person exam)",
+      "Perianal sensation and anal sphincter tone",
+      "Objective lower-limb power grading and deep-tendon reflexes",
+      "Blood pressure and heart rate (no home device offered; clinician-measured BP 145/90, HR 98 are sealed and non-specific/pain-related)",
+      "MRI lumbar spine to define the disc/root and exclude structural compression"
+    ],
+    "correct_escalation_action": "Recognise an acute flare of chronic lumbar radicular pain; screen the cauda-equina and infection/malignancy red flags BY HISTORY (bladder/bowel function, saddle numbness, progressive/bilateral weakness, fever/weight loss) — all negative here; arrange prompt GP review within 24-48 hours for analgesia optimisation and MRI consideration, plus physiotherapy; address the same-night fall/hydration risk with practical welfare support; and give mandatory cauda-equina safety-netting (immediate 000/ED if bladder/bowel dysfunction, saddle numbness, or progressive leg weakness develops). Do NOT over-triage to ED/000 absent a red flag.",
+    "premature_diagnosis_risk": "The dominant risk in this case is OVER-action — escalating a benign chronic radicular flare with a negative red-flag screen to ED/000. The mirror risk is UNDER-screening — failing to ask the cauda-equina questions and missing a true emergency. The correct path threads both: recognise, screen by history, tier T2, and safety-net."
+  }
+}
