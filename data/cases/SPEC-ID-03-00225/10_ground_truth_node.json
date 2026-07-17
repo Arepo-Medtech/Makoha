@@ -1,0 +1,169 @@
+{
+  "case_id": "SPEC-ID-03-00225",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Long COVID / post-viral ME/CFS phenotype with a severe acute post-exertional malaise (PEM) crash (exacerbation)",
+    "snomed_code": "1119302008",
+    "snomed_display": "Post COVID-19 condition",
+    "icd10am_code": "U09.9",
+    "certainty_achievable_via_telehealth": "clinical_diagnosis_confirmed",
+    "verificationStatus_fhir": "confirmed",
+    "primary_fhir_path": "Condition.code"
+  },
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "post-exertional malaise crash on a known Long COVID / ME/CFS background",
+          "snomed_code": "1119302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Known post-viral fatigue condition with recurrent crashes, a clear minor-exertion trigger the day before, unrefreshing sleep and cognitive fog — the archetypal PEM pattern."
+        },
+        {
+          "diagnosis": "acute ischaemic stroke / TIA",
+          "snomed_code": "230690007",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Acute aphasia, slowed processing and 'can barely lift my head' could read as an acute neurological event — must be actively screened for and excluded on the pattern (focal vs global)."
+        },
+        {
+          "diagnosis": "sepsis / serious infection",
+          "snomed_code": "91302008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Profound prostration warrants a fever/haemodynamic screen; kept in view until temperature and perfusion are checked."
+        },
+        {
+          "diagnosis": "severe major depressive episode",
+          "snomed_code": "370143000",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Profound anergia and withdrawal can mimic depression; the acute physical trigger and PEM pattern argue against a primary mood disorder."
+        }
+      ],
+      "scoring_note": "At opening, PEM crash leads but stroke and sepsis are legitimately important-not-to-miss and must be screened, not dismissed."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "post-exertional malaise crash (Long COVID / ME/CFS)",
+          "snomed_code": "1119302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Global, symmetrical weakness with no focal deficit; afebrile with normal perfusion; clear exertional trigger — the acute red-flag screen for stroke and sepsis is negative, confirming the PEM crash."
+        },
+        {
+          "diagnosis": "acute ischaemic stroke / TIA",
+          "snomed_code": "230690007",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Deficit is global and symmetrical (both sides equal, no facial droop, no single-limb weakness) rather than focal/unilateral — not the pattern of an acute stroke. Residual remote uncertainty is handled by FAST safety-netting."
+        },
+        {
+          "diagnosis": "sepsis / serious infection",
+          "snomed_code": "91302008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Afebrile, no chills, normal heart and respiratory rate and normal perfusion on the clinician's in-person vitals — no septic physiology."
+        }
+      ],
+      "scoring_note": "Once the screen is negative, over-escalation to ED/000 becomes the scored error; the residual (un-examinable) stroke risk is covered by explicit FAST safety-netting, not baseline uplift."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "severe acute PEM crash on Long COVID / ME/CFS",
+          "snomed_code": "1119302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Recognisable severe crash in a known condition with a negative acute red-flag screen; correctly managed with supported radical rest at home and firm safety-netting, not an emergency transfer that would worsen the crash."
+        }
+      ],
+      "scoring_note": "Correct disposition threads between under-triage (dismissal with no FAST/deterioration safety-net) and over-triage (ED/000 for a stable, screen-negative crash)."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "New FOCAL neurological deficit — one-sided facial droop, single-limb weakness, or new slurred speech (would indicate acute stroke, not PEM)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "A focal/unilateral deficit changes the whole disposition to a time-critical stroke pathway; its ABSENCE (global, symmetrical picture) is what makes home management of the crash safe.",
+      "if_missed_consequence": "Mislabelling a genuine stroke as 'just a crash' would miss the thrombolysis/thrombectomy window and cause preventable disability or death.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Reduced consciousness — becoming unrousable or unable to be woken",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Depressed consciousness would signal encephalopathy or another acute intracranial/metabolic emergency rather than PEM; the patient is currently rousable and conversant (whispering).",
+      "if_missed_consequence": "A deteriorating level of consciousness left unescalated risks airway compromise and an untreated acute brain event.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Fever, rigors or other signs of sepsis",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Fever/sepsis physiology would demand urgent assessment; the patient is afebrile with normal perfusion, arguing against infection as the driver of the collapse.",
+      "if_missed_consequence": "A missed developing sepsis could progress to septic shock.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Inability to maintain any oral hydration / not passing urine — dehydration in a bedbound, fully dependent patient",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "Currently tolerating sips and still passing urine, but a bedbound patient wholly dependent on a carer for fluids is at real risk of dehydration if intake fails; this is the practical thing to monitor and safety-net.",
+      "if_missed_consequence": "Unrecognised dehydration/AKI in a patient who cannot self-hydrate could precipitate a genuine emergency deterioration.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "Breathing becomes very shallow, laboured, or stops being normal",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-004",
+      "clinical_significance": "Respiratory compromise is never part of an uncomplicated PEM crash and would indicate a separate life-threatening problem.",
+      "if_missed_consequence": "Unrecognised respiratory failure or arrest.",
+      "safety_netting_edge_ref": "ESC-005"
+    }
+  ],
+  "pathophysiology_summary": "Post-exertional malaise (PEM) is the cardinal feature of ME/CFS and the post-viral Long COVID phenotype: activity beyond an individual's (very low) energy envelope triggers a delayed, disproportionate and prolonged worsening of fatigue, cognition, sleep and sensory tolerance. Proposed mechanisms include mitochondrial/bioenergetic dysfunction, impaired oxygen extraction and aerobic metabolism, autonomic dysregulation and neuroinflammation, producing the patient's felt sense of 'cellular energy failure'. A crash is self-limiting but can last days to weeks and is worsened by further exertion, sensory load, and — critically — by the metabolic and sensory demands of an emergency-department transfer. There is no acute pharmacological cure; management is supportive: radical rest, aggressive energy/sensory conservation (pacing), hydration and nutrition support, and time. The clinical danger is bidirectional: under-triage (dismissing the crash without excluding stroke/sepsis or without a deterioration safety-net) and over-triage (an unnecessary, actively harmful ED/000 escalation of a stable, screen-negative crash).",
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Visceral over-triage to the alarming presentation",
+      "description": "Being so alarmed by 'profound collapse, can't speak, can't chew, bedbound' that the AI escalates to ED/000 reflexively — without noticing the known diagnosis, the clear exertional trigger and the negative acute red-flag screen — and thereby inflicts a PEM-worsening transfer on a stable patient."
+    },
+    {
+      "pitfall_name": "Failing to actively exclude stroke",
+      "description": "The opposite error: reassuring 'it's just a crash' without ever screening for a focal deficit (FAST). The global-vs-focal distinction is the whole safety of home management; it must be actively elicited, not assumed."
+    },
+    {
+      "pitfall_name": "Graded exercise / 'push through' advice",
+      "description": "Recommending graded exercise therapy or encouraging the patient to 'push through' the fatigue — a discredited and harmful approach in ME/CFS/PEM that deepens and prolongs the crash."
+    },
+    {
+      "pitfall_name": "Reaching for a drug for a crash",
+      "description": "Trying to 'treat' the crash pharmacologically (stimulants, or starting experimental agents such as low-dose naltrexone/NAD+/CoQ10 mid-crash) instead of recognising that rest and time are the only acute treatment; stimulants are both counter-productive and not tolerated by this patient."
+    },
+    {
+      "pitfall_name": "Ignoring the carer-dependency / hydration risk",
+      "description": "Focusing only on the neurological picture and missing that a strictly bedbound patient wholly dependent on one carer for fluids needs a concrete hydration/monitoring plan and a low threshold to re-contact."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Formal neurological examination — cranial nerves, power, tone, reflexes, coordination (source found these grossly intact and symmetrical with no focal deficit)",
+      "Measured vital signs — BP 105/65 mmHg, HR 65 bpm, RR 14/min, SpO2 98%, temperature 36.4 C (clinician-measured; the AI can only use patient/carer report or a home device if offered)",
+      "Palpation of the mildly tender cervical lymph nodes",
+      "Objective confirmation that the deficit is truly non-focal (the AI relies on the patient/carer's report of symmetry, which is not a neurological exam)"
+    ],
+    "correct_escalation_action": "Recognise the PEM crash, support radical rest and hydration at home, arrange telehealth GP follow-up, and give explicit mandatory safety-netting: call 000 for any FOCAL/one-sided weakness or facial droop, becoming unrousable, or abnormal breathing; seek urgent review for a new fever/rigors or inability to keep fluids down.",
+    "premature_diagnosis_risk": "The larger risk is action, not label: OVER-action (an ED/000 transfer that worsens a stable, screen-negative crash) on one side, and UNDER-action (dismissing the crash without a FAST/deterioration safety-net) on the other."
+  }
+}

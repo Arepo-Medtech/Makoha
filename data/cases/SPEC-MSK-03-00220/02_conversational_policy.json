@@ -1,0 +1,126 @@
+{
+  "case_id": "SPEC-MSK-03-00220",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Recurrent atraumatic subluxations of the left shoulder and right knee over about four hours, each spontaneously reducing; no joint currently remains out of place or deformed.",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Can you tell me exactly what happened with the joints?",
+        "Did the joints go back into place, or is something still out of place?",
+        "Does either joint look deformed or out of shape right now?"
+      ],
+      "patient_response_template": "They kind of popped out and then slid back in on their own, both the shoulder and the knee. Nothing's stuck out of place now and they don't look deformed — it's the cramping that's unbearable.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "No numbness, pins-and-needles, weakness, coldness, or change in colour of the affected hand or foot — patient-observable distal neurovascular screen is negative.",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Are your fingers or toes numb, tingling, weak, cold, or a different colour?",
+        "Can you feel and move your hand and your foot normally?",
+        "Is the skin on your hand or foot pale, blue, or cold to touch?"
+      ],
+      "patient_response_template": "No, my fingers and toes feel totally normal — I can move them fine, they're not numb or cold, and the colour looks normal.",
+      "patient_deflection_template": "I haven't really checked, I've just been focused on the pain.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-002",
+        "symptom_item_ref": "SYM-003",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "No fever, and no single hot, red, markedly swollen joint; patient not systemically unwell — septic arthritis screen negative.",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have any fever, or is one joint hot, red and very swollen?",
+        "Have you felt feverish or generally unwell in yourself?"
+      ],
+      "patient_response_template": "No fever, and nothing's hot or red — it's more the muscles cramping than the joint being swollen. I don't feel sick in myself otherwise.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-003",
+        "symptom_item_ref": "SYM-004"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Established diagnosis of hypermobile Ehlers-Danlos syndrome with frequent prior subluxations and early secondary osteoarthritis of the affected joints.",
+      "fhir_path": "Condition._freetext_HPC_tags.previous_episodes",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Do you have any medical conditions I should know about?",
+        "Has this happened before, or do you have a joint or connective-tissue condition?"
+      ],
+      "patient_response_template": "Yeah, I've got hypermobile EDS — my joints are really loose and slip out easily. I've been told I've got early arthritis in this shoulder and knee too.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Patient is immobilised on the floor, lives alone, and cannot safely transfer or reach food and water.",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map",
+      "ros_category": "SDOH",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Are you able to move safely, and is there anyone there with you?",
+        "Can you get yourself up, and do you have help at home if you need it?"
+      ],
+      "patient_response_template": "No — I'm stuck on the floor, I live on my own, and I can't get up to reach the kitchen or get any water.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "No effective analgesia is available in the home at present.",
+      "fhir_path": "SDOH_Observations.full_SDOH_field_map",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Do you have any pain relief at home you could take right now?",
+        "What have you already tried for the pain today?"
+      ],
+      "patient_response_template": "I've got nothing here that helps — there are no painkillers in the house at the moment.",
+      "patient_deflection_template": "I haven't taken anything.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "low",
+      "expected_elicitation_turn": "mid"
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-005"
+    ]
+  }
+}

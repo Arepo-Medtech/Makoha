@@ -1,0 +1,133 @@
+{
+  "case_id": "SPEC-PAIN-03-00205",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "Burning lower-back pain that is diffuse and spreads around without settling in one spot",
+      "fhir_path": "Condition._freetext_HPC_tags.character",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "Can you describe the pain — what does it feel like and where exactly is it?",
+        "Is the pain in one spot or does it move around?"
+      ],
+      "patient_response_template": "It's a burning feeling all through my lower back — it doesn't stay in one spot, it kind of spreads around.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-001"
+      }
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Even light touch to the lower back is felt as excruciating",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Is your back tender to touch?",
+        "What happens if something lightly touches or brushes your back?"
+      ],
+      "patient_response_template": "Even resting a light hand on it feels unbearable — like the lightest touch is agony.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Ordinary painkillers are not helping at all, and the maximum safe daily amount of paracetamol and ibuprofen has already been taken today",
+      "fhir_path": "MedicationStatement._freetext_medication_tags.self_medication",
+      "ros_category": "Pharmacological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What have you taken for the pain, and how much?",
+        "Have the painkillers helped at all?"
+      ],
+      "patient_response_template": "I've already taken the most I'm allowed of Panadol and Nurofen today and it's done nothing — I'm so desperate I could just take more.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "escalation_edge_ref": "ESC-003"
+      }
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "Bowel and bladder control are normal, there is no numbness around the groin/saddle area, and the legs still take weight normally",
+      "fhir_path": "Condition._freetext_HPC_tags.associated_symptoms",
+      "ros_category": "Neurological",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Have you had any loss of control of your bladder or bowels?",
+        "Any numbness around your groin, buttocks or inner thighs — the area you'd sit on a saddle?",
+        "Are your legs still taking your weight normally, or any new weakness or numbness in them?"
+      ],
+      "patient_response_template": "No, my waterworks and bowels are normal, I don't have any numbness down below, and my legs are still holding me up fine.",
+      "patient_deflection_template": "I don't know, I'm just focused on my back — it's all I can think about.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "symptom_item_ref": "SYM-006",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "Feeling panicky, breathing fast, and unable to cope with the pain while alone at home",
+      "fhir_path": "ClinicalImpression._freetext_reasoning_tags.psychological_state",
+      "ros_category": "Psychiatric",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How are you coping with all this right now?",
+        "Are you feeling anxious or panicky?"
+      ],
+      "patient_response_template": "I'm panicking, my breathing is all fast, and I just can't cope with it anymore tonight.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": false,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-004",
+        "escalation_edge_ref": "ESC-005"
+      }
+    },
+    {
+      "item_id": "DI-006",
+      "clinical_fact": "This is a flare of long-standing back pain that started after minor exertion; previous scans showed only minor findings",
+      "fhir_path": "Condition._freetext_HPC_tags.background",
+      "ros_category": "Musculoskeletal",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "Have you had this kind of back pain before?",
+        "Do you know what set it off this time?"
+      ],
+      "patient_response_template": "I've had this back pain for years and it flares up now and then. This time it started after I did a bit of light activity. Past scans only ever showed minor stuff.",
+      "is_red_flag": false,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-004"
+      }
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 15,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-004",
+      "DI-006"
+    ]
+  }
+}
