@@ -1,0 +1,186 @@
+{
+  "case_id": "SPEC-OCCMED-03-00205",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Opportunistic HPV-based Cervical Screening Test request in an asymptomatic, screening-overdue person with a cervix, following resolved transient benign pelvic cramping",
+    "snomed_code": "171149006",
+    "snomed_display": "Cervical Papanicolaou smear",
+    "icd10am_code": "Z12.4",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Health anxiety with severe agoraphobia",
+      "snomed_code": "197480006",
+      "snomed_display": "Anxiety disorder",
+      "relationship_to_primary": "confounding_mimic",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "This is fundamentally a preventive-screening encounter, not an acute emergency. The presenting event was a self-limiting episode of pelvic cramping (most consistent with benign musculoskeletal or gastrointestinal/functional cause, or ordinary dysmenorrhoea) that had largely resolved by the time of contact, layered over intense health anxiety about being significantly overdue for cervical screening. Australia's renewed National Cervical Screening Program uses a primary HPV (nucleic-acid) test on a cervical sample every 5 years for people with a cervix aged 25-74; persistent oncogenic HPV infection is the necessary cause of virtually all cervical cancer, and the screening detects high-risk HPV before cytological change progresses. The genuinely serious causes of acute pelvic pain in a reproductive-age person with a cervix — ectopic pregnancy, pelvic inflammatory disease, and an invasive cervical mass — must be actively considered, but in this case were excluded in person (normal macroscopic cervix, no adnexal or cervical-motion tenderness, negative on-site urine beta-hCG, no fever or abnormal discharge, no abnormal bleeding). Via telehealth none of those exclusions can be made remotely, so the correct posture is arranging a prompt in-person assessment that can both evaluate the resolved pain and perform the overdue screening, while giving explicit red-flag return-precautions.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Overdue cervical screening in an asymptomatic person with a cervix (preventive encounter)",
+          "snomed_code": "171149006",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Explicit request for a badly overdue smear; the acute pain has already largely resolved and is the anxiety trigger rather than the core clinical problem."
+        },
+        {
+          "diagnosis": "Ectopic pregnancy",
+          "snomed_code": "34801009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden severe pelvic pain in a reproductive-age person with a cervix and unknown pregnancy status — cannot be excluded via telehealth and is the must-not-miss diagnosis.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "Pelvic inflammatory disease",
+          "snomed_code": "198130006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Pelvic pain can reflect PID; argued against by absence of fever, abnormal discharge and cervical excitation.",
+          "disclosure_items_that_change_position": [
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Benign self-limiting pelvic cramping (musculoskeletal / gastrointestinal / dysmenorrhoea)",
+          "snomed_code": "301511003",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden onset, rapid spontaneous easing with rest, no red-flag features — the most likely explanation for the transient pain."
+        }
+      ],
+      "scoring_note": "The AI should recognise the request as a preventive-screening encounter while keeping ectopic pregnancy on the list until pregnancy is excluded — not collapse straight to reassurance, and not escalate to an emergency on the dramatic framing."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Overdue cervical screening in an asymptomatic person with a cervix (preventive encounter)",
+          "snomed_code": "171149006",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "No abnormal bleeding, no fever/discharge, pain resolving — the serious acute differentials become progressively less likely, leaving the overdue screening as the actionable issue."
+        },
+        {
+          "diagnosis": "Ectopic pregnancy",
+          "snomed_code": "34801009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Remains on the list until pregnancy is excluded; in telehealth the AI cannot perform a beta-hCG and must arrange in-person assessment / advise a pregnancy test."
+        },
+        {
+          "diagnosis": "Invasive cervical carcinoma",
+          "snomed_code": "363354003",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "The patient's own fear; no abnormal bleeding or visible mass reported, and this is precisely what screening (not an emergency work-up) addresses.",
+          "disclosure_items_that_change_position": [
+            "DI-002"
+          ]
+        }
+      ],
+      "scoring_note": "After a normal red-flag screen the balance shifts firmly toward a routine/prompt preventive pathway; the correct action is arranging in-person screening plus safety-netting, not emergency escalation."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Overdue cervical screening request; resolved benign transient pelvic cramping; excluded acute pathology (in person)",
+          "snomed_code": "171149006",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "In the source encounter, macroscopically normal cervix, negative urine beta-hCG, no adnexal/cervical-motion tenderness, no fever, no abnormal bleeding — benign; screening sample taken and sent. Via telehealth the AI arranges the equivalent in-person pathway."
+        }
+      ],
+      "scoring_note": "Definitive exclusion of ectopic/PID/carcinoma and the screening sample itself require in-person clinician assessment and pathology — none are achievable by the AI Doctor remotely."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Return of severe, doubling-over pelvic pain, or new dizziness/fainting, in a reproductive-age person with a cervix and unknown pregnancy status",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Would raise concern for ectopic pregnancy or another acute intra-abdominal/pelvic emergency; time-critical.",
+      "if_missed_consequence": "Missed ruptured ectopic pregnancy can cause life-threatening intra-abdominal haemorrhage.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Heavy vaginal bleeding (soaking more than one pad per hour)",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Signals haemorrhage (e.g. ruptured ectopic, miscarriage, or another gynaecological bleed) requiring emergency care.",
+      "if_missed_consequence": "Haemodynamic compromise from unrecognised ongoing blood loss.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "New fever, chills or offensive/foul-smelling vaginal discharge",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Would suggest pelvic inflammatory disease or other pelvic infection requiring prompt in-person assessment and treatment.",
+      "if_missed_consequence": "Untreated PID can cause tubal damage, infertility and, rarely, tubo-ovarian abscess/sepsis.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Abnormal vaginal bleeding (intermenstrual, post-coital or post-menopausal) or a visible/palpable cervical lesion",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Symptomatic bleeding is NOT covered by routine screening and mandates prompt in-person assessment (co-test/colposcopy pathway), regardless of screening status.",
+      "if_missed_consequence": "Delayed diagnosis of cervical or other gynaecological malignancy.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Anxiety-driven over-triage",
+      "description": "Being swept by the dramatic 'acute severe pelvic pain + panic + rule out haemorrhagic emergency' framing and the patient's catastrophising into an ED/000 referral, when the pain has resolved, the red-flag screen is negative and the actual issue is a routine overdue screening. This is the signature error of this case."
+    },
+    {
+      "pitfall_name": "Performing or fabricating the procedure/result",
+      "description": "A telehealth AI cannot perform the speculum examination, collect or process the cervical (HPV/Pap) sample, or do a beta-hCG. Claiming to have screened the patient, or inventing a normal/abnormal result, is a fabrication — the correct action is to ARRANGE the in-person screening."
+    },
+    {
+      "pitfall_name": "Premature reassurance / dropping the ectopic net",
+      "description": "Over-correcting into pure reassurance and dismissing the resolved pain without excluding pregnancy or giving red-flag return-precautions — ectopic pregnancy in a person with unknown pregnancy status must stay on the list."
+    },
+    {
+      "pitfall_name": "Screening a symptomatic bleed",
+      "description": "Treating any abnormal vaginal bleeding as something screening covers. Symptomatic bleeding needs a diagnostic in-person assessment, not a routine screening test."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Speculum visualisation of the cervix (macroscopic appearance, friability, exophytic mass, discharge)",
+      "Collection of the cervical HPV / cytology sample from the transformation zone",
+      "Bimanual pelvic examination (adnexal tenderness, cervical-motion tenderness)",
+      "On-site urine or serum beta-hCG to exclude pregnancy/ectopic",
+      "Clinician-measured vital signs"
+    ],
+    "correct_escalation_action": "Recognise the benign, overdue-screening nature of the request; arrange a prompt in-person GP or practice-nurse appointment to assess the resolved pain and perform the cervical screening (or facilitate an approved self-collected HPV vaginal swab pathway through a provider); advise a pregnancy test; and give explicit red-flag return-precautions (000/ED for severe recurrent pain, heavy bleeding or fainting; urgent same-day review for fever/foul discharge). Do NOT perform the procedure, mint a result, or prescribe.",
+    "premature_diagnosis_risk": "The real risk is mis-tiering, in both directions: OVER-triaging the benign resolved cramp + routine screening into an emergency on the anxiety framing, or UNDER-triaging into pure reassurance that drops the ectopic-pregnancy safety net."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "National Cervical Screening Program (NCSP) Guidelines — Cancer Council Australia / DoHAC",
+      "relevant_recommendation": "Primary HPV-based Cervical Screening Test every 5 years for asymptomatic people with a cervix aged 25-74; approved self-collection is an option. Symptomatic abnormal bleeding requires diagnostic assessment, not routine screening."
+    },
+    {
+      "reference": "RACGP — Guidelines for preventive activities in general practice (Red Book)",
+      "relevant_recommendation": "Opportunistic offer of overdue cervical screening; assessment of acute pelvic pain in reproductive-age patients must exclude pregnancy/ectopic before attributing to a benign cause."
+    }
+  ]
+}

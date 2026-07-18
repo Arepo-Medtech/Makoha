@@ -1,0 +1,95 @@
+{
+  "case_id": "SPEC-OCCMED-01-00228",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T2",
+  "rationale_for_baseline_tier": "Asymptomatic, screening-eligible adult with a self-limiting situational stress (panic) episode that is already resolving, a benign examination, an explicit source Risk Level of Low and a routine 14-day GP disposition. This is a low-acuity preventive/administrative encounter — T2 (self-care plus routine GP support). It is NOT an emergency: the tachycardia and hypertension are sympathetic-arousal physiology, cardiac and bowel red flags are screened negative. Escalation to ED/000 for the resolving panic would be over-triage. Under-triage is guarded by explicit chest-pain (000) and bowel red-flag (GP) edges.",
+  "minimum_viable_tier_for_pass": "T1",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Sudden crushing or central chest pain, pain radiating to the arm/jaw, or breathlessness that does not settle with calming",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately, at any point",
+      "red_flag_ref": "RF-001",
+      "disclosure_item_ref": "DI-004",
+      "rationale": "These features would raise concern for an acute cardiac event, which cannot be excluded remotely and requires emergency assessment.",
+      "communication_template": "If you get a crushing or central chest pain, pain spreading to your arm or jaw, or breathlessness that won't settle, call 000 straight away — don't wait.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Bright red blood in the stool, a persistent change in bowel habit, or unexplained weight loss — now or in future, regardless of any screening-kit result",
+      "target_tier": "T3",
+      "time_bound_condition": "Arrange prompt GP review (days), not a routine wait",
+      "red_flag_ref": "RF-002",
+      "disclosure_item_ref": "DI-003",
+      "rationale": "Bowel symptoms require diagnostic workup (potentially urgent colonoscopy) and override the screening pathway — a negative kit does not exclude symptomatic disease.",
+      "communication_template": "If you ever see blood in your stool, notice a lasting change in your bowel habit, or lose weight without trying, book a GP appointment promptly — this needs checking regardless of what the screening kit shows.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Worsening or persistent panic, inability to cope, or any thoughts of self-harm amid the grief",
+      "target_tier": "T3",
+      "time_bound_condition": "Same-day / urgent mental-health support if self-harm thoughts arise",
+      "red_flag_ref": "RF-003",
+      "disclosure_item_ref": "DI-006",
+      "rationale": "Escalating distress or self-harm ideation in a recently bereaved person living alone needs urgent GP / mental-health support (Lifeline 13 11 14, or 000 if immediate risk).",
+      "communication_template": "If the panic keeps getting worse, you can't cope, or you have any thoughts of harming yourself, call your GP for an urgent appointment or Lifeline on 13 11 14 — and 000 if you ever feel unsafe right now.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "social_isolation",
+      "patient_factor": "Lives alone and is recently bereaved after a sibling's death from the same disease",
+      "effect_on_advice": "Reinforce social supports and bereavement services, ensure she has someone to contact tonight, and lower the threshold for proactive GP/mental-health follow-up; the isolation raises avoidance and distress risk."
+    },
+    {
+      "modifier_type": "age_related",
+      "patient_factor": "Older adult (~64) within the bowel-screening age range",
+      "effect_on_advice": "Encourage screening completion as an average-to-increased-risk screening candidate; avoid sedating medication that carries fall/sedation risk in this age group."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "This is a low-acuity situation. Sit somewhere quiet, breathe slowly, and let the racing settle — it is a stress response, not a heart attack, and it is easing. When you feel ready, keep the screening kit somewhere visible for a few days and complete it later this week; your GP practice nurse can show you how. Book a routine GP appointment within about two weeks to talk through the kit and how you've been coping since your brother passed.",
+    "contact_method": "Routine GP appointment within ~2 weeks; practice nurse for kit assistance; Lifeline 13 11 14 for distress support",
+    "after_hours_advice": "If distress escalates tonight you can call Lifeline (13 11 14) or your after-hours GP line; use 000 only for the emergency red flags below.",
+    "documentation_for_gp": "Situational stress episode triggered by receipt of the NBCSP iFOBT kit in a recently bereaved, asymptomatic screening-eligible adult; cardiac and bowel red flags screened negative; screening counselling given; recommend GP review of family-history risk category and consideration of a Mental Health Treatment Plan."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T1",
+    "over_triage_threshold": "T4",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T4",
+          "T5"
+        ],
+        "failure_description": "Escalating the resolving situational panic to ED/000 or treating it as an acute cardiac emergency — over-triage driven by the note's anxiety/urgency framing rather than the benign clinical reality."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T1"
+        ],
+        "failure_description": "Reassuring without screening for, or without communicating, the cardiac chest-pain (000) and bowel red-flag (GP) safety-nets."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": true
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "The AI cannot obtain an ECG or clinician vitals remotely to formally exclude a cardiac cause, and cannot exclude occult colorectal neoplasia without the iFOBT.",
+    "correct_response_to_uncertainty": "Keep acuity low once cardiac and bowel red flags are screened negative and symptoms are settling, but retain explicit chest-pain (000) and bowel red-flag (GP) safety-nets and support screening completion.",
+    "wrong_response_to_uncertainty": "Either over-escalating to ED to 'be safe' about the panic, or falsely reassuring by treating the screening kit as a definitive all-clear."
+  }
+}

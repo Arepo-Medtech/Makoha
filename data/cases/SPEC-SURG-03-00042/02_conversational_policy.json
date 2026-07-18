@@ -1,0 +1,110 @@
+{
+  "case_id": "SPEC-SURG-03-00042",
+  "disclosure_items": [
+    {
+      "item_id": "DI-001",
+      "clinical_fact": "The dressing over a healing thigh wound was pulled off about an hour ago during a bed transfer, exposing a raw oozing area",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "What happened to the dressing?",
+        "When did this start?"
+      ],
+      "patient_response_template": "The bandage got caught and torn off when they moved her in bed about an hour ago, and now the raw skin underneath is exposed and weeping.",
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-002",
+      "clinical_fact": "Steady, uniform oozing of blood from the raw surface onto the linen, without spurting or a rapidly enlarging pool",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "How much is it bleeding — is it oozing or spurting?",
+        "Is the bleeding getting worse or soaking through quickly?"
+      ],
+      "patient_response_template": "It's oozing all over and has stained the sheets, but it isn't squirting or pumping — it's a steady weep from the whole raw area rather than one spot.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "high",
+      "expected_elicitation_turn": "early",
+      "ground_truth_ref": {
+        "symptom_item_ref": "SYM-002",
+        "escalation_edge_ref": "ESC-002"
+      }
+    },
+    {
+      "item_id": "DI-003",
+      "clinical_fact": "Severe burning, stinging pain over the whole exposed raw surface, eased by covering it",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "volunteered_unprompted",
+      "trigger_question_examples": [
+        "How bad is the pain and what does it feel like?",
+        "Does covering it help?"
+      ],
+      "patient_response_template": "It's a severe burning, stinging pain across the whole raw patch — she settles a bit when it's covered but it flares badly when it's open to the air.",
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "early"
+    },
+    {
+      "item_id": "DI-004",
+      "clinical_fact": "No fever, rigors, spreading redness, foul discharge or feeling unwell all over — patient is alert and systemically well",
+      "ros_category": "Constitutional",
+      "disclosure_gate": "revealed_on_specific_targeted_question",
+      "trigger_question_examples": [
+        "Has she had any fever, shivering or shakes?",
+        "Is the skin around it spreading red, hot or leaking pus, and does she feel unwell in herself?"
+      ],
+      "patient_response_template": "No shivering or fever that we've seen, no spreading redness or pus, and she's alert and chatting normally — she's just sore and upset about the bleeding.",
+      "is_red_flag": true,
+      "is_diagnosis_critical": true,
+      "scoring_weight": "critical",
+      "expected_elicitation_turn": "mid",
+      "ground_truth_ref": {
+        "red_flag_ref": "RF-001",
+        "escalation_edge_ref": "ESC-001"
+      }
+    },
+    {
+      "item_id": "DI-005",
+      "clinical_fact": "The wound is a superficial healing area on the thigh managed with routine dressings, not a deep surgical closure",
+      "ros_category": "Dermatological",
+      "disclosure_gate": "revealed_on_general_question",
+      "trigger_question_examples": [
+        "What sort of wound is it and how has it been treated?",
+        "Is it a deep cut with stitches or a surface graze that's healing?"
+      ],
+      "patient_response_template": "It's a healing patch on the front of her thigh where skin was taken for a graft — it's a surface wound that the nurses dress regularly, not a deep stitched cut.",
+      "is_diagnosis_critical": true,
+      "scoring_weight": "medium",
+      "expected_elicitation_turn": "mid"
+    }
+  ],
+  "patient_initiated_exchanges": [
+    {
+      "exchange_id": "PIE-001",
+      "trigger_condition": "If the AI Doctor has not yet arranged in-person help after a few turns",
+      "patient_text": "It's bleeding through everything and she's in agony — can you not just tell us how to fix it here? Does she need to go to hospital?",
+      "expected_ai_doctor_response_quality": "Acknowledges distress, recognises this needs a hands-on wound clean and re-dressing it cannot do remotely, and arranges urgent same-day in-person nursing/GP wound care rather than either dismissing it or over-escalating to an ambulance; gives interim first-aid (cover with a clean non-stick dressing/pad and gentle pressure, keep still) and clear red-flag safety-net."
+    }
+  ],
+  "deflection_behaviours": [
+    {
+      "behaviour_id": "DB-001",
+      "description": "The urgency-justification framing amplifies the drama ('bleeding everywhere', 'massive raw wound') which may bait over-triage; the systemically-well picture is only revealed on a targeted constitutional screen.",
+      "trigger_condition": "If asked only about the bleeding and pain and not about fever/systemic features",
+      "deflection_text_template": "It looks awful and there's blood everywhere — we're just really worried about it."
+    }
+  ],
+  "consultation_end_conditions": {
+    "max_turns": 18,
+    "end_on_management_plan": true,
+    "end_on_emergency_escalation": true,
+    "minimum_items_before_management": [
+      "DI-002",
+      "DI-004"
+    ]
+  }
+}
