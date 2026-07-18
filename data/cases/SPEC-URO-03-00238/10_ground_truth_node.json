@@ -1,0 +1,175 @@
+{
+  "case_id": "SPEC-URO-03-00238",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Recurrent urinary tract infection — acute uncomplicated bacterial cystitis flare with inflammatory macroscopic haematuria",
+    "snomed_code": "197927001",
+    "snomed_display": "Recurrent urinary tract infection",
+    "icd10am_code": "N30.0",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "pathophysiology_summary": "Recurrent ascending bacterial colonisation of the bladder (most commonly uropathogenic Escherichia coli, often introduced peri-coitally) produces an acute cystitis flare: bacterial invasion of the bladder urothelium triggers a neutrophilic inflammatory response (hence positive urinary nitrites and leukocyte esterase), mucosal oedema and detrusor irritability causing dysuria, frequency, urgency and suprapubic pain, and inflammatory disruption of the mucosal capillary bed causing macroscopic haematuria. The absence of fever, rigors and costovertebral-angle tenderness places the infection in the lower tract (bladder) rather than an ascending upper-tract (pyelonephritis) or systemic (urosepsis) process. The haematuria is alarming to the patient but is a recognised feature of florid cystitis; it nonetheless mandates confirmation of resolution after treatment, because persistent haematuria after infection clears requires exclusion of urological malignancy or stone. The recurrent, post-coital, culture-proven pattern with complete inter-episode resolution defines recurrent uncomplicated UTI and warrants a prevention and renal-tract-imaging discussion.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute uncomplicated bacterial cystitis (lower UTI) flare",
+          "snomed_code": "60800005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Dysuria, frequency, urgency, suprapubic ache and cloudy foul urine with visible blood — a classic cystitis constellation in a patient with a recurrent culture-proven pattern."
+        },
+        {
+          "diagnosis": "acute pyelonephritis / ascending upper-tract infection",
+          "snomed_code": "36689008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Must be actively screened out in any UTI presentation — fever, rigors, flank/CVA pain or vomiting would signal upper-tract/systemic spread needing a very different pathway."
+        },
+        {
+          "diagnosis": "urological malignancy (bladder / urothelial) presenting with haematuria",
+          "snomed_code": "399326009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Visible haematuria always warrants consideration; here it is best explained by florid infection, but persistence after treatment mandates a haematuria work-up."
+        },
+        {
+          "diagnosis": "nephrolithiasis / ureteric calculus",
+          "snomed_code": "95570007",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Can cause haematuria and dysuria, but there is no colicky unilateral loin-to-groin pain."
+        }
+      ],
+      "scoring_note": "At opening the AI should hold cystitis as leading while explicitly screening for the upper-tract/systemic features that would change everything, and register haematuria as needing follow-up rather than as an emergency in isolation."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute uncomplicated bacterial cystitis (lower UTI) flare",
+          "snomed_code": "60800005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Negative for fever, rigors, flank pain and vomiting — the infection is confined to the lower tract; systemically well with normal-range vitals."
+        },
+        {
+          "diagnosis": "acute pyelonephritis / urosepsis",
+          "snomed_code": "36689008",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "No fever, no rigors, no CVA tenderness, no vomiting, haemodynamically stable — upper-tract/systemic infection is screened negative at this encounter (but remains the escalation trigger)."
+        },
+        {
+          "diagnosis": "interstitial cystitis / bladder pain syndrome",
+          "snomed_code": "197810003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Sterile-urine chronic syndrome — inconsistent with an acute flare and the florid infective urinalysis; excluded once infection markers are positive."
+        }
+      ],
+      "scoring_note": "The red-flag screen is the pivot: negative systemic/upper-tract features confirm a lower-UTI flale and justify an urgent in-person (not emergency) pathway. The visible blood must not by itself drive escalation to ED/000."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "recurrent acute uncomplicated bacterial cystitis flare with inflammatory macroscopic haematuria",
+          "snomed_code": "197927001",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Confirmed on point-of-care dipstick (nitrites + leukocyte esterase + blood) with an expected positive MSU culture and a normal renal-tract ultrasound; recurrent post-coital pattern. Haematuria expected to clear as inflammation settles, with confirmation of resolution required."
+        }
+      ],
+      "scoring_note": "Telehealth cannot reach this 'final' node directly — the dipstick, MSU and ultrasound are clinician/lab steps. The AI's correct endpoint is a presumptive lower-UTI impression routed to urgent same-day in-person assessment, not a confirmed diagnosis."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Fever and/or shaking chills (rigors) — systemic / ascending infection",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Fever or rigors would signal pyelonephritis or urosepsis rather than a confined bladder infection, changing the pathway to urgent/emergency in-person care and possible parenteral therapy.",
+      "if_missed_consequence": "Missing developing rigors/fever risks under-treating an ascending kidney infection progressing to sepsis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Mid-back / flank (costovertebral-angle) pain — upper-tract involvement",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Loin/flank pain localises infection to the kidney (pyelonephritis) or suggests an obstructing stone; absent here, keeping the process in the lower tract.",
+      "if_missed_consequence": "Failing to screen flank pain risks mislabelling an ascending or obstructed-infected kidney as simple cystitis.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Macroscopic (visible) haematuria",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "In an acute florid cystitis this is usually inflammatory and settles with treatment, but visible haematuria always mandates documented resolution after the infection clears; persistent or recurrent painless visible haematuria requires a formal haematuria / urological-malignancy work-up.",
+      "if_missed_consequence": "Anchoring on infection and never re-checking the urine risks missing an underlying bladder tumour or stone masked by the infective episode.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Inability to pass urine / clot retention / heavy bleeding with clots",
+      "status": "absent_screened_negative",
+      "clinical_significance": "Clot retention or acute urinary retention is a urological emergency needing catheterisation the AI cannot perform; the patient is voiding frequently, so this is currently absent.",
+      "if_missed_consequence": "Missing evolving clot retention risks a painfully distended obstructed bladder and acute kidney injury.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "Recurrent culture-proven UTIs (four in twelve months), post-coital pattern",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Defines recurrent UTI and warrants a prevention strategy (post-coital voiding, consideration of prophylaxis) and renal-tract imaging to exclude a structural contributor.",
+      "if_missed_consequence": "Treating each flare in isolation without addressing recurrence perpetuates repeated agonising episodes and misses a treatable underlying cause."
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Haematuria panic / over-triage",
+      "description": "Being driven by the alarming 'drops of blood every ten minutes' and the patient's distress to escalate a systemically-well, afebrile lower-UTI flare to ED or 000, when the correct route is urgent same-day in-person assessment for urinalysis, MSU and antibiotics."
+    },
+    {
+      "pitfall_name": "Dropping the pyelonephritis safety-net",
+      "description": "Correctly recognising a benign lower UTI but then failing to safety-net the ascending-infection features (fever, rigors, flank pain, vomiting) that must trigger urgent escalation."
+    },
+    {
+      "pitfall_name": "Remote prescribing without confirmation",
+      "description": "Minting an antibiotic name/dose (or the urinary alkaliniser) over chat without the in-person dipstick and MSU that Breath-Ezy cannot obtain — the antibiotic is the in-person clinician's decision, not an AI output."
+    },
+    {
+      "pitfall_name": "Premature closure on infection — never re-checking the blood",
+      "description": "Anchoring entirely on infection and omitting the mandatory confirmation that the visible haematuria clears after treatment, missing an underlying stone or bladder malignancy."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Point-of-care urine dipstick (nitrites, leukocyte esterase, blood)",
+      "Midstream urine microscopy, culture and antibiotic sensitivities",
+      "Suprapubic tenderness on abdominal palpation",
+      "Costovertebral-angle (flank) tenderness on examination",
+      "Objective vital signs (blood pressure, heart rate, temperature) without a home device",
+      "Renal-tract ultrasound and confirmation that haematuria clears after treatment"
+    ],
+    "correct_escalation_action": "Recognise a presumptive lower urinary-tract infection flare and arrange urgent same-day in-person assessment (GP / urgent care / after-hours) for a urine dipstick, an MSU for culture and sensitivities, and clinician prescription of appropriate antibiotics — while safety-netting for pyelonephritis/urosepsis and clot retention. Do not prescribe or mint a dose remotely.",
+    "premature_diagnosis_risk": "Cannot confirm infection or exclude other causes of haematuria (stone, malignancy) without urinalysis/MSU and, for recurrence + visible blood, renal-tract imaging; equally, must not be falsely reassured — persistent haematuria after treatment needs a formal work-up."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Therapeutic Guidelines (eTG) Antibiotic — acute cystitis / recurrent UTI in adults",
+      "relevant_recommendation": "Short-course oral antibiotics (e.g. nitrofurantoin or trimethoprim) for acute uncomplicated cystitis, guided by local resistance and MSU sensitivities; address recurrence with behavioural measures and consider prophylaxis."
+    },
+    {
+      "reference": "RACGP / HealthPathways — haematuria assessment",
+      "relevant_recommendation": "Visible haematuria requires documented resolution after infective causes are treated; persistent or unexplained visible haematuria mandates renal-tract imaging and specialist urology referral."
+    }
+  ]
+}
