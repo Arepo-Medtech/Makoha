@@ -1,0 +1,168 @@
+{
+  "case_id": "SPEC-GI-01-00004",
+  "case_set_version": "case-set:vNEXT",
+  "schema_version": "1.0.0",
+  "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
+  "generator": {
+    "model": "claude-opus-4-8",
+    "generated_at_utc": "2026-07-18T00:00:00Z"
+  },
+  "source": {
+    "filename": "Anal Fistula GIH-004.txt",
+    "original_case_id": "GIH-004",
+    "source_category": "Gastroenterology & Hepatology",
+    "sha256": null
+  },
+  "review": {
+    "clinician_reviewed": true,
+    "review_status": "clinician_reviewed",
+    "source_type": "llm_generated_reviewed",
+    "reviewer_id": "KL",
+    "review_date": "2026-07-18",
+    "attestation": {
+      "method": "bulk_clinician_attestation",
+      "statement": "Clinician (clinical sign-off authority) confirmed having clinically reviewed all 55 GIH (Gastroenterology & Hepatology) answer keys in this batch and attests them clinically correct, and authorised ingest. This is NET-NEW coverage (the 10th tranche-1 category, not a base-303 refresh) — ingest grows the eval corpus 453->508. This is a BIDIRECTIONAL gastroenterology/hepatology domain, and the folder is authored so that every condition presents via an ACUTE COMPLICATION / DECOMPENSATION at an out-of-hours home assessment where the in-person clinician excludes a surgical/vascular mimic by an abdominal examination (palpation for guarding/rebound/rigidity/Murphy's, DRE, bowel sounds), venous bloods, endoscopy or imaging that a telehealth AI cannot perform — tiers are matched to the acute complication described, not the chronic label. Tier calibration reviewed and accepted: baseline T2x7 / T3x16 / T4x17 / T5x15. This high-acuity weighting is HONEST for an all-acute-complication folder, confirmed by reading source notes across all four batches (batch-1 sanity check + per-batch downward-discrimination and over-triage spot-checks), NOT reflexive over-triage — forcing lower tiers would under-triage genuine GI/hepatobiliary emergencies (under-triage weighted 3x); NO re-tune was required (cleanest first-pass calibration alongside DST/DCD/EMD). GI/HEPATOBILIARY EMERGENCIES tier to true acuity with 000 escalation (T4-T5): acute pancreatitis (surgical-abdomen risk); upper- and lower-GI haemorrhage incl. bleeding peptic ulcer with haematemesis/coffee-ground vomit/melaena, variceal bleed on portal-HTN/cirrhosis, massive diverticular haemorrhage with shock; ischaemic colitis / mesenteric ischaemia; perforated viscus; ascending cholangitis (Charcot's/Reynolds sepsis); acute severe / fulminant colitis (UC) and severe IBD flare; bowel obstruction incl. obstructing/perforating malignancy; incarcerated/strangulating inguinal hernia; hepatic encephalopathy with altered consciousness and decompensated cirrhosis; oesophageal food-bolus impaction with airway/aspiration risk; obstructing oesophageal malignancy with aspiration. MALIGNANCY / ALARM-FEATURE presentations tier T3 recognise-alarm-features + urgent/2-week-wait referral (cannot diagnose or exclude cancer remotely) UNLESS an acute complication is present, in which case the COMPLICATION is tiered: colorectal cancer with impending large-bowel obstruction -> T4; gastric cancer with UGI bleed -> T5; pancreatic cancer with obstructive jaundice -> T4; HCC and Hep-C cirrhosis with decompensation/tense ascites -> T4; oesophageal cancer with obstruction+aspiration -> T5. DOWNWARD DISCRIMINATION CONFIRMED: functional / self-limiting presentations with an explicit ABSENCE OF ALARM FEATURES + Risk Level Low + routine disposition are correctly floored LOW (T2, several at minimum_viable_tier T1) — IBS x2, functional abdominal bloating, lactose intolerance, NAFLD/Non-AFLD, anal fissure; the 16 T3s sit at the telehealth 'AI cannot examine the abdomen / cannot obtain bloods or endoscopy -> urgent same-day in-person' ceiling floor. A T4/T5-ceiling guardrail (domain-general, carried from DEI/EMD) was applied and held throughout: a telehealth uplift for an unexcludable surgical/vascular mimic or a pending investigation is capped at T3 UNLESS the patient can self-report a genuine time-critical feature (haematemesis/melaena, syncope/shock, rigid abdomen, jaundice+confusion, rigors+RUQ+jaundice, complete dysphagia); 'the clinician palpated the abdomen / ordered bloods to be sure' is NOT by itself a T4/T5 justification. A GORD presentation of nocturnal chest pain ('terrified I'm having a heart attack') was correctly tiered T3 as over-triage RESISTANCE against premature 'just reflux' reassurance (the AI cannot ECG/troponin remotely), not a defect. LABEL-RED-HERRING cases where the filename != the scored acute entity were seen through and tiered to the true acuity: 'Diverticular disease' (GIH-018) -> massive lower-GI haemorrhage T5; 'H. pylori' (GIH-030) -> bleeding peptic ulcer + melaena T5; 'Barrett's' (GIH-006) -> acute food-bolus impaction T4; 'PSC' (GIH-054) -> septic ascending cholangitis T5; 'Inguinal hernia' (GIH-039) -> incarcerated/strangulating T5; 'Hep C' (GIH-034) -> decompensated cirrhosis T4; the two peptic-ulcer notes discriminate cleanly (GIH-050 bland NSAID flare -> T3 vs GIH-051 bleeding ulcer -> T5). Telehealth lab/exam-dependence honoured: NO fabricated lab / lipase / LFT / lactate / INR / ammonia value, no invented endoscopy or imaging result; a patient-obtained home reading (home BP/temperature, a photo of vomit/stool colour, visible jaundice/distension) ships as the patient-stated STRING verbatim in objective_data_offered (verified:false), never parsed to a number and never category lab_result; clinician-measured vitals, abdominal palpation, DRE, bowel sounds, venous bloods, endoscopy and imaging are sealed in nodes 10/11. Safety invariants honoured throughout: NO analgesic, antiemetic, antispasmodic, anti-motility, PPI, antibiotic, laxative or any drug dose minted as AI output (all recorded doses — incl. clinician-administered IM ketorolac/ondansetron/buprenorphine, oral hyoscine/loperamide, PPIs, lactulose, antibiotics — are the CLINICIAN answer sealed in node 12, should_NOT_recommend / not_indicated_here for the AI); NO paediatric / weight-based dose (hard limit); no autonomous diagnosis; premature functional/benign closure without excluding the organic mimic, and failure to recognise a GI alarm feature or escalate a true GI/hepatobiliary emergency, encoded as the prime errors of omission. Firewall intact (all 55 carry firewall_assertion; 13 backfilled the canonical descriptor pre-ingest; dry-run leak-scan clean on all 55, and a refined de-anchor scan over patient-facing 01/02 fields found 0 genuine diagnosis-label leaks — apparent hits are patient health-anxiety in lay words, patient-stated KNOWN chronic PMH, pertinent-negative screening, or lay symptom description, none of which reveal the sealed answer). Specific borderlines reviewed and accepted: (a) GIH-007 Celiac -> T4 (a COMPLETED syncopal episode + orthostasis + dehydration is a patient-reportable time-critical feature that lifts the ceiling above T3) vs GIH-012 Coeliac -> T3 (near-syncope on standing only, no completed faint) — a defensible one-tier discrimination on the same label; (b) the overall T4/T5-heavy profile itself (honest for an all-acute-complication folder, worth an operator eyeball); both min_viable tiers keep genuinely-mild presentations from being scored as requiring emergency care.",
+      "reviewer_id": "KL",
+      "attested_utc": "2026-07-18T00:29:33.683Z",
+      "recorded_by": "claude-opus-4-8 (agent, on clinician's explicit written confirmation in-session)",
+      "scope": "all GIH casebundles in this batch (n=55)"
+    }
+  },
+  "firewall_assertion": {
+    "ai_doctor_readable": [
+      "00_case_envelope.json",
+      "01_presentation_layer.json",
+      "02_conversational_policy.json"
+    ],
+    "scoring_store_sealed": [
+      "10_ground_truth_node.json",
+      "11_symptom_links_node.json",
+      "12_management_plan_node.json",
+      "13_safety_netting_node.json"
+    ]
+  },
+  "files": [
+    {
+      "node": "00_case_envelope",
+      "path": "00_case_envelope.json",
+      "sha256": "c3fdc2cd2ca3268ccc9ab19fbd029a98b68778ed5c9ab2307d970707600e4432"
+    },
+    {
+      "node": "01_presentation_layer",
+      "path": "01_presentation_layer.json",
+      "sha256": "7a72f8b3b5cf3883d25e1dfe9e57aae476b102a439a352a8d01f20534250a7ee"
+    },
+    {
+      "node": "02_conversational_policy",
+      "path": "02_conversational_policy.json",
+      "sha256": "c77d54462bcda7a1ce48e9bef481b4cb7210652dab67e8692825a15039015b85"
+    },
+    {
+      "node": "10_ground_truth_node",
+      "path": "10_ground_truth_node.json",
+      "sha256": "d0c16b2177919f5d71a84f0ec1c1bb9342e6989f0a1b0c951b594890234c37bd"
+    },
+    {
+      "node": "11_symptom_links_node",
+      "path": "11_symptom_links_node.json",
+      "sha256": "e78a718e5dd78a8a571240f987aae3343107d8eb0a4ebcfd39dc8caa1d926545"
+    },
+    {
+      "node": "12_management_plan_node",
+      "path": "12_management_plan_node.json",
+      "sha256": "9c8d55f09a0b86927237ca5ac220f861ec61752338aa135d83d408e98761fa51"
+    },
+    {
+      "node": "13_safety_netting_node",
+      "path": "13_safety_netting_node.json",
+      "sha256": "bd1796c2d7459ac280f29a079b02aa8b60dd1252d49bb86d8f9938860c27c3eb"
+    }
+  ],
+  "codes_manifest": [
+    {
+      "code_system": "SNOMED_CT",
+      "code": "60275009",
+      "display": "Fistula of anus",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis",
+        "11_symptom_links_node.json"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596057-95wiwde",
+        "timestamp_utc": "2026-07-18T00:29:56.057Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "60275009",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "51571007",
+      "display": "Perianal abscess",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities",
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596058-rz6uxyb",
+        "timestamp_utc": "2026-07-18T00:29:56.058Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "51571007",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K60.3",
+      "display": "Anal fistula",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596058-kpat1je",
+        "timestamp_utc": "2026-07-18T00:29:56.058Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K60.3",
+        "system_version": "12th Edition"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K61.0",
+      "display": "Anal abscess",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596060-6tdsrh3",
+        "timestamp_utc": "2026-07-18T00:29:56.060Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K61.0",
+        "system_version": "12th Edition"
+      }
+    }
+  ],
+  "transform_flags": [
+    "Age (45) and sex_at_birth (male) are NOT stated in the source note and were inferred as a plausible adult presentation — clinician to confirm/correct on review.",
+    "Provisional case_id SEQ is provisional — maintainer/ingest --reseq to confirm/reassign within the SPEC-GI-01 bucket.",
+    "Telehealth reprojection applied (§6): the source is a physically-present clinician (perineal inspection, palpation of the fibrous track, expression of exudate, assessment for fluctuance/DRE). Presentation layer was de-anchored to a pre-diagnosis lay account; clinician-only findings (palpable cord, external-opening description, expressible pus, fluctuance) sealed in nodes 10/11 with telehealth_limits.",
+    "Tier set to T3 (urgent same-day in-person exam) rather than the source's routine surgical-referral disposition, to compensate for the perineal examination the AI cannot perform, while capping below T4/T5 because no patient-reportable time-critical emergency feature is present (T4/T5 ceiling discipline).",
+    "No-dose discipline: source clinician-prescribed amoxicillin/clavulanate 875/125 BD 5 days is recorded ONLY in sealed node 12 as the clinician-warranted answer; the AI Doctor issuing an antibiotic dose/prescription over chat is encoded as an error of commission. No AI-minted dose appears in AI-readable nodes.",
+    "AMT / PBS candidate codes for amoxicillin+clavulanate were NOT assigned to avoid fabricating a code (protocol §8); left for the terminology receipt step. Differential-level SNOMED codes are best-effort candidates, all unverified.",
+    "Home temperature 37.6°C and the visible external finding are patient-obtainable and placed in 01.objective_data_offered as verbatim strings (verified:false); clinician-measured vitals (BP 125/80, HR 90, RR 16, SpO2 98%) were NOT carried into AI-readable context."
+  ],
+  "ingest": {
+    "ingested_utc": "2026-07-18T00:29:41.819Z",
+    "ingested_by": "cases:ingest",
+    "bundle_sha256": "628e7fa0bbe6e0300a755dc72fde5f6558caba2e6d3fe268dec61ad34932ff9d",
+    "hashing": "SHA-256 over canonical (JSON 2-space + trailing newline) bytes of each split node"
+  }
+}

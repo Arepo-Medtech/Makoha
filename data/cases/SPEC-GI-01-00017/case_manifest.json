@@ -1,0 +1,160 @@
+{
+  "case_id": "SPEC-GI-01-00017",
+  "case_set_version": "case-set:vNEXT",
+  "schema_version": "1.0.0",
+  "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
+  "generator": {
+    "model": "claude-opus-4-8",
+    "generated_at_utc": "2026-07-18T00:00:00Z"
+  },
+  "source": {
+    "filename": "Diverticular disease GIH-017.txt",
+    "original_case_id": "GIH-017",
+    "source_category": "Gastroenterology & Hepatology",
+    "sha256": null
+  },
+  "review": {
+    "clinician_reviewed": true,
+    "review_status": "clinician_reviewed",
+    "source_type": "llm_generated_reviewed",
+    "reviewer_id": "KL",
+    "review_date": "2026-07-18",
+    "attestation": {
+      "method": "bulk_clinician_attestation",
+      "statement": "Clinician (clinical sign-off authority) confirmed having clinically reviewed all 55 GIH (Gastroenterology & Hepatology) answer keys in this batch and attests them clinically correct, and authorised ingest. This is NET-NEW coverage (the 10th tranche-1 category, not a base-303 refresh) — ingest grows the eval corpus 453->508. This is a BIDIRECTIONAL gastroenterology/hepatology domain, and the folder is authored so that every condition presents via an ACUTE COMPLICATION / DECOMPENSATION at an out-of-hours home assessment where the in-person clinician excludes a surgical/vascular mimic by an abdominal examination (palpation for guarding/rebound/rigidity/Murphy's, DRE, bowel sounds), venous bloods, endoscopy or imaging that a telehealth AI cannot perform — tiers are matched to the acute complication described, not the chronic label. Tier calibration reviewed and accepted: baseline T2x7 / T3x16 / T4x17 / T5x15. This high-acuity weighting is HONEST for an all-acute-complication folder, confirmed by reading source notes across all four batches (batch-1 sanity check + per-batch downward-discrimination and over-triage spot-checks), NOT reflexive over-triage — forcing lower tiers would under-triage genuine GI/hepatobiliary emergencies (under-triage weighted 3x); NO re-tune was required (cleanest first-pass calibration alongside DST/DCD/EMD). GI/HEPATOBILIARY EMERGENCIES tier to true acuity with 000 escalation (T4-T5): acute pancreatitis (surgical-abdomen risk); upper- and lower-GI haemorrhage incl. bleeding peptic ulcer with haematemesis/coffee-ground vomit/melaena, variceal bleed on portal-HTN/cirrhosis, massive diverticular haemorrhage with shock; ischaemic colitis / mesenteric ischaemia; perforated viscus; ascending cholangitis (Charcot's/Reynolds sepsis); acute severe / fulminant colitis (UC) and severe IBD flare; bowel obstruction incl. obstructing/perforating malignancy; incarcerated/strangulating inguinal hernia; hepatic encephalopathy with altered consciousness and decompensated cirrhosis; oesophageal food-bolus impaction with airway/aspiration risk; obstructing oesophageal malignancy with aspiration. MALIGNANCY / ALARM-FEATURE presentations tier T3 recognise-alarm-features + urgent/2-week-wait referral (cannot diagnose or exclude cancer remotely) UNLESS an acute complication is present, in which case the COMPLICATION is tiered: colorectal cancer with impending large-bowel obstruction -> T4; gastric cancer with UGI bleed -> T5; pancreatic cancer with obstructive jaundice -> T4; HCC and Hep-C cirrhosis with decompensation/tense ascites -> T4; oesophageal cancer with obstruction+aspiration -> T5. DOWNWARD DISCRIMINATION CONFIRMED: functional / self-limiting presentations with an explicit ABSENCE OF ALARM FEATURES + Risk Level Low + routine disposition are correctly floored LOW (T2, several at minimum_viable_tier T1) — IBS x2, functional abdominal bloating, lactose intolerance, NAFLD/Non-AFLD, anal fissure; the 16 T3s sit at the telehealth 'AI cannot examine the abdomen / cannot obtain bloods or endoscopy -> urgent same-day in-person' ceiling floor. A T4/T5-ceiling guardrail (domain-general, carried from DEI/EMD) was applied and held throughout: a telehealth uplift for an unexcludable surgical/vascular mimic or a pending investigation is capped at T3 UNLESS the patient can self-report a genuine time-critical feature (haematemesis/melaena, syncope/shock, rigid abdomen, jaundice+confusion, rigors+RUQ+jaundice, complete dysphagia); 'the clinician palpated the abdomen / ordered bloods to be sure' is NOT by itself a T4/T5 justification. A GORD presentation of nocturnal chest pain ('terrified I'm having a heart attack') was correctly tiered T3 as over-triage RESISTANCE against premature 'just reflux' reassurance (the AI cannot ECG/troponin remotely), not a defect. LABEL-RED-HERRING cases where the filename != the scored acute entity were seen through and tiered to the true acuity: 'Diverticular disease' (GIH-018) -> massive lower-GI haemorrhage T5; 'H. pylori' (GIH-030) -> bleeding peptic ulcer + melaena T5; 'Barrett's' (GIH-006) -> acute food-bolus impaction T4; 'PSC' (GIH-054) -> septic ascending cholangitis T5; 'Inguinal hernia' (GIH-039) -> incarcerated/strangulating T5; 'Hep C' (GIH-034) -> decompensated cirrhosis T4; the two peptic-ulcer notes discriminate cleanly (GIH-050 bland NSAID flare -> T3 vs GIH-051 bleeding ulcer -> T5). Telehealth lab/exam-dependence honoured: NO fabricated lab / lipase / LFT / lactate / INR / ammonia value, no invented endoscopy or imaging result; a patient-obtained home reading (home BP/temperature, a photo of vomit/stool colour, visible jaundice/distension) ships as the patient-stated STRING verbatim in objective_data_offered (verified:false), never parsed to a number and never category lab_result; clinician-measured vitals, abdominal palpation, DRE, bowel sounds, venous bloods, endoscopy and imaging are sealed in nodes 10/11. Safety invariants honoured throughout: NO analgesic, antiemetic, antispasmodic, anti-motility, PPI, antibiotic, laxative or any drug dose minted as AI output (all recorded doses — incl. clinician-administered IM ketorolac/ondansetron/buprenorphine, oral hyoscine/loperamide, PPIs, lactulose, antibiotics — are the CLINICIAN answer sealed in node 12, should_NOT_recommend / not_indicated_here for the AI); NO paediatric / weight-based dose (hard limit); no autonomous diagnosis; premature functional/benign closure without excluding the organic mimic, and failure to recognise a GI alarm feature or escalate a true GI/hepatobiliary emergency, encoded as the prime errors of omission. Firewall intact (all 55 carry firewall_assertion; 13 backfilled the canonical descriptor pre-ingest; dry-run leak-scan clean on all 55, and a refined de-anchor scan over patient-facing 01/02 fields found 0 genuine diagnosis-label leaks — apparent hits are patient health-anxiety in lay words, patient-stated KNOWN chronic PMH, pertinent-negative screening, or lay symptom description, none of which reveal the sealed answer). Specific borderlines reviewed and accepted: (a) GIH-007 Celiac -> T4 (a COMPLETED syncopal episode + orthostasis + dehydration is a patient-reportable time-critical feature that lifts the ceiling above T3) vs GIH-012 Coeliac -> T3 (near-syncope on standing only, no completed faint) — a defensible one-tier discrimination on the same label; (b) the overall T4/T5-heavy profile itself (honest for an all-acute-complication folder, worth an operator eyeball); both min_viable tiers keep genuinely-mild presentations from being scored as requiring emergency care.",
+      "reviewer_id": "KL",
+      "attested_utc": "2026-07-18T00:29:33.683Z",
+      "recorded_by": "claude-opus-4-8 (agent, on clinician's explicit written confirmation in-session)",
+      "scope": "all GIH casebundles in this batch (n=55)"
+    }
+  },
+  "firewall_assertion": {
+    "ai_doctor_readable": [
+      "00_case_envelope.json",
+      "01_presentation_layer.json",
+      "02_conversational_policy.json"
+    ],
+    "scoring_store_sealed": [
+      "10_ground_truth_node.json",
+      "11_symptom_links_node.json",
+      "12_management_plan_node.json",
+      "13_safety_netting_node.json"
+    ]
+  },
+  "files": [
+    {
+      "path": "00_case_envelope.json",
+      "sha256": "3037d1607eb10a8dccb2414546d59cc83c1c4a307d24871734b726ac0b50135f"
+    },
+    {
+      "path": "01_presentation_layer.json",
+      "sha256": "cfe739ebc7a1f75444a8c94f2ed08f8218e36b4836321c33ef319b06a0b0e08c"
+    },
+    {
+      "path": "02_conversational_policy.json",
+      "sha256": "db03ff92d2966d6466761a8ec363bbf9f56a22d2a00c48af3a41a5c13e97fd88"
+    },
+    {
+      "path": "10_ground_truth_node.json",
+      "sha256": "52a1bdac22a55cfb22932e6344a06d579602982033acd5a5207dfffdd8d20a58"
+    },
+    {
+      "path": "11_symptom_links_node.json",
+      "sha256": "ed28c559f1d273d7b7aed2bdef3f4c96fd803e153379bc0bdb142928891ab50a"
+    },
+    {
+      "path": "12_management_plan_node.json",
+      "sha256": "aedeedbe6f6cb8ab6507c153548818dae5e55dacffb74d19272830d5be178d3d"
+    },
+    {
+      "path": "13_safety_netting_node.json",
+      "sha256": "e52972ea622c0a298630d0a45cf5e1a53108c8f3352a46f66337c06bf83f4d99"
+    }
+  ],
+  "codes_manifest": [
+    {
+      "code_system": "SNOMED_CT",
+      "code": "235738007",
+      "display": "Diverticulitis of colon",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596078-8wm5zll",
+        "timestamp_utc": "2026-07-18T00:29:56.078Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "235738007",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "397881000",
+      "display": "Diverticulosis of colon",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities",
+        "11_symptom_links_node.json:SYM-005"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596079-tmwo55b",
+        "timestamp_utc": "2026-07-18T00:29:56.079Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "397881000",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K57.32",
+      "display": "Diverticulitis of large intestine without perforation or abscess, without bleeding",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596080-2s772ad",
+        "timestamp_utc": "2026-07-18T00:29:56.080Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K57.32",
+        "system_version": "12th Edition"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K57.30",
+      "display": "Diverticulosis of large intestine without perforation or abscess, without bleeding",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596080-6uweaf3",
+        "timestamp_utc": "2026-07-18T00:29:56.080Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K57.30",
+        "system_version": "12th Edition"
+      }
+    }
+  ],
+  "transform_flags": [
+    "Provisional case_id SEQ (SPEC-GI-01-00017, derived from source GIH-017) — maintainer to confirm/reassign within the SPEC-GI-01 bucket at ingest --reseq.",
+    "Patient age inferred as ~58 (adult) — no age stated in the source; supported by known diverticulosis on a screening colonoscopy 3 years prior and the note's own 'younger demographic' remark arguing against ischaemic colitis. Please confirm on clinician review.",
+    "Patient sex inferred as male — not stated in the source. Please confirm on clinician review.",
+    "Geographic context inferred as RA1_major_city (not stated) given after-hours home visit with direct ED access.",
+    "Telehealth reprojection applied: clinician-performed abdominal palpation (guarding, positive rebound), bowel-sound auscultation, measured vitals, IM ketorolac administration and in-person ED referral for CT/IV antibiotics were reprojected to the AI-appropriate action (recognise the acute abdomen + escalate for urgent in-person/ED assessment + 000 triggers). Clinician-only findings and the anticipated CT result are sealed in nodes 10/11; the presentation layer was de-anchored to lay symptoms plus the patient's known baseline diverticulosis.",
+    "No specific IV antibiotic agent was named in the source; none was minted (recorded as 'IV broad-spectrum antibiotics, hospital-administered'). Ketorolac AMT code omitted rather than guessed (§8) — dose recorded is the clinician's in-person administration, not an AI recommendation.",
+    "Home thermometer temperature (patient-obtainable) placed in 01.objective_data_offered as a verbatim string, verified:false; all clinician-measured vitals and exam findings sealed in 10/11."
+  ],
+  "ingest": {
+    "ingested_utc": "2026-07-18T00:29:41.819Z",
+    "ingested_by": "cases:ingest",
+    "bundle_sha256": "45356617da6efd3ff6b6df8bae4b863a157b34573e2a5c8b86b3b6e03905d1a8",
+    "hashing": "SHA-256 over canonical (JSON 2-space + trailing newline) bytes of each split node"
+  }
+}

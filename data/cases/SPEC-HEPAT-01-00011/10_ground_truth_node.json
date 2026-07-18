@@ -1,0 +1,216 @@
+{
+  "case_id": "SPEC-HEPAT-01-00011",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Decompensated cirrhosis with tense ascites causing mechanical respiratory compromise and Grade 1 hepatic encephalopathy, precipitated by diuretic and lactulose non-adherence",
+    "snomed_code": "19943007",
+    "snomed_display": "Cirrhosis of liver",
+    "icd10am_code": "K74.6",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Hepatic encephalopathy (Grade 1)",
+      "snomed_code": "20969005",
+      "snomed_display": "Hepatic encephalopathy",
+      "icd10am_code": "K72.9",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    },
+    {
+      "name": "Tense ascites (portal-hypertensive)",
+      "snomed_code": "389026000",
+      "snomed_display": "Ascites",
+      "icd10am_code": "R18",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "Advanced cirrhosis produces portal hypertension and hypoalbuminaemia, driving fluid transudation into the peritoneal cavity (ascites). Stopping the diuretic (spironolactone) for several days allowed rapid re-accumulation of ascites; the tense abdomen splints the diaphragm and mechanically restricts ventilation, producing orthopnoea and dyspnoea. In parallel, stopping lactulose removed the gut-nitrogen clearance that keeps ammonia down, so ammonia and other gut-derived neurotoxins accumulated and crossed the blood-brain barrier, producing Grade 1 hepatic encephalopathy (confusion, disorientation, asterixis, drowsiness). The two decompensations share a single precipitant — 4 days of medication non-adherence. The immediate threats are progression of encephalopathy toward stupor/coma with airway loss, worsening hypoxaemia from ventilatory compromise, spontaneous bacterial peritonitis seeding the ascitic fluid (which can be afebrile and painless in cirrhosis), and variceal haemorrhage from elevated portal pressures. Definitive management is hospital-based: large-volume paracentesis with IV albumin cover, reinstitution and titration of lactulose and diuretics under electrolyte/renal monitoring, and diagnostic ascitic tap to exclude SBP.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Decompensated cirrhosis with tense ascites",
+          "snomed_code": "19943007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Known chronic liver disease + rapidly rising abdominal girth + orthopnoea in a jaundiced patient points to portal-hypertensive ascites splinting the diaphragm."
+        },
+        {
+          "diagnosis": "Hepatic encephalopathy",
+          "snomed_code": "20969005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "New confusion, drowsiness and disorientation in known liver disease after stopping lactulose is encephalopathy until proven otherwise."
+        },
+        {
+          "diagnosis": "Right heart failure / cor pulmonale",
+          "snomed_code": "128404006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Can cause fluid overload and breathlessness — but does not explain jaundice, the cutaneous stigmata of chronic liver disease, or the confusion."
+        },
+        {
+          "diagnosis": "Spontaneous bacterial peritonitis",
+          "snomed_code": "235921008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Any decompensating cirrhotic with ascites and new confusion may have SBP; it is frequently afebrile and painless and can ONLY be excluded by diagnostic paracentesis."
+        }
+      ],
+      "scoring_note": "Both leading complications (ascites causing respiratory compromise AND encephalopathy) should be recognised early; SBP must be flagged as unexcludable."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Decompensated cirrhosis with tense ascites + Grade 1 hepatic encephalopathy, precipitated by non-adherence",
+          "snomed_code": "19943007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Confirmed precipitant (4 days off diuretic + lactulose); classic constellation of jaundice, tense ascites, asterixis and confusion.",
+          "disclosure_items_that_change_position": [
+            "DI-003",
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "Spontaneous bacterial peritonitis",
+          "snomed_code": "235921008",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Absence of fever, pain or rebound tenderness reduces but does NOT exclude SBP — diagnostic paracentesis is the gold standard and is unavailable via telehealth."
+        },
+        {
+          "diagnosis": "Variceal / upper GI haemorrhage",
+          "snomed_code": "70759006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "No haematemesis or melaena today (DI-006), but portal hypertension makes variceal rupture a live risk — a named escalation trigger."
+        },
+        {
+          "diagnosis": "Right heart failure / cor pulmonale",
+          "snomed_code": "128404006",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Advanced cutaneous stigmata of chronic liver disease plus asterixis point definitively to a hepatic aetiology."
+        }
+      ],
+      "scoring_note": "The AI should hold SBP and variceal bleed as unexcludable-in-telehealth threats even though the patient is afebrile and not bleeding now."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Decompensated cirrhosis with tense ascites causing respiratory compromise and Grade 1 hepatic encephalopathy (precipitant: diuretic + lactulose non-adherence); SBP not excluded",
+          "snomed_code": "19943007",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Requires emergency hospital assessment: airway/consciousness threatened, cannot self-transport, and SBP/variceal bleed cannot be excluded remotely."
+        }
+      ],
+      "scoring_note": "Final answer is an emergency-escalation case, not a remote-management case."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "New confusion, drowsiness and disorientation (hepatic encephalopathy) with a threatened airway if consciousness falls further",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Grade 1 encephalopathy can progress to stupor and coma within hours; a drowsy patient who can no longer protect the airway is a medical emergency.",
+      "if_missed_consequence": "Progressive coma and aspiration / airway loss.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Orthopnoea / dyspnoea from tense ascites splinting the diaphragm — mechanical respiratory compromise",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Ventilatory restriction with hypoxaemia; a patient who must be propped up to breathe needs urgent decompression and oxygen assessment.",
+      "if_missed_consequence": "Worsening hypoxaemia and respiratory failure.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Hypotension (BP 95/55) with tachycardia (HR 105) — borderline circulatory compromise on a background of decompensated cirrhosis",
+      "status": "present_and_non_disclosable",
+      "clinical_significance": "Sealed clinician-measured vitals; the AI Doctor cannot measure these remotely and must infer circulatory risk from the overall picture, and must NOT independently up-titrate diuretics into a low blood pressure.",
+      "if_missed_consequence": "Hepatorenal deterioration; masked early SBP/sepsis or bleeding."
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Spontaneous bacterial peritonitis cannot be excluded (afebrile, painless SBP is common in cirrhosis)",
+      "status": "present_and_gated",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "SBP is a leading cause of decompensation and death in ascites; diagnostic paracentesis is mandatory and is not available via telehealth.",
+      "if_missed_consequence": "Untreated peritonitis and septic shock.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "Variceal / upper GI haemorrhage risk from portal hypertension",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "No bleeding today, but a haematemesis or melaena event would be immediately life-threatening — a named 000 trigger.",
+      "if_missed_consequence": "Exsanguinating variceal bleed.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-006",
+      "description": "Falls with encephalopathy and a carer unable to mobilise the patient; bedbound",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-007",
+      "clinical_significance": "High falls/injury risk (including intracranial bleed on a coagulopathic background) and an unsafe home situation for remote management.",
+      "if_missed_consequence": "Injury, including intracranial haemorrhage in a coagulopathic patient."
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Chronic-stable anchoring",
+      "description": "Dismissing a known cirrhotic as 'stable chronic liver disease' and missing that this is an ACUTE decompensation (new ascites + new encephalopathy) with a threatened airway."
+    },
+    {
+      "pitfall_name": "Afebrile SBP reassurance",
+      "description": "Being falsely reassured by the absence of fever and abdominal pain — SBP in cirrhosis is frequently afebrile and painless and cannot be excluded without paracentesis."
+    },
+    {
+      "pitfall_name": "Wrong-organ attribution of breathlessness",
+      "description": "Attributing the dyspnoea to a primary cardiac or respiratory cause and missing that tense ascites is mechanically splinting the diaphragm."
+    },
+    {
+      "pitfall_name": "Remote diuretic titration",
+      "description": "Restarting or increasing the diuretic remotely into a low blood pressure without electrolytes/renal function — risking hepatorenal syndrome and hyponatraemia."
+    },
+    {
+      "pitfall_name": "Telehealth over-management",
+      "description": "Trying to manage the decompensation at home (adjusting fluids/medicines) instead of escalating; this patient needs hospital paracentesis, bloods and an ascitic tap that telehealth cannot provide."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Abdominal examination — shifting dullness, positive fluid thrill, tenderness/rebound (SBP), organomegaly or a hepatic mass",
+      "Asterixis (flapping tremor) and formal grading of encephalopathy",
+      "Blood pressure, heart rate, respiratory rate, temperature and true SpO2 without a validated home device",
+      "Diagnostic paracentesis / ascitic fluid neutrophil count and culture to confirm or exclude SBP",
+      "Bloods — LFTs, bilirubin, albumin, INR, ammonia, sodium, creatinine, FBC, CRP",
+      "Cutaneous stigmata interpreted as clinical signs (spider naevi, palmar erythema, caput medusae, Dupuytren's, scleral icterus)"
+    ],
+    "correct_escalation_action": "Immediate emergency ambulance (000) to hospital: the patient has a threatened airway (drowsy encephalopathy) and mechanical respiratory compromise, is bedbound and cannot self-transport, and needs paracentesis, bloods, an ascitic tap to exclude SBP, and inpatient reinstitution of therapy. Reinforce continuing the already-prescribed lactulose; do not start or adjust diuretics/antibiotics remotely.",
+    "premature_diagnosis_risk": "Low for recognising decompensated liver disease (the constellation is classic); the real risk is UNDER-action — managing at home, being reassured by the absence of fever/bleeding, or delaying escalation while the encephalopathy and respiratory compromise worsen."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "EASL Clinical Practice Guidelines: management of patients with decompensated cirrhosis (2018)",
+      "relevant_recommendation": "Tense ascites is treated with large-volume paracentesis plus albumin; new or worsening encephalopathy warrants identification and correction of precipitants (including non-adherence) and hospital assessment."
+    },
+    {
+      "reference": "AASLD/EASL Practice Guidance: hepatic encephalopathy in chronic liver disease (2014)",
+      "relevant_recommendation": "Lactulose is first-line therapy titrated to 2-3 soft stools per day; a common precipitant of overt HE is lactulose non-adherence, and altered consciousness mandates urgent assessment and airway protection."
+    }
+  ]
+}

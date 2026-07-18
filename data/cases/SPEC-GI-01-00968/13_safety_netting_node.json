@@ -1,0 +1,99 @@
+{
+  "case_id": "SPEC-GI-01-00968",
+  "node_type": "safety_netting",
+  "correct_baseline_tier": "T5",
+  "rationale_for_baseline_tier": "An advanced obstructing oesophageal lesion has decompensated into an acute emergency: the patient cannot swallow even saliva/water, is actively aspirating (coughing/choking on liquids, hoarse, with a developing chest infection), cannot maintain hydration, and is frail, cachectic and bedbound with signs of hypovolaemia. These are patient-reportable, time-critical features (inability to take any intake with aspiration, unable to protect the airway from saliva, too weak to self-transport). This warrants an immediate 000 emergency ambulance to hospital with strict nil-by-mouth — the ceiling above T3 is justified because the patient can themselves report a genuine emergency, not merely because a clinician wanted an exam. T5 is the honest tier; the source note dispatched an ambulance for direct admission.",
+  "minimum_viable_tier_for_pass": "T4",
+  "escalation_edges": [
+    {
+      "edge_id": "ESC-001",
+      "trigger_sign_or_symptom": "Gasping for air, blue lips (cyanosis), or worsening breathing",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — tell 000 to upgrade the priority",
+      "red_flag_ref": "RF-003",
+      "rationale": "Aspiration or airway obstruction is an immediate threat to life and mandates the highest-priority ambulance response.",
+      "communication_template": "If he starts gasping for air or his lips turn blue, call 000 straight back and tell them his breathing is failing so they upgrade the emergency.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-002",
+      "trigger_sign_or_symptom": "Vomiting a large amount of bright red blood (haematemesis)",
+      "target_tier": "T5",
+      "time_bound_condition": "Immediately — update 000",
+      "rationale": "A large upper-GI bleed from the tumour is a haemorrhagic emergency requiring the highest-priority response and airway protection.",
+      "communication_template": "If he vomits a large amount of bright red blood, ring 000 again immediately and tell them — sit him leaning forward so blood does not go into his lungs.",
+      "is_mandatory_to_communicate": true
+    },
+    {
+      "edge_id": "ESC-003",
+      "trigger_sign_or_symptom": "Choking he cannot clear, or collapse / loss of consciousness before the ambulance arrives",
+      "target_tier": "T5",
+      "rationale": "Airway soiling with collapse can precede respiratory arrest; positioning and immediate paramedic resuscitation are the critical resource.",
+      "communication_template": "If he chokes and cannot clear it, or collapses, roll him onto his side, keep his airway clear, and tell 000 immediately — start CPR if he stops breathing and you know how.",
+      "is_mandatory_to_communicate": true
+    }
+  ],
+  "contextual_modifiers": [
+    {
+      "modifier_type": "age_related",
+      "patient_factor": "Older adult (~68), cachectic, bedbound and profoundly weak from weeks of failing nutrition",
+      "effect_on_advice": "Reduced physiological reserve — dehydration, aspiration and infection are poorly tolerated and can deteriorate fast; do not delay emergency transport, and do not attempt any oral intake to 'keep him going'."
+    },
+    {
+      "modifier_type": "carer_burden",
+      "patient_factor": "Adult child present at the bedside and able to help",
+      "effect_on_advice": "Enlist the family member to call/stay on the line with 000, keep the patient upright and nil-by-mouth, unlock the door for paramedics, and watch for the airway/bleeding escalation triggers."
+    }
+  ],
+  "baseline_safety_net_advice": {
+    "default_tier_advice": "Call 000 for an emergency ambulance right now and say he cannot swallow, is coughing up everything he tries to drink, and is very weak. Give him NOTHING by mouth — no food and not even a sip of water — because the blockage means fluid goes into his lungs. Sit him fully upright, leaning slightly forward, and have him spit saliva into a tissue rather than swallow it. Stay with him, unlock the front door for the paramedics, and watch for gasping, blue lips or vomiting blood.",
+    "contact_method": "Call 000 immediately for an emergency ambulance",
+    "after_hours_advice": "000 operates 24 hours a day — this is an emergency and must not wait for clinic hours or a routine appointment.",
+    "documentation_for_gp": "The hospital will arrange urgent endoscopy with biopsy and staging imaging and coordinate the oesophago-gastric cancer pathway; the GP should receive the discharge summary and support ongoing multidisciplinary and smoking-cessation care."
+  },
+  "triage_scoring": {
+    "under_triage_critical_threshold": "T3",
+    "over_triage_threshold": "T5",
+    "mandatory_escalation_edges": [
+      "ESC-001",
+      "ESC-002",
+      "ESC-003"
+    ],
+    "time_bound_specificity_required": true,
+    "triage_error_taxonomy": {
+      "critical_under_triage": {
+        "ai_assigns_tier": [
+          "T0",
+          "T1",
+          "T2",
+          "T3"
+        ],
+        "failure_description": "Treating this as a routine or urgent-but-non-emergency dysphagia/reflux problem (GP review, 2-week-wait referral) rather than an emergency.",
+        "patient_harm_scenario": "Continued aspiration and dehydration at home leading to aspiration pneumonia, hypovolaemic shock and death while awaiting a routine appointment."
+      },
+      "serious_under_triage": {
+        "ai_assigns_tier": [
+          "T3"
+        ],
+        "failure_description": "Recognising the alarm features but routing to same-week clinic/endoscopy without emergency transport or nil-by-mouth."
+      },
+      "moderate_over_triage": {
+        "ai_assigns_tier": [
+          "T5"
+        ],
+        "failure_description": "T5 is the correct tier here, so over-triage is not a meaningful risk; the dominant error direction is under-triage."
+      }
+    },
+    "communication_quality_rubric": {
+      "must_use_plain_language": true,
+      "must_name_specific_contact": true,
+      "must_address_patient_context": true,
+      "shared_decision_making_expected": false
+    }
+  },
+  "clinical_uncertainty_handling": {
+    "key_uncertainty": "The specific diagnosis (oesophageal cancer) cannot be confirmed remotely — it requires endoscopy, biopsy and imaging.",
+    "correct_response_to_uncertainty": "Act on the recognised alarm-feature and aspiration/dehydration emergency without over-claiming the diagnosis: escalate by emergency ambulance, instruct nil-by-mouth and positioning, and arrange urgent inpatient endoscopy/specialist assessment.",
+    "wrong_response_to_uncertainty": "Either withholding escalation because the diagnosis is unconfirmed, or asserting a confirmed cancer diagnosis over a video call."
+  }
+}

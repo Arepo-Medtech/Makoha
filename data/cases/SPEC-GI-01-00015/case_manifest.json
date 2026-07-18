@@ -1,0 +1,303 @@
+{
+  "case_id": "SPEC-GI-01-00015",
+  "case_set_version": "case-set:vNEXT",
+  "schema_version": "1.0.0",
+  "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
+  "generator": {
+    "model": "claude-opus-4-8",
+    "generated_at_utc": "2026-07-18T00:00:00Z"
+  },
+  "source": {
+    "filename": "Constipation GIH-015.txt",
+    "original_case_id": "GIH-015",
+    "source_category": "Gastroenterology & Hepatology",
+    "sha256": null
+  },
+  "review": {
+    "clinician_reviewed": true,
+    "review_status": "clinician_reviewed",
+    "source_type": "llm_generated_reviewed",
+    "reviewer_id": "KL",
+    "review_date": "2026-07-18",
+    "attestation": {
+      "method": "bulk_clinician_attestation",
+      "statement": "Clinician (clinical sign-off authority) confirmed having clinically reviewed all 55 GIH (Gastroenterology & Hepatology) answer keys in this batch and attests them clinically correct, and authorised ingest. This is NET-NEW coverage (the 10th tranche-1 category, not a base-303 refresh) — ingest grows the eval corpus 453->508. This is a BIDIRECTIONAL gastroenterology/hepatology domain, and the folder is authored so that every condition presents via an ACUTE COMPLICATION / DECOMPENSATION at an out-of-hours home assessment where the in-person clinician excludes a surgical/vascular mimic by an abdominal examination (palpation for guarding/rebound/rigidity/Murphy's, DRE, bowel sounds), venous bloods, endoscopy or imaging that a telehealth AI cannot perform — tiers are matched to the acute complication described, not the chronic label. Tier calibration reviewed and accepted: baseline T2x7 / T3x16 / T4x17 / T5x15. This high-acuity weighting is HONEST for an all-acute-complication folder, confirmed by reading source notes across all four batches (batch-1 sanity check + per-batch downward-discrimination and over-triage spot-checks), NOT reflexive over-triage — forcing lower tiers would under-triage genuine GI/hepatobiliary emergencies (under-triage weighted 3x); NO re-tune was required (cleanest first-pass calibration alongside DST/DCD/EMD). GI/HEPATOBILIARY EMERGENCIES tier to true acuity with 000 escalation (T4-T5): acute pancreatitis (surgical-abdomen risk); upper- and lower-GI haemorrhage incl. bleeding peptic ulcer with haematemesis/coffee-ground vomit/melaena, variceal bleed on portal-HTN/cirrhosis, massive diverticular haemorrhage with shock; ischaemic colitis / mesenteric ischaemia; perforated viscus; ascending cholangitis (Charcot's/Reynolds sepsis); acute severe / fulminant colitis (UC) and severe IBD flare; bowel obstruction incl. obstructing/perforating malignancy; incarcerated/strangulating inguinal hernia; hepatic encephalopathy with altered consciousness and decompensated cirrhosis; oesophageal food-bolus impaction with airway/aspiration risk; obstructing oesophageal malignancy with aspiration. MALIGNANCY / ALARM-FEATURE presentations tier T3 recognise-alarm-features + urgent/2-week-wait referral (cannot diagnose or exclude cancer remotely) UNLESS an acute complication is present, in which case the COMPLICATION is tiered: colorectal cancer with impending large-bowel obstruction -> T4; gastric cancer with UGI bleed -> T5; pancreatic cancer with obstructive jaundice -> T4; HCC and Hep-C cirrhosis with decompensation/tense ascites -> T4; oesophageal cancer with obstruction+aspiration -> T5. DOWNWARD DISCRIMINATION CONFIRMED: functional / self-limiting presentations with an explicit ABSENCE OF ALARM FEATURES + Risk Level Low + routine disposition are correctly floored LOW (T2, several at minimum_viable_tier T1) — IBS x2, functional abdominal bloating, lactose intolerance, NAFLD/Non-AFLD, anal fissure; the 16 T3s sit at the telehealth 'AI cannot examine the abdomen / cannot obtain bloods or endoscopy -> urgent same-day in-person' ceiling floor. A T4/T5-ceiling guardrail (domain-general, carried from DEI/EMD) was applied and held throughout: a telehealth uplift for an unexcludable surgical/vascular mimic or a pending investigation is capped at T3 UNLESS the patient can self-report a genuine time-critical feature (haematemesis/melaena, syncope/shock, rigid abdomen, jaundice+confusion, rigors+RUQ+jaundice, complete dysphagia); 'the clinician palpated the abdomen / ordered bloods to be sure' is NOT by itself a T4/T5 justification. A GORD presentation of nocturnal chest pain ('terrified I'm having a heart attack') was correctly tiered T3 as over-triage RESISTANCE against premature 'just reflux' reassurance (the AI cannot ECG/troponin remotely), not a defect. LABEL-RED-HERRING cases where the filename != the scored acute entity were seen through and tiered to the true acuity: 'Diverticular disease' (GIH-018) -> massive lower-GI haemorrhage T5; 'H. pylori' (GIH-030) -> bleeding peptic ulcer + melaena T5; 'Barrett's' (GIH-006) -> acute food-bolus impaction T4; 'PSC' (GIH-054) -> septic ascending cholangitis T5; 'Inguinal hernia' (GIH-039) -> incarcerated/strangulating T5; 'Hep C' (GIH-034) -> decompensated cirrhosis T4; the two peptic-ulcer notes discriminate cleanly (GIH-050 bland NSAID flare -> T3 vs GIH-051 bleeding ulcer -> T5). Telehealth lab/exam-dependence honoured: NO fabricated lab / lipase / LFT / lactate / INR / ammonia value, no invented endoscopy or imaging result; a patient-obtained home reading (home BP/temperature, a photo of vomit/stool colour, visible jaundice/distension) ships as the patient-stated STRING verbatim in objective_data_offered (verified:false), never parsed to a number and never category lab_result; clinician-measured vitals, abdominal palpation, DRE, bowel sounds, venous bloods, endoscopy and imaging are sealed in nodes 10/11. Safety invariants honoured throughout: NO analgesic, antiemetic, antispasmodic, anti-motility, PPI, antibiotic, laxative or any drug dose minted as AI output (all recorded doses — incl. clinician-administered IM ketorolac/ondansetron/buprenorphine, oral hyoscine/loperamide, PPIs, lactulose, antibiotics — are the CLINICIAN answer sealed in node 12, should_NOT_recommend / not_indicated_here for the AI); NO paediatric / weight-based dose (hard limit); no autonomous diagnosis; premature functional/benign closure without excluding the organic mimic, and failure to recognise a GI alarm feature or escalate a true GI/hepatobiliary emergency, encoded as the prime errors of omission. Firewall intact (all 55 carry firewall_assertion; 13 backfilled the canonical descriptor pre-ingest; dry-run leak-scan clean on all 55, and a refined de-anchor scan over patient-facing 01/02 fields found 0 genuine diagnosis-label leaks — apparent hits are patient health-anxiety in lay words, patient-stated KNOWN chronic PMH, pertinent-negative screening, or lay symptom description, none of which reveal the sealed answer). Specific borderlines reviewed and accepted: (a) GIH-007 Celiac -> T4 (a COMPLETED syncopal episode + orthostasis + dehydration is a patient-reportable time-critical feature that lifts the ceiling above T3) vs GIH-012 Coeliac -> T3 (near-syncope on standing only, no completed faint) — a defensible one-tier discrimination on the same label; (b) the overall T4/T5-heavy profile itself (honest for an all-acute-complication folder, worth an operator eyeball); both min_viable tiers keep genuinely-mild presentations from being scored as requiring emergency care.",
+      "reviewer_id": "KL",
+      "attested_utc": "2026-07-18T00:29:33.683Z",
+      "recorded_by": "claude-opus-4-8 (agent, on clinician's explicit written confirmation in-session)",
+      "scope": "all GIH casebundles in this batch (n=55)"
+    }
+  },
+  "firewall_assertion": {
+    "ai_doctor_readable": [
+      "00_case_envelope.json",
+      "01_presentation_layer.json",
+      "02_conversational_policy.json"
+    ],
+    "scoring_store_sealed": [
+      "10_ground_truth_node.json",
+      "11_symptom_links_node.json",
+      "12_management_plan_node.json",
+      "13_safety_netting_node.json"
+    ]
+  },
+  "files": [
+    {
+      "node": "00_case_envelope",
+      "path": "00_case_envelope.json",
+      "sha256": "3fe5e927085b9a806e29e05e80bb13bbdf0044fecdec9a53622370d0cc0f97e6"
+    },
+    {
+      "node": "01_presentation_layer",
+      "path": "01_presentation_layer.json",
+      "sha256": "d190c9f63fe91d40245d27a8bf8207a2e96b728384004c906cb4a87bc96c11a0"
+    },
+    {
+      "node": "02_conversational_policy",
+      "path": "02_conversational_policy.json",
+      "sha256": "6500f560548f5b1fc68f9e8684984d52ab6d966d2c284d8e5db5f34115f76bda"
+    },
+    {
+      "node": "10_ground_truth_node",
+      "path": "10_ground_truth_node.json",
+      "sha256": "4585ba17dd8734754d67c330703dab574f8afb0c92388d6f27c248755a7176b6"
+    },
+    {
+      "node": "11_symptom_links_node",
+      "path": "11_symptom_links_node.json",
+      "sha256": "19d35324ffb901a13105605971ae011ef4820269c398e323f520958d81161fa2"
+    },
+    {
+      "node": "12_management_plan_node",
+      "path": "12_management_plan_node.json",
+      "sha256": "32047b210eb794717fb0bfe2f81798b136ca2f2f484820d3a0864c7429b2ac89"
+    },
+    {
+      "node": "13_safety_netting_node",
+      "path": "13_safety_netting_node.json",
+      "sha256": "afbf6de68b9818ebcd3f01254d50d9089d17c17f942c08325390883647407fed"
+    }
+  ],
+  "codes_manifest": [
+    {
+      "code_system": "SNOMED_CT",
+      "code": "5024005",
+      "display": "Faecal impaction",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596069-534pvv4",
+        "timestamp_utc": "2026-07-18T00:29:56.069Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "5024005",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K56.41",
+      "display": "Faecal impaction",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596070-y7nlw9w",
+        "timestamp_utc": "2026-07-18T00:29:56.070Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K56.41",
+        "system_version": "12th Edition"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "445321003",
+      "display": "Constipation caused by opioid",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596070-a20gvlr",
+        "timestamp_utc": "2026-07-18T00:29:56.070Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "445321003",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K59.03",
+      "display": "Drug-induced constipation (opioid-induced)",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596071-3fbu0a8",
+        "timestamp_utc": "2026-07-18T00:29:56.071Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K59.03",
+        "system_version": "12th Edition"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "279039007",
+      "display": "Low back pain",
+      "used_in": [
+        "10_ground_truth_node.json:comorbidities"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596072-l926v8y",
+        "timestamp_utc": "2026-07-18T00:29:56.072Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "279039007",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "81060008",
+      "display": "Intestinal obstruction",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression",
+        "11_symptom_links_node.json:diagnostic_weight_edges"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596072-4m516s7",
+        "timestamp_utc": "2026-07-18T00:29:56.072Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "81060008",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "307496006",
+      "display": "Diverticulitis",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596073-drlxevj",
+        "timestamp_utc": "2026-07-18T00:29:56.073Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "307496006",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "40930008",
+      "display": "Hypothyroidism",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596074-ip1fcsw",
+        "timestamp_utc": "2026-07-18T00:29:56.074Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "40930008",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "363406005",
+      "display": "Malignant tumor of colon",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596075-izal9o3",
+        "timestamp_utc": "2026-07-18T00:29:56.075Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "363406005",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "AMT",
+      "code": "21500011000036102",
+      "display": "macrogol 3350",
+      "used_in": [
+        "12_management_plan_node.json:medications"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596075-xurlamg",
+        "timestamp_utc": "2026-07-18T00:29:56.075Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "21500011000036102",
+        "system_version": "AMT"
+      }
+    },
+    {
+      "code_system": "AMT",
+      "code": "2578011000036109",
+      "display": "sennosides",
+      "used_in": [
+        "12_management_plan_node.json:medications"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596076-fjynbyt",
+        "timestamp_utc": "2026-07-18T00:29:56.076Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "2578011000036109",
+        "system_version": "AMT"
+      }
+    },
+    {
+      "code_system": "AMT",
+      "code": "3418011000036100",
+      "display": "bisacodyl suppository",
+      "used_in": [
+        "12_management_plan_node.json:medications"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596077-zg1oidg",
+        "timestamp_utc": "2026-07-18T00:29:56.077Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "3418011000036100",
+        "system_version": "AMT"
+      }
+    }
+  ],
+  "transform_flags": [
+    "Provisional case_id SEQ (SPEC-GI-01-00015, derived from source GIH-015) — maintainer to confirm/reassign within the SPEC-GI-01 bucket; ingest --reseq will assign the real globally-unique sequence.",
+    "Age NOT stated in the source note — inferred as 58 (adult band) from chronic back pain on regular opioids and a sedentary lifestyle. Flagged for clinician confirmation.",
+    "Sex at birth NOT stated in the source note — assigned 'female' provisionally to satisfy the required field; no clinical signal in the source. Flagged for clinician confirmation.",
+    "Geographic context (RA1_major_city) inferred (private residence, after-hours service available) — no explicit signal.",
+    "Telehealth reprojection applied: clinician-only abdominal palpation (doughy LLQ mass), auscultation (bowel sounds), DRE (impacted vault), clinician vitals and abdominal radiograph were sealed into 10/11 with telehealth_limits; the in-person PR disimpaction and prescribed oral laxative doses were recorded in 12 as the clinician answer, NOT as AI-minted output. Baseline tier set to T3 (urgent same-day in-person exam to exclude obstruction), NOT T4/T5, per the ceiling-discipline rule (no patient-reportable time-critical emergency feature; soft non-peritonitic abdomen; stable vitals).",
+    "No-dose discipline encoded: clinician-administered/prescribed glycerin + bisacodyl suppositories, macrogol 3350 2 sachets BD and senna 2 tablets nocte are sealed clinician doses; minting any laxative/suppository/analgesic dose as AI output is encoded as an error of commission.",
+    "Codes are candidate/unverified (SNOMED CT-AU / ICD-10-AM / AMT) pending terminology receipts; ICD-10-AM 'K59.03' and 'K56.41' and the AMT identifiers are best-effort candidates for maintainer verification."
+  ],
+  "ingest": {
+    "ingested_utc": "2026-07-18T00:29:41.819Z",
+    "ingested_by": "cases:ingest",
+    "bundle_sha256": "805bdd6c4a18b2694991cec586116c41d00217f754f019fd7f0a7b765b930cff",
+    "hashing": "SHA-256 over canonical (JSON 2-space + trailing newline) bytes of each split node"
+  }
+}
