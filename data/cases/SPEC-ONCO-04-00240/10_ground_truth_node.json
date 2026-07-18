@@ -1,0 +1,185 @@
+{
+  "case_id": "SPEC-ONCO-04-00240",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Suspected advanced (metastatic) prostate cancer with likely skeletal metastases, presenting as an acute bony-pain crisis",
+    "snomed_code": "399068003",
+    "snomed_display": "Malignant tumor of prostate",
+    "icd10am_code": "C61",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Secondary malignant neoplasm of bone (suspected skeletal metastases)",
+      "snomed_code": "94222008",
+      "relationship_to_primary": "complication_of_primary",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "Adenocarcinoma of the prostate in an older man has progressed insidiously — the year of lower urinary tract symptoms the patient dismissed as ageing reflects local tumour growth. Prostate cancer characteristically metastasises to bone (axial skeleton — lumbar spine and pelvis), producing osteoblastic deposits that cause deep, unremitting, rest/night bony pain unresponsive to simple analgesia, and place the patient at high risk of pathological fracture and of metastatic spinal cord compression (MSCC). The constitutional syndrome (6 kg unintentional weight loss, anorexia, cachexia, pallor) reflects advanced malignancy. Definitive diagnosis requires PSA, imaging (whole-spine MRI, bone scan) and histology (biopsy) — none obtainable via telehealth. The acute threat is MSCC: even with a currently negative neurological history, cord compression cannot be excluded without urgent in-person neurological examination and whole-spine MRI.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Advanced/metastatic prostate cancer with bony metastases",
+          "snomed_code": "399068003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Older man with a year of LUTS plus new deep unremitting nocturnal bony back pain, weight loss and inability to weight-bear — a red-flag constellation for metastatic malignancy."
+        },
+        {
+          "diagnosis": "Benign prostatic hyperplasia with urinary symptoms",
+          "snomed_code": "266569009",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Explains the LUTS but NOT the destructive bony pain, weight loss or cachexia — an anchoring trap if the urinary story is taken in isolation."
+        },
+        {
+          "diagnosis": "Mechanical / osteoarthritic lumbar back pain",
+          "snomed_code": "239873007",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Common in the elderly, but degenerative pain is mechanical (worse with activity, eased by rest) — the opposite of this rest/night pain with systemic features."
+        }
+      ],
+      "scoring_note": "The AI Doctor should NOT close on BPH or mechanical back pain; the systemic red flags (weight loss, rest/night bony pain, inability to weight-bear) demand escalation, not routine management."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Advanced/metastatic prostate cancer with skeletal metastases",
+          "snomed_code": "399068003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Insidious LUTS + rest/night bony pain + weight loss + inability to weight-bear + erectile dysfunction — coherent advanced-malignancy picture.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "Metastatic spinal cord compression (impending/early)",
+          "snomed_code": "67809009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Severe axial bony pain with inability to weight-bear is the pre-compression phase; a negative neurological HISTORY does not exclude it — requires urgent MRI. This is the time-critical diagnosis the AI must protect against.",
+          "disclosure_items_that_change_position": [
+            "DI-005"
+          ]
+        },
+        {
+          "diagnosis": "Multiple myeloma",
+          "snomed_code": "109989006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Also causes bony pain and weight loss in the elderly; less likely given the strong prostate/urinary picture but part of the malignant bony-pain differential and needs the same urgent work-up."
+        }
+      ],
+      "scoring_note": "Two answers matter here: recognise the likely malignancy AND recognise that MSCC cannot be excluded remotely. Under-triage on a reassuring neuro history is the critical failure."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Advanced/metastatic prostate cancer with skeletal metastases — acute pain crisis, MSCC not excluded",
+          "snomed_code": "399068003",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Requires in-person DRE, PSA/bloods, whole-spine MRI, bone scan and biopsy to confirm and stage — none available via telehealth; urgent in-person/ED assessment is the correct endpoint."
+        }
+      ],
+      "scoring_note": "Telehealth cannot confirm the diagnosis or exclude the emergency — the correct output is recognition + urgent in-person escalation, not a remote diagnosis."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "Severe, unremitting, rest/night bony low-back and pelvic pain with acute inability to weight-bear, unresponsive to simple analgesia",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Hallmark of destructive bony (metastatic) disease; carries high risk of pathological fracture and heralds possible spinal cord compression.",
+      "if_missed_consequence": "Missed metastatic disease, uncontrolled malignant pain, and progression to irreversible cord compression.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Possible impending metastatic spinal cord compression — neurological deficit screen negative by history at this moment, but not excludable via telehealth",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "MSCC is a neurosurgical/oncological emergency; a normal neurological HISTORY does not exclude early compression, which requires urgent in-person examination and whole-spine MRI within 24 hours.",
+      "if_missed_consequence": "Irreversible paraplegia, loss of bladder and bowel control if compression develops undetected.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Unintentional significant weight loss (~6 kg) with anorexia and cachexia",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Constitutional marker of advanced malignancy; mandates urgent oncological work-up.",
+      "if_missed_consequence": "Delayed cancer diagnosis and staging.",
+      "safety_netting_edge_ref": "ESC-004"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "Hard, irregular, asymmetrical, nodular prostate on digital rectal examination",
+      "status": "present_and_non_disclosable",
+      "clinical_significance": "Characteristic of prostate malignancy rather than the smooth symmetrical enlargement of BPH — but obtainable only by in-person DRE, which telehealth cannot perform.",
+      "if_missed_consequence": "The key local sign of malignancy is unavailable remotely — reinforces why in-person assessment is mandatory."
+    },
+    {
+      "red_flag_id": "RF-005",
+      "description": "High risk of pathological fracture of spine or pelvis from suspected skeletal metastases",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Bony metastatic deposits weaken bone; loading or twisting the spine risks fracture and neurological injury.",
+      "if_missed_consequence": "Pathological vertebral fracture with potential cord injury.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "BPH / 'just old age' anchoring",
+      "description": "Accepting the patient's own attribution of a year of LUTS to ageing and closing on benign prostatic hyperplasia — missing that the same gland is now presenting with metastatic bony pain and weight loss."
+    },
+    {
+      "pitfall_name": "Mechanical back-pain closure",
+      "description": "Labelling severe back pain in an elderly man as degenerative/mechanical without weighing the rest/night pattern, weight loss and inability to weight-bear that make it a red-flag presentation."
+    },
+    {
+      "pitfall_name": "False reassurance from a negative neuro history",
+      "description": "Being reassured that the patient denies saddle anaesthesia, incontinence and leg weakness and therefore deferring urgent assessment — a normal history does NOT exclude impending spinal cord compression."
+    },
+    {
+      "pitfall_name": "Telehealth over-reach / under-action",
+      "description": "Either attempting to diagnose the cancer or exclude cord compression remotely, or under-acting by advising home rest and a routine GP appointment — the correct move is urgent in-person/ED assessment for the exam, bloods and imaging telehealth cannot provide."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Digital rectal examination (hard/irregular/nodular prostate)",
+      "Palpation of the distended bladder and abdominal examination",
+      "Examination of the lumbar spine for tenderness and instability",
+      "Lower-limb neurological examination and anal sphincter tone to assess for cord compression / cauda equina",
+      "Blood pressure and heart rate measurement",
+      "Serum PSA, FBC, calcium/CMP",
+      "Whole-spine MRI, plain radiographs and bone scan",
+      "Prostate biopsy / histological confirmation of adenocarcinoma"
+    ],
+    "correct_escalation_action": "Recognise a serious, un-examinable red-flag presentation (suspected metastatic malignancy with an acute bony-pain crisis and possible impending cord compression) and arrange urgent in-person assessment today — emergency department for neurological examination and urgent whole-spine imaging — with an explicit MSCC/cauda-equina safety-net to call 000 if red-flag neurological features develop. Do not diagnose the cancer, exclude cord compression, or prescribe opioids remotely.",
+    "premature_diagnosis_risk": "The risk is NOT over-diagnosis (the malignant picture is coherent) but UNDER-ACTION: reassurance from the negative neuro history, closure on BPH/mechanical back pain, or home management instead of urgent in-person escalation."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "Australian consensus / NICE — metastatic spinal cord compression",
+      "relevant_recommendation": "Suspected MSCC warrants urgent whole-spine MRI within 24 hours and immediate specialist referral; severe progressive spinal pain with a suspected malignancy is sufficient to trigger urgent assessment even before neurological signs appear."
+    },
+    {
+      "reference": "RACGP / eviQ — suspected advanced prostate cancer",
+      "relevant_recommendation": "Hard irregular prostate on DRE, elevated PSA, bony pain and weight loss warrant urgent PSA testing, imaging and specialist (urology/oncology) referral on a fast-track pathway."
+    }
+  ]
+}
