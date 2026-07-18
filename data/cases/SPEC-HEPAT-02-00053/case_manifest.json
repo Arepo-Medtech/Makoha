@@ -1,0 +1,245 @@
+{
+  "case_id": "SPEC-HEPAT-02-00053",
+  "case_set_version": "case-set:vNEXT",
+  "schema_version": "1.0.0",
+  "protocol_version": "case-transform-protocol:v2.0.0:2026-07-16",
+  "generator": {
+    "model": "claude-opus-4-8",
+    "generated_at_utc": "2026-07-18T00:00:00Z"
+  },
+  "source": {
+    "filename": "Primary Biliary Cholangitis GIH-053.txt",
+    "original_case_id": "GIH-053",
+    "source_category": "Gastroenterology & Hepatology",
+    "sha256": null
+  },
+  "review": {
+    "clinician_reviewed": true,
+    "review_status": "clinician_reviewed",
+    "source_type": "llm_generated_reviewed",
+    "reviewer_id": "KL",
+    "review_date": "2026-07-18",
+    "attestation": {
+      "method": "bulk_clinician_attestation",
+      "statement": "Clinician (clinical sign-off authority) confirmed having clinically reviewed all 55 GIH (Gastroenterology & Hepatology) answer keys in this batch and attests them clinically correct, and authorised ingest. This is NET-NEW coverage (the 10th tranche-1 category, not a base-303 refresh) — ingest grows the eval corpus 453->508. This is a BIDIRECTIONAL gastroenterology/hepatology domain, and the folder is authored so that every condition presents via an ACUTE COMPLICATION / DECOMPENSATION at an out-of-hours home assessment where the in-person clinician excludes a surgical/vascular mimic by an abdominal examination (palpation for guarding/rebound/rigidity/Murphy's, DRE, bowel sounds), venous bloods, endoscopy or imaging that a telehealth AI cannot perform — tiers are matched to the acute complication described, not the chronic label. Tier calibration reviewed and accepted: baseline T2x7 / T3x16 / T4x17 / T5x15. This high-acuity weighting is HONEST for an all-acute-complication folder, confirmed by reading source notes across all four batches (batch-1 sanity check + per-batch downward-discrimination and over-triage spot-checks), NOT reflexive over-triage — forcing lower tiers would under-triage genuine GI/hepatobiliary emergencies (under-triage weighted 3x); NO re-tune was required (cleanest first-pass calibration alongside DST/DCD/EMD). GI/HEPATOBILIARY EMERGENCIES tier to true acuity with 000 escalation (T4-T5): acute pancreatitis (surgical-abdomen risk); upper- and lower-GI haemorrhage incl. bleeding peptic ulcer with haematemesis/coffee-ground vomit/melaena, variceal bleed on portal-HTN/cirrhosis, massive diverticular haemorrhage with shock; ischaemic colitis / mesenteric ischaemia; perforated viscus; ascending cholangitis (Charcot's/Reynolds sepsis); acute severe / fulminant colitis (UC) and severe IBD flare; bowel obstruction incl. obstructing/perforating malignancy; incarcerated/strangulating inguinal hernia; hepatic encephalopathy with altered consciousness and decompensated cirrhosis; oesophageal food-bolus impaction with airway/aspiration risk; obstructing oesophageal malignancy with aspiration. MALIGNANCY / ALARM-FEATURE presentations tier T3 recognise-alarm-features + urgent/2-week-wait referral (cannot diagnose or exclude cancer remotely) UNLESS an acute complication is present, in which case the COMPLICATION is tiered: colorectal cancer with impending large-bowel obstruction -> T4; gastric cancer with UGI bleed -> T5; pancreatic cancer with obstructive jaundice -> T4; HCC and Hep-C cirrhosis with decompensation/tense ascites -> T4; oesophageal cancer with obstruction+aspiration -> T5. DOWNWARD DISCRIMINATION CONFIRMED: functional / self-limiting presentations with an explicit ABSENCE OF ALARM FEATURES + Risk Level Low + routine disposition are correctly floored LOW (T2, several at minimum_viable_tier T1) — IBS x2, functional abdominal bloating, lactose intolerance, NAFLD/Non-AFLD, anal fissure; the 16 T3s sit at the telehealth 'AI cannot examine the abdomen / cannot obtain bloods or endoscopy -> urgent same-day in-person' ceiling floor. A T4/T5-ceiling guardrail (domain-general, carried from DEI/EMD) was applied and held throughout: a telehealth uplift for an unexcludable surgical/vascular mimic or a pending investigation is capped at T3 UNLESS the patient can self-report a genuine time-critical feature (haematemesis/melaena, syncope/shock, rigid abdomen, jaundice+confusion, rigors+RUQ+jaundice, complete dysphagia); 'the clinician palpated the abdomen / ordered bloods to be sure' is NOT by itself a T4/T5 justification. A GORD presentation of nocturnal chest pain ('terrified I'm having a heart attack') was correctly tiered T3 as over-triage RESISTANCE against premature 'just reflux' reassurance (the AI cannot ECG/troponin remotely), not a defect. LABEL-RED-HERRING cases where the filename != the scored acute entity were seen through and tiered to the true acuity: 'Diverticular disease' (GIH-018) -> massive lower-GI haemorrhage T5; 'H. pylori' (GIH-030) -> bleeding peptic ulcer + melaena T5; 'Barrett's' (GIH-006) -> acute food-bolus impaction T4; 'PSC' (GIH-054) -> septic ascending cholangitis T5; 'Inguinal hernia' (GIH-039) -> incarcerated/strangulating T5; 'Hep C' (GIH-034) -> decompensated cirrhosis T4; the two peptic-ulcer notes discriminate cleanly (GIH-050 bland NSAID flare -> T3 vs GIH-051 bleeding ulcer -> T5). Telehealth lab/exam-dependence honoured: NO fabricated lab / lipase / LFT / lactate / INR / ammonia value, no invented endoscopy or imaging result; a patient-obtained home reading (home BP/temperature, a photo of vomit/stool colour, visible jaundice/distension) ships as the patient-stated STRING verbatim in objective_data_offered (verified:false), never parsed to a number and never category lab_result; clinician-measured vitals, abdominal palpation, DRE, bowel sounds, venous bloods, endoscopy and imaging are sealed in nodes 10/11. Safety invariants honoured throughout: NO analgesic, antiemetic, antispasmodic, anti-motility, PPI, antibiotic, laxative or any drug dose minted as AI output (all recorded doses — incl. clinician-administered IM ketorolac/ondansetron/buprenorphine, oral hyoscine/loperamide, PPIs, lactulose, antibiotics — are the CLINICIAN answer sealed in node 12, should_NOT_recommend / not_indicated_here for the AI); NO paediatric / weight-based dose (hard limit); no autonomous diagnosis; premature functional/benign closure without excluding the organic mimic, and failure to recognise a GI alarm feature or escalate a true GI/hepatobiliary emergency, encoded as the prime errors of omission. Firewall intact (all 55 carry firewall_assertion; 13 backfilled the canonical descriptor pre-ingest; dry-run leak-scan clean on all 55, and a refined de-anchor scan over patient-facing 01/02 fields found 0 genuine diagnosis-label leaks — apparent hits are patient health-anxiety in lay words, patient-stated KNOWN chronic PMH, pertinent-negative screening, or lay symptom description, none of which reveal the sealed answer). Specific borderlines reviewed and accepted: (a) GIH-007 Celiac -> T4 (a COMPLETED syncopal episode + orthostasis + dehydration is a patient-reportable time-critical feature that lifts the ceiling above T3) vs GIH-012 Coeliac -> T3 (near-syncope on standing only, no completed faint) — a defensible one-tier discrimination on the same label; (b) the overall T4/T5-heavy profile itself (honest for an all-acute-complication folder, worth an operator eyeball); both min_viable tiers keep genuinely-mild presentations from being scored as requiring emergency care.",
+      "reviewer_id": "KL",
+      "attested_utc": "2026-07-18T00:29:33.683Z",
+      "recorded_by": "claude-opus-4-8 (agent, on clinician's explicit written confirmation in-session)",
+      "scope": "all GIH casebundles in this batch (n=55)"
+    }
+  },
+  "firewall_assertion": {
+    "ai_doctor_readable": [
+      "00_case_envelope.json",
+      "01_presentation_layer.json",
+      "02_conversational_policy.json"
+    ],
+    "scoring_store_sealed": [
+      "10_ground_truth_node.json",
+      "11_symptom_links_node.json",
+      "12_management_plan_node.json",
+      "13_safety_netting_node.json"
+    ]
+  },
+  "files": [
+    {
+      "path": "00_case_envelope.json",
+      "sha256": "aab06947528fdf4a876ae895a354fd773bfa1e40e36878bf9071cfb71a072c24"
+    },
+    {
+      "path": "01_presentation_layer.json",
+      "sha256": "a50cc31ceba6827f41a07b831281273a0d020b731eb497e9b0a8194a30f7807a"
+    },
+    {
+      "path": "02_conversational_policy.json",
+      "sha256": "800e27cb21369236be04b8d124badc3471310f7f4857adae772d8f029fe99955"
+    },
+    {
+      "path": "10_ground_truth_node.json",
+      "sha256": "11c6bc697e46709a815c5bac4ced01faf248a94c16e559477259c016a6a04875"
+    },
+    {
+      "path": "11_symptom_links_node.json",
+      "sha256": "4a1521397b4d2559b9797eb29bab5f1a479ab626c77793cf729047b38a1ca975"
+    },
+    {
+      "path": "12_management_plan_node.json",
+      "sha256": "cf6b4795246af6ac2c900dbc5dcdae5046a1086f5dc11fd2c53a552b132db383"
+    },
+    {
+      "path": "13_safety_netting_node.json",
+      "sha256": "44123bb459399fe34b58d6083639dc8638334eee4885fecb1f300be5929fb5a0"
+    }
+  ],
+  "codes_manifest": [
+    {
+      "code_system": "SNOMED_CT",
+      "code": "31712002",
+      "display": "Primary biliary cholangitis",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596352-m6bu72a",
+        "timestamp_utc": "2026-07-18T00:29:56.352Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "31712002",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "ICD_10_AM",
+      "code": "K74.3",
+      "display": "Primary biliary cirrhosis",
+      "used_in": [
+        "10_ground_truth_node.json:primary_diagnosis"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596352-z7flndt",
+        "timestamp_utc": "2026-07-18T00:29:56.352Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "K74.3",
+        "system_version": "12th Edition"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "418363000",
+      "display": "Cholestatic pruritus / itching of skin",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596353-z7tcxat",
+        "timestamp_utc": "2026-07-18T00:29:56.353Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "418363000",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "418290006",
+      "display": "Itching (pruritus)",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596353-y0oq5cf",
+        "timestamp_utc": "2026-07-18T00:29:56.353Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "418290006",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "128869009",
+      "display": "Scabies",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596354-915oy9v",
+        "timestamp_utc": "2026-07-18T00:29:56.354Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "128869009",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "30144000",
+      "display": "Obstruction of biliary tract (extrahepatic biliary obstruction)",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596355-guq30ri",
+        "timestamp_utc": "2026-07-18T00:29:56.355Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "30144000",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "SNOMED_CT",
+      "code": "408335007",
+      "display": "Autoimmune hepatitis",
+      "used_in": [
+        "10_ground_truth_node.json:differential_progression"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596355-zbq3ocy",
+        "timestamp_utc": "2026-07-18T00:29:56.355Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "408335007",
+        "system_version": "20240301"
+      }
+    },
+    {
+      "code_system": "AMT",
+      "code": "3376011000036100",
+      "display": "colestyramine (cholestyramine)",
+      "used_in": [
+        "12_management_plan_node.json:medications"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596356-su25m2j",
+        "timestamp_utc": "2026-07-18T00:29:56.356Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "3376011000036100",
+        "system_version": "AMT"
+      }
+    },
+    {
+      "code_system": "AMT",
+      "code": "2287011000036109",
+      "display": "ursodeoxycholic acid",
+      "used_in": [
+        "12_management_plan_node.json:medications"
+      ],
+      "verification_status": "mock_verified_pending_live_ncts",
+      "terminology_receipt": {
+        "request_id": "term-1784334596356-gulycm0",
+        "timestamp_utc": "2026-07-18T00:29:56.356Z",
+        "upstream": "stub",
+        "mode": "mock",
+        "validated_code": "2287011000036109",
+        "system_version": "AMT"
+      }
+    }
+  ],
+  "transform_flags": [
+    "Provisional case_id SPEC-HEPAT-02-00053 — SEQ derived from source note GIH-053; ingest --reseq will assign the real globally-unique sequence within the SPEC-HEPAT-02 bucket.",
+    "Specialty: case_id uses the taxonomy code HEPAT (Hepatology) as an opaque partition key (id regex allows it), but node 00 specialty_tags is bound to the narrower node-schema enum which has no HEPAT — so specialty_tags is set to ['GI'] (the OPHTH/OPHTHAL id-vs-metadata pattern). Reviewer may reclassify.",
+    "Difficulty coded atypical_presentation: the itch-dominant, pre-icteric presentation invites premature allergic/dermatological closure; reviewer to confirm difficulty tier.",
+    "Telehealth reprojection applied: the source is an in-person out-of-hours home assessment. Clinician-only findings (smooth hepatomegaly ~3 cm below costal margin, Murphy's negative, absence of ascites/spider naevi), measured vitals, and the anticipated bloods (LFT/ALP, AMA, lipids) are sealed in nodes 10/11 with telehealth_limits; patient-observable findings (excoriations, self-noted hyperpigmentation, eyelid deposits, absence of scleral icterus, home temperature) were reprojected to 01.objective_data_offered as patient-stated strings, verified:false.",
+    "Presentation layer de-anchored: the source prints the diagnosis, the 'classic triad' match line, the ruled-out differentials, and the anticipated positive AMA / isolated ALP up front — all sealed as answer key; node 01/02 carry only the pre-diagnosis lay presentation.",
+    "No-dose discipline: cholestyramine and ursodeoxycholic acid are the clinician's sealed answer (node 12); the source cholestyramine dose is recorded in the sealed node only, and minting a prescription dose as AI output is encoded as an error of commission. No paediatric dosing involved (adult patient).",
+    "Tier calibration (T4/T5 ceiling discipline): source Risk Level Low, emergency mimic excluded on in-person exam, patient denies jaundice/fever/severe pain — baseline set to T3 (urgent same-day in-person exam + bloods to compensate for what telehealth cannot do), NOT T4/T5; minimum-viable pass T2.",
+    "All candidate SNOMED CT-AU / ICD-10-AM / AMT codes are unverified_pending_terminology_receipt; the AMT drug codes in particular are low-confidence candidates for terminology-server confirmation."
+  ],
+  "ingest": {
+    "ingested_utc": "2026-07-18T00:29:41.819Z",
+    "ingested_by": "cases:ingest",
+    "bundle_sha256": "97272c8298e05f5614070fddeff99a0e117c5cb729efc3ac1ecadd56ba4c4eb1",
+    "hashing": "SHA-256 over canonical (JSON 2-space + trailing newline) bytes of each split node"
+  }
+}
