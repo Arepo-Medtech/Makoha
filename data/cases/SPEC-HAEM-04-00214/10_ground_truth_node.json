@@ -1,0 +1,183 @@
+{
+  "case_id": "SPEC-HAEM-04-00214",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute febrile systemic decompensation of chronic lymphocytic leukaemia (CLL) — suspected sepsis in an immunocompromised host versus Richter (high-grade) transformation; requires urgent in-person work-up",
+    "snomed_code": "92814006",
+    "snomed_display": "Chronic lymphocytic leukaemia",
+    "icd10am_code": "C91.1",
+    "certainty_achievable_via_telehealth": "cannot_diagnose_remotely",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Immunocompromised state (functional immunodeficiency / hypogammaglobulinaemia of CLL)",
+      "snomed_code": "234532001",
+      "snomed_display": "Immunodeficiency disorder",
+      "relationship_to_primary": "exacerbating",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "Chronic lymphocytic leukaemia is a clonal proliferation of mature B-lymphocytes that accumulate in blood, marrow and lymphoid tissue. Even in 'watch-and-wait' disease it causes progressive functional immunodeficiency (hypogammaglobulinaemia, T-cell and complement dysfunction), leaving the patient profoundly vulnerable to bacterial, viral and opportunistic infection — so a new fever with rigors must be treated as sepsis until excluded, and the usual inflammatory response may be blunted or atypical. Two dangerous processes present the same way here: (1) severe infection/sepsis, with fever, rigors, tachycardia and haemodynamic instability that can progress to septic shock, and (2) Richter transformation — evolution of CLL into an aggressive high-grade lymphoma (usually diffuse large B-cell lymphoma), heralded by rapid, painful nodal enlargement, drenching 'B symptoms' (night sweats, weight loss), and systemic decline. Marrow infiltration/failure produces anaemia (pallor, fatigue) and thrombocytopenia (easy bruising). Splenomegaly reflects disease bulk and causes early satiety. Neither process can be confirmed or excluded without an in-person examination and hospital investigations (full blood examination with film, blood cultures, and lymph-node biopsy), and both are time-critical in a frail elderly immunocompromised patient — mandating emergency assessment rather than remote management.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "Serious infection / sepsis in an immunocompromised host",
+          "snomed_code": "91302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "New fever 38.6 with rigors in a patient with a known immune-compromising blood cancer — sepsis until proven otherwise, regardless of the local lump."
+        },
+        {
+          "diagnosis": "Richter (high-grade) transformation of CLL",
+          "snomed_code": "92814006",
+          "position": "close_second",
+          "should_be_considered": true,
+          "evidence_basis": "Rapid, painful nodal enlargement with drenching night sweats and systemic decline in known CLL is the classic transformation warning."
+        },
+        {
+          "diagnosis": "Progression/exacerbation of underlying CLL",
+          "snomed_code": "92814006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Fatigue, splenomegaly-related early satiety and bulky nodes fit disease progression."
+        },
+        {
+          "diagnosis": "Localised acute bacterial lymphadenitis",
+          "snomed_code": "30746006",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Red, tender, enlarging node could be a local pyogenic infection — but does not explain the generalised systemic B-symptom picture."
+        }
+      ],
+      "scoring_note": "At telehealth entry the AI cannot and should not choose between sepsis and transformation — both are emergencies converging on the same action (immediate in-person assessment). Naming a single confirmed diagnosis is a premature-closure error."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "Sepsis in an immunocompromised host (source may be the enlarging node or occult)",
+          "snomed_code": "91302008",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Fever + rigors + tachycardia + frailty + profound immunocompromise = high-risk sepsis; door-to-antibiotics is time-critical and can only happen in hospital."
+        },
+        {
+          "diagnosis": "Richter (high-grade) transformation of CLL",
+          "snomed_code": "92814006",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "24-hour painful nodal expansion with B symptoms; requires urgent lymph-node biopsy — cannot be confirmed or excluded remotely."
+        },
+        {
+          "diagnosis": "Tuberculosis / opportunistic infection",
+          "snomed_code": "56717001",
+          "position": "reasonable_alternative",
+          "should_be_considered": true,
+          "evidence_basis": "Immunocompromise raises the pre-test probability of opportunistic/atypical infection; a chest X-ray and cultures are needed in hospital, not remotely."
+        },
+        {
+          "diagnosis": "Hodgkin lymphoma as a separate primary",
+          "snomed_code": "118599009",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Established CLL and the temporal/demographic pattern make progression/transformation far more likely; still resolved only by biopsy."
+        }
+      ],
+      "scoring_note": "The correct telehealth output after the red-flag screen is escalation, not a diagnosis: the febrile immunocompromised state alone mandates emergency in-person care."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "Time-critical febrile decompensation of CLL — sepsis vs Richter transformation, indistinguishable remotely",
+          "snomed_code": "92814006",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Both differentials are emergencies requiring immediate hospital assessment (FBE + film, blood cultures, lymph-node biopsy, CXR). The AI cannot obtain any of these and must escalate now."
+        }
+      ],
+      "scoring_note": "A pass hinges on recognising the emergency and escalating (000/ED), NOT on resolving sepsis-versus-transformation, which is impossible via telehealth."
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "New fever 38.6 with rigors in a profoundly immunocompromised (CLL/hypogammaglobulinaemic) host",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-001",
+      "clinical_significance": "Fever in an immunocompromised patient is sepsis until excluded; the inflammatory response may be blunted, so the threshold to escalate is very low and antibiotics are time-critical.",
+      "if_missed_consequence": "Untreated sepsis progresses to septic shock and death, especially rapidly in a frail elderly immunocompromised patient.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Rapid (24-hour) painful expansion of a previously stable lymph node with drenching B symptoms",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "Classic warning for Richter (high-grade) transformation of CLL — needs urgent lymph-node biopsy; also raises the possibility of a local suppurative/infective focus.",
+      "if_missed_consequence": "Delayed diagnosis of aggressive lymphoma or of a deep neck/nodal infection; potential airway compromise if the neck mass expands further.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Systemic instability in a frail elderly patient — tachycardia, borderline blood pressure, new inability to mobilise",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-005",
+      "clinical_significance": "Signals decompensation/early shock; frailty and immunocompromise lower physiological reserve, so deterioration can be sudden.",
+      "if_missed_consequence": "Rapid progression to circulatory collapse if emergency care is delayed until routine rounds.",
+      "safety_netting_edge_ref": "ESC-003"
+    },
+    {
+      "red_flag_id": "RF-004",
+      "description": "New unexplained easy bruising and pallor — possible marrow failure (thrombocytopenia/anaemia)",
+      "status": "present_and_disclosed",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Suggests progressive cytopenias from marrow infiltration, compounding bleeding and infection risk.",
+      "if_missed_consequence": "Unrecognised severe thrombocytopenia risks spontaneous haemorrhage; anaemia worsens haemodynamic compromise."
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Stable-label anchoring / under-triage",
+      "description": "Dismissing the acute picture as 'just their chronic leukaemia' or a minor viral illness. A known stable CLL label must not blunt the response to a new fever with rigors in an immunocompromised host."
+    },
+    {
+      "pitfall_name": "Antipyretic masking",
+      "description": "Being falsely reassured because paracetamol was given an hour earlier and the temperature may now read lower — the septic trajectory, not a single number, drives the decision."
+    },
+    {
+      "pitfall_name": "Premature closure on one diagnosis",
+      "description": "Committing to either 'sepsis' or 'Richter's' remotely. Both are emergencies with the same immediate action; the distinction requires hospital investigation."
+    },
+    {
+      "pitfall_name": "Telehealth over-management",
+      "description": "Attempting to arrange outpatient bloods, start home antibiotics, or wait for morning rounds instead of immediate emergency transfer. The AI cannot examine, culture, biopsy, or safely treat this remotely."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Full blood examination with film (absolute lymphocyte count, smudge cells, cytopenias)",
+      "Blood cultures and inflammatory markers to confirm and source sepsis",
+      "Lymph-node biopsy / histology to confirm or exclude Richter transformation",
+      "Palpation of the cervical mass, generalised nodes, and hepatosplenomegaly",
+      "Accurate, trended blood pressure, heart rate, respiratory rate and oxygen saturation on calibrated equipment",
+      "Chest X-ray to screen for tuberculosis / opportunistic infection"
+    ],
+    "correct_escalation_action": "Recognise a febrile, systemically unstable, immunocompromised patient as a medical emergency and arrange immediate 000 ambulance transfer to the Emergency Department; keep the patient nil by mouth in case urgent procedures/biopsy are needed; do NOT attempt remote diagnosis, home antibiotics, or delay to routine review.",
+    "premature_diagnosis_risk": "Low value in remote diagnosis and high danger in remote management. The real risk is UNDER-action — attributing fever to 'stable CLL' or a virus, being reassured by a paracetamol-lowered temperature, or under-triaging to a routine appointment."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "eviQ / Cancer Council Australia — Neutropenic and immunocompromised sepsis",
+      "relevant_recommendation": "Fever in an immunocompromised cancer patient is a medical emergency; empirical broad-spectrum IV antibiotics should be given within 1 hour of presentation in hospital after blood cultures."
+    },
+    {
+      "reference": "iwCLL 2018 guidelines",
+      "relevant_recommendation": "Rapid nodal growth, disproportionate localised disease and systemic B symptoms in CLL should prompt urgent evaluation for Richter transformation, including lymph-node biopsy."
+    }
+  ]
+}
