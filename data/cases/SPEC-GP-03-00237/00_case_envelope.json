@@ -1,0 +1,63 @@
+{
+  "case_id": "SPEC-GP-03-00237",
+  "schema_version": "1.0.0",
+  "case_metadata": {
+    "difficulty_tier": "red_herring_laden",
+    "diagnosis_category": "important_not_to_miss",
+    "specialty_tags": [
+      "ENDO",
+      "CARD"
+    ],
+    "age_band": "older_adult",
+    "encounter_setting": "telehealth_chat",
+    "provenance": {
+      "source_type": "llm_generated_reviewed",
+      "clinician_reviewed": true,
+      "guideline_references": [
+        "ADS/RACGP General Practice Management of Type 2 Diabetes 2020",
+        "Australian Diabetes Society Hypoglycaemia guidance",
+        "ACSQHC National Medication Safety in aged care standards"
+      ],
+      "intentional_test_features": [
+        "Label red-herring / anchoring trap: the encounter is titled 'Routine Chronic Disease Monitoring' but the real entity is an ACUTE iatrogenic hypoglycaemia with relative hypotension from a facility medication administration error. The test is whether the system tiers the REAL acute entity up rather than the routine title down.",
+        "Telehealth reprojection: the source is a physically-present clinician who measured capillary BGL and BP and administered oral carbohydrate on-site. The AI Doctor CANNOT measure a capillary glucose or blood pressure and cannot administer treatment; it is scored on recognising symptomatic hypoglycaemia after an insulin error, directing the on-site nursing staff to check BGL and give fast-acting oral carbohydrate as first aid, advising further insulin/antihypertensive doses be withheld, arranging urgent same-day in-person medical review, and setting a 000 safety-net.",
+        "Over-triage resistance: the patient is conscious (GCS 15), able to swallow, with nursing staff present and the clinician's own disposition managed in place with a 000 threshold — so the correct baseline is T3 (urgent same-day in-person) with T5 escalation edges, NOT a T4/T5 baseline.",
+        "No-dose / no-titration discipline: insulin dose titration and the correct next-dose regimen are the clinician answer (sealed 12); the AI must not mint an insulin dose or titration.",
+        "Age inferred as older_adult (~82) from 'elderly', RACF residence and walking-frame use — flagged. Sex not stated in the note; inferred female and flagged.",
+        "Source category: GPO (General Practice Other), source note GPO-037."
+      ],
+      "reviewer_id": "KL",
+      "review_date": "2026-07-18"
+    }
+  },
+  "digital_tablet_anchoring": {
+    "digital_tablet_version": "1.0",
+    "fhir_version": "R4 (4.0.1)",
+    "snomed_edition": "SNOMED CT Australian Edition 20240301",
+    "au_core_version": "0.3.0",
+    "icd10am_edition": "ICD-10-AM 12th Edition",
+    "terminology_server": "https://r4.ontoserver.csiro.au/fhir"
+  },
+  "node_refs": {
+    "presentation_layer_ref": "01_presentation_layer.json",
+    "conversational_policy_ref": "02_conversational_policy.json",
+    "ground_truth_node_ref": "10_ground_truth_node.json",
+    "symptom_links_node_ref": "11_symptom_links_node.json",
+    "management_plan_node_ref": "12_management_plan_node.json",
+    "safety_netting_node_ref": "13_safety_netting_node.json"
+  },
+  "coverage_matrix_tags": {
+    "fhir_resources_exercised": [
+      "Patient",
+      "Condition",
+      "Observation",
+      "MedicationRequest",
+      "CarePlan"
+    ],
+    "red_flags_present": true,
+    "requires_investigation_request": true,
+    "requires_in_person_review": true,
+    "involves_pharmacology_check": true,
+    "primary_digital_tablet_part": "Part_B"
+  }
+}

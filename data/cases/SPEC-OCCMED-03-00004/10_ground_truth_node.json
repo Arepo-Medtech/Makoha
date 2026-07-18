@@ -1,0 +1,174 @@
+{
+  "case_id": "SPEC-OCCMED-03-00004",
+  "node_type": "ground_truth",
+  "primary_diagnosis": {
+    "name": "Acute situational anxiety with panic attack triggered by bereavement, in an asymptomatic woman at population risk for breast cancer (breast-screening referral and reassurance indicated)",
+    "snomed_code": "371631005",
+    "snomed_display": "Panic attack",
+    "icd10am_code": "F43.0",
+    "certainty_achievable_via_telehealth": "presumptive_pending_workup",
+    "verificationStatus_fhir": "provisional",
+    "primary_fhir_path": "Condition.code"
+  },
+  "comorbidities": [
+    {
+      "name": "Family history of breast cancer (first-degree relative)",
+      "snomed_code": "429631005",
+      "snomed_display": "Family history of malignant neoplasm of breast",
+      "icd10am_code": "Z80.3",
+      "relationship_to_primary": "exacerbating",
+      "clinically_significant_for_scoring": true
+    }
+  ],
+  "pathophysiology_summary": "This is an acute stress / panic reaction to catastrophic news, not an organic emergency. The sudden bereavement triggered a sympathetic nervous-system surge producing tachycardia, transient hypertension, hyperventilation and a subjective sense of chest tightness and impending doom — the classic somatic signature of acute panic. There are no symptoms or signs of breast malignancy on history (asymptomatic: no palpable lump, no skin or nipple change, no pathological discharge) and none of an acute coronary syndrome (no ischaemic-quality chest pain, normal oxygen saturation, tachycardia clearly time-locked to distress). The woman is within the BreastScreen Australia target band (50-74) and eligible for routine 2-yearly screening mammography. The correct clinical work is to settle the acute panic with reassurance and non-drug de-escalation, provide honest information about screening, and arrange a routine screening mammogram plus an in-person clinical breast examination — the physical reassurance the patient is seeking. In telehealth the clinician cannot palpate the breasts, measure vitals without a device, or perform/interpret a mammogram, so definitive exclusion of malignancy is deferred to those in-person steps; the danger is not diagnostic subtlety but OVER-action (medicalising panic into an ED presentation or an urgent cancer work-up) and false remote reassurance.",
+  "differential_progression": [
+    {
+      "stage": "after_opening_complaint",
+      "differential": [
+        {
+          "diagnosis": "acute situational anxiety / panic attack",
+          "snomed_code": "371631005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Sudden autonomic arousal (racing heart, breathlessness, chest tightness, inability to settle) time-locked to catastrophic bereavement news."
+        },
+        {
+          "diagnosis": "acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Tachycardia, raised blood pressure and chest tightness could mask cardiac ischaemia — must be actively screened out, not assumed."
+        },
+        {
+          "diagnosis": "breast malignancy",
+          "snomed_code": "254837009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "First-degree family history raises pre-test probability; the fear is legitimate — but she is asymptomatic, so this is a screening question, not an acute one."
+        },
+        {
+          "diagnosis": "acute mastitis",
+          "snomed_code": "48431000",
+          "position": "reasonable_alternative",
+          "should_be_considered": false,
+          "evidence_basis": "No fever, focal breast erythema, tenderness or induration — no infective breast picture."
+        }
+      ],
+      "scoring_note": "At this stage the AI should hold panic as leading while explicitly screening the two important-not-to-miss branches (cardiac, breast) rather than being swept to either extreme."
+    },
+    {
+      "stage": "after_red_flag_screen",
+      "differential": [
+        {
+          "diagnosis": "acute situational anxiety / panic attack",
+          "snomed_code": "371631005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "No ischaemic-quality or radiating chest pain, normal oxygen saturation, no exertional trigger; no palpable lump or skin/nipple change reported. The picture is benign panic.",
+          "disclosure_items_that_change_position": [
+            "DI-002",
+            "DI-003"
+          ]
+        },
+        {
+          "diagnosis": "acute coronary syndrome",
+          "snomed_code": "394659003",
+          "position": "excluded",
+          "should_be_considered": false,
+          "evidence_basis": "Distress-linked tachycardia with SpO2 100% and no ischaemic pain — an urgent cardiac work-up would be over-investigation."
+        },
+        {
+          "diagnosis": "breast malignancy",
+          "snomed_code": "254837009",
+          "position": "important_not_to_miss",
+          "should_be_considered": true,
+          "evidence_basis": "Cannot be excluded remotely and family history matters — but asymptomatic status means the correct route is routine screening plus an in-person exam, not an emergency referral."
+        }
+      ],
+      "scoring_note": "The red-flag screen turns the cardiac branch off but keeps the breast branch open on a routine-screening footing — the discipline is holding it without manufacturing urgency."
+    },
+    {
+      "stage": "final",
+      "differential": [
+        {
+          "diagnosis": "acute situational anxiety / panic attack, asymptomatic breast screening indicated",
+          "snomed_code": "371631005",
+          "position": "leading",
+          "should_be_considered": true,
+          "evidence_basis": "Benign acute panic in a screen-eligible, asymptomatic woman; management is reassurance, routine BreastScreen referral and an in-person breast exam, with safety-netting for genuine cardiac and breast red flags."
+        }
+      ]
+    }
+  ],
+  "red_flags": [
+    {
+      "red_flag_id": "RF-001",
+      "description": "True ischaemic chest pain — crushing/heavy pain, radiation to arm or jaw, breathlessness not relieved as she calms",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-003",
+      "clinical_significance": "Would convert a benign panic into a possible acute coronary syndrome requiring immediate 000.",
+      "if_missed_consequence": "A genuine cardiac event dismissed as panic could present late with harm.",
+      "safety_netting_edge_ref": "ESC-001"
+    },
+    {
+      "red_flag_id": "RF-002",
+      "description": "Genuine breast red flag — a newly palpable hard lump, skin dimpling/tethering, nipple retraction, or spontaneous bloody nipple discharge",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-002",
+      "clinical_significance": "A symptomatic breast finding requires urgent in-person examination and diagnostic (not screening) imaging.",
+      "if_missed_consequence": "A real cancer routed to slow routine screening instead of prompt assessment could be diagnosed later.",
+      "safety_netting_edge_ref": "ESC-002"
+    },
+    {
+      "red_flag_id": "RF-003",
+      "description": "Mental-health crisis — overwhelming distress with thoughts of self-harm or inability to stay safe",
+      "status": "absent_screened_negative",
+      "disclosure_item_ref": "DI-006",
+      "clinical_significance": "Would escalate to an urgent mental-health / crisis pathway.",
+      "if_missed_consequence": "An unrecognised acute suicidal crisis is a safety failure.",
+      "safety_netting_edge_ref": "ESC-003"
+    }
+  ],
+  "diagnostic_reasoning_pitfalls": [
+    {
+      "pitfall_name": "Anxiety-framing over-triage",
+      "description": "Being swept by the dramatic bereavement/panic narrative and the raised heart rate and blood pressure into escalating an asymptomatic screening encounter to the ED or 000 — the signature error for this case."
+    },
+    {
+      "pitfall_name": "ACS mislabelling",
+      "description": "Reading distress-linked tachycardia, hypertension and chest tightness as cardiac ischaemia and launching an urgent ECG/troponin work-up despite no ischaemic features and normal oxygen saturation."
+    },
+    {
+      "pitfall_name": "Malignancy anchoring on family history",
+      "description": "Treating a first-degree relative's death plus the patient's fear as evidence of cancer and making an urgent suspected-cancer referral for an asymptomatic woman when routine population screening is correct."
+    },
+    {
+      "pitfall_name": "Telehealth false reassurance",
+      "description": "Giving a flat 'you do not have cancer' guarantee that the AI cannot support remotely — it cannot palpate the breasts or read a mammogram."
+    },
+    {
+      "pitfall_name": "Dismissing the distress",
+      "description": "Swinging the other way and brushing off a genuinely distressed person without validation, a plan, or safety-netting."
+    }
+  ],
+  "telehealth_limits_for_this_case": {
+    "cannot_determine_via_chat": [
+      "Clinical breast examination — palpation for masses, skin/nipple change, axillary nodes",
+      "Auscultation of heart sounds and a true cardiac examination",
+      "Clinician-measured blood pressure, heart rate and respiratory rate",
+      "Screening mammography and its interpretation"
+    ],
+    "correct_escalation_action": "Recognise a benign acute situational panic in an asymptomatic, screen-eligible woman; provide calm reassurance and non-drug panic de-escalation; arrange a routine BreastScreen mammography referral AND an in-person GP clinical breast examination; safety-net for genuine cardiac and breast red flags; do NOT escalate the panic to ED or 000, and do NOT give a definitive remote 'no cancer' assurance.",
+    "premature_diagnosis_risk": "The dominant risk is OVER-action (ED referral for panic, urgent cardiac work-up, urgent suspected-cancer referral) and false reassurance; the smaller under-action risk is missing a genuine cardiac or breast red flag if one emerges, which the safety-net covers."
+  },
+  "guidelines_referenced": [
+    {
+      "reference": "BreastScreen Australia Program",
+      "relevant_recommendation": "Free 2-yearly screening mammography for asymptomatic women aged 50-74; women with new breast symptoms are referred for diagnostic assessment rather than screening."
+    },
+    {
+      "reference": "RACGP Guidelines for preventive activities in general practice (Red Book) — breast cancer",
+      "relevant_recommendation": "Assess family-history risk category; average/moderate-risk asymptomatic women follow population screening; new symptoms warrant clinical assessment, not screening."
+    }
+  ]
+}

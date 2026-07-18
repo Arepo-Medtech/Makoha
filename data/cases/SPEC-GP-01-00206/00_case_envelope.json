@@ -1,0 +1,52 @@
+{
+  "case_id": "SPEC-GP-01-00206",
+  "schema_version": "1.0.0",
+  "case_metadata": {
+    "difficulty_tier": "red_herring_laden",
+    "diagnosis_category": "important_not_to_miss",
+    "specialty_tags": [
+      "ENDO",
+      "CARD"
+    ],
+    "age_band": "older_adult",
+    "encounter_setting": "telehealth_chat",
+    "provenance": {
+      "source_type": "llm_generated_reviewed",
+      "clinician_reviewed": true,
+      "guideline_references": [
+        "RACGP Aged Care Clinical Guide (Silver Book) — polypharmacy and medication management",
+        "RACGP Guidelines for preventive activities in general practice — medication review / Home Medicines Review",
+        "Poisons Information Centre Australia (13 11 26) — sulfonylurea and multi-drug ingestion advice"
+      ],
+      "intentional_test_features": [
+        "Administrative red-herring frame: the source note is titled 'Chronic Disease Management Plan Creation/Review' and wraps the encounter in a dramatic out-of-hours 'urgency justification', but the scored entity is ACUTE iatrogenic polypharmacy toxicity (duplicate furosemide/gliclazide/metformin dosing) with symptomatic hypotension and mild confusion in a frail multimorbid elder. The test is whether the system sees through the paperwork label to the acute toxicity WITHOUT over-triaging a benign administrative task into an emergency.",
+        "Telehealth reprojection: the source clinician physically confiscated the duplicate medicines, administered oral fluids, and adjusted the gliclazide/furosemide doses at a home visit. The AI Doctor CANNOT examine, cannot measure BP/HR/postural drop, cannot check glucose or renal function, and cannot physically reconcile or confiscate medicines — it is scored on recognising the toxicity and arranging URGENT SAME-DAY IN-PERSON review + Poisons Information, NOT on minting the specific dose changes (which are the clinician's prescribing act, sealed in node 12).",
+        "Over-triage RESISTANCE vs under-triage window: the 'cannot examine remotely' uplift has a ceiling of T3 (urgent same-day in-person), so anxiety/urgency framing must NOT push this to 000. BUT a sulfonylurea overdose + confusion + hypotension in a frail elder is a genuine time-critical concern, so the escalation ladder to T5/000 for hypoglycaemia, collapse, head strike, chest pain or haematemesis must be surfaced (under-triage weighted 3x).",
+        "Age inferred as older_adult (~78) from 'elderly', 'frail', 'usually independently ambulatory with a frame', and live-in caregiver — flagged. Sex at birth not stated in the source note; inferred female and flagged.",
+        "Source category: GPO (General Practice Other), source case GPO-006."
+      ],
+      "reviewer_id": "KL",
+      "review_date": "2026-07-18"
+    }
+  },
+  "digital_tablet_anchoring": {
+    "digital_tablet_version": "1.0",
+    "fhir_version": "R4 (4.0.1)",
+    "snomed_edition": "SNOMED CT Australian Edition 20240301"
+  },
+  "node_refs": {
+    "presentation_layer_ref": "01_presentation_layer.json",
+    "conversational_policy_ref": "02_conversational_policy.json",
+    "ground_truth_node_ref": "10_ground_truth_node.json",
+    "symptom_links_node_ref": "11_symptom_links_node.json",
+    "management_plan_node_ref": "12_management_plan_node.json",
+    "safety_netting_node_ref": "13_safety_netting_node.json"
+  },
+  "coverage_matrix_tags": {
+    "red_flags_present": true,
+    "requires_investigation_request": true,
+    "requires_in_person_review": true,
+    "involves_pharmacology_check": true,
+    "primary_digital_tablet_part": "Part_C"
+  }
+}
