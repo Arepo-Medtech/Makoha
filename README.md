@@ -260,4 +260,4 @@ The following was in the repo before this build session and remains unchanged:
 
 ---
 
-*For questions on schema design, clinical content, or the evaluation framework — contact KL (Director, HeyDoc). For architecture and infrastructure — contact Damien Hill / Ethan Sandery (Elevion).*
+*For questions on schema design, architecture, infrastructure, clinical content, or the evaluation framework — contact KL (Director, HeyDoc). 
