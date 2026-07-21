@@ -1,0 +1,1450 @@
+diff --git a/.claude/completeness-index.md b/.claude/completeness-index.md
+index 5a5d89a..6dd80b4 100644
+--- a/.claude/completeness-index.md
++++ b/.claude/completeness-index.md
+@@ -3,7 +3,7 @@
+ One line per open Completeness Register item: `id · path · state · risk · blocks_patient_facing`.
+ Source of truth: `docs/grounding/completeness-register.md` + the live scan. If this disagrees with the register, the register wins and this file is the defect.
+ 
+-Last synced: 2026-07-21 (FL-40 Phases 1–7 — the live clinical eval harness, built plan-gated with 7 new contract suites (all in `npm test`; full suite + verification green). Around the L10 scorer core: the EvalRunReport contract (schema+zod), a deterministic patient simulator (7 gates, reads 01/02 only, hard-stops on sealed nodes), the 3 coverage graders (history/diagnostic/management — the last with a negation-aware error-of-commission AUTO-FAIL) + triage, the ONE scoring LLM (receipt-gated 3-band communication judge, 0.05), a fail-closed prompt-hash record/replay layer, the orchestrator (multi-turn through the real pipeline, BOTH backends → schema-valid EvalRunReport each), the M3 positional gate (long-list N=8, 343/709 qualify) folded into release_gate, and the CLI + BLOCKING staging-eval CI (SKIPs green until fixtures — MIRAGE idiom). NEW additive `conversation[]` packet field (byte-identical when absent). Rubric CLINICIAN-SIGNED `eval-rubric:v1.0` (KL, AHPRA MED0001857758, 2026-07-21). Register: clinical-eval-scorer PARTIAL (L10 REMAINING now built; operator/infra tail = live run to record fixtures + MedGemma reachability + CLI signoff-ref enforcement); positional-stability-unchecked wired as a blocking eval threshold; NEW context-packet-conversation-field resolved (Low, regulatory intended-use flag). Moves no release blocker — arms the gate FL-52 depends on; bites the day fixtures are recorded.)
++Last synced: 2026-07-21 (FL-40 P2.1 hardening — Critical false-live and biased-sample findings resolved. Live reports now require per-turn adapter mode/model/prompt hash, live judge receipt and clinician sign-off; CLI preflights each real backend; workflow explicitly maps protected config; evidence writes are atomic. `authoritative-v1.json` pins all 707 attested conforming cases by count+SHA-256 and replaces the CARD-only first-45 default. New live-preflight negative suite in `npm test`. Gate still SKIPS honestly until both backend fixtures exist; authoritative run + MedGemma access remain operator/infra-gated.)
+ Prior sync: 2026-07-15 (FL dose-guidance C0 — schema + source registration + 3 defect fixes; plan .planning/DOSE-GUIDANCE-PLAN.md. NEW DoseGuidanceSchema + validateDoseGuidance, registered in CAPABILITY_VALIDATORS (previously absent as a "bespoke path" because no licence-clean AU dose source existed). The no-dosages-from-the-LLM bar is now MECHANICAL not conventional: exactly two origin channels (tga_pi | clinician_apf_attestation), the clinician channel requires an AHPRA registration id (an agent string cannot match -> an agent-authored dose is UNREPRESENTABLE), and "diverges" is ABSENT from the cross_check enum so an AMASS-diverging candidate cannot be written at all (D-DG-3 hard-block). Sources registered: tga-pi (pending — access is the SAME operator input FL-05's pregnancy-risk-bulk-sync-pending waits on) + amass-regulatory (copyleft_reference_only, structure_only, VERIFICATION-ONLY, NEVER an AU origin — probed live 2026-07-15: agency enum is exactly [FDA,EMA], no TGA). D1 fixed: dose-evidence attestation scope read "skeleton — no records authored yet" while holding KL's 261 signed records (it is what misled FL-34 Phase B Finding 3). D3 fixed: apf22.provides[] lacked dose_range_facts while its own notes sanction "dosing-range facts". D2: opened dose-guidance-empty-no-au-source + dose-mock-fallback-mixing; RESOLVED dose-evidence-apf-attestation-variant-deferred as SUPERSEDED (its "until a clinician adopts it" condition was met — KL transcribed 471 APF22 Section D ranges himself and confirmed 2026-07-15). Frozen pharm-intent/pharm-check/verification-gate.js/engine.js AND the HIST-2 path (context-allowlist.js, pipeline-schemas.js) all byte-unchanged. npm test + verification + trunk:stub:all green. dose-guidance.json stays EMPTY until C2; nothing patient-facing.)
+ Prior sync: 2026-07-14 (FL-34 Phase 0 register-maintenance pass — report-only reconciliation of 4 tracker↔register discrepancies, no code. (1) pregnancy-hepatic-check-unwired → COMPLETE/resolved (FL-05/PR #69, engine-wired + contract-tested, frozen schemas byte-unchanged). (2) Track A OSS route (PR #67) recorded: opencds-cds-adapter-client + cds-firewall-fold COMPLETE; opencds-gateway-image [in-progress], fl30-kb-km-package, opencds-gateway-shim UNBUILT/input_gated on sibling repo breath-ezy-cds-gateway. (3) Track B (PR #68): au-provider-bahmni PARTIAL/input_gated. (4) Remaining PR #66 deferred ids given full records: pregnancy-risk-bulk-sync-pending [Medium], warning-labels-cal-verbatim-pending [Low], dose-evidence-apf-attestation-variant-deferred [Medium]. gap-register R-22 + §pharmacology reframed to FL-30-resolved core + FL-34 patient-facing arm [commercial vendor OR AU_OSS_CDS OpenCDS gateway]. cds-adapter EMPTY→HARD_FAIL floor unaffected; nothing patient-facing.)
+ Prior sync: 2026-07-14 (FL-30 expansion + full clinician sign-off — PR #66. APF22 (© PSA) reorg: non-destructive heading overlay (capability-groups.json, 9 groups) + 8 new REFERENCE-ONLY, engine-ISOLATED capabilities — dose_evidence (259 PubMed-verified), administration_handling, tdm_parameters (NTI is its bucket; frozen nti_check untouched), warning_labels, counselling_points, pregnancy_risk (TGA), hepatic (Child-Pugh), dose_evidence_review_queue (§4.3b). Chat↔repo round-trip toolkit (docs/pharmcheck-export/ + scripts/pharm-ingest.mjs — schema-gated, FORCES draft, integrate-not-overwrite by natural key with superseded[] archive, --supersede-signed guard, has_unsigned_additions governance flag; pharm-export.mjs publishes self-syncing enum vocabularies). FIRST per-record clinician sign-off: Kenneth Lee (MED0001857758) attested the datastore across two signed worksheets (88 + 308) — ZERO per-record drafts remain; every clinical-judgement dataset now clinical_sign_off:true (regulatory NOT given; -dev retained; non-patient-facing); artifacts at eval/pharmacology/signoff/. APF22 registered facts+citation only (no content licence; data-sources apf22/rasml-tga/tga-pregnancy). Frozen pharm-intent/pharm-check byte-unchanged. DEFERRED-open: dose-evidence-apf-attestation-variant-deferred (Medium, dose-invariant gate), pregnancy-hepatic-check-unwired (Medium — engine logic only, NO frozen change, slots exist), pregnancy-risk-bulk-sync-pending (Medium), warning-labels-cal-verbatim-pending (Low). No BLIND_STUB/DEAD_END; all 8 contract-pharm-* green.)
+@@ -100,7 +100,7 @@ Prior sync: 2026-07-01 (doc reconciliation: closed `claudemd-behind-charter` + `
+ - international-dose-guidance · pharmacology/data/international-dose-guidance.json · EMPTY — routing BUILT + proven at C1 (agent retrieves from AMASS → dev-package → pharm-ingest, the dose_evidence precedent); population is an authoring act, not a code one — US/EU approved LABEL doses stored as what they are; ENGINE-ISOLATED (no accessor, `not_au_dose_guidance` literal) so a foreign label can never become an AU dose · Medium · pf:false
+ - dose-congruence-surfacing-unbuilt · portal/ (clinician surface) + dose-evidence-plane.js · **PARTIAL — R-47a (attestation) + R-47b (RUNTIME) BOTH BUILT 2026-07-15 (E3): the evidence plane assembles the signed AU dose + every US/EU comparator VERBATIM + the CDS dose_candidate (previously discarded) + 261 literature records + congruence/plausibility; carried in ReviewBundle.dose_evidence[] INSIDE bundle_sha256 and RENDERED by portal renderDoseEvidence(); assertDoseEvidenceRendered() throws on recorded-but-not-displayed. PharmCheck frozen + untouched; engine has no path to a foreign label; no dose text past a blocked firewall (§1.1) — withholding is ACCOUNTED FOR, never silent. DOES NOT RESOLVE: the Portal itself is blocker #2 and stays RED (FL-11, FL-43)** · High · pf:true
+ - ~~evidence-claims-recorded-not-displayed · portal/server.js renderEvidenceClaims + contract-evidence-register~~ · **RESOLVED 2026-07-15 (M4)** — evidence_claims was in the hashed bundle and rendered ZERO times (R-47's failure mode, in code E3 had already touched: 4 real claims carried, 0 displayed). Now rendered with a register derived from GROUNDING not wording (supports>0 → receipt-backed; supports=[] → HYPOTHESIS). The subtle failure is asserted: a claim displayed WITHOUT its register reads as a finding, and a naive 'is it rendered?' check passes. Tamper-proven 3 ways · Medium · pf:false
+-- clinical-eval-scorer · verification/eval-{scoring,harness,report-schema,signoff}.js + patient-simulator + eval-{dimension-graders,judge,positional,text-match,case-loader} + llm-replay + scripts/eval-run.mjs + staging-eval.yml + eval-rubric.md + 8 contract suites · **PARTIAL — L10 scorer core + FL-40 Phases 1–7 live harness BUILT & tested 2026-07-21; rubric v1.0 clinician-signed (KL); live-run clinician-signoff enforcement DONE (eval-signoff.js — a live run refuses fail-closed against an unsigned rubric). Gate armed as BLOCKING CI, SKIPs green until fixtures. REMAINING (operator/infra ONLY — engineering drained): authoritative live run to record fixtures (both backends) + MedGemma reachability** · High · pf:false (→ R-42)
++- clinical-eval-scorer · verification/eval-{scoring,harness,report-schema,signoff}.js + patient-simulator + eval-{dimension-graders,judge,positional,text-match,case-loader} + llm-replay + authoritative-v1 manifest + scripts/eval-run.mjs + staging-eval.yml + eval-rubric.md + 9 contract suites · **PARTIAL — harness + signed rubric + live-provenance enforcement + pinned 707-case certification set BUILT/tested 2026-07-21. Gate SKIPS until fixtures. REMAINING (operator/infra): authoritative two-backend live run + MedGemma reachability/protected values** · High · pf:false (→ R-42)
+ - positional-stability-unchecked · verification/positional-stability.js + eval-positional.js + eval-harness.js + contract-{positional-stability,eval-positional} · **PARTIAL — harness built 2026-07-15 (M3: seeded permute, compares RANKING not prose; control run is load-bearing → non-deterministic = 'indeterminate'). WIRED 2026-07-21 (FL-40 Phase 6): runs per long-list case (N=8; 343/709 attested qualify → M3 coverage genuinely met), ranking = sealed-differential order applied SCORER-SIDE, folded into release_gate (unstable/indeterminate/not_applicable all block); CLI --positional-sample is the cost canary. Detection contract-tested. INERT until the authoritative live run records fixtures** · Medium · pf:false
+ - descent-guard-upstream-inheritance · contract-descent-guard.js + trunk-sequencer + packet.evidence[] · **PARTIAL — M2's PREMISE WAS FALSE (2026-07-15): T6–T9 do NOT inherit T5's frame; there is NO trunk-to-trunk output flow at all (proven behaviourally: T6's packet has no trace of T5's marker). Building the guard anyway would have been a wall across a gate nobody uses. Property PINNED behaviourally instead; downstream_independence NOT built (nothing to check). The design is recorded in the failure message, so whoever wires the flow is told at the moment they break it: EvidenceNode in evidence[], never a fact** · Medium · pf:false
+ - ~~blind-commit-anchor-firewall · verification/pipeline.js contextInjection + contract-blind-commit~~ · **RESOLVED 2026-07-15 (M1)** — trunks 1.0–5.0 THROW on a `clinical_assessment` fact; 6.0–9.0 deliberately may see it. The design's proposed mechanism was wrong (context-allowlist is already default-deny AND trunk-agnostic); the property already held BY CONSTRUCTION but by ACCIDENT — `clinical_assessment` is a valid category, so one future caller would have silently anchored 1.0–5.0. Tamper-proven behaviourally · Medium · pf:false
+diff --git a/.claude/schema-index.md b/.claude/schema-index.md
+index b1263e2..055a834 100644
+--- a/.claude/schema-index.md
++++ b/.claude/schema-index.md
+@@ -18,7 +18,7 @@ One line per schema: what it contracts · producer · consumer. Open the schema
+ | `pharm-intent.schema.json` | PharmIntent: drug identity, class, route (NO dose values) | Trunk 8.0 | pharmacology server pharm.check |
+ | `pharm-check.schema.json` | PharmCheck result: PASS/WARN/HARD_FAIL, dose guidance, interactions, scheduling, PDMP | pharmacology server | Trunk 8.0 firewall gate |
+ | `verification-report.schema.json` | Machine-readable pass/fail, reasons, missing receipts, candidate_output_hash (SHA-256, required) | Step 5 Verification (zod-gated: report-schema.js) | Audit/medicolegal record · release gate |
+-| `eval-run-report.schema.json` | One FL-40 live-eval run per backend: per-case dimension scores (coverage + judge), triage, positional-stability verdicts, computeCaseSetMetrics + enforceReleaseThresholds output. DERIVED scores only — sealed nodes 10-13 read scorer-side, never in-report (zod-gated: eval-report-schema.js) | verification/eval-harness.js via scripts/eval-run.mjs (FL-40, Phase 5+) | scripts/eval-run.mjs release gate · staging-eval CI · WORM (authoritative live run) |
++| `eval-run-report.schema.json` | One FL-40 eval run per backend: per-case dimensions, triage, positional verdicts and release gate; every turn carries immutable Step-4 generation mode/model/prompt hash. A live report rejects any mock generation, replay judge or absent clinician sign-off. DERIVED scores only — sealed nodes 10-13 stay scorer-side (zod-gated: eval-report-schema.js) | verification/eval-harness.js via scripts/eval-run.mjs | scripts/eval-run.mjs release gate · staging-eval CI · WORM |
+ | `audit-ledger-entry.schema.json` | Append-only hash-chained ledger record: anchor hash + run metadata + pass + check booleans + receipt metadata (NO PHI) | Step 5 writers via audit-store.js (medicolegal-audit-ledger) | verify:rehash · medicolegal audit retrieval |
+ | `verification-portal-decision.schema.json` | VerificationGateRecord: clinician HITL decision (approved/rejected/amended) bound to the exact candidate_output_hash (+ amended_output_hash for amendments) (zod-gated: portal/verification-gate.js) | Clinician Verification Portal (clinician attestation) | portal/verification-gate.js releaseToPatient() — every patient-facing path (none open yet) |
+ | `ppp-ttt-verdict.schema.json` | PPP-TTT Step-1 graded-triage verdict (GO/CAUTION/STOP): per-flag concerns, discriminators asked (scope-registry v1.3.0 attested IDs), fail_closed, blocking reasons carrying the `escalate_now` token (zod-gated: verification/ppp-ttt/verdict-schema.js) | verification/ppp-ttt/index.js gradeConcern() (Step 5 compose seam) | composeTriage() → verification.ppp_ttt (in-memory; never validateReport) · abcde record · ppp-ttt ledger |
+diff --git a/.github/workflows/staging-eval.yml b/.github/workflows/staging-eval.yml
+index f3e53e6..0445fd8 100644
+--- a/.github/workflows/staging-eval.yml
++++ b/.github/workflows/staging-eval.yml
+@@ -19,10 +19,6 @@ on:
+     branches: [master, main]
+   workflow_dispatch:
+     inputs:
+-      limit:
+-        description: "Max cases to record (live run)"
+-        required: false
+-        default: "45"
+       positional_sample:
+         description: "Cap positional pass to first N long-list cases (blank = all)"
+         required: false
+@@ -69,10 +65,13 @@ jobs:
+         env:
+           HEYDOC_MODE_DEFAULT: staging
+           HEYDOC_LLM_LIVE: "1"
+-          # ANTHROPIC_API_KEY / MedGemma creds injected from the staging environment secrets.
++          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
++          HEYDOC_MEDGEMMA_LIVE: "1"
++          HEYDOC_MEDGEMMA_ENDPOINT: ${{ secrets.HEYDOC_MEDGEMMA_ENDPOINT }}
++          HEYDOC_MEDGEMMA_KEY: ${{ secrets.HEYDOC_MEDGEMMA_KEY }}
+         run: |
+           node scripts/eval-run.mjs --mode live --gate \
+-            --limit "${{ github.event.inputs.limit }}" \
++            --manifest verification/data/eval-manifests/authoritative-v1.json \
+             ${{ github.event.inputs.positional_sample && format('--positional-sample {0}', github.event.inputs.positional_sample) || '' }}
+       - name: Upload eval run reports
+         if: always()
+diff --git a/deploy/README.md b/deploy/README.md
+index de85160..8847118 100644
+--- a/deploy/README.md
++++ b/deploy/README.md
+@@ -203,6 +203,28 @@ live eval is persisted append-only to this same store.
+   store is ephemeral on App Runner and non-WORM.
+ - Record VALUES are never logged (medicolegal + PHI); only counts/keys.
+ 
++## FL-40 authoritative staging evaluation
++
++The protected GitHub `staging` environment must define `ANTHROPIC_API_KEY`,
++`HEYDOC_MEDGEMMA_ENDPOINT` and `HEYDOC_MEDGEMMA_KEY`. The workflow explicitly
++maps them; attaching an environment does not itself create arbitrary process
++environment variables. Required-reviewer protection must remain enabled. Never
++print or pass these values on the command line.
++
++The authoritative job uses
++`verification/data/eval-manifests/authoritative-v1.json` — all 707 attested
++conforming cases at the pinned corpus snapshot. `--limit` and `--cases` are for
++non-certifying connectivity/calibration runs only and are refused with a live
++`--gate`. Before generation the CLI requires every requested adapter to be
++mechanically live-enabled and credentialed. Each report turn records adapter
++mode/model/prompt hash; any mock turn, replay judge or absent clinician sign-off
++invalidates a live report. No partial fixture/report set is written if either
++backend fails validation.
++
++Do not dispatch until MedGemma reachability and the protected environment have
++been independently verified. This workflow remains synthetic-only and does not
++open patient eligibility.
++
+ ## Open operator decisions (L2 remainder)
+ - **R-39 WORM substrate — resolved (§9 B1):** operator chose S3 Object Lock,
+   COMPLIANCE, 7-year retention; the `s3-object-lock` adapter is built and
+diff --git a/docs/grounding/CHANGELOG.md b/docs/grounding/CHANGELOG.md
+index 36e1231..dd86f38 100644
+--- a/docs/grounding/CHANGELOG.md
++++ b/docs/grounding/CHANGELOG.md
+@@ -4,6 +4,37 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
+ 
+ ---
+ 
++## FL-40: authoritative-run provenance + certification-manifest hardening (2026-07-21)
++
++P2.1 reconciliation found a safety-critical false-certification path in the new
++staging eval: `--mode live` described the fixture recorder, but did not prove the
++Claude/MedGemma adapters actually entered their live paths; the workflow comment
++said staging secrets were injected but did not explicitly reference them; and
++the default `--limit 45` selected the first sorted directories — all CARD cases.
++
++**Resolved fail-closed.** The manual staging job now explicitly maps the protected
++Claude key and MedGemma endpoint/key, sets `HEYDOC_MEDGEMMA_LIVE=1`, and runs only
++against `verification/data/eval-manifests/authoritative-v1.json`. The manifest
++pins all 707 attested conforming cases with a count and SHA-256 over the ordered
++IDs; tamper, duplicate, missing or malformed case IDs refuse. A live `--gate`
++run cannot use `--limit` or `--cases` in place of a certification manifest.
++
++**Provenance is now contract data.** Every EvalRunReport turn carries the Step-4
++adapter `mode`, model and prompt hash. The zod/JSON contract rejects a live report
++if any turn says mock, the communication judge is not live, or clinician sign-off
++is absent. The CLI preflights every requested backend before generation. Fixture
++and report writes are run-atomic: invalid or incomplete two-backend evidence is
++not persisted.
++
++`test/contract-eval-live-preflight.js` proves missing manifest, missing Claude
++credentials, missing MedGemma live configuration, manifest tamper and workflow
++wiring all fail closed; `contract-eval-report` proves mock provenance cannot enter
++a live-labelled report. Added to `npm test`. This does not run the evaluation or
++move patient eligibility; authoritative fixtures and MedGemma connectivity remain
++operator/infra-gated.
++
++---
++
+ ## FL-40: authoritative-live-run clinician sign-off enforcement (2026-07-21)
+ 
+ The last engineering item on FL-40. `verification/eval-signoff.js` + the CLI: a
+diff --git a/docs/grounding/completeness-register.md b/docs/grounding/completeness-register.md
+index 778ee80..4d32043 100644
+--- a/docs/grounding/completeness-register.md
++++ b/docs/grounding/completeness-register.md
+@@ -1349,18 +1349,52 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
+ 
+ ```md
+ - id: clinical-eval-scorer
+-  path: verification/eval-scoring.js · verification/eval-harness.js · verification/patient-simulator.js · verification/eval-dimension-graders.js · verification/eval-judge.js · verification/llm-replay.js · verification/eval-positional.js · verification/eval-signoff.js · verification/eval-text-match.js · verification/eval-case-loader.js · verification/eval-report-schema.js · mcp/schemas/eval-run-report.schema.json · scripts/eval-run.mjs · .github/workflows/staging-eval.yml · docs/grounding/eval-rubric.md · test/contract-eval-{report,firewall,graders,judge,harness,positional,gate,signoff}.js
++  path: verification/eval-scoring.js · verification/eval-harness.js · verification/patient-simulator.js · verification/eval-dimension-graders.js · verification/eval-judge.js · verification/llm-replay.js · verification/eval-positional.js · verification/eval-signoff.js · verification/eval-text-match.js · verification/eval-case-loader.js · verification/eval-report-schema.js · mcp/schemas/eval-run-report.schema.json · verification/data/eval-manifests/authoritative-v1.json · scripts/eval-run.mjs · .github/workflows/staging-eval.yml · docs/grounding/eval-rubric.md · test/contract-eval-{report,firewall,graders,judge,harness,positional,gate,signoff,live-preflight}.js
+   component_type: verifier
+   state: PARTIAL
+   evidence: L10 BUILD 2026-07-11 built the deterministic scorer CORE (eval-scoring.js — classifyTier/scoreCase/computeCaseSetMetrics/enforceReleaseThresholds, under-triage 3×, the critical-under-triage alarm call site). **FL-40 Phases 1–7 (2026-07-21) built the live multi-turn harness around it, all schema-gated + contract-tested (7 new suites, all in `npm test`):** the EvalRunReport contract (schema + zod, fail-loud); a deterministic patient SIMULATOR (7 disclosure gates, reads 01/02 ONLY, hard-stops on sealed nodes); the three deterministic COVERAGE graders (history vs elicited 02, diagnostic vs sealed 10, management vs sealed 12 with a **negation-aware error-of-commission AUTO-FAIL**) + the triage wrapper; the ONE scoring LLM — a receipt-gated, 3-band-quantised communication JUDGE (weight 0.05); a prompt-hash RECORD/REPLAY layer (fail-closed on a miss); the ORCHESTRATOR driving each case multi-turn through the real pipeline with a replay-wrapped generator, across BOTH backends (claude+medgemma), emitting a schema-valid EvalRunReport per backend; the M3 positional gate (see positional-stability-unchecked); and the CLI + BLOCKING staging-eval CI. Rubric **CLINICIAN-SIGNED — `eval-rubric:v1.0`, reviewer KL, 2026-07-21** (§8; approved as-is incl. two knowingly-accepted v1.0 limitations). SCORING-STORE FIREWALL proven at the eval path's own boundary (contract-eval-firewall: sealed nodes never reach case_content/conversation/packet). NEW packet field `conversation[]` (additive/optional — see context-packet-conversation-field).
+-  blocks: FL-52 promotion (the eval gate must be blocking-green). **CLINICIAN SIGN-OFF ENFORCEMENT DONE 2026-07-21** (verification/eval-signoff.js + contract-eval-signoff.js): a `--mode live` run resolves clinician_signoff_ref from the SIGNED rubric doc and REFUSES fail-closed BEFORE any generation if the rubric is not signed for the cited version (placeholder/wrong-version/absent all refuse); the ref is stamped into every live report; replay/CI runs are not gated by it. REMAINING (operator/infra-gated, NOT engineering): (1) the AUTHORITATIVE live run to RECORD replay fixtures over the attested set for BOTH backends — the gate SKIPs green until fixtures are committed (armed-but-inert, MIRAGE idiom); (2) MedGemma reachability + creds in staging (Claude validated host-side 2026-07-12).
++  blocks: FL-52 promotion (the eval gate must be blocking-green). **CLINICIAN SIGN-OFF ENFORCEMENT + AUTHORITATIVE-RUN PROVENANCE/SAMPLE HARDENING DONE 2026-07-21:** every turn records adapter mode/model/prompt hash; live reports reject any mock turn, replay judge or absent sign-off; requested backends are preflighted as live-enabled+credentialed; workflow protected configuration is explicit; writes are run-atomic; certification manifest pins all 707 attested conforming cases by count+SHA-256 and removes the CARD-only `--limit 45` path. REMAINING (operator/infra): authoritative two-backend live run + MedGemma reachability/protected values.
+   safety_class: none (scorer-side node read; never a packet path)
+   invariant_exposure: test_and_evaluation_gates (the release gate is now MECHANISED end-to-end + armed as blocking CI; an authoritative live run is mechanically bound to a clinician-signed rubric; bites the day fixtures are recorded)
+   risk: High
+   blocks_patient_facing: false
+-  build_action: REMAINING (operator/infra only — engineering drained) — run `eval-live-staging` (record fixtures, both backends) once MedGemma is reachable + creds are in the staging environment. Accepted-limitation follow-ups (non-blocking, no re-gate): §3.3 commission judge cross-check, §4 synonym table.
++  build_action: REMAINING (operator/infra only) — configure protected staging values, verify required-reviewer protection, run non-certifying connectivity smokes, then dispatch `eval-live-staging` over the pinned 707-case manifest. Accepted-limitation follow-ups: §3.3 commission judge cross-check, §4 synonym table.
+   gap_register_link: R-42
+-  status: open (scorer core + full live harness + graders + judge + replay + positional gate + CLI + blocking CI + live-run clinician-signoff enforcement built & tested; rubric v1.0 signed; authoritative live run + MedGemma input-gated — ENGINEERING DRAINED)
++  status: open (harness + provenance proof + pinned certification manifest + CLI/CI built/tested; authoritative two-backend run remains operator/infra-gated)
++  last_scanned: 2026-07-21
++```
++
++```md
++- id: eval-live-mode-provenance
++  path: scripts/eval-run.mjs · verification/eval-harness.js · verification/eval-report-schema.js · mcp/schemas/eval-run-report.schema.json · .github/workflows/staging-eval.yml · test/contract-eval-{report,live-preflight}.js
++  component_type: verifier
++  state: COMPLETE
++  evidence: P2.1 found `--mode live` could record mock adapter output under a live-labelled report. Resolved 2026-07-21: explicit protected env mapping; live-enabled preflight per backend; per-turn mode/model/prompt-hash contract; live-report rejection of mock generation, replay judge or absent sign-off; run-atomic writes; negative tests in npm test.
++  blocks: cleared — false live certification path closed
++  safety_class: presents_mock_as_live (resolved mechanically)
++  invariant_exposure: mock must never be presented as live; evaluation-gate integrity
++  risk: Critical
++  blocks_patient_facing: true
++  build_action: DONE — do not remove the adapter-mode proof or explicit workflow secret mappings.
++  gap_register_link: R-42
++  status: resolved
++  last_scanned: 2026-07-21
++```
++
++```md
++- id: eval-certification-selection-unpinned
++  path: scripts/eval-run.mjs · verification/data/eval-manifests/authoritative-v1.json · .github/workflows/staging-eval.yml · test/contract-eval-live-preflight.js
++  component_type: dataset
++  state: COMPLETE
++  evidence: P2.1 found the authoritative default `--limit 45` selected only sorted CARD directories. Resolved 2026-07-21: live `--gate` requires a certification manifest; authoritative-v1 pins all 707 attested conforming IDs with count+SHA-256; tamper/duplicate/missing/invalid IDs refuse; workflow no longer accepts `--limit`.
++  blocks: cleared — directory order cannot define certification population
++  safety_class: none
++  invariant_exposure: clinical evaluation representativeness and release-gate validity
++  risk: Critical
++  blocks_patient_facing: true
++  build_action: DONE — any corpus revision requires a new versioned manifest and review.
++  gap_register_link: R-42
++  status: resolved
+   last_scanned: 2026-07-21
+ ```
+ 
+diff --git a/docs/grounding/gap-register.md b/docs/grounding/gap-register.md
+index c036ed2..b9d0fea 100644
+--- a/docs/grounding/gap-register.md
++++ b/docs/grounding/gap-register.md
+@@ -210,7 +210,7 @@ All seven servers are currently in **stub mode** (`HEYDOC_MODE_DEFAULT=mock`). N
+ | R-39 | **No production WORM substrate** — the three medicolegal chains had only the dev JSONL backend; retention unset | High | High | Mirrored from `worm-substrate-adapter-unbuilt` (LIVE_PLAN Phase-0, 2026-07-11). **§9 B1 built 2026-07-12** (operator chose S3 Object Lock, COMPLIANCE, 7y), then extended to the third seam the same day: `integration/audit-substrates/s3-object-lock.js` registers `s3-object-lock` on ALL THREE medicolegal seams (audit four-op + gate two-op + PPP-TTT triage-ledger two-op — the last needed a new `registerPppTttLedgerSubstrate()` seam, as ppp-ttt/ledger.js previously wrote fs directly); one immutable object per chain line keyed by the entry's own `seq`, every write `put-object --object-lock-mode COMPLIANCE --object-lock-retain-until-date now+7y --if-none-match "*"`. AWS CLI + execFileSync (the seams are SYNCHRONOUS; the SDK is async — a blocking CLI call is the only synchronous-durable write), AWS CLI a deploy-time dep (Dockerfile INSTALL_AWS_S3), not a repo one. Boot-seeded sync read caches. Contract-tested through the real frozen stores (all three chains round-trip + verify; COMPLIANCE/retain/write-once asserted; fail-closed on collision/missing-arg/absent-CLI). RETAIN core byte-unchanged. `HEYDOC_AUDIT_RETENTION=7y` set so the retention reporter agrees. REMAINING (operator/live): provision the Object-Lock bucket + IAM, select s3-object-lock on the three HEYDOC_*_SUBSTRATE vars, validate in staging. | **PARTIAL — all three seams + adapter built + tested 2026-07-12; live bucket connect operator-side** |
+ | R-40 | **No consent capture** — consented persistence had no mechanism; only the negative guards existed (session-store destroy-on-close, synthetic-only content store) | Medium | High | Mirrored from `consent-capture-unbuilt` (LIVE_PLAN Phase-0, 2026-07-11). **BUILT 2026-07-13 (L12 / FL-01, plan `.planning/CONSENT-PLAN.md`)** as a RECORDING mechanism, not a permission unlock (contract-proven: `persistContent()` still refuses non-synthetic with an ACTIVE consent; zero consent references on the packet path, static-scanned). NEW `consent-record` schema + zod `.strict()` (PHI-free: session_ref + enums + provenPath()-proven omnibus bindings + hashes); `verification/consent.js` capture/revoke/status + the fail-closed `requireActiveConsent()` seam every future persistence path MUST call (`BLOCKED_NO_CONSENT` on every branch); FOURTH append-only hash chain (`consent-records.jsonl`) with its substrate seam day one + `registerWormAudit()` across all four chains; session-bound expiry mechanical (close-hook inactivation); bounded consult-intake step (silence records nothing, decline pre-selected + never affects care, SUPPRESSED on STOP/T5). `contract-consent.js` in npm test + CI. v1 scope: session_persistence + RECORD-ONLY mhr_data_sharing/telehealth_consent. REMAINING (owned elsewhere): consented-persistence *implementation* stays deliberately unbuilt (`content-store-production-gated`); SAST (R-38); pen-test + formal privacy review + org APP documents (FL-51 / privacy-app-mapping.md §4). | **Capture RESOLVED 2026-07-13** — recording + seam + APP mapping built; L12 org/security siblings open |
+ | R-41 | **MedGemma alternative generation backend** — a second Step-4 clinical model; risk is a licensed non-OSI model + a possible SaMD risk-profile shift, and any generation backend that escaped the packet-only bar could leak data or mint clinical content | Medium | High | Mirrored from `medgemma-generation-backend` (MEDGEMMA-ADAPTER-PLAN, 2026-07-11; Decision A3 selectable-only, Decision B clinician-attested cleared). Built as a FIRST-PARTY clean-room HTTPS adapter under the identical L3 bars (strict-packet re-gate refuses smuggled fields before any fetch; fail-closed BLOCKED_NO_PROOF on every failure incl. safety finish_reason; mock by default; output → frozen verifier + detectors + PPP-TTT; no `patient_eligible`). NO Google code/weights in-repo (manifest REFERENCE row #medgemma; weights gitignored/deploy-injected). `generation-backend.js` selects `HEYDOC_LLM_BACKEND=claude|medgemma`; **A3 no-failover** — a refusal stays BLOCKED, never rerouted to the other model (contract-proven the other transport is never touched). Imaging/DICOM OUT (packet carries no images). Licence: HAI-DEF terms, **clinician-attested cleared for use** (attested_by KL 2026-07-11) — recorded, not decided by the agent. Contract-tested (`contract-llm-adapter-medgemma.js`, `contract-generation-backend.js`, npm test + CI). REMAINING (input-gated): staging live smoke against a real endpoint (`HEYDOC_MEDGEMMA_ENDPOINT` + key via secrets manager; synthetic packets) + confirm the served request/response shape. | Adapter + selector built + contract-proven 2026-07-11; live smoke input-gated |
+-| R-42 | **Clinical evaluation is a release gate, not a report** — until the synthetic-case evaluation is mechanised and enforced, "80% pass / zero critical under-triage / 90% grounding" is a doc, not a gate | Medium | High | Mirrored from `clinical-eval-scorer` (LIVE_PLAN L10, 2026-07-11). Built the deterministic scorer core `verification/eval-scoring.js`: `classifyTier()` reproduces the evaluation-guide safety-netting rubric mechanically (reading the sealed 13-node SCORER-SIDE only — never a packet path); `scoreCase()` applies the verification gate + five weighted dimensions + auto-fails; `enforceReleaseThresholds()` encodes the four release conditions (≥0.70 case, ≥80% pass, ZERO critical under-triage on T5, ≥90% grounding; under-triage 3×); `scoreCaseTriage()` is the critical-under-triage alarm CALL SITE (closes the R-37 remainder). Unit-tested against every rubric band (`contract-eval-scoring.js`, npm test + CI). ARMS AT STAGING (MIRAGE precedent) — the full run needs live Step-4 generation producing case-specific tiers (mock produces none); the two HARD safety conditions block even before the clinical scorer is armed. **FL-40 Phases 1–7 built the live harness 2026-07-21** (7 new contract suites, all in `npm test`): the EvalRunReport contract; a deterministic patient simulator (reads 01/02 only, hard-stops on sealed nodes); the three coverage graders (history/diagnostic/management, the last with a negation-aware error-of-commission AUTO-FAIL) + triage; the one scoring LLM — a receipt-gated, quantised communication judge (0.05); a fail-closed record/replay layer; the orchestrator driving each case multi-turn through the real pipeline over BOTH backends → a schema-valid EvalRunReport each; the M3 positional gate (long-list N=8, 343/709 cases qualify) folded into `release_gate`; and the CLI + BLOCKING `staging-eval.yml` (SKIPs green until fixtures — MIRAGE idiom). Added an additive `conversation[]` packet field (byte-identical when absent). **Rubric CLINICIAN-SIGNED `eval-rubric:v1.0` (KL, 2026-07-21).** **Live-run clinician-signoff enforcement DONE 2026-07-21** (verification/eval-signoff.js): a `--mode live` run resolves clinician_signoff_ref from the signed rubric and REFUSES fail-closed before any generation if unsigned for the cited version; stamped into live reports; replay not gated. REMAINING (operator/infra, NOT engineering — engineering drained): the authoritative live run to RECORD fixtures for both backends (gate SKIPs until then); MedGemma reachability + staging creds. | Live harness + graders + judge + replay + positional gate + CLI + blocking CI + live-run signoff enforcement built & tested 2026-07-21; rubric v1.0 signed; authoritative live run + MedGemma input-gated (ENGINEERING DRAINED) |
++| R-42 | **Clinical evaluation is a release gate, not a report** — the synthetic-case evaluation must be mechanically enforced and must never certify mock execution or a directory-order-biased sample | Medium | High | Scorer core + FL-40 harness, signed rubric, judge/replay, positional gate and blocking workflow built. **P2.1 HARDENING 2026-07-21:** closed two Critical false-certification findings. Every report turn now carries adapter mode/model/prompt hash; a live report rejects any mock turn, replay judge or absent clinician sign-off; the CLI preflights every requested backend; workflow secrets/config are explicitly mapped; evidence writes are atomic. `authoritative-v1.json` pins all 707 attested conforming cases with count+SHA-256; live `--gate` refuses `--limit`/`--cases`; default CARD-only first-45 selection removed. Negative contract suite added. REMAINING: protected staging values, MedGemma reachability, and the authoritative live two-backend run; replay gate continues to SKIP honestly until fixtures exist. | Harness + live provenance + 707-case manifest built/tested; authoritative live run and MedGemma access input-gated |
+ | R-43 | **PPP-TTT ledger had no substrate seam** — at registration the graded-triage trail was the only medicolegal chain the B1 WORM adapter could not back | High | Medium | Mirrored from `ppp-ttt-ledger-substrate-seam-missing` (docs-reconciliation scan, 2026-07-13; opened by the B1 2026-07-12 follow-up note). **Registered-and-resolved in the same window:** PR #46 (§9 B1 follow-on) landed independently and built the exact seam this row specified — `registerPppTttLedgerSubstrate()` (two-op, built-in `local`, fail-closed via `HEYDOC_PPP_TTT_SUBSTRATE`; chain logic untouched — registered THROUGH the seam, store never edited), with `registerWormAudit()` extended to all three chains and the round-trip contract-tested in `contract-audit-worm-s3.js`. The L14 all-ledgers-WORM condition now depends only on R-39's operator half (bucket + IAM + env selection). | **Resolved 2026-07-13 (PR #46)** — seam built + WORM-covered; live validation rides R-39 |
+ 
+ ---
+diff --git a/mcp/schemas/eval-run-report.schema.json b/mcp/schemas/eval-run-report.schema.json
+index dc7234a..d6266a4 100644
+--- a/mcp/schemas/eval-run-report.schema.json
++++ b/mcp/schemas/eval-run-report.schema.json
+@@ -111,7 +111,7 @@
+             "items": {
+               "type": "object",
+               "additionalProperties": false,
+-              "required": ["turn", "trunk_id", "candidate_output_hash", "verification_pass"],
++              "required": ["turn", "trunk_id", "candidate_output_hash", "verification_pass", "generation"],
+               "properties": {
+                 "turn": { "type": "integer", "minimum": 0, "description": "0-indexed turn number in the consult." },
+                 "trunk_id": {
+@@ -127,6 +127,17 @@
+                 "verification_pass": {
+                   "type": "boolean",
+                   "description": "The VerificationReport pass gate for this turn. A case's verification_pass is the AND across its turns."
++                },
++                "generation": {
++                  "type": "object",
++                  "additionalProperties": false,
++                  "required": ["mode", "model", "prompt_sha256"],
++                  "description": "Immutable Step-4 adapter provenance. A report with mode='live' is invalid unless every turn records generation.mode='live'. CLI mode alone is never backend proof.",
++                  "properties": {
++                    "mode": { "type": "string", "enum": ["mock", "live"] },
++                    "model": { "type": "string", "minLength": 1 },
++                    "prompt_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
++                  }
+                 }
+               }
+             }
+@@ -276,6 +287,39 @@
+     }
+   },
+ 
++  "allOf": [
++    {
++      "if": { "properties": { "mode": { "const": "live" } }, "required": ["mode"] },
++      "then": {
++        "required": ["clinician_signoff_ref"],
++        "properties": {
++          "cases": {
++            "items": {
++              "properties": {
++                "turns": {
++                  "items": {
++                    "properties": {
++                      "generation": { "properties": { "mode": { "const": "live" } } }
++                    }
++                  }
++                },
++                "dimensions": {
++                  "properties": {
++                    "communication": {
++                      "properties": {
++                        "judge_receipt": { "properties": { "mode": { "const": "live" } } }
++                      }
++                    }
++                  }
++                }
++              }
++            }
++          }
++        }
++      }
++    }
++  ],
++
+   "$defs": {
+     "coverage_dimension": {
+       "type": "object",
+diff --git a/package.json b/package.json
+index 4be1628..9b34a39 100644
+--- a/package.json
++++ b/package.json
+@@ -4,7 +4,7 @@
+   "description": "HeyDoc grounding + MCP stack",
+   "type": "module",
+   "scripts": {
+-    "test": "node test/contract-docs.js && node test/contract-identity-au.js && node test/contract-terminology.js && node test/contract-verification-report.js && node test/contract-audit-store.js && node test/contract-verifier.js && node test/contract-pipeline.js && node test/contract-investigation-parser.js && node test/contract-pharmacology.js && node test/contract-pharm-schema-conformance.js && node test/contract-pharm-data-source.js && node test/contract-pharm-datastore.js && node test/contract-pharm-author.js && node test/contract-pharm-pbs-sync.js && node test/contract-pharm-validation.js && node test/contract-pharm-ingest.js && node test/contract-pharm-capability-groups.js && node test/contract-pharm-pregnancy-hepatic.js && node test/contract-dose-guidance-schema.js && node test/contract-dose-plausibility.js && node test/contract-apf-md-parser.js && node test/contract-dose-lines.js && node test/contract-dose-worksheet.js && node test/contract-dose-worksheet-xlsx.js && node test/contract-dose-evidence-plane.js && node test/contract-hold-not-injected.js && node test/contract-ingredient-identity.js && node test/contract-drug-vocabulary.js && node test/contract-vocabulary-worksheet.js && node test/contract-vocabulary-apply.js && node test/contract-trunk-claims.js && node test/contract-blind-commit.js && node test/contract-descent-guard.js && node test/contract-positional-stability.js && node test/contract-evidence-register.js && node test/contract-firewall.js && node test/contract-knowledge.js && node test/contract-fhir-broker.js && node test/contract-messaging-geo.js && node test/contract-fhir-conformance.js && node test/contract-case-ingest.js && node test/contract-case-taxonomy.js && node test/contract-case-warrant.js && node test/contract-omnibus-descent.js && node test/contract-case-qc.js && node test/contract-mode-normaliser.js && node test/contract-sequencer.js && node test/contract-context-allowlist.js && node test/contract-session-store.js && node test/contract-verification-gate.js && node test/contract-terminology-live.js && node test/contract-harvest-manifest.js && node test/contract-fhir-live.js && node test/contract-evidence-fda-pubmed.js && node test/contract-evidence-drug-guideline.js && node test/contract-integrity-detectors.js && node test/contract-case-factory.js && node test/contract-tooluniverse-gateway.js && node test/contract-conflict-audit.js && node test/contract-governance-record-spine.js && node test/contract-governance-evidence.js && node test/contract-governance-retrieval-mirage.js && node test/contract-governance-case-factory.js && node test/contract-governance-tooluniverse.js && node test/contract-omnibus.js && node test/contract-consult-tagger.js && node test/contract-history-summary.js && node test/contract-ppp-ttt.js && node test/contract-ppp-ttt-monotone.js && node test/contract-ppp-ttt-ledger.js && node test/contract-portal-review.js && node test/contract-live-ops.js && node test/contract-llm-adapter.js && node test/contract-llm-adapter-medgemma.js && node test/contract-generation-backend.js && node test/contract-eval-scoring.js && node test/contract-patient-consult.js && node test/contract-secrets-aws.js && node test/contract-smoke-llm.js && node test/contract-audit-worm-s3.js && node test/contract-worm-integrity.js && node test/smoke-worm-live.js && node test/contract-consent.js && node test/contract-portal-identity.js && node test/contract-knowledge-cache.js && node test/contract-receipt-reconciliation.js && node test/contract-source-ranker.js && node test/contract-jurisdiction.js && node test/contract-evidence-broker.js && node test/contract-terminology-ontoserver.js && node test/contract-terminology-quarantine.js && node test/contract-mostly-ai-harness.js && node test/contract-flags.js && node test/contract-jamba-assembler.js && node test/contract-evidence-arbiter.js && node test/contract-imaging-dark.js && node test/contract-deid.js && node test/contract-json-to-fhir.js && node test/contract-ingestion-pipeline.js && node test/contract-pharmacology-cds.js && node test/contract-consent-scope.js && node test/contract-opencds-contract.js && node test/contract-cds-token.js && node test/contract-cds-firewall-fold.js && node test/smoke-opencds-gateway.js && node test/contract-executor-parity.js && node test/parity-opencds-gateway.js && node test/contract-au-provider-bahmni.js && node test/contract-eval-report.js && node test/contract-eval-firewall.js && node test/contract-eval-graders.js && node test/contract-eval-judge.js && node test/contract-context-packet-conversation.js && node test/contract-eval-harness.js && node test/contract-eval-positional.js && node test/contract-eval-gate.js && node test/contract-eval-signoff.js",
++    "test": "node test/contract-docs.js && node test/contract-identity-au.js && node test/contract-terminology.js && node test/contract-verification-report.js && node test/contract-audit-store.js && node test/contract-verifier.js && node test/contract-pipeline.js && node test/contract-investigation-parser.js && node test/contract-pharmacology.js && node test/contract-pharm-schema-conformance.js && node test/contract-pharm-data-source.js && node test/contract-pharm-datastore.js && node test/contract-pharm-author.js && node test/contract-pharm-pbs-sync.js && node test/contract-pharm-validation.js && node test/contract-pharm-ingest.js && node test/contract-pharm-capability-groups.js && node test/contract-pharm-pregnancy-hepatic.js && node test/contract-dose-guidance-schema.js && node test/contract-dose-plausibility.js && node test/contract-apf-md-parser.js && node test/contract-dose-lines.js && node test/contract-dose-worksheet.js && node test/contract-dose-worksheet-xlsx.js && node test/contract-dose-evidence-plane.js && node test/contract-hold-not-injected.js && node test/contract-ingredient-identity.js && node test/contract-drug-vocabulary.js && node test/contract-vocabulary-worksheet.js && node test/contract-vocabulary-apply.js && node test/contract-trunk-claims.js && node test/contract-blind-commit.js && node test/contract-descent-guard.js && node test/contract-positional-stability.js && node test/contract-evidence-register.js && node test/contract-firewall.js && node test/contract-knowledge.js && node test/contract-fhir-broker.js && node test/contract-messaging-geo.js && node test/contract-fhir-conformance.js && node test/contract-case-ingest.js && node test/contract-case-taxonomy.js && node test/contract-case-warrant.js && node test/contract-omnibus-descent.js && node test/contract-case-qc.js && node test/contract-mode-normaliser.js && node test/contract-sequencer.js && node test/contract-context-allowlist.js && node test/contract-session-store.js && node test/contract-verification-gate.js && node test/contract-terminology-live.js && node test/contract-harvest-manifest.js && node test/contract-fhir-live.js && node test/contract-evidence-fda-pubmed.js && node test/contract-evidence-drug-guideline.js && node test/contract-integrity-detectors.js && node test/contract-case-factory.js && node test/contract-tooluniverse-gateway.js && node test/contract-conflict-audit.js && node test/contract-governance-record-spine.js && node test/contract-governance-evidence.js && node test/contract-governance-retrieval-mirage.js && node test/contract-governance-case-factory.js && node test/contract-governance-tooluniverse.js && node test/contract-omnibus.js && node test/contract-consult-tagger.js && node test/contract-history-summary.js && node test/contract-ppp-ttt.js && node test/contract-ppp-ttt-monotone.js && node test/contract-ppp-ttt-ledger.js && node test/contract-portal-review.js && node test/contract-live-ops.js && node test/contract-llm-adapter.js && node test/contract-llm-adapter-medgemma.js && node test/contract-generation-backend.js && node test/contract-eval-scoring.js && node test/contract-patient-consult.js && node test/contract-secrets-aws.js && node test/contract-smoke-llm.js && node test/contract-audit-worm-s3.js && node test/contract-worm-integrity.js && node test/smoke-worm-live.js && node test/contract-consent.js && node test/contract-portal-identity.js && node test/contract-knowledge-cache.js && node test/contract-receipt-reconciliation.js && node test/contract-source-ranker.js && node test/contract-jurisdiction.js && node test/contract-evidence-broker.js && node test/contract-terminology-ontoserver.js && node test/contract-terminology-quarantine.js && node test/contract-mostly-ai-harness.js && node test/contract-flags.js && node test/contract-jamba-assembler.js && node test/contract-evidence-arbiter.js && node test/contract-imaging-dark.js && node test/contract-deid.js && node test/contract-json-to-fhir.js && node test/contract-ingestion-pipeline.js && node test/contract-pharmacology-cds.js && node test/contract-consent-scope.js && node test/contract-opencds-contract.js && node test/contract-cds-token.js && node test/contract-cds-firewall-fold.js && node test/smoke-opencds-gateway.js && node test/contract-executor-parity.js && node test/parity-opencds-gateway.js && node test/contract-au-provider-bahmni.js && node test/contract-eval-report.js && node test/contract-eval-firewall.js && node test/contract-eval-graders.js && node test/contract-eval-judge.js && node test/contract-context-packet-conversation.js && node test/contract-eval-harness.js && node test/contract-eval-positional.js && node test/contract-eval-gate.js && node test/contract-eval-signoff.js && node test/contract-eval-live-preflight.js",
+     "pharm:seals": "node scripts/pharm-reseal.mjs --check",
+     "test:docs": "node test/contract-docs.js",
+     "test:identity": "node test/contract-identity-au.js",
+@@ -25,7 +25,7 @@
+     "cases:qc": "node scripts/case-qc.mjs",
+     "cases:verify-codes": "node scripts/verify-case-codes.mjs",
+     "eval:cases": "node scripts/eval-case-gate.mjs",
+-  "eval:gate": "node scripts/eval-run.mjs --mode replay --gate",
++  "eval:gate": "node scripts/eval-run.mjs --mode replay --gate --manifest verification/data/eval-manifests/authoritative-v1.json",
+   "eval:record": "node scripts/eval-run.mjs --mode live",
+     "bench:mirage": "node test/bench-mirage-gate.js",
+     "bench:mirage:run": "node benchmark/mirage/index.js",
+diff --git a/scripts/eval-run.mjs b/scripts/eval-run.mjs
+index 218028d..f52626f 100644
+--- a/scripts/eval-run.mjs
++++ b/scripts/eval-run.mjs
+@@ -24,6 +24,7 @@
+  *   node scripts/eval-run.mjs --mode live --limit 45 --positional-sample 30   # staging record
+  */
+ import { readdirSync, existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
++import { createHash } from "node:crypto";
+ import { join, dirname } from "node:path";
+ import { fileURLToPath } from "node:url";
+ import { loadCaseNodes } from "../verification/eval-case-loader.js";
+@@ -33,6 +34,8 @@ import { createReplayer } from "../verification/llm-replay.js";
+ import { makeDefaultJudgeTransport } from "../verification/eval-judge.js";
+ import { validateEvalRunReport } from "../verification/eval-report-schema.js";
+ import { resolveClinicianSignoff } from "../verification/eval-signoff.js";
++import { isLlmLiveEnabled } from "../integration/llm-adapter.js";
++import { isMedgemmaLiveEnabled } from "../integration/llm-adapter-medgemma.js";
+ 
+ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+ const CASES_DIR = join(ROOT, "data", "cases");
+@@ -43,6 +46,7 @@ function parseArgs(argv) {
+     mode: "replay",
+     backends: ["claude", "medgemma"],
+     cases: null,
++    manifest: null,
+     limit: null,
+     gate: false,
+     positionalSample: null,
+@@ -60,6 +64,7 @@ function parseArgs(argv) {
+     else if (k === "--mode") out.mode = v;
+     else if (k === "--backends") out.backends = v.split(",").map((s) => s.trim()).filter(Boolean);
+     else if (k === "--cases") out.cases = v.split(",").map((s) => s.trim()).filter(Boolean);
++    else if (k === "--manifest") out.manifest = v;
+     else if (k === "--limit") out.limit = Number(v);
+     else if (k === "--positional-sample") out.positionalSample = Number(v);
+     else if (k === "--out") out.out = v;
+@@ -70,7 +75,31 @@ function parseArgs(argv) {
+   return out;
+ }
+ 
+-function selectCaseDirs({ cases, limit }) {
++function sha256Json(value) {
++  return "sha256:" + createHash("sha256").update(JSON.stringify(value)).digest("hex");
++}
++
++function loadEvalManifest(path) {
++  if (!path) return null;
++  const full = path.startsWith("/") ? path : join(ROOT, path);
++  if (!existsSync(full)) throw new Error(`eval manifest not found: ${full}`);
++  const manifest = JSON.parse(readFileSync(full, "utf8"));
++  if (manifest.schema_version !== "1.0.0" || typeof manifest.manifest_id !== "string" || !Array.isArray(manifest.case_ids) || manifest.case_ids.length < 1) {
++    throw new Error("eval manifest is malformed — expected schema_version, manifest_id and non-empty case_ids");
++  }
++  if (manifest.case_count !== manifest.case_ids.length) throw new Error(`eval manifest case_count ${manifest.case_count} does not match ${manifest.case_ids.length} case ids`);
++  if (new Set(manifest.case_ids).size !== manifest.case_ids.length) throw new Error("eval manifest contains duplicate case ids");
++  const actual = sha256Json(manifest.case_ids);
++  if (actual !== manifest.case_ids_sha256) throw new Error(`eval manifest case_ids_sha256 mismatch: expected ${manifest.case_ids_sha256}, got ${actual}`);
++  for (const id of manifest.case_ids) {
++    if (!/^SPEC-[A-Z]{2,10}-\d{2}-\d{5}$/.test(id)) throw new Error(`eval manifest contains invalid case id ${JSON.stringify(id)}`);
++    if (!existsSync(join(CASES_DIR, id, "13_safety_netting_node.json"))) throw new Error(`eval manifest case is absent or incomplete: ${id}`);
++  }
++  return { ...manifest, path: full };
++}
++
++function selectCaseDirs({ cases, limit, manifest }) {
++  if (manifest) return manifest.case_ids.map((id) => join(CASES_DIR, id));
+   if (cases && cases.length) return cases.map((id) => join(CASES_DIR, id));
+   const all = readdirSync(CASES_DIR)
+     .filter((d) => existsSync(join(CASES_DIR, d, "13_safety_netting_node.json")))
+@@ -90,7 +119,9 @@ function fixturePresent(path) {
+ 
+ async function main() {
+   const args = parseArgs(process.argv);
+-  const caseDirs = selectCaseDirs(args);
++  const manifest = loadEvalManifest(args.manifest);
++  if (manifest && (args.cases || args.limit)) throw new Error("--manifest is mutually exclusive with --cases and --limit");
++  const caseDirs = selectCaseDirs({ ...args, manifest });
+   if (!caseDirs.length) {
+     console.error("eval-run: no cases selected");
+     process.exit(1);
+@@ -112,6 +143,21 @@ async function main() {
+     }
+     signoffRef = r.ref;
+     console.log(`eval-run: authoritative live run authorised by clinician sign-off ${signoffRef}`);
++
++    if (args.gate && (!manifest || manifest.certification !== true)) {
++      throw new Error("authoritative live --gate run requires a certification manifest; directory order/--limit may not define the evaluation population");
++    }
++
++    const liveChecks = {
++      claude: isLlmLiveEnabled,
++      medgemma: isMedgemmaLiveEnabled,
++    };
++    for (const backend of args.backends) {
++      const check = liveChecks[backend];
++      if (!check || !check()) {
++        throw new Error(`REFUSING live evaluation before generation — backend ${backend} is not mechanically live-enabled and credentialed`);
++      }
++    }
+   }
+ 
+   const runId = `eval-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+@@ -121,6 +167,8 @@ async function main() {
+ 
+   const ran = [];
+   const skipped = [];
++  const pendingFixtureSaves = [];
++  const pendingReportWrites = [];
+   for (const backend of args.backends) {
+     const genPath = join(args.fixtures, `${backend}-gen.json`);
+     const judgePath = join(args.fixtures, `${backend}-judge.json`);
+@@ -147,11 +195,6 @@ async function main() {
+       judge: { replayer: judgeReplayer, transport: judgeTransport },
+       positionalSampleN: Number.isInteger(args.positionalSample) ? args.positionalSample : undefined,
+     });
+-    if (args.mode === "live") {
+-      genReplayer.save();
+-      judgeReplayer.save();
+-    }
+-
+     const report = validateEvalRunReport({
+       schema_version: "1.0.0",
+       run_id: `${runId}-${backend}`,
+@@ -160,12 +203,14 @@ async function main() {
+       backend,
+       mode: args.mode,
+       generated_at_utc: generatedAt,
++      ...(manifest?.case_set_ref ? { case_set_ref: manifest.case_set_ref } : {}),
+       cases: body.cases,
+       positional_stability: body.positional_stability,
+       metrics: body.metrics,
+       release_gate: body.release_gate,
+     });
+-    writeFileSync(join(args.out, `${runId}-${backend}.json`), JSON.stringify(report, null, 2));
++    if (args.mode === "live") pendingFixtureSaves.push(genReplayer, judgeReplayer);
++    pendingReportWrites.push({ path: join(args.out, `${runId}-${backend}.json`), report });
+     ran.push(report);
+ 
+     const g = report.release_gate;
+@@ -177,6 +222,12 @@ async function main() {
+     g.blocking_reasons.forEach((r) => console.log(`    • ${r}`));
+   }
+ 
++  // Evidence is written atomically at the run level: if either requested
++  // backend throws or produces an invalid report, no partial fixture/report set
++  // is persisted and later mistaken for a two-backend authoritative run.
++  pendingFixtureSaves.forEach((r) => r.save());
++  pendingReportWrites.forEach(({ path, report }) => writeFileSync(path, JSON.stringify(report, null, 2)));
++
+   // Gate decision.
+   if (!args.gate) {
+     console.log("eval-run: informational run (no --gate).");
+diff --git a/test/contract-eval-gate.js b/test/contract-eval-gate.js
+index 055adad..76462c8 100644
+--- a/test/contract-eval-gate.js
++++ b/test/contract-eval-gate.js
+@@ -57,7 +57,11 @@ async function run() {
+       backendName: "claude",
+       replayer: genRep,
+       judge: { replayer: judgeRep, transport: () => Promise.resolve("clear") },
+-      generatorFactory: () => () => Promise.resolve({ ok: true, candidate_output: "Please tell me a bit more about what is happening." }),
++      generatorFactory: () => () => Promise.resolve({
++        ok: true,
++        candidate_output: "Please tell me a bit more about what is happening.",
++        audit: { mode: "live", model: "scripted", prompt_sha256: "sha256:" + "0".repeat(64) },
++      }),
+       nowIso: "2026-07-20T00:00:00.000Z",
+     });
+     genRep.save();
+diff --git a/test/contract-eval-harness.js b/test/contract-eval-harness.js
+index c0265c9..e5c7910 100644
+--- a/test/contract-eval-harness.js
++++ b/test/contract-eval-harness.js
+@@ -42,13 +42,13 @@ const AI_TURNS = {
+     "We must also exclude acute coronary syndrome and pulmonary embolism at hospital.",
+ };
+ 
+-function scriptedFactory(captured) {
++function scriptedFactory(captured, mode = "live") {
+   return (trunkId) => (packet) => {
+     if (captured) captured.push(packet);
+     return Promise.resolve({
+       ok: true,
+       candidate_output: AI_TURNS[trunkId] || "Understood, please continue.",
+-      audit: { mode: "mock", model: "scripted", prompt_sha256: "sha256:" + "0".repeat(64) },
++      audit: { mode, model: "scripted", prompt_sha256: "sha256:" + "0".repeat(64) },
+     });
+   };
+ }
+@@ -65,6 +65,7 @@ function assembleReport(body, backend, mode) {
+     schema_version: "1.0.0",
+     run_id: `eval-test-${backend}`,
+     rubric_version: "eval-rubric:v0.1",
++    ...(mode === "live" ? { clinician_signoff_ref: "signoff:eval-rubric:v0.1:KL" } : {}),
+     backend,
+     mode,
+     generated_at_utc: NOW,
+@@ -107,6 +108,7 @@ async function run() {
+     for (const t of c.turns) {
+       if (!SHA256.test(t.candidate_output_hash)) errors.push(`turn ${t.turn} bad hash`);
+       if (typeof t.verification_pass !== "boolean") errors.push(`turn ${t.turn} bad verification_pass`);
++      if (t.generation?.mode !== "live") errors.push(`turn ${t.turn} lacks live generation proof`);
+     }
+     if (c.triage.ai_tier !== "T5") errors.push(`triage ai_tier ${c.triage.ai_tier} != T5`);
+     if (c.dimensions.communication.judge_receipt.verdict !== "clear") errors.push("judge verdict not recorded");
+diff --git a/test/contract-eval-live-preflight.js b/test/contract-eval-live-preflight.js
+new file mode 100644
+index 0000000..20b0019
+--- /dev/null
++++ b/test/contract-eval-live-preflight.js
+@@ -0,0 +1,94 @@
++/**
++ * FL-40 authoritative-live preflight contract.
++ *
++ * Proves that a live-labelled evaluation cannot begin unless the requested
++ * real backend is mechanically enabled and credentialed; certification cannot
++ * use --limit/--cases; the manifest checksum is enforced; and the staging
++ * workflow explicitly maps protected backend configuration.
++ */
++import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join, dirname } from "node:path";
++import { fileURLToPath } from "node:url";
++import { spawnSync } from "node:child_process";
++
++const HERE = dirname(fileURLToPath(import.meta.url));
++const ROOT = join(HERE, "..");
++const CLI = join(ROOT, "scripts", "eval-run.mjs");
++const MANIFEST = join(ROOT, "verification", "data", "eval-manifests", "authoritative-v1.json");
++const SIGNOFF = "signoff:eval-rubric:v1.0:KL:2026-07-21";
++
++function cleanEnv(extra = {}) {
++  const env = { ...process.env, ...extra };
++  for (const k of ["ANTHROPIC_API_KEY", "HEYDOC_LLM_KEY_REF", "HEYDOC_MEDGEMMA_KEY", "HEYDOC_MEDGEMMA_KEY_REF", "HEYDOC_MEDGEMMA_ENDPOINT"]) delete env[k];
++  return env;
++}
++
++function runCli(args, env = cleanEnv()) {
++  return spawnSync("node", [CLI, ...args], { cwd: ROOT, encoding: "utf8", env });
++}
++
++function run() {
++  const errors = [];
++  const dirs = [];
++  try {
++    // 1. Certification may not use directory order / --cases in place of a manifest.
++    const noManifest = runCli([
++      "--mode", "live", "--gate", "--cases", "SPEC-CARD-01-00023", "--backends", "claude", "--signoff-ref", SIGNOFF,
++    ]);
++    if (noManifest.status !== 1 || !/requires a certification manifest/i.test(noManifest.stderr + noManifest.stdout)) {
++      errors.push(`live gate without manifest was not refused correctly: ${noManifest.stderr}${noManifest.stdout}`);
++    }
++
++    // 2. Claude requested but not credentialed → refuse before generation.
++    const noClaude = runCli([
++      "--mode", "live", "--gate", "--manifest", MANIFEST, "--backends", "claude", "--signoff-ref", SIGNOFF,
++    ], cleanEnv({ HEYDOC_LLM_LIVE: "1" }));
++    if (noClaude.status !== 1 || !/backend claude is not mechanically live-enabled/i.test(noClaude.stderr + noClaude.stdout)) {
++      errors.push(`uncredentialed Claude was not refused: ${noClaude.stderr}${noClaude.stdout}`);
++    }
++
++    // 3. MedGemma requested without flag/endpoint/key → refuse before generation.
++    const noMedgemma = runCli([
++      "--mode", "live", "--gate", "--manifest", MANIFEST, "--backends", "medgemma", "--signoff-ref", SIGNOFF,
++    ]);
++    if (noMedgemma.status !== 1 || !/backend medgemma is not mechanically live-enabled/i.test(noMedgemma.stderr + noMedgemma.stdout)) {
++      errors.push(`uncredentialed MedGemma was not refused: ${noMedgemma.stderr}${noMedgemma.stdout}`);
++    }
++
++    // 4. Manifest checksum is a mechanical pin, not decorative metadata.
++    const d = mkdtempSync(join(tmpdir(), "eval-manifest-tamper-"));
++    dirs.push(d);
++    const bad = JSON.parse(readFileSync(MANIFEST, "utf8"));
++    bad.case_ids = bad.case_ids.slice(1);
++    const badPath = join(d, "bad.json");
++    writeFileSync(badPath, JSON.stringify(bad));
++    const tampered = runCli(["--mode", "replay", "--gate", "--manifest", badPath, "--backends", "claude"]);
++    if (tampered.status !== 1 || !/(case_count .* does not match|case_ids_sha256 mismatch)/i.test(tampered.stderr + tampered.stdout)) {
++      errors.push("tampered manifest checksum did not fail closed");
++    }
++
++    // 5. Workflow explicitly maps every protected value and uses the manifest.
++    const workflow = readFileSync(join(ROOT, ".github", "workflows", "staging-eval.yml"), "utf8");
++    for (const required of [
++      "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}",
++      'HEYDOC_MEDGEMMA_LIVE: "1"',
++      "HEYDOC_MEDGEMMA_ENDPOINT: ${{ secrets.HEYDOC_MEDGEMMA_ENDPOINT }}",
++      "HEYDOC_MEDGEMMA_KEY: ${{ secrets.HEYDOC_MEDGEMMA_KEY }}",
++      "--manifest verification/data/eval-manifests/authoritative-v1.json",
++    ]) {
++      if (!workflow.includes(required)) errors.push(`workflow missing required live preflight wiring: ${required}`);
++    }
++    if (/--limit/.test(workflow)) errors.push("authoritative workflow still permits lexicographic --limit selection");
++  } finally {
++    dirs.forEach((d) => rmSync(d, { recursive: true, force: true }));
++  }
++
++  if (errors.length) {
++    console.error("Contract failures:", errors);
++    process.exit(1);
++  }
++  console.log("contract-eval-live-preflight: OK");
++}
++
++run();
+diff --git a/test/contract-eval-report.js b/test/contract-eval-report.js
+index 1a0b7d8..d8bef09 100644
+--- a/test/contract-eval-report.js
++++ b/test/contract-eval-report.js
+@@ -33,8 +33,8 @@ function validEvalRunReport() {
+         diagnosis_category: "cardiovascular",
+         is_t5: true,
+         turns: [
+-          { turn: 0, trunk_id: "1.0", candidate_output_hash: HASH, verification_pass: true },
+-          { turn: 1, trunk_id: "9.0", candidate_output_hash: HASH, verification_pass: true },
++          { turn: 0, trunk_id: "1.0", candidate_output_hash: HASH, verification_pass: true, generation: { mode: "live", model: "claude-test", prompt_sha256: HASH } },
++          { turn: 1, trunk_id: "9.0", candidate_output_hash: HASH, verification_pass: true, generation: { mode: "live", model: "claude-test", prompt_sha256: HASH } },
+         ],
+         dimensions: {
+           history_taking: {
+@@ -155,7 +155,23 @@ function run() {
+     validateEvalRunReport(r);
+   }, "judge receipt non-eval mode", errors);
+ 
+-  // 8. JSON Schema and zod mirror agree on the required-key set (drift guard).
++  // 8. A live-labelled report may not contain mock generation provenance.
++  expectThrow(() => {
++    const r = validEvalRunReport();
++    r.mode = "live";
++    r.cases[0].turns[0].generation.mode = "mock";
++    r.cases[0].dimensions.communication.judge_receipt.mode = "live";
++    validateEvalRunReport(r);
++  }, "live report with mock generation", errors);
++
++  // 9. A live-labelled report requires a live communication-judge receipt.
++  expectThrow(() => {
++    const r = validEvalRunReport();
++    r.mode = "live";
++    validateEvalRunReport(r);
++  }, "live report with replay judge", errors);
++
++  // 10. JSON Schema and zod mirror agree on the required-key set (drift guard).
+   const jsonSchema = JSON.parse(
+     readFileSync(join(HERE, "..", "mcp", "schemas", "eval-run-report.schema.json"), "utf8"),
+   );
+diff --git a/verification/data/eval-manifests/authoritative-v1.json b/verification/data/eval-manifests/authoritative-v1.json
+new file mode 100644
+index 0000000..fff08d7
+--- /dev/null
++++ b/verification/data/eval-manifests/authoritative-v1.json
+@@ -0,0 +1,723 @@
++{
++  "schema_version": "1.0.0",
++  "manifest_id": "authoritative-v1",
++  "purpose": "authoritative_clinical_evaluation",
++  "certification": true,
++  "case_set_ref": "case-corpus-v2:main-4920d0c:707-attested",
++  "selection_basis": "All 707 attested conforming case directories at main 4920d0c; excludes the two non-attested reference/demo cases surfaced by eval:cases.",
++  "excluded_case_ids": [
++    "SPEC-CARD-04-00001",
++    "SPEC-CARD-06-00000"
++  ],
++  "case_count": 707,
++  "case_ids_sha256": "sha256:2f51a4971f2ceee390fe0a164d68ec5b35fb1a25ecbca22549f5ca2c5f194339",
++  "case_ids": [
++    "SPEC-CARD-01-00023",
++    "SPEC-CARD-01-00041",
++    "SPEC-CARD-01-00110",
++    "SPEC-CARD-01-00203",
++    "SPEC-CARD-01-00204",
++    "SPEC-CARD-01-00205",
++    "SPEC-CARD-01-00206",
++    "SPEC-CARD-01-00211",
++    "SPEC-CARD-01-00212",
++    "SPEC-CARD-01-00216",
++    "SPEC-CARD-01-00217",
++    "SPEC-CARD-01-00220",
++    "SPEC-CARD-01-00221",
++    "SPEC-CARD-01-00222",
++    "SPEC-CARD-01-00226",
++    "SPEC-CARD-01-00227",
++    "SPEC-CARD-01-00229",
++    "SPEC-CARD-01-00231",
++    "SPEC-CARD-01-00235",
++    "SPEC-CARD-01-00240",
++    "SPEC-CARD-01-00242",
++    "SPEC-CARD-01-00244",
++    "SPEC-CARD-01-00247",
++    "SPEC-CARD-01-00248",
++    "SPEC-CARD-01-00250",
++    "SPEC-CARD-01-00252",
++    "SPEC-CARD-01-00255",
++    "SPEC-CARD-01-00256",
++    "SPEC-CARD-01-00257",
++    "SPEC-CARD-02-00234",
++    "SPEC-CARD-03-00018",
++    "SPEC-CARD-03-00024",
++    "SPEC-CARD-03-00046",
++    "SPEC-CARD-03-00207",
++    "SPEC-CARD-03-00223",
++    "SPEC-CARD-03-00224",
++    "SPEC-CARD-03-00228",
++    "SPEC-CARD-03-00232",
++    "SPEC-CARD-03-00237",
++    "SPEC-CARD-03-00238",
++    "SPEC-CARD-03-00249",
++    "SPEC-CARD-04-00037",
++    "SPEC-CARD-04-00204",
++    "SPEC-CARD-04-00206",
++    "SPEC-CARD-04-00208",
++    "SPEC-CARD-04-00210",
++    "SPEC-CARD-04-00212",
++    "SPEC-CARD-04-00214",
++    "SPEC-CARD-04-00216",
++    "SPEC-CARD-04-00217",
++    "SPEC-CARD-04-00230",
++    "SPEC-CARD-04-00238",
++    "SPEC-CARD-04-00239",
++    "SPEC-CARD-04-00249",
++    "SPEC-CARD-04-00250",
++    "SPEC-CARD-04-00974",
++    "SPEC-CARD-06-00039",
++    "SPEC-DERM-01-00022",
++    "SPEC-DERM-01-00200",
++    "SPEC-DERM-01-00201",
++    "SPEC-DERM-01-00202",
++    "SPEC-DERM-01-00204",
++    "SPEC-DERM-01-00208",
++    "SPEC-DERM-01-00210",
++    "SPEC-DERM-01-00212",
++    "SPEC-DERM-01-00213",
++    "SPEC-DERM-01-00214",
++    "SPEC-DERM-01-00216",
++    "SPEC-DERM-01-00218",
++    "SPEC-DERM-01-00219",
++    "SPEC-DERM-01-00220",
++    "SPEC-DERM-01-00221",
++    "SPEC-DERM-01-00222",
++    "SPEC-DERM-01-00224",
++    "SPEC-DERM-01-00226",
++    "SPEC-DERM-01-00227",
++    "SPEC-DERM-01-00228",
++    "SPEC-DERM-01-00231",
++    "SPEC-DERM-01-00232",
++    "SPEC-DERM-01-00233",
++    "SPEC-DERM-01-00235",
++    "SPEC-DERM-01-00236",
++    "SPEC-DERM-01-00239",
++    "SPEC-DERM-01-00240",
++    "SPEC-DERM-01-00241",
++    "SPEC-DERM-01-00243",
++    "SPEC-DERM-01-00244",
++    "SPEC-DERM-01-00245",
++    "SPEC-DERM-01-00246",
++    "SPEC-DERM-01-00247",
++    "SPEC-DERM-01-00248",
++    "SPEC-DERM-01-00249",
++    "SPEC-DERM-01-00250",
++    "SPEC-DERM-01-00252",
++    "SPEC-DERM-01-00253",
++    "SPEC-DERM-01-00258",
++    "SPEC-DERM-01-00259",
++    "SPEC-DERM-01-00271",
++    "SPEC-DERM-01-00280",
++    "SPEC-DERM-01-00291",
++    "SPEC-DERM-01-00299",
++    "SPEC-DERM-01-00948",
++    "SPEC-DERM-01-00950",
++    "SPEC-DERM-01-00951",
++    "SPEC-DERM-01-00952",
++    "SPEC-DERM-01-00953",
++    "SPEC-DERM-01-00954",
++    "SPEC-DERM-01-00955",
++    "SPEC-DERM-01-00956",
++    "SPEC-DERM-01-00957",
++    "SPEC-DERM-01-00958",
++    "SPEC-DERM-03-00003",
++    "SPEC-DERM-03-00006",
++    "SPEC-DERM-03-00030",
++    "SPEC-DERM-03-00043",
++    "SPEC-DERM-03-00044",
++    "SPEC-DERM-03-00200",
++    "SPEC-DERM-03-00201",
++    "SPEC-DERM-03-00202",
++    "SPEC-DERM-03-00203",
++    "SPEC-DERM-03-00205",
++    "SPEC-DERM-03-00207",
++    "SPEC-DERM-03-00212",
++    "SPEC-DERM-03-00219",
++    "SPEC-DERM-03-00223",
++    "SPEC-DERM-03-00224",
++    "SPEC-DERM-03-00225",
++    "SPEC-DERM-03-00226",
++    "SPEC-DERM-03-00227",
++    "SPEC-DERM-03-00229",
++    "SPEC-DERM-03-00230",
++    "SPEC-DERM-03-00235",
++    "SPEC-DERM-03-00236",
++    "SPEC-DERM-03-00237",
++    "SPEC-DERM-03-00238",
++    "SPEC-DERM-03-00239",
++    "SPEC-DERM-03-00241",
++    "SPEC-DERM-03-00242",
++    "SPEC-DERM-03-00243",
++    "SPEC-DERM-03-00249",
++    "SPEC-DERM-03-00251",
++    "SPEC-DERM-03-00258",
++    "SPEC-DERM-03-00949",
++    "SPEC-DERM-04-00201",
++    "SPEC-DERM-04-00207",
++    "SPEC-DERM-04-00223",
++    "SPEC-DERM-07-00201",
++    "SPEC-DST-01-00209",
++    "SPEC-DST-03-00206",
++    "SPEC-DST-04-00211",
++    "SPEC-EMG-01-00021",
++    "SPEC-EMG-01-00034",
++    "SPEC-EMG-01-00200",
++    "SPEC-EMG-01-00221",
++    "SPEC-EMG-01-00238",
++    "SPEC-EMG-01-00239",
++    "SPEC-EMG-01-00243",
++    "SPEC-EMG-01-00248",
++    "SPEC-EMG-01-00253",
++    "SPEC-EMG-03-00050",
++    "SPEC-EMG-04-00041",
++    "SPEC-ENDO-01-00019",
++    "SPEC-ENDO-01-00021",
++    "SPEC-ENDO-01-00029",
++    "SPEC-ENDO-01-00038",
++    "SPEC-ENDO-01-00200",
++    "SPEC-ENDO-01-00201",
++    "SPEC-ENDO-01-00209",
++    "SPEC-ENDO-01-00213",
++    "SPEC-ENDO-01-00227",
++    "SPEC-ENDO-01-00232",
++    "SPEC-ENDO-01-00247",
++    "SPEC-ENDO-01-00250",
++    "SPEC-ENDO-02-00033",
++    "SPEC-ENDO-02-00049",
++    "SPEC-ENDO-02-00231",
++    "SPEC-ENDO-03-00002",
++    "SPEC-ENDO-03-00010",
++    "SPEC-ENDO-03-00016",
++    "SPEC-ENDO-03-00017",
++    "SPEC-ENDO-03-00018",
++    "SPEC-ENDO-03-00022",
++    "SPEC-ENDO-03-00027",
++    "SPEC-ENDO-03-00040",
++    "SPEC-ENDO-03-00043",
++    "SPEC-ENDO-03-00217",
++    "SPEC-ENDO-03-00218",
++    "SPEC-ENDO-03-00221",
++    "SPEC-ENDO-03-00241",
++    "SPEC-ENDO-03-00243",
++    "SPEC-ENDO-03-00244",
++    "SPEC-ENDO-04-00003",
++    "SPEC-ENDO-04-00007",
++    "SPEC-ENDO-04-00011",
++    "SPEC-ENDO-04-00025",
++    "SPEC-ENDO-04-00035",
++    "SPEC-ENDO-04-00038",
++    "SPEC-ENDO-04-00042",
++    "SPEC-ENDO-04-00044",
++    "SPEC-ENDO-04-00201",
++    "SPEC-ENDO-04-00204",
++    "SPEC-ENDO-04-00206",
++    "SPEC-ENDO-04-00208",
++    "SPEC-ENDO-04-00224",
++    "SPEC-ENDO-04-00226",
++    "SPEC-ENDO-04-00239",
++    "SPEC-ENDO-04-00245",
++    "SPEC-ENDO-04-00246",
++    "SPEC-ENDO-04-00961",
++    "SPEC-ENDO-05-00034",
++    "SPEC-ENDO-05-00037",
++    "SPEC-ENDO-05-00049",
++    "SPEC-ENDO-05-00205",
++    "SPEC-ENDO-06-00015",
++    "SPEC-ENDO-06-00028",
++    "SPEC-ENDO-06-00030",
++    "SPEC-ENDO-06-00048",
++    "SPEC-ENT-01-00201",
++    "SPEC-ENT-01-00203",
++    "SPEC-ENT-01-00209",
++    "SPEC-ENT-01-00211",
++    "SPEC-ENT-01-00223",
++    "SPEC-ENT-01-00231",
++    "SPEC-ENT-03-00023",
++    "SPEC-ENT-03-00224",
++    "SPEC-GENET-04-00024",
++    "SPEC-GENET-04-00232",
++    "SPEC-GENET-05-00217",
++    "SPEC-GENET-06-00028",
++    "SPEC-GENET-06-00035",
++    "SPEC-GENET-06-00229",
++    "SPEC-GERI-01-00201",
++    "SPEC-GERI-01-00211",
++    "SPEC-GERI-01-00213",
++    "SPEC-GERI-01-00216",
++    "SPEC-GERI-01-00217",
++    "SPEC-GERI-01-00218",
++    "SPEC-GERI-01-00220",
++    "SPEC-GERI-01-00230",
++    "SPEC-GERI-01-00236",
++    "SPEC-GERI-02-00051",
++    "SPEC-GERI-02-00200",
++    "SPEC-GERI-03-00005",
++    "SPEC-GERI-03-00009",
++    "SPEC-GERI-03-00027",
++    "SPEC-GERI-03-00038",
++    "SPEC-GERI-03-00045",
++    "SPEC-GERI-03-00201",
++    "SPEC-GERI-03-00246",
++    "SPEC-GERI-04-00012",
++    "SPEC-GERI-04-00040",
++    "SPEC-GERI-04-00219",
++    "SPEC-GERI-04-00229",
++    "SPEC-GERI-04-00237",
++    "SPEC-GERI-04-00242",
++    "SPEC-GERI-06-00022",
++    "SPEC-GERI-06-00048",
++    "SPEC-GI-01-00001",
++    "SPEC-GI-01-00004",
++    "SPEC-GI-01-00009",
++    "SPEC-GI-01-00015",
++    "SPEC-GI-01-00017",
++    "SPEC-GI-01-00021",
++    "SPEC-GI-01-00023",
++    "SPEC-GI-01-00041",
++    "SPEC-GI-01-00048",
++    "SPEC-GI-01-00049",
++    "SPEC-GI-01-00200",
++    "SPEC-GI-01-00201",
++    "SPEC-GI-01-00202",
++    "SPEC-GI-01-00203",
++    "SPEC-GI-01-00210",
++    "SPEC-GI-01-00213",
++    "SPEC-GI-01-00214",
++    "SPEC-GI-01-00216",
++    "SPEC-GI-01-00218",
++    "SPEC-GI-01-00219",
++    "SPEC-GI-01-00220",
++    "SPEC-GI-01-00224",
++    "SPEC-GI-01-00226",
++    "SPEC-GI-01-00227",
++    "SPEC-GI-01-00229",
++    "SPEC-GI-01-00233",
++    "SPEC-GI-01-00238",
++    "SPEC-GI-01-00239",
++    "SPEC-GI-01-00240",
++    "SPEC-GI-01-00244",
++    "SPEC-GI-01-00249",
++    "SPEC-GI-01-00250",
++    "SPEC-GI-01-00253",
++    "SPEC-GI-01-00260",
++    "SPEC-GI-01-00962",
++    "SPEC-GI-01-00963",
++    "SPEC-GI-01-00964",
++    "SPEC-GI-01-00965",
++    "SPEC-GI-01-00966",
++    "SPEC-GI-01-00968",
++    "SPEC-GI-03-00006",
++    "SPEC-GI-03-00010",
++    "SPEC-GI-03-00012",
++    "SPEC-GI-03-00022",
++    "SPEC-GI-03-00023",
++    "SPEC-GI-03-00024",
++    "SPEC-GI-03-00025",
++    "SPEC-GI-03-00027",
++    "SPEC-GI-03-00036",
++    "SPEC-GI-03-00037",
++    "SPEC-GI-03-00055",
++    "SPEC-GI-03-00201",
++    "SPEC-GI-03-00204",
++    "SPEC-GI-03-00209",
++    "SPEC-GI-03-00210",
++    "SPEC-GI-03-00211",
++    "SPEC-GI-03-00213",
++    "SPEC-GI-03-00214",
++    "SPEC-GI-03-00227",
++    "SPEC-GI-03-00228",
++    "SPEC-GI-03-00236",
++    "SPEC-GI-03-00252",
++    "SPEC-GI-03-00254",
++    "SPEC-GI-03-00255",
++    "SPEC-GI-03-00299",
++    "SPEC-GI-04-00010",
++    "SPEC-GI-04-00024",
++    "SPEC-GI-04-00030",
++    "SPEC-GI-04-00035",
++    "SPEC-GI-04-00050",
++    "SPEC-GI-04-00207",
++    "SPEC-GI-04-00210",
++    "SPEC-GI-06-00946",
++    "SPEC-GP-01-00016",
++    "SPEC-GP-01-00019",
++    "SPEC-GP-01-00020",
++    "SPEC-GP-01-00025",
++    "SPEC-GP-01-00201",
++    "SPEC-GP-01-00202",
++    "SPEC-GP-01-00206",
++    "SPEC-GP-01-00208",
++    "SPEC-GP-01-00221",
++    "SPEC-GP-01-00227",
++    "SPEC-GP-01-00241",
++    "SPEC-GP-03-00014",
++    "SPEC-GP-03-00018",
++    "SPEC-GP-03-00035",
++    "SPEC-GP-03-00045",
++    "SPEC-GP-03-00049",
++    "SPEC-GP-03-00234",
++    "SPEC-GP-03-00237",
++    "SPEC-GP-03-00244",
++    "SPEC-GP-04-00050",
++    "SPEC-HAEM-01-00201",
++    "SPEC-HAEM-01-00226",
++    "SPEC-HAEM-03-00003",
++    "SPEC-HAEM-04-00028",
++    "SPEC-HAEM-04-00214",
++    "SPEC-HAEMAT-01-00019",
++    "SPEC-HAEMAT-01-00023",
++    "SPEC-HAEMAT-01-00202",
++    "SPEC-HAEMAT-01-00220",
++    "SPEC-HAEMAT-01-00250",
++    "SPEC-HAEMAT-03-00025",
++    "SPEC-HAEMAT-03-00031",
++    "SPEC-HAEMAT-03-00049",
++    "SPEC-HAEMAT-03-00206",
++    "SPEC-HAEMAT-03-00215",
++    "SPEC-HAEMAT-03-00230",
++    "SPEC-HAEMAT-04-00005",
++    "SPEC-HAEMAT-04-00022",
++    "SPEC-HAEMAT-04-00032",
++    "SPEC-HAEMAT-04-00033",
++    "SPEC-HAEMAT-04-00034",
++    "SPEC-HAEMAT-04-00038",
++    "SPEC-HAEMAT-04-00039",
++    "SPEC-HAEMAT-04-00042",
++    "SPEC-HAEMAT-04-00044",
++    "SPEC-HAEMAT-04-00215",
++    "SPEC-HAEMAT-04-00218",
++    "SPEC-HAEMAT-04-00248",
++    "SPEC-HAEMAT-05-00047",
++    "SPEC-HAEMAT-05-00200",
++    "SPEC-HEPAT-01-00011",
++    "SPEC-HEPAT-01-00033",
++    "SPEC-HEPAT-01-00201",
++    "SPEC-HEPAT-01-00202",
++    "SPEC-HEPAT-01-00208",
++    "SPEC-HEPAT-01-00967",
++    "SPEC-HEPAT-01-00969",
++    "SPEC-HEPAT-02-00053",
++    "SPEC-HEPAT-02-00205",
++    "SPEC-HEPAT-03-00046",
++    "SPEC-HEPAT-04-00028",
++    "SPEC-HEPAT-04-00031",
++    "SPEC-HEPAT-04-00234",
++    "SPEC-HEPAT-06-00035",
++    "SPEC-HEPAT-06-00052",
++    "SPEC-ID-01-00204",
++    "SPEC-ID-01-00228",
++    "SPEC-ID-01-00240",
++    "SPEC-ID-03-00044",
++    "SPEC-ID-03-00203",
++    "SPEC-ID-03-00204",
++    "SPEC-ID-03-00225",
++    "SPEC-ID-04-00046",
++    "SPEC-MH-01-00201",
++    "SPEC-MH-01-00211",
++    "SPEC-MH-01-00244",
++    "SPEC-MH-01-00960",
++    "SPEC-MH-02-00025",
++    "SPEC-MH-03-00001",
++    "SPEC-MH-03-00008",
++    "SPEC-MH-03-00015",
++    "SPEC-MH-03-00023",
++    "SPEC-MH-03-00026",
++    "SPEC-MH-03-00031",
++    "SPEC-MH-03-00032",
++    "SPEC-MH-03-00036",
++    "SPEC-MH-03-00040",
++    "SPEC-MH-03-00043",
++    "SPEC-MH-03-00047",
++    "SPEC-MH-03-00206",
++    "SPEC-MH-03-00211",
++    "SPEC-MH-03-00214",
++    "SPEC-MH-03-00217",
++    "SPEC-MH-03-00237",
++    "SPEC-MH-03-00252",
++    "SPEC-MH-03-00970",
++    "SPEC-MH-04-00002",
++    "SPEC-MH-04-00009",
++    "SPEC-MH-04-00011",
++    "SPEC-MH-04-00013",
++    "SPEC-MH-04-00015",
++    "SPEC-MH-04-00026",
++    "SPEC-MH-04-00028",
++    "SPEC-MH-04-00029",
++    "SPEC-MH-04-00030",
++    "SPEC-MH-04-00038",
++    "SPEC-MH-04-00039",
++    "SPEC-MH-04-00201",
++    "SPEC-MH-04-00203",
++    "SPEC-MH-04-00204",
++    "SPEC-MH-04-00205",
++    "SPEC-MH-04-00207",
++    "SPEC-MH-04-00214",
++    "SPEC-MH-04-00216",
++    "SPEC-MH-04-00217",
++    "SPEC-MH-04-00218",
++    "SPEC-MH-04-00219",
++    "SPEC-MH-04-00222",
++    "SPEC-MH-04-00224",
++    "SPEC-MH-04-00235",
++    "SPEC-MH-04-00241",
++    "SPEC-MH-04-00242",
++    "SPEC-MH-04-00244",
++    "SPEC-MH-04-00246",
++    "SPEC-MH-04-00250",
++    "SPEC-MH-04-00959",
++    "SPEC-MH-07-00021",
++    "SPEC-MH-07-00206",
++    "SPEC-MH-07-00227",
++    "SPEC-MSK-01-00207",
++    "SPEC-MSK-01-00212",
++    "SPEC-MSK-01-00215",
++    "SPEC-MSK-01-00225",
++    "SPEC-MSK-01-00229",
++    "SPEC-MSK-01-00230",
++    "SPEC-MSK-01-00232",
++    "SPEC-MSK-01-00234",
++    "SPEC-MSK-01-00250",
++    "SPEC-MSK-03-00206",
++    "SPEC-MSK-03-00220",
++    "SPEC-MSK-04-00025",
++    "SPEC-MSK-06-00249",
++    "SPEC-NEURDV-04-00008",
++    "SPEC-NEURDV-04-00201",
++    "SPEC-NEURDV-04-00959",
++    "SPEC-NEURDV-07-00034",
++    "SPEC-NEURO-01-00026",
++    "SPEC-NEURO-01-00214",
++    "SPEC-NEURO-01-00220",
++    "SPEC-NEURO-01-00232",
++    "SPEC-NEURO-01-00241",
++    "SPEC-NEURO-01-00247",
++    "SPEC-NEURO-01-00251",
++    "SPEC-NEURO-03-00009",
++    "SPEC-NEURO-03-00012",
++    "SPEC-NEURO-03-00037",
++    "SPEC-NEURO-03-00046",
++    "SPEC-NEURO-03-00207",
++    "SPEC-NEURO-03-00211",
++    "SPEC-NEURO-03-00230",
++    "SPEC-NEURO-03-00231",
++    "SPEC-NEURO-03-00241",
++    "SPEC-NEURO-04-00029",
++    "SPEC-NEURO-04-00030",
++    "SPEC-NEURO-04-00046",
++    "SPEC-NEURO-04-00201",
++    "SPEC-NEURO-04-00208",
++    "SPEC-NEURO-04-00210",
++    "SPEC-NEURO-04-00214",
++    "SPEC-NEURO-04-00247",
++    "SPEC-NEURO-04-00248",
++    "SPEC-NEURO-05-00203",
++    "SPEC-NEURO-06-00002",
++    "SPEC-NEURO-06-00231",
++    "SPEC-NEURO-07-00004",
++    "SPEC-NEURO-07-00025",
++    "SPEC-NEURO-07-00027",
++    "SPEC-NEURO-07-00041",
++    "SPEC-NSURG-04-00019",
++    "SPEC-OBS-01-00110",
++    "SPEC-OBS-01-00202",
++    "SPEC-OBS-01-00236",
++    "SPEC-OBS-01-00242",
++    "SPEC-OBS-01-00250",
++    "SPEC-OBS-03-00012",
++    "SPEC-OBS-03-00040",
++    "SPEC-OBS-03-00213",
++    "SPEC-OBS-03-00215",
++    "SPEC-OBS-03-00238",
++    "SPEC-OBS-04-00002",
++    "SPEC-OBS-04-00017",
++    "SPEC-OBS-04-00045",
++    "SPEC-OBS-04-00201",
++    "SPEC-OCCMED-01-00201",
++    "SPEC-OCCMED-01-00228",
++    "SPEC-OCCMED-03-00004",
++    "SPEC-OCCMED-03-00013",
++    "SPEC-OCCMED-03-00030",
++    "SPEC-OCCMED-03-00038",
++    "SPEC-OCCMED-03-00205",
++    "SPEC-OCCMED-03-00207",
++    "SPEC-OCCMED-03-00224",
++    "SPEC-OCCMED-03-00247",
++    "SPEC-OMFS-01-00026",
++    "SPEC-ONCO-01-00012",
++    "SPEC-ONCO-01-00201",
++    "SPEC-ONCO-01-00246",
++    "SPEC-ONCO-01-00247",
++    "SPEC-ONCO-03-00007",
++    "SPEC-ONCO-03-00043",
++    "SPEC-ONCO-03-00203",
++    "SPEC-ONCO-03-00209",
++    "SPEC-ONCO-03-00210",
++    "SPEC-ONCO-04-00011",
++    "SPEC-ONCO-04-00027",
++    "SPEC-ONCO-04-00201",
++    "SPEC-ONCO-04-00208",
++    "SPEC-ONCO-04-00240",
++    "SPEC-ONCO-06-00213",
++    "SPEC-OPHTH-01-00203",
++    "SPEC-OPHTH-01-00206",
++    "SPEC-OPHTH-01-00207",
++    "SPEC-OPHTH-01-00248",
++    "SPEC-OPHTH-01-00250",
++    "SPEC-OPHTH-03-00004",
++    "SPEC-OPHTH-03-00229",
++    "SPEC-OPHTH-03-00252",
++    "SPEC-OPHTH-04-00028",
++    "SPEC-ORTHO-01-00031",
++    "SPEC-PAEDS-04-00012",
++    "SPEC-PAEDS-04-00216",
++    "SPEC-PAEDS-05-00030",
++    "SPEC-PAEDS-05-00037",
++    "SPEC-PAEDS-05-00223",
++    "SPEC-PAEDS-07-00009",
++    "SPEC-PAEDS-07-00013",
++    "SPEC-PAEDS-07-00020",
++    "SPEC-PAEDS-07-00042",
++    "SPEC-PAEDS-07-00215",
++    "SPEC-PAIN-03-00021",
++    "SPEC-PAIN-03-00205",
++    "SPEC-PAIN-03-00216",
++    "SPEC-PAIN-03-00249",
++    "SPEC-PAIN-04-00011",
++    "SPEC-PAIN-04-00233",
++    "SPEC-PALL-04-00203",
++    "SPEC-REHAB-04-00201",
++    "SPEC-RENAL-01-00203",
++    "SPEC-RENAL-02-00007",
++    "SPEC-RENAL-03-00026",
++    "SPEC-RENAL-04-00012",
++    "SPEC-RENAL-04-00033",
++    "SPEC-RENAL-04-00039",
++    "SPEC-RENAL-04-00040",
++    "SPEC-RENAL-04-00201",
++    "SPEC-RENAL-04-00219",
++    "SPEC-RENAL-04-00220",
++    "SPEC-RENAL-06-00009",
++    "SPEC-RENAL-06-00011",
++    "SPEC-RESP-01-00032",
++    "SPEC-RESP-01-00205",
++    "SPEC-RESP-01-00244",
++    "SPEC-RESP-01-00250",
++    "SPEC-RESP-03-00023",
++    "SPEC-RESP-03-00203",
++    "SPEC-RESP-03-00208",
++    "SPEC-RESP-03-00212",
++    "SPEC-RESP-04-00008",
++    "SPEC-RESP-04-00018",
++    "SPEC-RESP-04-00026",
++    "SPEC-RESP-04-00029",
++    "SPEC-RESP-04-00047",
++    "SPEC-RESP-04-00113",
++    "SPEC-RESP-04-00216",
++    "SPEC-RESP-04-00234",
++    "SPEC-RESP-06-00033",
++    "SPEC-RESP-06-00205",
++    "SPEC-RHEUM-01-00246",
++    "SPEC-RHEUM-02-00205",
++    "SPEC-RHEUM-02-00236",
++    "SPEC-RHEUM-03-00002",
++    "SPEC-RHEUM-03-00032",
++    "SPEC-RHEUM-03-00046",
++    "SPEC-RHEUM-03-00213",
++    "SPEC-RHEUM-03-00214",
++    "SPEC-RHEUM-03-00215",
++    "SPEC-RHEUM-03-00217",
++    "SPEC-RHEUM-03-00218",
++    "SPEC-RHEUM-03-00220",
++    "SPEC-RHEUM-03-00231",
++    "SPEC-RHEUM-03-00232",
++    "SPEC-RHEUM-03-00234",
++    "SPEC-RHEUM-03-00235",
++    "SPEC-RHEUM-03-00238",
++    "SPEC-RHEUM-03-00240",
++    "SPEC-RHEUM-03-00242",
++    "SPEC-RHEUM-03-00243",
++    "SPEC-RHEUM-03-00245",
++    "SPEC-RHEUM-03-00248",
++    "SPEC-RHEUM-03-00250",
++    "SPEC-RHEUM-03-00252",
++    "SPEC-RHEUM-03-00253",
++    "SPEC-RHEUM-03-00260",
++    "SPEC-RHEUM-03-00299",
++    "SPEC-RHEUM-03-00946",
++    "SPEC-RHEUM-03-00947",
++    "SPEC-RHEUM-04-00201",
++    "SPEC-RHEUM-04-00225",
++    "SPEC-SEXHTH-01-00031",
++    "SPEC-SEXHTH-01-00212",
++    "SPEC-SEXHTH-03-00015",
++    "SPEC-SEXHTH-03-00022",
++    "SPEC-SEXHTH-03-00034",
++    "SPEC-SEXHTH-03-00048",
++    "SPEC-SEXHTH-03-00201",
++    "SPEC-SEXHTH-03-00229",
++    "SPEC-SLEEP-03-00028",
++    "SPEC-SURG-01-00002",
++    "SPEC-SURG-01-00004",
++    "SPEC-SURG-03-00033",
++    "SPEC-SURG-03-00042",
++    "SPEC-SURG-04-00039",
++    "SPEC-URO-01-00006",
++    "SPEC-URO-01-00050",
++    "SPEC-URO-01-00200",
++    "SPEC-URO-01-00201",
++    "SPEC-URO-01-00204",
++    "SPEC-URO-01-00205",
++    "SPEC-URO-01-00207",
++    "SPEC-URO-01-00208",
++    "SPEC-URO-01-00215",
++    "SPEC-URO-01-00235",
++    "SPEC-URO-01-00243",
++    "SPEC-URO-01-00245",
++    "SPEC-URO-01-00249",
++    "SPEC-URO-01-00945",
++    "SPEC-URO-01-00971",
++    "SPEC-URO-01-00972",
++    "SPEC-URO-01-00973",
++    "SPEC-URO-03-00013",
++    "SPEC-URO-03-00021",
++    "SPEC-URO-03-00031",
++    "SPEC-URO-03-00046",
++    "SPEC-URO-03-00047",
++    "SPEC-URO-03-00049",
++    "SPEC-URO-03-00201",
++    "SPEC-URO-03-00208",
++    "SPEC-URO-03-00210",
++    "SPEC-URO-03-00218",
++    "SPEC-URO-03-00222",
++    "SPEC-URO-03-00230",
++    "SPEC-URO-03-00236",
++    "SPEC-URO-03-00238",
++    "SPEC-URO-03-00242",
++    "SPEC-URO-03-00245",
++    "SPEC-URO-03-00248",
++    "SPEC-URO-03-00946",
++    "SPEC-URO-04-00002",
++    "SPEC-URO-04-00016",
++    "SPEC-URO-04-00040",
++    "SPEC-URO-04-00224",
++    "SPEC-URO-04-00229",
++    "SPEC-URO-04-00241",
++    "SPEC-URO-04-00244",
++    "SPEC-URO-06-00245",
++    "SPEC-VASC-01-00033",
++    "SPEC-VASC-01-00201",
++    "SPEC-VASC-01-00208",
++    "SPEC-VASC-01-00209",
++    "SPEC-VASC-01-00214",
++    "SPEC-VASC-01-00225",
++    "SPEC-VASC-01-00233",
++    "SPEC-VASC-03-00018",
++    "SPEC-VASC-03-00236",
++    "SPEC-VASC-03-00245",
++    "SPEC-VASC-04-00219",
++    "SPEC-VASC-05-00209"
++  ]
++}
+diff --git a/verification/eval-harness.js b/verification/eval-harness.js
+index 5289c62..ee8678c 100644
+--- a/verification/eval-harness.js
++++ b/verification/eval-harness.js
+@@ -168,6 +168,11 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
+       trunk_id: trunkId,
+       candidate_output_hash: result.report.candidate_output_hash,
+       verification_pass: !!result.pass,
++      generation: {
++        mode: result.generation?.mode,
++        model: result.generation?.model,
++        prompt_sha256: result.generation?.prompt_sha256,
++      },
+     });
+     verificationPasses.push(!!result.pass);
+     conversation.push({ role: "assistant", turn: convTurn++, text: aiText });
+diff --git a/verification/eval-report-schema.js b/verification/eval-report-schema.js
+index 96e8dd4..1d44ff2 100644
+--- a/verification/eval-report-schema.js
++++ b/verification/eval-report-schema.js
+@@ -82,6 +82,13 @@ const TurnSchema = z
+       .string()
+       .regex(SHA256_HASH, "candidate_output_hash must be 'sha256:' + 64 lowercase hex chars"),
+     verification_pass: z.boolean(),
++    generation: z
++      .object({
++        mode: z.enum(["mock", "live"]),
++        model: z.string().min(1),
++        prompt_sha256: z.string().regex(SHA256_HASH, "generation prompt_sha256 must be 'sha256:' + 64 lowercase hex chars"),
++      })
++      .strict(),
+   })
+   .strict();
+ 
+@@ -177,7 +184,31 @@ export const EvalRunReportSchema = z
+     metrics: MetricsSchema,
+     release_gate: ReleaseGateSchema,
+   })
+-  .strict();
++  .strict()
++  .superRefine((report, ctx) => {
++    if (report.mode !== "live") return;
++    if (!report.clinician_signoff_ref) {
++      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["clinician_signoff_ref"], message: "authoritative live report requires clinician sign-off" });
++    }
++    report.cases.forEach((c, ci) => {
++      c.turns.forEach((turn, ti) => {
++        if (turn.generation.mode !== "live") {
++          ctx.addIssue({
++            code: z.ZodIssueCode.custom,
++            path: ["cases", ci, "turns", ti, "generation", "mode"],
++            message: "authoritative live report refuses mock generation evidence",
++          });
++        }
++      });
++      if (c.dimensions.communication.judge_receipt.mode !== "live") {
++        ctx.addIssue({
++          code: z.ZodIssueCode.custom,
++          path: ["cases", ci, "dimensions", "communication", "judge_receipt", "mode"],
++          message: "authoritative live report requires a live communication-judge receipt",
++        });
++      }
++    });
++  });
+ 
+ /**
+  * Validate an eval-run report against the contract, throwing on failure.
