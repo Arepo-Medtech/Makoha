@@ -151,6 +151,21 @@ export const ContextPacketSchema = z
     pharm_check_receipt: z.record(z.unknown()).optional(),
     blocked: z.boolean().optional(),
     block_reasons: z.array(z.string()).optional(),
+    // FL-40: bounded multi-turn transcript the trunk may read as CONTEXT (not
+    // proof). Optional — absent packets are byte-identical to before. Firewall-
+    // clean by construction (never sealed-node content); output is still gated
+    // by the frozen verifier + detectors, so no claim can be minted from it.
+    conversation: z
+      .array(
+        z
+          .object({
+            role: z.enum(["patient", "assistant"]),
+            turn: z.number().int().min(0),
+            text: z.string(),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict()
   // Hard-limit enforcement: every lab_result fact MUST be sanitised (carry
