@@ -32,6 +32,7 @@ import { selectLongListCases } from "../verification/eval-positional.js";
 import { createReplayer } from "../verification/llm-replay.js";
 import { makeDefaultJudgeTransport } from "../verification/eval-judge.js";
 import { validateEvalRunReport } from "../verification/eval-report-schema.js";
+import { resolveClinicianSignoff } from "../verification/eval-signoff.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CASES_DIR = join(ROOT, "data", "cases");
@@ -47,6 +48,8 @@ function parseArgs(argv) {
     positionalSample: null,
     out: join(ROOT, "verification", "data", "eval-runs"),
     fixtures: join(ROOT, "verification", "data", "eval-fixtures"),
+    rubricDoc: join(ROOT, "docs", "grounding", "eval-rubric.md"),
+    signoffRef: null,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const eq = argv[i].includes("=");
@@ -61,6 +64,8 @@ function parseArgs(argv) {
     else if (k === "--positional-sample") out.positionalSample = Number(v);
     else if (k === "--out") out.out = v;
     else if (k === "--fixtures") out.fixtures = v;
+    else if (k === "--rubric-doc") out.rubricDoc = v;
+    else if (k === "--signoff-ref") out.signoffRef = v;
   }
   return out;
 }
@@ -92,6 +97,23 @@ async function main() {
   }
   const cases = caseDirs.map(loadCaseNodes);
   const longListTotal = selectLongListCases(cases).length;
+
+  // AUTHORITATIVE LIVE RUN GATE (FL-40): a live run certifies a release, so it may
+  // only proceed against a CLINICIAN-SIGNED rubric. Resolve the sign-off ref BEFORE
+  // any generation and REFUSE fail-closed if the rubric is not signed for this
+  // version — the report's clinician_signoff_ref is never stamped from a draft.
+  // Replay/CI runs skip this (they validate the machinery, never certify).
+  let signoffRef = null;
+  if (args.mode === "live") {
+    const r = resolveClinicianSignoff({ rubricVersion: RUBRIC_VERSION, rubricPath: args.rubricDoc, override: args.signoffRef });
+    if (!r.ref) {
+      console.error(`eval-run: REFUSING an authoritative live run — ${r.reason}. A live run requires a clinician-signed rubric (clinician_signoff_ref for ${RUBRIC_VERSION}).`);
+      process.exit(1);
+    }
+    signoffRef = r.ref;
+    console.log(`eval-run: authoritative live run authorised by clinician sign-off ${signoffRef}`);
+  }
+
   const runId = `eval-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const generatedAt = new Date().toISOString();
   mkdirSync(args.out, { recursive: true });
@@ -134,6 +156,7 @@ async function main() {
       schema_version: "1.0.0",
       run_id: `${runId}-${backend}`,
       rubric_version: RUBRIC_VERSION,
+      ...(signoffRef ? { clinician_signoff_ref: signoffRef } : {}),
       backend,
       mode: args.mode,
       generated_at_utc: generatedAt,

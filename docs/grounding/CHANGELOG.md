@@ -4,6 +4,24 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: authoritative-live-run clinician sign-off enforcement (2026-07-21)
+
+The last engineering item on FL-40. `verification/eval-signoff.js` + the CLI: a
+`--mode live` eval run now resolves `clinician_signoff_ref` from the SIGNED rubric
+doc and **refuses fail-closed BEFORE any generation** if the rubric is not signed
+for the version it cites — placeholder, wrong-version, and absent refs all refuse.
+The resolved ref is stamped into every live `EvalRunReport`; replay/CI runs are
+NOT gated by it (they validate the machinery, never certify). This mechanically
+binds an authoritative live run to a clinician-signed rubric — you cannot arm the
+release gate against an unsigned one. `test/contract-eval-signoff.js` (unit
+resolution + the CLI refusal + replay-not-gated) wired into `npm test`; full suite
+green. **FL-40 engineering is now drained** — only the operator/infra tail remains
+(the authoritative live run to record fixtures, both backends; MedGemma
+reachability). Register: `clinical-eval-scorer` REMAINING drops item (3); R-42 +
+completeness-index updated.
+
+---
+
 ## FL-40: live clinical eval harness built (Phases 1–7) + rubric v1.0 clinician-signed (2026-07-21)
 
 **What this adds.** The synthetic-case evaluation goes from *scorer core* (L10, 2026-07-11) to a *live multi-turn harness that produces a release gate*. Built in seven plan-gated phases, each with its own contract suite (all wired into `npm test`; full suite + `verification` green throughout):
