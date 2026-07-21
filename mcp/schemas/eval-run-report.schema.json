@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/eval-run-report.schema.json",
+  "title": "EvalRunReport",
+  "description": "The machine-readable record of ONE live clinical evaluation run over the attested synthetic case set (FL-40). Produced by the eval harness (verification/eval-harness.js via scripts/eval-run.mjs), one report per generation backend. It serialises the scorer's inputs and outputs (verification/eval-scoring.js — scoreCase / scoreCaseTriage / computeCaseSetMetrics / enforceReleaseThresholds) plus the positional-stability verdicts (verification/positional-stability.js) and, for the authoritative live run, the clinician rubric sign-off. This report is the evidence the release gate reads: release_gate.release_ready is the blocking signal FL-52 (production promotion) depends on. SCORING-STORE FIREWALL: the dimension evidence here is derived SCORER-SIDE from sealed nodes 10-13; those nodes never entered any ContextPacket or trunk. This report contains only derived scores + provenance, never sealed-node content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "rubric_version",
+    "backend",
+    "mode",
+    "generated_at_utc",
+    "cases",
+    "positional_stability",
+    "metrics",
+    "release_gate"
+  ],
+  "properties": {
+
+    "schema_version": {
+      "const": "1.0.0",
+      "description": "The EvalRunReport schema version. Bump only under an approved plan; keep in lockstep with verification/eval-report-schema.js."
+    },
+
+    "run_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Unique identifier for this eval run. Format: 'eval-<epoch-ms>-<random-7-chars>'. One run_id per (backend) invocation; the two backend reports of a single certification share a common prefix supplied by the harness.",
+      "examples": ["eval-1721448000000-a3f7b2c"]
+    },
+
+    "rubric_version": {
+      "type": "string",
+      "minLength": 3,
+      "description": "The version tag of docs/grounding/eval-rubric.md that governed the coverage thresholds, the question-matcher threshold, the judge prompt, and the dimension weights for this run. An authoritative live run MUST cite a rubric_version that carries a recorded clinician sign-off (clinician_signoff_ref).",
+      "examples": ["eval-rubric:v0.1", "eval-rubric:v1.0"]
+    },
+
+    "clinician_signoff_ref": {
+      "type": "string",
+      "minLength": 6,
+      "description": "Optional. Reference to the recorded clinician sign-off of rubric_version (the semantic-rubric approval FL-40 requires). REQUIRED for an authoritative live run (mode='live'); the harness refuses to arm the release gate on a live run without it. Absent for replay/CI runs, which validate the machinery but never certify a release."
+    },
+
+    "backend": {
+      "type": "string",
+      "enum": ["claude", "medgemma"],
+      "description": "The generation backend (HEYDOC_LLM_BACKEND) whose Step-4 output this run scored. Certification requires BOTH backends to pass independently (positional bias is a per-model property), so a full certification is two EvalRunReports — one per backend — and the gate is the AND of the two."
+    },
+
+    "mode": {
+      "type": "string",
+      "enum": ["replay", "live"],
+      "description": "The eval-run mode. 'replay' drives generation and the communication judge from recorded prompt-hash-keyed fixtures (verification/llm-replay.js) — deterministic, secret-free, the CI-blocking path. 'live' calls the real backend once (secrets-gated, staging only) to record the authoritative run and to (re)capture the replay fixtures. NOTE: this is the EVAL mode and is distinct from the pipeline ContextPacket mode (mock/dry_run/live)."
+    },
+
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of when this eval run executed."
+    },
+
+    "case_set_ref": {
+      "type": "string",
+      "description": "Optional. The corpus snapshot / dataset_version the run covered (for reproducibility — which attested cases at which content hashes).",
+      "examples": ["case-corpus-v2:2026-07-20"]
+    },
+
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One CaseResult per attested case run through the pipeline. Mirrors the input/output of scoreCase()/scoreCaseTriage() so the report is a faithful serialisation of the scorer, not a re-derivation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "is_t5",
+          "turns",
+          "dimensions",
+          "triage",
+          "verification_pass",
+          "ungrounded",
+          "fully_scored",
+          "case_score",
+          "clinical_pass"
+        ],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "The attested case directory id, e.g. 'SPEC-CARD-01-00023'."
+          },
+          "difficulty_tier": {
+            "type": "string",
+            "description": "Optional. Case difficulty band from 00_case_envelope.case_metadata.difficulty_tier (distinct from the safety tier T0-T5)."
+          },
+          "diagnosis_category": {
+            "type": "string",
+            "description": "Optional. From 00_case_envelope.case_metadata.diagnosis_category — for per-category aggregation."
+          },
+          "is_t5": {
+            "type": "boolean",
+            "description": "True when this is a safety-tier-5 (emergency) case. Drives the zero-tolerance under-triage gate in enforceReleaseThresholds()."
+          },
+          "turns": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The multi-turn consult transcript metadata (NOT the raw patient text — audit anchors only). One entry per trunk turn driven by verification/patient-simulator.js.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["turn", "trunk_id", "candidate_output_hash", "verification_pass"],
+              "properties": {
+                "turn": { "type": "integer", "minimum": 0, "description": "0-indexed turn number in the consult." },
+                "trunk_id": {
+                  "type": "string",
+                  "enum": ["1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0"],
+                  "description": "Which trunk produced this turn's output."
+                },
+                "candidate_output_hash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "description": "The medicolegal hash of this turn's candidate output, carried through from the VerificationReport. Preserved verbatim — never recomputed here."
+                },
+                "verification_pass": {
+                  "type": "boolean",
+                  "description": "The VerificationReport pass gate for this turn. A case's verification_pass is the AND across its turns."
+                }
+              }
+            }
+          },
+          "dimensions": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "The four scored clinical dimensions fed to scoreCase() (safety_netting is taken from `triage`, per eval-scoring.js). Weights live in the rubric, not here. history_taking / diagnostic_reasoning / management_quality are deterministic COVERAGE graders; communication is the LLM-JUDGE.",
+            "required": ["history_taking", "diagnostic_reasoning", "management_quality", "communication"],
+            "properties": {
+              "history_taking": { "$ref": "#/$defs/coverage_dimension" },
+              "diagnostic_reasoning": { "$ref": "#/$defs/coverage_dimension" },
+              "management_quality": { "$ref": "#/$defs/coverage_dimension" },
+              "communication": { "$ref": "#/$defs/judge_dimension" }
+            }
+          },
+          "triage": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "The safety-netting tier result from classifyTier()/scoreCaseTriage() against the sealed 13_safety_netting_node (scorer-side). This is dimension 'safety_netting' (weight 0.15) AND the source of the critical-under-triage release blocker.",
+            "required": ["classification", "score", "under_triage", "critical_under_triage"],
+            "properties": {
+              "classification": {
+                "type": "string",
+                "enum": [
+                  "correct",
+                  "acceptable",
+                  "minor_over_triage",
+                  "moderate_over_triage",
+                  "minor_under_triage",
+                  "serious_under_triage",
+                  "critical_under_triage"
+                ],
+                "description": "The tier classification band from classifyTier()."
+              },
+              "score": { "type": "number", "minimum": 0, "maximum": 1, "description": "The safety-netting dimension score [0,1]." },
+              "ai_tier": { "type": "string", "pattern": "^T[0-5]$", "description": "Optional. The AI Doctor's assigned safety tier for audit." },
+              "under_triage": { "type": "boolean" },
+              "critical_under_triage": { "type": "boolean", "description": "Auto-fail + release blocker when true." },
+              "over_triage": { "type": "boolean" }
+            }
+          },
+          "verification_pass": {
+            "type": "boolean",
+            "description": "AND of the turn-level VerificationReport pass gates. FALSE ⇒ the case is ungrounded and receives no clinical score (verification is a gate, not a scored dimension)."
+          },
+          "ungrounded": { "type": "boolean", "description": "Mirror of scoreCase(): verification_pass !== true." },
+          "fully_scored": {
+            "type": "boolean",
+            "description": "True only when all four dimensions + triage produced numeric scores. A replay/pre-live run with stubbed dimensions is fully_scored=false — the gate reports but does not ARM (see release_gate.armed)."
+          },
+          "case_score": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "The weighted case score [0,1], or null when not fully_scored. case_score ≥ 0.70 (+ no auto-fail + verification pass + no critical under-triage) ⇒ clinical_pass."
+          },
+          "clinical_pass": { "type": "boolean", "description": "Whether this case passed per the case-pass rule." },
+          "auto_fail": {
+            "type": "boolean",
+            "description": "Optional. True when an evaluation-guide / node-12-rubric auto-fail condition fired (e.g. a management error-of-commission), forcing clinical_pass=false regardless of score."
+          }
+        }
+      }
+    },
+
+    "positional_stability": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The M3 positional-stability result (operator ruling 2026-07-15) — EVALUATION-ONLY. checkPositionalStability() is run as a BLOCKING threshold over the deliberately-selected long-list cases. A per-model property, so it is measured per backend.",
+      "required": ["overall", "long_list_case_ids", "results"],
+      "properties": {
+        "overall": {
+          "type": "string",
+          "enum": ["stable", "unstable", "indeterminate", "not_applicable"],
+          "description": "Aggregate verdict. 'unstable' on ANY long-list case blocks release; 'indeterminate' on a long-list case also blocks (the harness refuses to certify what it cannot judge); 'not_applicable' only when the run contains no qualifying long-list cases — which is itself a coverage gap the harness flags (the M3 ruling REQUIRES long-list cases)."
+        },
+        "long_list_case_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The case_ids selected as long-list (long differential / polypharmacy / long disclosure list). MUST be non-empty for a certifying run — an empty set means the run only certified the easy shape."
+        },
+        "results": {
+          "type": "array",
+          "description": "Per-case positional-stability verdicts from checkPositionalStability().",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["case_id", "verdict"],
+            "properties": {
+              "case_id": { "type": "string" },
+              "verdict": { "type": "string", "enum": ["stable", "unstable", "indeterminate", "not_applicable"] },
+              "reason": { "type": "string" },
+              "permutations": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The case-set aggregate from computeCaseSetMetrics() — the exact input to enforceReleaseThresholds(). Serialised verbatim so the gate decision is reconstructable.",
+      "required": [
+        "n",
+        "grounding_compliance",
+        "fully_scored",
+        "clinical_pass_rate",
+        "critical_under_triage_count",
+        "t5_critical_under_triage_count"
+      ],
+      "properties": {
+        "n": { "type": "integer", "minimum": 1, "description": "Total cases in the run." },
+        "grounding_compliance": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of cases with verification_pass. Gate: ≥ 0.90."
+        },
+        "fully_scored": { "type": "integer", "minimum": 0, "description": "Count of fully_scored cases. armed = fully_scored > 0." },
+        "clinical_pass_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "passes / fully_scored. Gate (when armed): ≥ 0.80."
+        },
+        "critical_under_triage_count": { "type": "integer", "minimum": 0, "description": "Any-tier critical under-triage count. Gate: 0." },
+        "t5_critical_under_triage_count": { "type": "integer", "minimum": 0, "description": "T5 (emergency) critical under-triage count. Zero-tolerance gate: 0." }
+      }
+    },
+
+    "release_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The output of enforceReleaseThresholds(metrics). release_ready is the blocking signal. armed=false (no fully_scored case — e.g. a replay run with stubbed dimensions) means the gate REPORTS but cannot certify; the two hard safety conditions (grounding, critical under-triage) still block even when unarmed.",
+      "required": ["release_ready", "armed", "blocking_reasons"],
+      "properties": {
+        "release_ready": { "type": "boolean", "description": "armed AND zero blocking_reasons. The single signal scripts/eval-run.mjs exits non-zero on when false in a gating context." },
+        "armed": { "type": "boolean", "description": "metrics.fully_scored > 0. The clinical-pass-rate condition only bites when armed." },
+        "blocking_reasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 5 },
+          "description": "Human-readable block reasons from enforceReleaseThresholds(). Empty when nothing blocks."
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "coverage_dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A deterministic COVERAGE-scored dimension: the trunk output / consult transcript is matched against the sealed grading node (10/11/12 or the elicited-disclosure set from 02) scorer-side. Fully reproducible — the evidence is the receipt-equivalent.",
+      "required": ["score", "method", "evidence"],
+      "properties": {
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "[0,1], or null when the dimension was stubbed (replay/pre-live)." },
+        "method": { "const": "coverage" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["matched", "missed", "total"],
+          "properties": {
+            "matched": { "type": "array", "items": { "type": "string" }, "description": "Ids/labels of required items the output covered (e.g. DI-001, a must_include_item, a differential dx)." },
+            "missed": { "type": "array", "items": { "type": "string" }, "description": "Required items the output failed to cover." },
+            "total": { "type": "integer", "minimum": 0, "description": "Denominator: required items in scope for this dimension/case." },
+            "penalised": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional. Error-of-commission items the output WRONGLY included (e.g. a contraindicated drug from node-12 errors_of_commission). A non-empty list can trigger case-level auto_fail per the rubric."
+            }
+          }
+        }
+      }
+    },
+    "judge_dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The communication dimension (weight 0.05) scored by the LLM-JUDGE. Eval-side and receipt-gated: no judge_receipt ⇒ no score. Replayable via prompt_hash; the verdict is quantised to a tolerance band so judge variance cannot flip a near-threshold pass/fail.",
+      "required": ["score", "method", "judge_receipt"],
+      "properties": {
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "[0,1] quantised score, or null when stubbed." },
+        "method": { "const": "judge" },
+        "judge_receipt": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Mirrors the Receipt core (receipt.schema.json: request_id/timestamp_utc/upstream/mode) with eval-specific fields. 'mode' here uses the EVAL enum (replay/live), and 'upstream' is the judge model id.",
+          "required": ["request_id", "timestamp_utc", "upstream", "mode", "prompt_hash", "verdict"],
+          "properties": {
+            "request_id": { "type": "string", "minLength": 6 },
+            "timestamp_utc": { "type": "string", "format": "date-time" },
+            "upstream": { "type": "string", "description": "The judge model id, e.g. 'claude-opus-4-8'." },
+            "mode": { "type": "string", "enum": ["replay", "live"] },
+            "prompt_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$", "description": "Hash of the exact judge prompt — the replay key." },
+            "verdict": { "type": "string", "description": "The judge's raw categorical verdict before quantisation (e.g. 'clear', 'adequate', 'confusing')." }
+          }
+        }
+      }
+    }
+  },
+
+  "_integration_notes": {
+    "produced_by": [
+      "verification/eval-harness.js via scripts/eval-run.mjs — one report per backend"
+    ],
+    "consumed_by": [
+      "scripts/eval-run.mjs — exits non-zero when release_gate.release_ready is false in a gating context",
+      ".github/workflows/staging-eval.yml — replay-mode run blocking on every PR; live-mode job in staging",
+      "Medicolegal audit — the authoritative live run is persisted append-only (WORM); turn candidate_output_hash chains to the VerificationReport ledger"
+    ],
+    "scorer_source": "verification/eval-scoring.js — this report serialises scoreCase/scoreCaseTriage/computeCaseSetMetrics/enforceReleaseThresholds I/O verbatim",
+    "firewall_note": "Sealed nodes 10-13 are read SCORER-SIDE only (verification/eval-scoring.js + the dimension graders). They never enter a ContextPacket or a trunk. This report carries DERIVED scores + item ids/labels as evidence, never sealed-node content.",
+    "rubric_source": "docs/grounding/eval-rubric.md — coverage thresholds, question-matcher threshold, judge prompt, dimension weights; clinician-signed for a certifying run"
+  }
+}

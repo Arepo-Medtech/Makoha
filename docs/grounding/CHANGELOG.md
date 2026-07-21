@@ -4,6 +4,26 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: live clinical eval harness built (Phases 1–7) + rubric v1.0 clinician-signed (2026-07-21)
+
+**What this adds.** The synthetic-case evaluation goes from *scorer core* (L10, 2026-07-11) to a *live multi-turn harness that produces a release gate*. Built in seven plan-gated phases, each with its own contract suite (all wired into `npm test`; full suite + `verification` green throughout):
+
+- **Contract (Phase 1)** — `mcp/schemas/eval-run-report.schema.json` + `verification/eval-report-schema.js` (fail-loud zod). One report per backend, serialising the scorer I/O + positional verdicts + release gate.
+- **Patient simulator + firewall proof (Phase 2)** — `verification/patient-simulator.js` drives a deterministic multi-turn consult across all 7 disclosure gates, reading nodes **01/02 ONLY** and hard-stopping on any sealed node; `verification/eval-text-match.js` is the shared deterministic matcher. `test/contract-eval-firewall.js` proves the sealed diagnosis/drug names never reach the patient's mouth.
+- **Dimension graders (Phase 3)** — `verification/eval-dimension-graders.js`: history (elicited 02), diagnostic (sealed 10), management (sealed 12) — the last with a **negation-aware error-of-commission AUTO-FAIL** ("give GTN" fails, "do not give GTN" doesn't) — plus the triage wrapper over `classifyTier`.
+- **Communication judge + replay (Phase 4)** — `verification/eval-judge.js` is the ONE scoring LLM (weight 0.05), receipt-gated + 3-band quantised; `verification/llm-replay.js` is a prompt-hash record/replay layer, **fail-closed on a miss**.
+- **Orchestrator + packet change (Phase 5)** — `verification/eval-harness.js` drives each case multi-turn through the REAL pipeline with a replay-wrapped generator, across **both backends (claude + medgemma)**, emitting a schema-valid EvalRunReport each. Added an **additive, optional `conversation[]`** field to the ContextPacket (schema + zod + pipeline + trunk-pipeline) so the model reads the transcript as CONTEXT — **byte-identical when absent** (whole existing suite stayed green), input-context-not-proof, firewall-clean by construction.
+- **Positional stability (Phase 6)** — `verification/eval-positional.js` wires the M3 `checkPositionalStability` as a **blocking** threshold over long-list cases (N=8; a corpus scan confirms **343 of 709 attested cases qualify** — the M3 coverage requirement is genuinely met), folded into `release_gate`. CLI `--positional-sample N` is the sanctioned cost canary (logs the drop).
+- **Gate armed + staging CI (Phase 7)** — `scripts/eval-run.mjs` `--gate` exits non-zero on `!release_ready`, requires **both** backends, and SKIPs green when no fixtures exist yet (armed-but-inert, MIRAGE idiom). `.github/workflows/staging-eval.yml`: replay gate blocking on every PR + a manual `eval-live-staging` recording job (staging env, secrets-injected).
+
+**Rubric signed.** `docs/grounding/eval-rubric.md` promoted **v0.1 draft → `eval-rubric:v1.0` (SIGNED, reviewer KL, 2026-07-21)** — approved as-is including two knowingly-accepted limitations (the §3.3 commission negation heuristic, the §4 no-synonym-table matcher), both hardenable later without re-gating. Reviewer AHPRA MED0001857758 (as recorded for the pharmacology datastore sign-off). The CLI now stamps `eval-rubric:v1.0`.
+
+**Register moves.** `clinical-eval-scorer` PARTIAL → the L10 "REMAINING" is now built; only the operator/infra tail remains (authoritative live run to record fixtures, MedGemma reachability, CLI signoff-ref enforcement). `positional-stability-unchecked` → wired as a blocking eval threshold (was inert). NEW `context-packet-conversation-field` (COMPLETE/resolved, Low; flagged for regulatory intended-use traceability). R-42 updated. **Moves no release blocker** — it arms the gate FL-52 depends on; the gate bites the day fixtures are recorded.
+
+**Invariants.** Scoring-store firewall proven at the eval path's own boundary; per-turn `candidate_output_hash` preserved; verifier still gates every turn (conversation relaxes nothing); no new persistence path; no new dependency. Data/schemas/servers otherwise untouched.
+
+---
+
 ## Case Corpus v2: HMO (Haematology & Oncology) ingested — net-new coverage, 659 → 709 (2026-07-18)
 
 **What this adds.** The 14th tranche-1 source folder — Haematology & Oncology (50 SOAP notes, HMO-001…050) — transformed to v2 telehealth-reprojected casebundles and ingested. **Net-new coverage** (a haem/onc domain not in the base 303), additive: the corpus grows **659 → 709**. Default bucket `HAEMAT` (haematological entity) or `ONCO` (solid-organ malignancy / treatment complication), sub-routed to a specific organ-system code where one solid entity dominates (`DERM` melanoma/SCC/BCC, `RESP` lung/radiation-pneumonitis, `GI` colorectal/gastric/oesophageal/pancreatic/HCC, `URO` prostate, `OBS`/`REPRO` ovarian/endometrial/cervical, `CARD` anthracycline cardiotoxicity); `--reseq` assigned real seqs (by-construction collisions resolved). Batched 13/13/12/12 — all 50 reached `OK_DRY_RUN`, zero content failures.

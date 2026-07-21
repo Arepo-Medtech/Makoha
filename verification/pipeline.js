@@ -163,6 +163,11 @@ export function contextInjection(plan, receipts, meta = {}) {
     trunk_id: meta.trunk_id,
     assembled_at_utc: now,
     mode,
+    // FL-40 multi-turn: the transcript is added ONLY when a caller supplies it,
+    // so every non-conversational packet stays byte-identical (the field key is
+    // absent, not an empty array). Input context, not proof — output is still
+    // gated downstream. Firewall-clean by construction (never sealed content).
+    ...(Array.isArray(meta.conversation) ? { conversation: meta.conversation } : {}),
   };
 }
 
@@ -322,7 +327,7 @@ export async function runPipeline(options = {}) {
   }
 
   // Step 3 — Context injection. Gate the ContextPacket before generation sees it.
-  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content }));
+  const packet = validateContextPacket(contextInjection(plan, receipts, { run_id, trunk_id: trunk, mode: context_mode, raw_investigations: rawInvestigations, case_content: options.case_content, conversation: options.conversation }));
 
   // D-A-3 — HELD GUIDANCE MUST NEVER REACH THE MODEL. Runs HERE, between the packet being sealed and
   // generation seeing it, because this is the last moment the two planes are both in scope. Held text

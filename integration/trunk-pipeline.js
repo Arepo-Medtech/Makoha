@@ -50,7 +50,7 @@ const TRUNK_CONSTRAINTS = {
  * @returns {Promise<{ pass: boolean, report: object, packet: object, verification: object }>}
  */
 export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
-  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts, raisedFlags, patientAnswers, abcdeInput, generateCandidate } = options;
+  const { candidateOutput, sessionRef, writeArtifacts = true, useMcp, pharmIntent, resolvedFacts, raisedFlags, patientAnswers, abcdeInput, generateCandidate, caseContent, conversation } = options;
   const constraints = TRUNK_CONSTRAINTS[trunkId] ?? ["no diagnosis", "no dosages"];
 
   const result = await runPipeline({
@@ -66,6 +66,10 @@ export async function runTrunkWithGrounding(trunkId, userInput, options = {}) {
     abcde_input: abcdeInput,
     // Step-4 generation hook (LIVE_PLAN L3): sees ONLY the sealed packet.
     generate_candidate: generateCandidate,
+    // FL-40: case presentation facts (firewall allow-listed) + the multi-turn
+    // transcript. Both additive — absent on non-eval calls (byte-identical).
+    case_content: caseContent,
+    conversation,
   });
 
   // Override packet constraints with trunk-specific ones

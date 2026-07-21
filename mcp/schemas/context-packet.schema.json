@@ -274,6 +274,32 @@
         ["IHI lookup failed — patient identity not verified; cannot proceed in live mode"],
         ["Required terminology receipt missing for Trunk 7.0 code lock-in"]
       ]
+    },
+
+    "conversation": {
+      "type": "array",
+      "description": "Optional. The bounded, encounter-scoped multi-turn transcript the trunk LLM may read as CONTEXT — the patient's own narrative in this encounter plus the AI Doctor's prior turns. Added for the FL-40 live multi-turn eval, but part of the packet contract for any multi-turn consult. IMPORTANT — this is INPUT CONTEXT, not proof: it relaxes no output rule. The model may read the conversation to understand what has been said, but the frozen verifier + detectors still gate every output, so no code, dose, lab value, guideline, identity, or operational fact may be minted from conversational text (trust boundary 1). It is firewall-clean by construction: assembled only from node 01 presentation dialogue, node 02 exchange dialogue, and the AI's own outputs — NEVER sealed scoring nodes (10-13). A patient-stated number here ('my BP was 150/95') is a free-text utterance, not a fact: it never enters facts[] or the lab path (same posture as the string-preserving objective_data policy). Absent on all non-conversational runs, so those packets are byte-identical to before this field existed.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "turn", "text"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["patient", "assistant"],
+            "description": "Who spoke this turn. 'patient' = the patient/caregiver (or, in eval, the deterministic patient simulator); 'assistant' = the AI Doctor's prior turn."
+          },
+          "turn": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-indexed turn number within the consult."
+          },
+          "text": {
+            "type": "string",
+            "description": "The utterance. Patient utterances are the patient's own words; assistant utterances are prior AI Doctor output. Never contains sealed-node content."
+          }
+        }
+      }
     }
 
   },

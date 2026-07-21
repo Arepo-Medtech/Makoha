@@ -110,6 +110,99 @@ the server — so `HEYDOC_LLM_KEY_REF=aws-sm:…` resolves at runtime via the
 > `s3-object-lock` adapter; provision the bucket (prerequisite 4) and set the
 > `HEYDOC_WORM_*` env to use it in staging or production.
 
+## Medicolegal WORM audit storage (§9 B1 / R-39) — provisioning runbook
+
+The immutable, tamper-proof store for the **four** hash-chained medicolegal chains
+— the audit ledger, the clinician gate records, the PPP-TTT triage ledger, and the
+consent records. Adapter: [`integration/audit-substrates/s3-object-lock.js`](../integration/audit-substrates/s3-object-lock.js).
+**Operator choice: AWS S3 Object Lock, `COMPLIANCE` mode, 7-year retention, region
+`ap-southeast-2`.** The adapter sets retention *per object*; the bucket must be
+created with Object Lock enabled. This is a **production release blocker** — until
+it is provisioned the medicolegal trail is not durable. Selecting the substrate
+registers **all four** chains at boot; a missing bucket or retention **fails the
+container closed** (it never serves, and never silently falls back to the
+non-WORM `local` store).
+
+> ⚠️ **`COMPLIANCE` mode is irreversible.** Objects cannot be deleted or
+> overwritten — **even by the account root** — until their 7-year retain date.
+> Use a **dedicated** bucket. Do not point this at shared storage, and do not
+> rehearse against it — every write is locked for 7 years.
+
+**Credentials never live in the repo, the env, or with the agent.** S3 + Secrets
+Manager access is granted to the App Runner **instance role** (IAM); the AWS CLI
+in the image assumes that role. No `AWS_ACCESS_KEY_ID`/secret is ever set.
+
+### Step 1 — create the Object-Lock bucket (once)
+```sh
+# Object Lock REQUIRES versioning; --object-lock-enabled-for-bucket enables both.
+# Object Lock CANNOT be turned on after creation — it must be set at create time.
+aws s3api create-bucket \
+  --bucket <WORM_BUCKET> --region ap-southeast-2 \
+  --create-bucket-configuration LocationConstraint=ap-southeast-2 \
+  --object-lock-enabled-for-bucket
+# (optional belt-and-braces default; the adapter's per-object retention is authoritative)
+aws s3api put-object-lock-configuration --bucket <WORM_BUCKET> \
+  --object-lock-configuration 'ObjectLockEnabled=Enabled,Rule={DefaultRetention={Mode=COMPLIANCE,Years=7}}'
+```
+
+### Step 2 — grant the instance role, scoped to this bucket
+Attach to the App Runner **instance role** (the same role that reads the secrets):
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:PutObjectRetention", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::<WORM_BUCKET>/*" },
+    { "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::<WORM_BUCKET>" }
+  ]
+}
+```
+
+### Step 3 — bake the AWS CLI into the image
+The substrate writes via a **blocking CLI call** (the audit-store seam is
+synchronous; a fire-and-forget SDK write could silently drop a record). Build with:
+```sh
+docker build --build-arg INSTALL_AWS_S3=true ...   # build-and-push.sh passes this
+```
+An absent CLI throws an actionable install error at boot — never a silent failure.
+
+### Step 4 — select + configure the substrate (App Runner env)
+`apprunner-create.sh` sets these; listed so they can be verified:
+```sh
+HEYDOC_AUDIT_SUBSTRATE=s3-object-lock        # selects WORM for the audit ledger
+HEYDOC_GATE_RECORD_SUBSTRATE=s3-object-lock  # …and the clinician gate records
+                                             # (either selector registers ALL FOUR chains)
+HEYDOC_WORM_BUCKET=<WORM_BUCKET>
+HEYDOC_WORM_RETENTION_YEARS=7                # REQUIRED — never defaulted in code (surface, don't decide)
+HEYDOC_WORM_MODE=COMPLIANCE                  # default; GOVERNANCE allowed but not the operator choice
+HEYDOC_AUDIT_RETENTION=7y                    # human-readable label for auditRetentionPolicy() — keep consistent with the 7 above
+AWS_REGION=ap-southeast-2
+```
+Boot order ([`deploy/bootstrap.mjs`](bootstrap.mjs), the App Runner StartCommand):
+register the `aws-sm` secrets backend → **register the WORM substrate on all four
+seams (BEFORE the server starts, so the very first write lands on the immutable
+backend)** → start the portal/consult server.
+
+### Step 5 — verify
+```sh
+npm run verify:worm      # scripts/worm-integrity.mjs — hash-chain integrity across the chains
+```
+Then `GET https://<ServiceUrl>/healthz` → `{"ok":true,"mode":"live"}`. FL-11
+(2026-07-16) live-validated all four chains actually write to a real Object-Lock
+bucket. The eval-run reports (FL-40) also land here in production — the authoritative
+live eval is persisted append-only to this same store.
+
+### Guardrails (do not weaken)
+- **Retention is surfaced, not decided** — `HEYDOC_WORM_RETENTION_YEARS` is
+  operator-set and unset **fails closed**; no period is hardcoded. Changing it is a
+  regulatory decision, not an engineering one.
+- **Never** switch a production deploy to `HEYDOC_AUDIT_SUBSTRATE=local` — that
+  store is ephemeral on App Runner and non-WORM.
+- Record VALUES are never logged (medicolegal + PHI); only counts/keys.
+
 ## Open operator decisions (L2 remainder)
 - **R-39 WORM substrate — resolved (§9 B1):** operator chose S3 Object Lock,
   COMPLIANCE, 7-year retention; the `s3-object-lock` adapter is built and

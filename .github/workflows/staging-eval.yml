@@ -1,0 +1,82 @@
+name: Staging Eval (FL-40)
+
+# The live clinical eval RELEASE GATE (FL-40). Two jobs:
+#   - eval-gate-replay: BLOCKING on every PR/push. Runs the eval in REPLAY mode
+#     over committed fixtures — deterministic, no secrets. Until Phase 8 records
+#     and commits fixtures it SKIPS green (armed but inert; it never fabricates a
+#     pass), the same idiom as the MIRAGE / opencds gates in ci.yml.
+#   - eval-live-staging: MANUAL (workflow_dispatch) only. The authoritative live
+#     recording run — needs live LLM creds + a staging environment, so it never
+#     runs on a PR. It records the replay fixtures the blocking job then consumes.
+#
+# The gate is the AND of BOTH backends (claude + medgemma): release requires every
+# backend to be release_ready (threshold gate AND M3 positional gate).
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max cases to record (live run)"
+        required: false
+        default: "45"
+      positional_sample:
+        description: "Cap positional pass to first N long-list cases (blank = all)"
+        required: false
+        default: ""
+
+jobs:
+  # BLOCKING on PR/push — deterministic replay over committed fixtures.
+  eval-gate-replay:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      # Release gate — REPLAY mode, blocking. Exits 1 if any backend that ran is
+      # not release_ready; exits 0 with a loud SKIP if no fixtures are committed
+      # yet (Phase 8). Never fabricates a pass.
+      - name: Eval release gate (replay, blocking)
+        run: npm run eval:gate
+
+  # MANUAL live recording — needs creds + staging env; never runs on a PR.
+  eval-live-staging:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: staging # gated: secrets + required reviewers configured on this environment
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      # Live recording run over synthetic patients only. Records the replay
+      # fixtures + writes EvalRunReports. Secrets are injected by the staging
+      # environment (never committed); the harness fail-closes without them.
+      - name: Eval live record (staging, synthetic patients only)
+        env:
+          HEYDOC_MODE_DEFAULT: staging
+          HEYDOC_LLM_LIVE: "1"
+          # ANTHROPIC_API_KEY / MedGemma creds injected from the staging environment secrets.
+        run: |
+          node scripts/eval-run.mjs --mode live --gate \
+            --limit "${{ github.event.inputs.limit }}" \
+            ${{ github.event.inputs.positional_sample && format('--positional-sample {0}', github.event.inputs.positional_sample) || '' }}
+      - name: Upload eval run reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-run-reports
+          path: verification/data/eval-runs/
