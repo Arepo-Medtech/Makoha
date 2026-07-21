@@ -3,7 +3,7 @@
 **To:** Head of Engineering
 **From:** Engineering agent (Claude Code)
 **Date:** 2026-07-07
-**Repo:** `kenleefreo/breath-ezy` · default branch `main` @ `a6f42f5` (PRs #1–#32)
+**Repo:** `Arepo-Medtech/Makoha` · default branch `main` @ `a6f42f5` (PRs #1–#32)
 **Status of this work:** Mock/development build + governed external-capability harvest, all green. **Nothing is wired to a patient-facing path.**
 
 ---

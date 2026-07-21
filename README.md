@@ -1,6 +1,6 @@
 # HeyDoc — AI Doctor Grounding Infrastructure
 
-**Repository:** `kenleefreo/heydoc`  
+**Repository:** `Arepo-Medtech/Makoha`  
 **Build date:** 2026-06-23  
 **Schema version:** 1.0.0  
 **Digital Tablet version:** 1.0 (FHIR R4 4.0.1 · SNOMED CT AU 20240301 · ICD-10-AM 12th Ed · AU Core 0.3.0)
