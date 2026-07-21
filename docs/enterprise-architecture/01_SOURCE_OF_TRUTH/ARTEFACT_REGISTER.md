@@ -50,5 +50,6 @@
 | Two-Person Collaboration Operating Model | Governance | Collaboration baseline | `COLLABORATION.md` | ACTIVE |
 | Repository Start Guide | Governance | Collaboration baseline | `../../PROJECT_START_HERE.md` | ACTIVE |
 | Repository Agent Instructions | Governance | Collaboration baseline | `../../AGENTS.md` | ACTIVE |
+| Shared ChatGPT Project Instructions | Governance | Collaboration baseline | `CHATGPT_PROJECT_INSTRUCTIONS.md` | ACTIVE — PASTE INTO SHARED PROJECT SETTINGS |
 
 All future artefacts must be added here in the same kickoff that creates them.
