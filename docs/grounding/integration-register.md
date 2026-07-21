@@ -5,7 +5,7 @@
 **Generated:** 2026-07-06 (FLOW_PLAN milestone H0)
 **Source of truth:** [`integration/harvest-manifest.json`](../../integration/harvest-manifest.json) — this Markdown is the **human-readable mirror**; when the two disagree, the JSON manifest wins and this file is the defect (same rule as the `.claude/` derived docs). The gate that enforces the manifest is [`scripts/check-licence-clearance.mjs`](../../scripts/check-licence-clearance.mjs) (`npm run licence:check`).
 
-This register is the plug-in artifact of FLOW_PLAN §6.2 — the allow-list of external build-elements considered for harvest into `kenleefreo/breath-ezy`, keyed by the Build-Elements Register `Ref`. **Being on this list is a prerequisite for harvesting a repo, not authorisation to harvest it** — every wrap/fork/pattern-lift is separately plan-gated per `CLAUDE.md`.
+This register is the plug-in artifact of FLOW_PLAN §6.2 — the allow-list of external build-elements considered for harvest into `Arepo-Medtech/Makoha`, keyed by the Build-Elements Register `Ref`. **Being on this list is a prerequisite for harvesting a repo, not authorisation to harvest it** — every wrap/fork/pattern-lift is separately plan-gated per `CLAUDE.md`.
 
 > **H0 authorises NO integration code.** This milestone builds the licence + identity gate so that H1+ harvest has something to pass. Nothing here is wired yet.
 

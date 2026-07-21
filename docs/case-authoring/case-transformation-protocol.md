@@ -5,7 +5,7 @@
 - Protocol version: `case-transform-protocol:v2.0.0:2026-07-16`
 - Companion (attach alongside this file): `digital_tablet_omnibus.json` (`Digital Tablet — Omnibus HL7 FHIR R4 Patient Record Schema` v1.1 — the descent expansion)
 - **v2.0.0 (Case Corpus v2):** the DESCENT now matters as much as the ascent — a case is a clinical *record*, not just an intake. New in v2: the descent-completeness discipline (§4a), the three warrants (§1b + §8), the versioned taxonomy, and the "what this corpus is / is not" page (§1b). A v2 transform REACHES FOR the management + safety-netting map, captures codes aggressively as derived, and never lets a tool author the answer.
-- Target repo: `kenleefreo/breath-ezy` — case-set at `data/cases/<CASE_ID>/`
+- Target repo: `Arepo-Medtech/Makoha` — case-set at `data/cases/<CASE_ID>/`
 - Target schema version: case-set node schemas `1.0.0` (`data/schemas/*.schema.json`)
 
 ---
