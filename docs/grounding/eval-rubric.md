@@ -1,9 +1,12 @@
 # Eval Rubric — live clinical evaluation scoring
 
-> **Citation:** `eval-rubric:v1.0:2026-07-21` — **SIGNED (clinician-approved). Supersedes the v0.1 draft.**
-> Sign-off recorded in §8. v0.1 (2026-07-20) was the draft; v1.0 is the same content
-> approved as-is, including the two limitations that were surfaced and accepted (the
-> §3.3 commission-detection negation heuristic and the §4 deterministic matcher) — see §8.
+> **Citation:** `eval-rubric:v1.1:2026-07-22` — **SIGNED (clinician-approved).** The
+> current authoritative rubric. v1.1 recalibrates the UNDER-triage scoring of v1.0 to
+> level-of-care (§9, signed 2026-07-22); it inherits v1.0 §1–§6 unchanged. Predecessors:
+> `eval-rubric:v1.0:2026-07-21` (SIGNED, §8 — still valid for runs recorded before
+> 2026-07-22) supersedes the v0.1 draft (2026-07-20). v1.0 was approved as-is including
+> the two accepted limitations (the §3.3 commission-detection negation heuristic and the
+> §4 deterministic matcher) — see §8.
 > Governs FL-40's live clinical eval harness. This document is the *semantic rubric*:
 > the coverage thresholds, the question-matcher threshold, the judge prompt, and the
 > dimension weights. An **authoritative live run must cite a `rubric_version` that
@@ -193,12 +196,13 @@ This sign-off makes `eval-rubric:v1.0` an authoritative-run-eligible rubric: an
 
 ---
 
-## 9. v1.1 — scope/acuity recalibration (PROPOSED — PENDING KL SIGN-OFF)
+## 9. v1.1 — scope/acuity recalibration (SIGNED — clinician-approved)
 
-> **NOT YET SIGNED.** Drafted 2026-07-21 for KL review. Until KL signs this section,
-> `eval-rubric:v1.1` is **not** authoritative-run-eligible; live runs continue to
-> cite the signed `v1.0`. Do not stamp `clinician_signoff_ref` against v1.1 until
-> the signature line below is completed.
+> **SIGNED 2026-07-22 (UTC).** Reviewed and attested by KL (sign-off block below).
+> `eval-rubric:v1.1` is now **authoritative-run-eligible**: an `EvalRunReport` may
+> cite it and set `clinician_signoff_ref: signoff:eval-rubric:v1.1:KL:2026-07-22`.
+> v1.1 recalibrates the UNDER-triage bands of v1.0 only; v1.0 §1–§6 remain in force
+> unchanged, and v1.0 stays a valid citation for runs recorded before this date.
 
 **Why.** The v1.0 tier scoring graded every case as exact-tier, zero-tolerance
 autonomous triage. That posture over-fits a high-acuity, autonomous product. This
@@ -230,4 +234,13 @@ LEVEL OF CARE a presentation needs, not the exact tier. (Operator directive
 - `under_triage_critical_threshold` is retained per case for audit but no longer
   sets the gate — the care-level floors do.
 
-**KL sign-off:** ______________________  (date: __________)  — leave blank until reviewed.
+**Sign-off block — v1.1**
+
+| Field | Value |
+|---|---|
+| Rubric version | `eval-rubric:v1.1` |
+| Reviewer | Kenneth Lee (operator-clinician, Breath-Ezy) — AHPRA **MED0001857758** |
+| Date | 2026-07-22 (UTC) |
+| Decision | ☑ **approved as-is** ☐ approved with edits ☐ changes required |
+| `clinician_signoff_ref` | `signoff:eval-rubric:v1.1:KL:2026-07-22` |
+| Scope of attestation | The scope/acuity UNDER-triage recalibration in this §9 (care-level bands + disposition mapping). v1.0 §1–§6 carry forward unchanged and remain separately signed in §8. |

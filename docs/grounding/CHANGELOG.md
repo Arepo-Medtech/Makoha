@@ -4,6 +4,21 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: `eval-rubric:v1.1` SIGNED — scope/acuity recalibration attested (2026-07-22)
+
+Operator-clinician KL (Kenneth Lee, AHPRA MED0001857758) attested and signed off on
+the v1.1 scope/acuity recalibration. `docs/grounding/eval-rubric.md` §9 moved
+**PROPOSED/PENDING KL SIGN-OFF → SIGNED**; the header citation is now
+`eval-rubric:v1.1:2026-07-22` and a v1.1 sign-off block records
+`clinician_signoff_ref: signoff:eval-rubric:v1.1:KL:2026-07-22`. v1.1 recalibrates the
+UNDER-triage bands of v1.0 to level-of-care; v1.0 §1–§6 carry forward unchanged and
+v1.0 stays a valid citation for runs recorded before 2026-07-22. Doc-only change; no
+code/schema/test touched (the recalibrated harness already merged via PR #6, `cb333e9`).
+This clears FL-40 closer (a). **FL-40 stays OPEN** pending closer (b): one recorded live
+canary over the attested set to validate the loop-break fix and certify fixtures.
+
+---
+
 ## FL-40: eval-scorer disposition fix + scope/acuity gate recalibration (2026-07-21)
 
 The first live eval canary (Claude, 45 cases) exposed an eval-**harness** scoring
