@@ -4,6 +4,49 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: eval-scorer disposition fix + scope/acuity gate recalibration (2026-07-21)
+
+The first live eval canary (Claude, 45 cases) exposed an eval-**harness** scoring
+defect — not a clinical one. `extractAiTier` scored disposition by regexing prose
+("call an ambulance"/`\bT5\b`) while the trunks emit it STRUCTURALLY
+(`safety_gate.status` / `risk_outcome`), flooring ~27/45 to T0 and manufacturing a
+false critical-under-triage storm. Fixes (full `npm test` green, nothing else
+regressed):
+- **Field-scoped disposition reading** (`verification/eval-harness.js`):
+  `escalate_now`→T5, `urgent_review`→T3, `routine_follow_up`→T2,
+  `blocked_incomplete`→INCOMPLETE (a NON-disposition, excluded from under-triage,
+  never floored to T0). Additive contract extension — new `incomplete`
+  classification + `incomplete_count` metric in `eval-run-report.schema.json` +
+  `verification/eval-report-schema.js`.
+- **Loop-break made consistent with the scorer** — the eval turn loop broke on the
+  prose-permissive `detectEscalation` while the scorer read field-scoped, so a
+  `clear` intake that merely *mentioned* escalate_now truncated the consult to T0.
+  Now breaks on the field-scoped disposition (production sequencer untouched).
+  NOTE: changes consult flow → old fixtures can't replay it; needs a fresh live
+  run to revalidate.
+- **Trunk 1.0 escalation flattened** (`trunk/prompts/trunk-1.0-system.md`): the
+  intake gate was escalating ~42/45 by treating "can't rule out remotely" as a
+  danger sign. Reworded to escalate on PRESENT high-acuity signs; absence of
+  remote vitals/labs is not itself grounds. Cheat-sheet synced.
+- **Gate RECALIBRATED to product acuity** (`verification/eval-scoring.js`
+  `classifyTier`): this is Class-1 human-in-the-loop clinical decision SUPPORT,
+  not autonomous triage. Under-triage is scored on LEVEL OF CARE, not exact tier —
+  emergency gold (T4/T5) acceptable only if AI escalated to emergency level
+  (≥T4); urgent gold (T3) acceptable if referred to a GP (≥T2); manage-in-scope
+  gold (≤T2) has no critical band; over-triage bands UNCHANGED. Free re-score of
+  the canary fixtures: critical under-triage **29 → 2** (both residuals are
+  loop-break truncation artifacts, pending live revalidation).
+
+Tests: `test/contract-eval-{harness,scoring}.js` extended and green; all 9
+`contract-eval-*` + full suite `EXIT=0`. Rubric recalibration drafted in
+`docs/grounding/eval-rubric.md` §9 — **PROPOSED, PENDING KL SIGN-OFF** (`v1.0`
+stays the authoritative-run-eligible rubric until KL signs `v1.1`). **FL-40 stays
+OPEN**: still needs (a) KL sign-off on `eval-rubric:v1.1`, and (b) one live canary
+to validate the loop-break fix and record certifying fixtures. No release blocker
+moved; nothing patient-facing.
+
+---
+
 ## FL-40: authoritative-live-run clinician sign-off enforcement (2026-07-21)
 
 The last engineering item on FL-40. `verification/eval-signoff.js` + the CLI: a
