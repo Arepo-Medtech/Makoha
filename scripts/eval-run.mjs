@@ -36,7 +36,7 @@ import { resolveClinicianSignoff } from "../verification/eval-signoff.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CASES_DIR = join(ROOT, "data", "cases");
-const RUBRIC_VERSION = "eval-rubric:v1.2"; // clinician-signed 2026-07-22 (docs/grounding/eval-rubric.md §10); tier-class quality scoring + 0.65 bar. v1.1 (§9) / v1.0 (§8) remain valid citations for runs recorded before their successor.
+const RUBRIC_VERSION = "eval-rubric:v1.3"; // clinician-signed 2026-07-22 (docs/grounding/eval-rubric.md §11); permissive ±1 tolerance + 0.60 silver bar + medal bands + management judge + derm recalibration. v1.2 (§10) / v1.1 (§9) / v1.0 (§8) remain valid citations for runs recorded before their successor.
 
 function parseArgs(argv) {
   const out = {

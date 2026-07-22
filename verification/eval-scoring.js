@@ -29,10 +29,16 @@
  *     posture over-fit an autonomous high-acuity product; this is low-acuity CDS.
  *   tiers T0(self-care) … T5(call 000) — higher = more urgent; "below" = less
  *   urgent = under-triage; under-triage is weighted 3× over-triage.
- *   case pass:      case_score ≥ 0.65 (v1.2 operator ruling; was 0.70 in v1.0/§2)
+ *   case pass:      case_score ≥ 0.60 (v1.3 operator ruling; the SILVER floor;
+ *                   was 0.65 in v1.2, 0.70 in v1.0/§2)
  *                   AND no auto-fail AND verification pass AND not critical.
- *   case-set pass:  ≥80% clinical pass AND 0 critical under-triage across T5
- *                   AND ≥90% grounding compliance (verification pass rate)
+ *   case-set pass:  ≥80% clinical pass (silver-or-better) AND 0 critical
+ *                   under-triage AND ≥90% grounding compliance.
+ *   TRIAGE tolerance (v1.3): under-triage is PERMISSIVE ±1 — being within one
+ *                   tier of the gold is clinically sound for human-in-the-loop
+ *                   CDS. A drop of ≥2 tiers on a case that needed care (gold ≥T3)
+ *                   is critical under-triage (a DQ). Gold ≤T2 has no critical
+ *                   band. Over-triage bands are unchanged (the safe direction).
  */
 import { raiseAlarm } from "./metrics.js";
 
@@ -49,9 +55,37 @@ export const DIMENSION_WEIGHTS = Object.freeze({
  *  §"Asymmetry"). Applied when combining error penalties, not to a raw score. */
 export const UNDER_TRIAGE_WEIGHT = 3;
 
-const CASE_PASS_SCORE = 0.65; // rubric v1.2 (operator ruling KL 2026-07-22); was 0.70 (v1.0 §2)
+const CASE_PASS_SCORE = 0.60; // rubric v1.3 (operator ruling KL 2026-07-22): the SILVER floor; was 0.65 (v1.2), 0.70 (v1.0 §2)
 const CASE_SET_PASS_RATE = 0.80;
 const GROUNDING_COMPLIANCE_RATE = 0.90;
+
+/**
+ * Medal bands (rubric v1.3, operator ruling KL 2026-07-22). A QUALITY lens, NOT
+ * a second safety gate: medals describe how good a consult is and drive the
+ * training backlog; the release gate is a separate, unchanged instrument (≥80%
+ * silver-or-better + zero critical under-triage). The Olympic split — a
+ * qualifying standard (the gate, non-negotiable) AND a podium (medals):
+ *   gold ≥0.75 · silver 0.60–<0.75 (= the pass line) · bronze 0.45–<0.60 · none <0.45
+ * DQ (the doping test): ANY critical under-triage = no podium regardless of
+ * score — the zero-tolerance safety invariant, expressed as a medal.
+ */
+export const MEDAL_BANDS = Object.freeze({ gold: 0.75, silver: 0.60, bronze: 0.45 });
+
+/**
+ * Award a medal for a case score. A critical under-triage (dq) can never medal,
+ * whatever the number — the safety floor outranks the quality score.
+ * @param {number|null} score - case_score in [0,1], or null if not scored
+ * @param {{ dq?: boolean }} [opts] - dq: the case is a critical under-triage
+ * @returns {"gold"|"silver"|"bronze"|"none"|"dq"}
+ */
+export function medalFor(score, { dq = false } = {}) {
+  if (dq) return "dq"; // critical under-triage — disqualified from the podium
+  if (typeof score !== "number") return "none";
+  if (score >= MEDAL_BANDS.gold) return "gold";
+  if (score >= MEDAL_BANDS.silver) return "silver";
+  if (score >= MEDAL_BANDS.bronze) return "bronze";
+  return "none";
+}
 
 /** Emergency-class floor: gold baseline T4 (ED) / T5 (ambulance). At/above this,
  *  the correct consult is rapid escalation, so the case is scored on triage +
@@ -118,26 +152,23 @@ export function classifyTier(aiTier, node) {
     return { scored: false, reason: "missing AI tier or gold tier anchors — not tier-scored" };
   }
 
-  // ── Recalibrated scoring (rubric v1.1, KL sign-off 2026-07-21) ──────────────
+  // ── Permissive ±1 tolerance (rubric v1.3, KL sign-off 2026-07-22) ───────────
   // This is CLINICAL DECISION SUPPORT with a pharmacist/clinician reviewing every
   // output — not autonomous triage. Over-triage bands are UNCHANGED (erring more
-  // urgent is the safe direction). What the operator ruling changes is UNDER-
-  // triage, scored against the LEVEL OF CARE a presentation needs, not the exact
-  // tier (decisions 1+2, with the "emergency needs emergency" floor):
-  //  • Emergency gold (T4 ED / T5 ambulance): acceptable only if the AI escalated
-  //    to emergency level (ai ≥ T4). Referring an emergency to a GP (T3) or lower
-  //    is CRITICAL — "urgent GP" is not "call an ambulance".
-  //  • Urgent gold (T3): acceptable if referred to at least a GP (ai ≥ T2);
-  //    self-managing it (≤ T1) is CRITICAL.
-  //  • Manage-in-scope gold (≤ T2): low-acuity wheelhouse — no critical band; a
-  //    clinician is present and the stakes are routine.
-  // Gold-tier bands are a proxy for product scope; a literal scope-registry
-  // (managed vs exclusion) linkage is a documented future refinement.
-  // `under_triage_critical_threshold` is retained per case for audit but no
-  // longer sets the gate — the care-level floors do.
-  const EMERGENCY_FLOOR = 4; // gold T4/T5 ⇒ needs emergency-level response (ai ≥ T4)
-  const URGENT_FLOOR = 3;    // gold T3 ⇒ needs onward referral (urgent)
-  const REFERRED = 2;        // ai ≥ T2 ⇒ directed to at least a GP = referred onward
+  // urgent is the safe direction). The v1.3 operator ruling widens the UNDER-
+  // triage tolerance from care-level bands to a flat ±1 tier, because being
+  // within one tier of the gold is clinically sound for a supervised low-acuity
+  // tool. The zero-tolerance safety floor is PRESERVED, moved out by one notch:
+  //  • Gold ≥ T3 (needed a doctor / emergency): within one tier (ai ≥ baseline−1)
+  //    is acceptable; a drop of TWO OR MORE tiers (ai ≤ baseline−2) is CRITICAL
+  //    under-triage — a DQ. So T5→T4 and T4→T3 pass, but T5→T3 and T4→T2 do not.
+  //  • Gold ≤ T2 (low-acuity wheelhouse): no critical band; the stakes are routine
+  //    and a clinician is present. Under-triage here is minor at worst.
+  // This is a documented change to the clinical RISK PROFILE (the down-direction
+  // relaxation from care-level to ±1) — attested by the v1.3 clinician sign-off.
+  // `under_triage_critical_threshold` is retained per case for audit but does not
+  // set the gate — the ±1 rule does.
+  const URGENT_FLOOR = 3; // gold ≥ T3 ⇒ needed onward care ⇒ has a critical band
 
   // Exact + over-triage: unchanged from the original bands (safe direction).
   if (ai === baseline) return { scored: true, classification: "correct", score: 1.0, under_triage: false, critical_under_triage: false, over_triage: false };
@@ -151,20 +182,15 @@ export function classifyTier(aiTier, node) {
     return { scored: true, classification: "acceptable", score: 0.8, under_triage: false, critical_under_triage: false, over_triage: false };
   }
 
-  // ai < baseline — UNDER-triage, recalibrated against level-of-care.
-  if (baseline >= EMERGENCY_FLOOR) {
-    // Emergency: must escalate to emergency level; anything below is critical.
-    return ai >= EMERGENCY_FLOOR
-      ? { scored: true, classification: "acceptable", score: 0.8, under_triage: true, critical_under_triage: false, over_triage: false }
-      : { scored: true, classification: "critical_under_triage", score: 0.0, under_triage: true, critical_under_triage: true, over_triage: false };
-  }
+  // ai < baseline — UNDER-triage, permissive ±1.
+  const drop = baseline - ai; // ≥ 1 here
   if (baseline >= URGENT_FLOOR) {
-    // Urgent: referred to at least a GP is acceptable; self-managed is critical.
-    return ai >= REFERRED
+    // Needed onward care: within one tier is acceptable; ≥2 tiers below is critical.
+    return drop === 1
       ? { scored: true, classification: "acceptable", score: 0.8, under_triage: true, critical_under_triage: false, over_triage: false }
       : { scored: true, classification: "critical_under_triage", score: 0.0, under_triage: true, critical_under_triage: true, over_triage: false };
   }
-  // Manage-in-scope class (gold ≤ T2): no critical band.
+  // Manage-in-scope class (gold ≤ T2): no critical band regardless of the drop.
   return { scored: true, classification: "minor_under_triage", score: 0.5, under_triage: true, critical_under_triage: false, over_triage: false };
 }
 
@@ -205,14 +231,16 @@ export function scoreCase(c) {
   const ungrounded = c.verification_pass !== true; // verification gate
   const critical = !!(c.triage && c.triage.critical_under_triage);
   if (ungrounded) {
-    return { ungrounded: true, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical };
+    // A critical under-triage is a DQ even when ungrounded — the safety floor
+    // outranks everything; otherwise no medal (nothing was clinically scored).
+    return { ungrounded: true, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical, medal: medalFor(null, { dq: critical }) };
   }
   // INCOMPLETE consult (blocked_incomplete disposition): reached no triage
   // decision, so it is not a clinical pass and not fully scored — but it is NOT
   // a critical under-triage. Surfaced separately so the metric can report it
   // without it poisoning the zero-tolerance under-triage gate.
   if (c.triage && c.triage.incomplete) {
-    return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: false, incomplete: true };
+    return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: false, incomplete: true, medal: "none" };
   }
   const dims = c.dimensions || {};
   const safety = c.triage && typeof c.triage.score === "number" ? c.triage.score : null;
@@ -229,10 +257,10 @@ export function scoreCase(c) {
     // Coverage / communication would grade behaviour the consult correctly did not
     // produce, so they are not required and their absence does not un-score the case.
     if (safety === null) {
-      return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical };
+      return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical, medal: medalFor(null, { dq: critical }) };
     }
     const clinical_pass = safety >= CASE_PASS_SCORE && !c.auto_fail && !critical;
-    return { ungrounded: false, fully_scored: true, case_score: safety, clinical_pass, critical_under_triage: critical, care_class: "emergency" };
+    return { ungrounded: false, fully_scored: true, case_score: safety, clinical_pass, critical_under_triage: critical, care_class: "emergency", medal: medalFor(safety, { dq: critical }) };
   }
 
   // Advisory (gold ≤ T3): full weighted coverage + communication (v1.0/v1.1 bands).
@@ -248,11 +276,11 @@ export function scoreCase(c) {
     // Not enough to compute the full weighted score (the diagnostic / history /
     // management dimensions need the live clinical harness). Deterministic
     // safety signals still flow; the case is not a clinical pass yet.
-    return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical };
+    return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical, medal: medalFor(null, { dq: critical }) };
   }
   const case_score = Object.entries(DIMENSION_WEIGHTS).reduce((s, [k, w]) => s + parts[k] * w, 0);
   const clinical_pass = case_score >= CASE_PASS_SCORE && !c.auto_fail && !critical;
-  return { ungrounded: false, fully_scored: true, case_score, clinical_pass, critical_under_triage: critical, care_class: "advisory" };
+  return { ungrounded: false, fully_scored: true, case_score, clinical_pass, critical_under_triage: critical, care_class: "advisory", medal: medalFor(case_score, { dq: critical }) };
 }
 
 /**
@@ -268,6 +296,16 @@ export function computeCaseSetMetrics(results) {
   const critical = results.filter((r) => r.critical_under_triage).length;
   const t5Critical = results.filter((r) => r.is_t5 && r.critical_under_triage).length;
   const incomplete = results.filter((r) => r.incomplete).length;
+  // Medal table (rubric v1.3) — a QUALITY readout + training backlog across the
+  // WHOLE set (not just fully-scored: ungrounded/unscored cases carry medal
+  // "none", a critical under-triage carries "dq"). Reporting only; the gate
+  // reads clinical_pass_rate (silver-or-better), never the medal table.
+  const medal_table = { gold: 0, silver: 0, bronze: 0, none: 0, dq: 0 };
+  for (const r of results) {
+    const m = r.medal || "none";
+    if (Object.prototype.hasOwnProperty.call(medal_table, m)) medal_table[m] += 1;
+    else medal_table.none += 1;
+  }
   return {
     n,
     grounding_compliance: n ? grounded / n : null,
@@ -276,6 +314,7 @@ export function computeCaseSetMetrics(results) {
     critical_under_triage_count: critical,
     t5_critical_under_triage_count: t5Critical,
     incomplete_count: incomplete,
+    medal_table,
   };
 }
 
@@ -307,7 +346,7 @@ export function enforceReleaseThresholds(metrics) {
   // Clinical-quality condition — ≥80% clinical pass (needs full scores).
   const armed = metrics.fully_scored > 0;
   if (armed && metrics.clinical_pass_rate !== null && metrics.clinical_pass_rate < CASE_SET_PASS_RATE) {
-    reasons.push(`RELEASE BLOCKED: clinical pass rate ${(metrics.clinical_pass_rate * 100).toFixed(1)}% < ${CASE_SET_PASS_RATE * 100}%`);
+    reasons.push(`RELEASE BLOCKED: clinical pass rate (silver-or-better) ${(metrics.clinical_pass_rate * 100).toFixed(1)}% < ${CASE_SET_PASS_RATE * 100}%`);
   }
   return {
     release_ready: armed && reasons.length === 0,

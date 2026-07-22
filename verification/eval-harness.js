@@ -38,7 +38,7 @@ import { makeSelectedGenerator } from "../integration/generation-backend.js";
 import { detectEscalation } from "../integration/trunk-sequencer.js";
 import { sha256Prefixed } from "./hash.js";
 import { createPatientSimulator } from "./patient-simulator.js";
-import { gradeCommunication } from "./eval-judge.js";
+import { gradeCommunication, judgeManagementItems } from "./eval-judge.js";
 import { scoreCase, computeCaseSetMetrics, enforceReleaseThresholds, careClass } from "./eval-scoring.js";
 import {
   gradeHistoryTaking,
@@ -162,7 +162,55 @@ export function extractAiTier(transcript) {
 
 /** Project a grader result to the eval-run-report coverage_dimension shape
  *  (score/method/evidence only — grader flags stay internal). */
-const coverageDim = (g) => ({ score: g.score, method: "coverage", evidence: g.evidence });
+const coverageDim = (g) => ({
+  score: g.score,
+  method: "coverage",
+  evidence: g.evidence,
+  // management_quality may carry a judge cross-check receipt (rubric v1.3).
+  ...(g.judge_receipt ? { judge_receipt: g.judge_receipt } : {}),
+});
+
+/**
+ * Apply the management-coverage judge cross-check (rubric v1.3) to a PURE
+ * gradeManagementQuality result. The judge can only ADD matches the deterministic
+ * containment matcher missed for paraphrase/example reasons — it never removes a
+ * match and never touches auto_fail/commission (that stays deterministic). Score
+ * is recomputed as matched/total. Returns the result unchanged when there is
+ * nothing to rescue or no judge verdict is available (resume-safe).
+ */
+async function applyManagementJudge(managementG, management, transcript, judge, nowIso) {
+  const missedLabels = (managementG.evidence && managementG.evidence.missed) || [];
+  if (!missedLabels.length || !judge || !judge.replayer) return managementG;
+  const mustInclude = (management.scoring_rubric && management.scoring_rubric.must_include_items) || [];
+  const missedItems = missedLabels
+    .map((label) => ({ label, text: mustInclude[Number(String(label).replace("MI-", "")) - 1] || "" }))
+    .filter((it) => it.text);
+  if (!missedItems.length) return managementG;
+
+  const { matchedLabels, judge_receipt } = await judgeManagementItems({
+    outputText: transcript,
+    missedItems,
+    replayer: judge.replayer,
+    transport: judge.transport,
+    nowIso,
+  });
+  if (!matchedLabels.length) {
+    // Judge ran and rescued nothing (or was skipped): keep the receipt if we got
+    // one, for the audit trail, but the score is unchanged.
+    return judge_receipt ? { ...managementG, judge_receipt } : managementG;
+  }
+  const rescued = new Set(matchedLabels);
+  const matched = [...((managementG.evidence && managementG.evidence.matched) || []), ...matchedLabels];
+  const missed = missedLabels.filter((l) => !rescued.has(l));
+  const total = managementG.evidence.total;
+  const score = total > 0 ? matched.length / total : managementG.score;
+  return {
+    ...managementG,
+    score,
+    evidence: { ...managementG.evidence, matched, missed, judge_matched: matchedLabels },
+    judge_receipt,
+  };
+}
 
 /**
  * Run ONE case end-to-end for one backend. Returns the EvalRunReport `cases[]`
@@ -256,7 +304,10 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
 
   const historyG = gradeHistoryTaking(sim.elicitationReport(), policy);
   const diagnosticG = gradeDiagnosticReasoning(transcript, ground_truth, { escalated, isEmergency: is_t5 });
-  const managementG = gradeManagementQuality(transcript, management);
+  const managementG0 = gradeManagementQuality(transcript, management);
+  // v1.3 management-coverage judge cross-check: rescue containment misses caused
+  // by paraphrase/examples. Pure grader first, then the (resume-safe) judge.
+  const managementG = await applyManagementJudge(managementG0, management, transcript, judge, nowIso);
   const triageG = gradeTriage({ case_id, ai_tier, node: safety_netting, is_t5 });
   const communicationG = await gradeCommunication({
     communicationText: transcript,
@@ -309,6 +360,10 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
     fully_scored: scored.fully_scored,
     case_score: scored.case_score,
     clinical_pass: scored.clinical_pass,
+    // v1.3 medal band (quality lens) + care_class (which scoring path ran). medal
+    // is always set by scoreCase; care_class only on a fully/emergency-scored path.
+    medal: scored.medal,
+    ...(scored.care_class ? { care_class: scored.care_class } : {}),
     auto_fail: !!managementG.auto_fail,
   };
 }
@@ -343,6 +398,7 @@ export async function runBackendCases({ cases, backendName, replayer, judge, gen
       critical_under_triage: c.triage.critical_under_triage,
       is_t5: c.is_t5,
       incomplete: c.triage.classification === "incomplete",
+      medal: c.medal,
     })),
   );
   const base = enforceReleaseThresholds(metrics);

@@ -52,7 +52,11 @@ function scriptedFactory(captured) {
     });
   };
 }
-const scriptedJudge = () => Promise.resolve("clear");
+// The scripted judge answers BOTH judges by prompt type: "clear" for the
+// communication judge, and "1" for the v1.3 management cross-check (rescues the
+// first containment-missed item, proving the rescue merges end-to-end).
+const scriptedJudge = (promptText) =>
+  Promise.resolve(/EXPECTED MANAGEMENT POINTS/.test(String(promptText)) ? "1" : "clear");
 const throwGenFactory = () => () => {
   throw new Error("generator must not be called in replay");
 };
@@ -161,6 +165,27 @@ async function run() {
     }
     if (c.triage.ai_tier !== "T5") errors.push(`triage ai_tier ${c.triage.ai_tier} != T5`);
     if (c.dimensions.communication.judge_receipt.verdict !== "clear") errors.push("judge verdict not recorded");
+    // v1.3: the case record carries a medal band + care_class, and the aggregate
+    // metrics carry the medal_table. This case is a correct emergency → gold.
+    if (c.medal !== "gold") errors.push(`expected gold medal, got ${c.medal}`);
+    if (c.care_class !== "emergency") errors.push(`expected emergency care_class, got ${c.care_class}`);
+    if (!liveBody.metrics.medal_table || liveBody.metrics.medal_table.gold !== 1) errors.push("metrics.medal_table did not tally the gold case");
+    // v1.3 management-coverage judge cross-check ran + merged. Robust to which
+    // items this terse consult happened to cover: IF the judge ran (there were
+    // containment misses), it carries a receipt and any rescued label is now in
+    // matched and NOT in missed (merge correctness). The report already validated
+    // above, which proves the schema accepts judge_receipt/judge_matched on a
+    // COVERAGE dimension.
+    const mq = c.dimensions.management_quality;
+    if (mq.judge_receipt) {
+      if (typeof mq.judge_receipt.verdict !== "string" || !mq.judge_receipt.verdict.length) errors.push("mgmt judge_receipt verdict not a non-empty string");
+      if (!SHA256.test(mq.judge_receipt.prompt_hash)) errors.push("mgmt judge_receipt prompt_hash bad format");
+      const rescued = mq.evidence.judge_matched || [];
+      for (const l of rescued) {
+        if (!mq.evidence.matched.includes(l)) errors.push(`rescued ${l} not moved into matched`);
+        if (mq.evidence.missed.includes(l)) errors.push(`rescued ${l} still listed as missed`);
+      }
+    }
 
     let liveReport;
     try {

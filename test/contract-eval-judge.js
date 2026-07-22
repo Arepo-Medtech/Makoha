@@ -21,6 +21,9 @@ import {
   parseVerdict,
   VERDICT_BANDS,
   gradeCommunication,
+  buildManagementJudgePrompt,
+  parseMatchedIndices,
+  judgeManagementItems,
 } from "../verification/eval-judge.js";
 
 const SHA256 = /^sha256:[a-f0-9]{64}$/;
@@ -101,8 +104,63 @@ async function run() {
     }
     if (recorded.method !== "judge") errors.push("dimension method != judge");
     if (!["replay", "live"].includes(r.mode)) errors.push("judge_receipt mode not in eval enum");
+
+    // ── 8. Management-coverage cross-check (rubric v1.3) ─────────────────────
+    const missed = [
+      { label: "MI-2", text: "Recommend an oral non-sedating antihistamine for the itch" },
+      { label: "MI-4", text: "Safety-net for evolving anaphylaxis — call 000" },
+    ];
+    // prompt scoping + numbering
+    const mPrompt = buildManagementJudgePrompt("take cetirizine", missed);
+    if (!/SUBSTANTIVELY ADDRESSES/i.test(mPrompt) && !/substantively addresses/i.test(mPrompt)) errors.push("mgmt judge prompt not scoped to coverage");
+    if (!/1\. Recommend an oral non-sedating antihistamine/.test(mPrompt)) errors.push("mgmt judge prompt not numbered from 1");
+    if (!/take cetirizine/.test(mPrompt)) errors.push("mgmt judge prompt missing the AI text");
+    // parseMatchedIndices bands (fail-closed)
+    if ([...parseMatchedIndices("1,2", 2)].join(",") !== "1,2") errors.push("parseMatchedIndices(1,2)");
+    if (parseMatchedIndices("NONE", 2).size !== 0) errors.push("parseMatchedIndices(NONE) not empty");
+    if (parseMatchedIndices("banana", 2).size !== 0) errors.push("parseMatchedIndices(garbage) not empty (fail-closed)");
+    if (parseMatchedIndices("9", 2).size !== 0) errors.push("parseMatchedIndices out-of-range ignored");
+
+    // RECORD (live): transport confirms only point 1 (cetirizine ⇒ antihistamine).
+    const mFix = join(tmpdir(), `eval-mgmtjudge-${process.pid}.json`);
+    const mRec = createReplayer({ fixturePath: mFix, mode: "live" });
+    const recM = await judgeManagementItems({
+      outputText: "take cetirizine for the itch",
+      missedItems: missed,
+      replayer: mRec,
+      transport: () => Promise.resolve("1"),
+      nowIso: "2026-07-22T00:00:00.000Z",
+    });
+    mRec.save();
+    if (recM.matchedLabels.join(",") !== "MI-2") errors.push(`mgmt judge should rescue MI-2, got ${recM.matchedLabels}`);
+    if (recM.judge_receipt.verdict !== "matched:1") errors.push(`mgmt judge verdict ${recM.judge_receipt.verdict} != matched:1`);
+    if (!SHA256.test(recM.judge_receipt.prompt_hash)) errors.push("mgmt judge prompt_hash bad format");
+
+    // REPLAY: same file, transport MUST NOT be called; rescue is byte-identical.
+    const mRep = createReplayer({ fixturePath: mFix, mode: "replay" });
+    const repM = await judgeManagementItems({ outputText: "take cetirizine for the itch", missedItems: missed, replayer: mRep, transport: throwTransport });
+    if (repM.matchedLabels.join(",") !== "MI-2") errors.push("mgmt judge replay did not reproduce the rescue");
+    if (repM.judge_receipt.timestamp_utc !== "2026-07-22T00:00:00.000Z") errors.push("mgmt judge replay timestamp not verbatim");
+    if (repM.judge_receipt.mode !== "replay") errors.push("mgmt judge replay mode != replay");
+
+    // RESUME-SAFE: a replay MISS with no transport SKIPS (no throw, no rescue) —
+    // an optional upgrade must never red a run that predates the feature.
+    const mMiss = createReplayer({ fixturePath: join(tmpdir(), `eval-mgmtjudge-miss-${process.pid}.json`), mode: "replay" });
+    let missSkipped = true;
+    try {
+      const skip = await judgeManagementItems({ outputText: "x", missedItems: missed, replayer: mMiss });
+      if (skip.matchedLabels.length !== 0 || skip.judge_receipt !== null) missSkipped = false;
+    } catch (_) {
+      missSkipped = false;
+    }
+    if (!missSkipped) errors.push("mgmt judge replay-miss must SKIP (no throw, no rescue), not fail-closed-throw");
   } finally {
-    for (const f of [FIXTURE, join(tmpdir(), `eval-judge-fixture2-${process.pid}.json`)]) {
+    for (const f of [
+      FIXTURE,
+      join(tmpdir(), `eval-judge-fixture2-${process.pid}.json`),
+      join(tmpdir(), `eval-mgmtjudge-${process.pid}.json`),
+      join(tmpdir(), `eval-mgmtjudge-miss-${process.pid}.json`),
+    ]) {
       if (existsSync(f)) rmSync(f, { force: true });
     }
   }

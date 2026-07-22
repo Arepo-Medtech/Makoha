@@ -4,6 +4,41 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: `eval-rubric:v1.3` SIGNED — medal bands + permissive ±1 + management judge + derm recalibration (2026-07-22)
+
+Clinician (KL, AHPRA MED0001857758) ruled and attested the v1.3 recalibration in-session,
+framing the product as a **low-acuity everyday telehealth tool** (management is the deliverable;
+emergencies are a just-in-case floor). `docs/grounding/eval-rubric.md` §11 SIGNED; header
+citation now `eval-rubric:v1.3:2026-07-22`; `RUBRIC_VERSION` bumped v1.2→v1.3 in
+`scripts/eval-run.mjs`. Sign-off ref `signoff:eval-rubric:v1.3:KL:2026-07-22` (the version-aware
+resolver resolves it; v1.0–v1.2 remain valid for earlier runs).
+- **Permissive ±1 under-triage tolerance** (`eval-scoring.js` `classifyTier`, replaces v1.1 §9
+  care-level bands): within one tier of gold = acceptable; ≥2-tier drop on gold ≥T3 = critical
+  DQ; gold ≤T2 no critical band. **⚠ Clinical risk-profile change** (T4→T3 now acceptable) —
+  attested operator ruling, mirrored to the risk section of `gap-register.md`. Zero-tolerance
+  floor preserved one notch out; T5 ambulance floor intact.
+- **Pass bar 0.65 → 0.60** (silver floor).
+- **Medal bands** (`medalFor`/`MEDAL_BANDS`; `medal` per case, `medal_table` in metrics): gold
+  ≥0.75 / silver 0.60 / bronze 0.45 / none; dq = critical regardless of score. A QUALITY lens +
+  training backlog — **the release gate is unchanged** (≥80% silver-or-better + 0 critical + ≥90%
+  grounding).
+- **Management-coverage judge cross-check** (`eval-judge.js` `judgeManagementItems`): the §3.3
+  fix. Containment first; judge rescues misses (paraphrase/example), additive-only, receipt-gated,
+  replay-deterministic, resume-safe. The biggest advisory lever — **effect only shows on a fresh
+  live canary** (old fixtures carry no management-judge verdicts).
+- **Derm gold recalibration** — 7 routine T3→T2 (SPEC-DERM-01-00022/00218/00220,
+  -03-00003/00205/00225/00251), reds untouched; manifest hashes re-stamped + per-case superseding
+  KL attestations (supersede the 2026-07-17 bulk DST sign-off).
+
+Schemas (zod + JSON mirror) extended for `medal`/`care_class`/`medal_table`/`judge_matched`/coverage
+`judge_receipt`. Replay re-score of the 123-case canary: pass 39.0%→40.0%, critical under-triage
+3→2 (survivors are genuine model self-care collapses, not gold errors), grounding 94.3%, positional
+stable. Full `npm test` EXIT=0 (88 files). Eval harness + scorer + rubric only — no pipeline/trunk/
+safety-runtime code touched. **Next: a fresh live canary (authoritative, cites v1.3) to measure the
+management-judge lift.**
+
+---
+
 ## FL-40: eval canary resume + crash-durability (2026-07-22)
 
 The first representative gate canary (123 cases) died ~2h in on an exhausted API
