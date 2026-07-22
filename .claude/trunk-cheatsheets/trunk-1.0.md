@@ -3,7 +3,7 @@ Purpose: first-pass intake normalisation and safety gate; route the session to d
 Output contract keys: intake_summary · safety_gate {status: clear|escalate_now|blocked_incomplete, reasons[]} · routing_plan {next_trunks[], why} · missing_inputs[] · evidence_refs[]
 Forbidden: history enrichment; producing routing_plan.next_trunks before safety_gate is complete; routing at all when blocked_incomplete. (+ universal: no diagnosis, no dosages, no invented codes/operations/service names.)
 May consume: docs citations + receipts for any non-obvious claim. Mints no codes, identity, or pharmacology facts.
-Fail-safe status: blocked_incomplete → list missing_inputs and stop, no routing_plan. escalate_now immediately on any T5 red flag, without waiting for downstream trunks.
+Fail-safe status: blocked_incomplete → list missing_inputs and stop, no routing_plan. escalate_now immediately when a high-acuity danger sign is PRESENT (not merely un-excludable), without waiting for downstream trunks; the absence of remote vitals/labs is NOT itself grounds to escalate — route onward (2.0/3.0/9.0) with conservative safety-netting. (Reworded 2026-07-21 to de-bias intake over-escalation; present-stigmata philosophy, prose only, per operator directive. Fail-safe unchanged: genuine present danger → escalate.)
 Verifier checks that apply: no_invented_codes, no_invented_guidelines, no_invented_operations, no_repo_invention, hard_stop_enforcement.
 Literal constraints (TRUNK_CONSTRAINTS): ["no diagnosis","no dosages","initial routing and safety gate only"]
   (CORRECTED 2026-07-15/R3: this read "triage only" — T2.0's constraint, copy-pasted. The source

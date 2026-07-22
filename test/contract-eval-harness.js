@@ -18,7 +18,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rmSync, existsSync } from "node:fs";
 import { loadCaseNodes } from "../verification/eval-case-loader.js";
-import { runBackendCases } from "../verification/eval-harness.js";
+import { runBackendCases, extractAiTier } from "../verification/eval-harness.js";
 import { createReplayer } from "../verification/llm-replay.js";
 import { validateEvalRunReport } from "../verification/eval-report-schema.js";
 
@@ -75,8 +75,59 @@ function assembleReport(body, backend, mode) {
   });
 }
 
-async function run() {
+// ── UNIT: extractAiTier disposition reading (FL-40 canary regression) ──────
+// The trunks express a T5 emergency as the STRUCTURED `escalate_now` disposition
+// value, not as patient-facing prose. The scorer must read the field, map it to
+// T5, and NOT be fooled by a prose *mention* of the token. Before this fix the
+// live canary floored ~27/29 cases to T0 and manufactured a critical-under-triage
+// storm; these cases pin the contract so it can never silently regress.
+function testExtractAiTier() {
   const errors = [];
+  const eq = (label, transcript, expected) => {
+    const got = extractAiTier(transcript).ai_tier;
+    if (got !== expected) errors.push(`extractAiTier[${label}]: got ${got}, expected ${expected}`);
+  };
+
+  // The bug this fixes: a real escalate_now disposition must score T5, not T0.
+  eq("safety_gate.status escalate_now", '```json\n{"safety_gate":{"status":"escalate_now","reasons":["acute cardiac emergency"]}}\n```', "T5");
+  eq("risk_outcome escalate_now", '{"risk_outcome":"escalate_now","blocking_items":[]}', "T5");
+  eq("escalate_now with trailing note", '{"risk_outcome":"escalate_now — call 000 now"}', "T5");
+
+  // FALSE-POSITIVE guards: a PROSE mention of the token must NOT score T5 — the
+  // case is scored on its REAL structured disposition. (Empirically 36/174
+  // recorded outputs mentioned the token in prose while their real disposition
+  // was clear / blocked_incomplete / urgent_review.) Post-Step-2 these score at
+  // their real disposition's tier, and — the essential assertion — never T5.
+  eq("prose escalate_now mention, real disposition urgent_review -> T3 not T5", '{"risk_outcome":"urgent_review","notes":{"rationale":"rest pain would raise this toward escalate_now/ACS"}}', "T3");
+  eq("rationale_for_not_escalate_now field, real disposition routine -> T2 not T5", '{"risk_outcome":"routine_follow_up","notes":{"rationale_for_not_escalate_now":"no acute event"}}', "T2");
+
+  // Conservative fail-safe: genuinely no disposition still defaults to T0.
+  eq("no disposition", '{"intake_summary":"56yo male, chest tightness","structured_history":{}}', "T0");
+
+  // Step-2 disposition mapping (operator ruling 2026-07-21, clinician KL):
+  // urgent_review ≡ T3, routine_follow_up ≡ T2, blocked_incomplete ≡ INCOMPLETE.
+  eq("urgent_review structured -> T3", '{"risk_outcome":"urgent_review","next_actions":["arrange same-day review"]}', "T3");
+  eq("routine_follow_up structured -> T2", '{"risk_outcome":"routine_follow_up","next_actions":["book with your GP"]}', "T2");
+  eq("blocked_incomplete -> INCOMPLETE (not T0)", '{"risk_outcome":"blocked_incomplete","blocking_items":["need LOC duration"]}', "INCOMPLETE");
+  eq("trunk 1.0 safety_gate blocked_incomplete -> INCOMPLETE", '{"safety_gate":{"status":"blocked_incomplete","reasons":["insufficient facts"]}}', "INCOMPLETE");
+
+  // Most-urgent-first: a positive disposition anywhere BEATS an earlier blocked
+  // turn, so a consult that DID reach escalation is never masked as INCOMPLETE.
+  eq("blocked at intake but escalate_now later -> T5", '{"safety_gate":{"status":"blocked_incomplete"}}\n{"risk_outcome":"escalate_now"}', "T5");
+  // ...and escalate_now outranks urgent_review in the same transcript.
+  eq("escalate_now outranks urgent_review", '{"risk_outcome":"urgent_review"}\n{"safety_gate":{"status":"escalate_now"}}', "T5");
+
+  // The INCOMPLETE marker must carry the incomplete flag for the scorer.
+  {
+    const r = extractAiTier('{"risk_outcome":"blocked_incomplete"}');
+    if (r.incomplete !== true) errors.push("extractAiTier[blocked_incomplete]: incomplete flag not set");
+  }
+
+  return errors;
+}
+
+async function run() {
+  const errors = [...testExtractAiTier()];
   const fixtures = {
     gen: join(tmpdir(), `eval-harness-gen-${process.pid}.json`),
     judge: join(tmpdir(), `eval-harness-judge-${process.pid}.json`),

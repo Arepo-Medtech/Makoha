@@ -34,6 +34,7 @@ const TRIAGE_CLASS = [
   "moderate_over_triage",
   "minor_under_triage",
   "serious_under_triage",
+  "incomplete",
   "critical_under_triage",
 ];
 
@@ -146,6 +147,7 @@ const MetricsSchema = z
     clinical_pass_rate: z.number().min(0).max(1).nullable(),
     critical_under_triage_count: z.number().int().min(0),
     t5_critical_under_triage_count: z.number().int().min(0),
+    incomplete_count: z.number().int().min(0).optional(),
   })
   .strict();
 
