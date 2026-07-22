@@ -136,26 +136,43 @@ const flaggedCaution = await runPipeline({
 check(flaggedCaution.verification.pass === true && flaggedCaution.verification.ppp_ttt.tier === "CAUTION",
   "a CAUTION run passes (with caveats) — the draft still goes to human sign-off");
 
-// ── 7. Default-deny fuzz: ambiguous/off-registry/error inputs all STOP ─────────
-const denyInputs = [
-  { flags: [{ source: "other", area_id: "uti", condition: "Pyelonephritis" }] }, // unanswered
-  { flags: [PYELO], patient_answers: { ...pyeloAnswers("absent", "present"), "uhao-5": "unknown" } },
-  { flags: [{ source: "other", area_id: "nope", condition: "Pyelonephritis" }] },
-  { flags: [{ source: "other", area_id: "uti", condition: "Not A Condition" }] },
-  { flags: [{ source: "other", area_id: "uti", condition: "Urethritis" }] }, // managed-only
-  { flags: [{ bad: "shape" }] },
-  { nonsense: true },
-  null,
+// ── 7. Default-deny SPLIT (recalibrated KL 2026-07-22, mākoha): a CLINICAL
+//    UNKNOWN fails SAFE to CAUTION (orange — watch + hand to a human), a BROKEN
+//    INSTRUMENT fails closed to STOP (halt loudly — the tool can't trust its own
+//    input). Neither ever throws (gradeConcern is total). ────────────────────
+const clinicalUnknownInputs = [
+  { flags: [{ source: "other", area_id: "uti", condition: "Pyelonephritis" }] }, // unanswered → all discriminators unknown
+  { flags: [PYELO], patient_answers: { ...pyeloAnswers("absent", "present"), "uhao-5": "unknown" } }, // one unknown stigma, none present
+  { flags: [{ source: "other", area_id: "nope", condition: "Pyelonephritis" }] }, // off-registry area
+  { flags: [{ source: "other", area_id: "uti", condition: "Not A Condition" }] }, // off-registry condition
+  { flags: [{ source: "other", area_id: "uti", condition: "Urethritis" }] }, // managed-only (no attested exclusion discriminators)
 ];
-for (const [i, input] of denyInputs.entries()) {
+for (const [i, input] of clinicalUnknownInputs.entries()) {
   let v;
   try {
     v = gradeConcern(input);
   } catch (e) {
-    errors.push(`default-deny input #${i} must not throw (fail-closed contract): ${e.message}`);
+    errors.push(`clinical-unknown input #${i} must not throw (fail-safe contract): ${e.message}`);
     continue;
   }
-  check(v.tier === "STOP" && v.fail_closed === true, `default-deny input #${i} must yield fail-closed STOP (got ${v.tier})`);
+  check(v.tier === "CAUTION" && v.fail_closed === true,
+    `clinical-unknown input #${i} must fail SAFE to CAUTION (orange + human), NOT reflexively STOP (got ${v.tier})`);
+}
+const brokenInstrumentInputs = [
+  { flags: [{ bad: "shape" }] }, // malformed flag — can't parse the request
+  { nonsense: true }, // no flags at all
+  null, // null input
+];
+for (const [i, input] of brokenInstrumentInputs.entries()) {
+  let v;
+  try {
+    v = gradeConcern(input);
+  } catch (e) {
+    errors.push(`broken-instrument input #${i} must not throw (fail-closed contract): ${e.message}`);
+    continue;
+  }
+  check(v.tier === "STOP" && v.fail_closed === true,
+    `broken-instrument input #${i} must fail CLOSED to STOP — a tool that can't trust its input halts loudly (got ${v.tier})`);
 }
 
 // Fuzz the composer: for random base/tier combinations, pass never flips

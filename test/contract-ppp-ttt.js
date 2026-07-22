@@ -6,9 +6,10 @@
  *  - always_immediate / safeguarding_always_report → STOP, no interrogation;
  *  - CAUTION is reachable ONLY from the one legitimate branch (all attested
  *    stigmata absent + stable refer_if pattern present);
- *  - every default-deny branch (unknown answer, unanswered discriminator,
- *    off-registry area/condition, managed-only condition, malformed input)
- *    yields fail-closed STOP;
+ *  - a CLINICAL UNKNOWN (unknown/unanswered discriminator with no stigma present,
+ *    off-registry area/condition, managed-only condition) fails SAFE to CAUTION
+ *    (orange — watch + hand to a human), while a BROKEN INSTRUMENT (malformed
+ *    input, module error) fails closed to STOP (recalibrated KL 2026-07-22);
  *  - multi-flag runs take the ordinal MAX (never an average);
  *  - the ABCDE protocol: bounded patient choice subordinate to sign-off,
  *    decline → refer (no autonomous continuation), red flag mid-ABCDE → STOP;
@@ -106,27 +107,33 @@ const midFlag = gradeConcern({
 check(midFlag.tier === "STOP" && midFlag.abcde === undefined,
   "a red flag reported mid-ABCDE must upgrade the run to STOP");
 
-// ── Edge 5: ambiguity (unknown / unanswered) → fail-closed STOP ────────────────
+// ── Edge 5: ambiguity (unknown / unanswered), NO stigma present → fail-SAFE CAUTION
+// Recalibrated (KL 2026-07-22, mākoha): "I can't rule it out from here" is orange,
+// not red. No stigma is present; we simply lack bedside data → CAUTION + human,
+// never a reflexive STOP. fail_closed still marks it a safe-DEFAULT (not interrogated).
 const unknown = gradeConcern({ flags: [PYELO], patient_answers: { ...pyeloAnswers("absent", "present"), "uhao-3": "unknown" } });
-check(unknown.tier === "STOP" && unknown.fail_closed === true,
-  "an unknown discriminator answer must fail closed to STOP — never CAUTION-by-default");
+check(unknown.tier === "CAUTION" && unknown.fail_closed === true,
+  "an unknown discriminator (no stigma present) must fail SAFE to CAUTION, not reflexively STOP");
 const unanswered = gradeConcern({ flags: [PYELO] });
-check(unanswered.tier === "STOP" && unanswered.fail_closed === true,
-  "unanswered discriminators must fail closed to STOP");
+check(unanswered.tier === "CAUTION" && unanswered.fail_closed === true,
+  "unanswered discriminators (none present) → fail-safe CAUTION + clinician review");
 
-// ── Stigma present → STOP ──────────────────────────────────────────────────────
+// ── Stigma PRESENT → STOP (a red that actually surfaced still escalates) ───────
 const stigma = gradeConcern({ flags: [PYELO], patient_answers: { ...pyeloAnswers("absent", "present"), "pyelonephritis-cs-2": "present" } });
 check(stigma.tier === "STOP" && stigma.entity_class === "typifies_stigmata" && stigma.fail_closed === false,
   "a confirmed condition-specific stigma must STOP (typifies_stigmata)");
 
-// ── Edge 7: off-registry / managed-only → fail-closed STOP ─────────────────────
+// ── Edge 7: off-registry / managed-only → fail-SAFE CAUTION (clinical unknown) ─
+// A condition we have no attested basis to scrutinise is orange + human, not a
+// reflexive siren. (A corrupt/drifted REGISTRY is different — that STOPs via the
+// registry attestation gate; here the registry is valid, the condition just isn't in it.)
 const offArea = gradeConcern({ flags: [{ source: "other", area_id: "no-such-area", condition: "Pyelonephritis" }] });
-check(offArea.tier === "STOP" && offArea.fail_closed === true, "an off-registry area must fail closed to STOP");
+check(offArea.tier === "CAUTION" && offArea.fail_closed === true, "an off-registry area is a clinical unknown → fail-safe CAUTION");
 const offCond = gradeConcern({ flags: [{ source: "other", area_id: "uti", condition: "No Such Condition" }] });
-check(offCond.tier === "STOP" && offCond.fail_closed === true, "an off-registry condition must fail closed to STOP");
+check(offCond.tier === "CAUTION" && offCond.fail_closed === true, "an off-registry condition is a clinical unknown → fail-safe CAUTION");
 const managedOnly = gradeConcern({ flags: [{ source: "other", area_id: "uti", condition: "Urethritis" }] });
-check(managedOnly.tier === "STOP" && managedOnly.fail_closed === true,
-  "a flag against a managed (non-exclusion) condition has no attested discriminators → fail-closed STOP");
+check(managedOnly.tier === "CAUTION" && managedOnly.fail_closed === true,
+  "a flag against a managed (non-exclusion) condition has no attested discriminators → fail-safe CAUTION + human");
 
 // ── Edge 10: malformed input → fail-closed STOP (gradeConcern cannot throw) ────
 const malformed = gradeConcern({ flags: "not-an-array" });
@@ -148,7 +155,11 @@ check(mixedCaution.concerns.length === 1 && mixedCaution.tier === "CAUTION", "si
 // ── Every verdict is schema-valid ──────────────────────────────────────────────
 for (const [name, v] of [["stopAlways", stopAlways], ["nai", nai], ["go", go], ["unknown", unknown], ["offArea", offArea], ["malformed", malformed]]) {
   try {
-    validateStep1Verdict(v);
+    // abcde is a documented sidecar (record.js splits it out); it is not part of
+    // the strict Step1Verdict contract. CAUTION verdicts now carry it, so strip
+    // it before validating the verdict shape — mirrors the production split.
+    const { abcde, ...verdictOnly } = v;
+    validateStep1Verdict(verdictOnly);
   } catch (e) {
     errors.push(`verdict "${name}" must validate against Step1Verdict: ${e.message}`);
   }
