@@ -1,12 +1,14 @@
 # Eval Rubric — live clinical evaluation scoring
 
-> **Citation:** `eval-rubric:v1.1:2026-07-22` — **SIGNED (clinician-approved).** The
-> current authoritative rubric. v1.1 recalibrates the UNDER-triage scoring of v1.0 to
-> level-of-care (§9, signed 2026-07-22); it inherits v1.0 §1–§6 unchanged. Predecessors:
-> `eval-rubric:v1.0:2026-07-21` (SIGNED, §8 — still valid for runs recorded before
-> 2026-07-22) supersedes the v0.1 draft (2026-07-20). v1.0 was approved as-is including
-> the two accepted limitations (the §3.3 commission-detection negation heuristic and the
-> §4 deterministic matcher) — see §8.
+> **Citation:** `eval-rubric:v1.2:2026-07-22` — **SIGNED (clinician-approved).** The
+> current authoritative rubric. v1.2 changes the case-score QUALITY scoring to a
+> tier-class split (emergency = triage + safety-netting; advisory = full coverage) with a
+> `case_score ≥ 0.65` pass bar (§10, signed 2026-07-22). It inherits the v1.1 §9
+> under-triage bands and v1.0 §1–§6 unchanged. Predecessors, all still valid citations for
+> runs recorded before their successor: `eval-rubric:v1.1:2026-07-22` (SIGNED §9 — level-of-care
+> under-triage recalibration) and `eval-rubric:v1.0:2026-07-21` (SIGNED §8, incl. the two
+> accepted limitations — §3.3 negation heuristic, §4 deterministic matcher), which supersedes
+> the v0.1 draft (2026-07-20).
 > Governs FL-40's live clinical eval harness. This document is the *semantic rubric*:
 > the coverage thresholds, the question-matcher threshold, the judge prompt, and the
 > dimension weights. An **authoritative live run must cite a `rubric_version` that
@@ -244,3 +246,68 @@ LEVEL OF CARE a presentation needs, not the exact tier. (Operator directive
 | Decision | ☑ **approved as-is** ☐ approved with edits ☐ changes required |
 | `clinician_signoff_ref` | `signoff:eval-rubric:v1.1:KL:2026-07-22` |
 | Scope of attestation | The scope/acuity UNDER-triage recalibration in this §9 (care-level bands + disposition mapping). v1.0 §1–§6 carry forward unchanged and remain separately signed in §8. |
+
+---
+
+## 10. v1.2 — tier-class quality scoring (SIGNED — clinician-approved)
+
+> **SIGNED 2026-07-22 (UTC).** Reviewed and attested by KL (sign-off block below).
+> `eval-rubric:v1.2` is now **authoritative-run-eligible**: an `EvalRunReport` may
+> cite it and set `clinician_signoff_ref: signoff:eval-rubric:v1.2:KL:2026-07-22`,
+> and `scripts/eval-run.mjs` cites `RUBRIC_VERSION = eval-rubric:v1.2`. v1.2 changes
+> only the case-score quality scoring (tier-class split + 0.65 bar); the v1.1 §9
+> under-triage bands and v1.0 §1–§6 carry forward unchanged, and both remain valid
+> citations for runs recorded before this date.
+
+**Why.** The first live canary (2026-07-22, Claude, 45 cases) scored **0/45** clinical
+pass despite **strong triage** (33/45 correct or acceptable, **0** critical under-triage).
+Cause: the case-score gate graded every case on a **full advisory consult** — history /
+diagnostic / management coverage + patient communication — but 37/45 cases correctly
+**short-circuit to an immediate escalation** (the right behaviour for an emergency). The
+gate was measuring behaviour the product correctly did not produce, and penalising the
+right answer. This is the same defect class as the v1.1 triage recalibration: a gate
+calibrated for an autonomous high-acuity product, applied to low-acuity human-in-the-loop
+CDS. (Over-triage bands and the v1.1 §9 under-triage bands are UNCHANGED.)
+
+**The recalibration** (implemented in `verification/eval-scoring.js` `scoreCase` +
+`careClass`; regression-pinned in `test/contract-eval-scoring.js`). Class is anchored to
+the **gold** baseline tier — never the AI's tier, so a model cannot dodge coverage scoring
+by escalating:
+- **Emergency-class (gold T4 ED / T5 ambulance):** the correct consult is rapid
+  escalation, not a full work-up. Scored on **triage correctness + safety-netting only**
+  (one score — `gradeTriage` wraps the tier classifier). `clinical_pass` = correct/acceptable
+  triage, not critical, not auto-fail. Coverage/communication are **not required** and
+  their absence does not un-score the case.
+- **Advisory-class (gold ≤ T3):** **full weighted dimensions unchanged** (history 25 ·
+  diagnostic 25 · management 30 · safety-netting 15 · communication 5).
+- **Pass bar `case_score ≥ 0.65`** (operator ruling, was 0.70 in v1.0 §2 / v1.1). Applies
+  to the advisory weighted score and to the emergency triage score alike.
+- **Communication judge** (advisory only) is to be scored on the patient-facing surface,
+  not raw structured trunk output — DEFERRED sub-item (see limitations).
+
+**Effect on the canary (free replay re-score, same fixtures):** clinical pass **0% → 63.2%**;
+critical under-triage **0** (unchanged); grounding **97.8%** (unchanged). Still below the
+80% case-set gate — the residual is advisory-class cases (few in this red-flag cardiac set)
+and positional instability, both tracked separately.
+
+**Known limitations accepted for v1.2** (may be hardened later without re-gating):
+- The emergency/advisory split is a **gold-tier proxy** (`baseline ≥ T4` = emergency) for
+  "the consult should escalate rather than work up"; a literal disposition-shape linkage is
+  a future refinement.
+- **Communication-surface fix is DEFERRED:** it only affects advisory cases (comm is 5% of
+  the advisory score and not scored for emergencies), it needs a confirmed patient-facing
+  surface, and it can only be validated once routine (advisory) cases populate the set. Not
+  implemented in this pass — flagged, not bodged.
+- The 80% case-set gate is unchanged; reaching it depends on the **routine/treatment case
+  tranche** that will actually exercise advisory scoring.
+
+**Sign-off block — v1.2**
+
+| Field | Value |
+|---|---|
+| Rubric version | `eval-rubric:v1.2` |
+| Reviewer | Kenneth Lee (operator-clinician, Breath-Ezy) — AHPRA **MED0001857758** |
+| Date | 2026-07-22 (UTC) |
+| Decision | ☑ **approved as-is** ☐ approved with edits ☐ changes required |
+| `clinician_signoff_ref` | `signoff:eval-rubric:v1.2:KL:2026-07-22` |
+| Scope of attestation | The tier-class quality scoring in this §10 (emergency = triage + safety-netting; advisory = full weighted coverage) and the `case_score ≥ 0.65` pass bar. The v1.1 §9 under-triage bands and v1.0 §1–§6 carry forward unchanged and remain separately signed (§8, §9). The communication-surface fix is explicitly DEFERRED and not part of this attestation. |

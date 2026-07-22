@@ -16,14 +16,21 @@
  * Doctor from these nodes, never the scorer. Nothing here ever places a scoring
  * node into a ContextPacket or a trunk path.
  *
- * The rubric (evaluation-guide §"Tier assignment scoring", §"Recommended pass
- * threshold") is reproduced MECHANICALLY here — do not soften it:
- *   dimensions (weights):  history 25 · diagnostic 25 · management 30 ·
- *                          safety-netting 15 · communication 5  (verification
- *                          is a hard GATE, not a scored dimension)
+ * The rubric (evaluation-guide §"Tier assignment scoring"; eval-rubric §9/§10) is
+ * reproduced MECHANICALLY here — do not soften it:
+ *   ADVISORY-class cases (gold ≤ T3) — full weighted dimensions:
+ *     history 25 · diagnostic 25 · management 30 · safety-netting 15 ·
+ *     communication 5  (verification is a hard GATE, not a scored dimension)
+ *   EMERGENCY-class cases (gold T4/T5) — rubric v1.2 (operator ruling KL
+ *     2026-07-22): the correct consult is rapid escalation, not a full advisory
+ *     work-up, so the case is scored on TRIAGE correctness + safety-netting ONLY
+ *     (the same score). Grading absent coverage/communication on a case that
+ *     correctly short-circuits penalised the right answer — v1.1 §2's exact-tier
+ *     posture over-fit an autonomous high-acuity product; this is low-acuity CDS.
  *   tiers T0(self-care) … T5(call 000) — higher = more urgent; "below" = less
  *   urgent = under-triage; under-triage is weighted 3× over-triage.
- *   case pass:      case_score ≥ 0.70 AND no auto-fail AND verification pass
+ *   case pass:      case_score ≥ 0.65 (v1.2 operator ruling; was 0.70 in v1.0/§2)
+ *                   AND no auto-fail AND verification pass AND not critical.
  *   case-set pass:  ≥80% clinical pass AND 0 critical under-triage across T5
  *                   AND ≥90% grounding compliance (verification pass rate)
  */
@@ -42,9 +49,28 @@ export const DIMENSION_WEIGHTS = Object.freeze({
  *  §"Asymmetry"). Applied when combining error penalties, not to a raw score. */
 export const UNDER_TRIAGE_WEIGHT = 3;
 
-const CASE_PASS_SCORE = 0.70;
+const CASE_PASS_SCORE = 0.65; // rubric v1.2 (operator ruling KL 2026-07-22); was 0.70 (v1.0 §2)
 const CASE_SET_PASS_RATE = 0.80;
 const GROUNDING_COMPLIANCE_RATE = 0.90;
+
+/** Emergency-class floor: gold baseline T4 (ED) / T5 (ambulance). At/above this,
+ *  the correct consult is rapid escalation, so the case is scored on triage +
+ *  safety-netting, NOT full-consult coverage/communication (rubric v1.2). */
+const EMERGENCY_CARE_FLOOR = 4;
+
+/**
+ * Care class for a case, from its GOLD baseline tier (never the AI's tier — that
+ * would let a model dodge coverage scoring by escalating). Emergency at/above the
+ * floor; advisory otherwise. Fail-safe: an unparseable/absent baseline → advisory
+ * (the STRICTER path — full coverage required), so an unknown never buys a case
+ * the lighter emergency scoring.
+ * @param {string} baselineTier - node 13 correct_baseline_tier ("T0".."T5")
+ * @returns {"emergency"|"advisory"}
+ */
+export function careClass(baselineTier) {
+  const b = parseTier(baselineTier);
+  return b !== null && b >= EMERGENCY_CARE_FLOOR ? "emergency" : "advisory";
+}
 
 /** "T3" → 3 (case/space tolerant). Returns null for anything not T0–T5. */
 export function parseTier(t) {
@@ -190,6 +216,26 @@ export function scoreCase(c) {
   }
   const dims = c.dimensions || {};
   const safety = c.triage && typeof c.triage.score === "number" ? c.triage.score : null;
+
+  // v1.2 tier-class split (operator ruling KL 2026-07-22). Default to ADVISORY
+  // when the class is unknown — the stricter path (full coverage required), so an
+  // unclassified case never gets the lighter emergency scoring by accident.
+  const cls = c.care_class === "emergency" ? "emergency" : "advisory";
+
+  if (cls === "emergency") {
+    // Emergency (gold T4/T5): the correct consult is rapid escalation, not a full
+    // advisory work-up. Score on TRIAGE correctness + safety-netting ONLY — which
+    // are the same number (gradeTriage wraps classifyTier, surfaced as triage.score).
+    // Coverage / communication would grade behaviour the consult correctly did not
+    // produce, so they are not required and their absence does not un-score the case.
+    if (safety === null) {
+      return { ungrounded: false, fully_scored: false, case_score: null, clinical_pass: false, critical_under_triage: critical };
+    }
+    const clinical_pass = safety >= CASE_PASS_SCORE && !c.auto_fail && !critical;
+    return { ungrounded: false, fully_scored: true, case_score: safety, clinical_pass, critical_under_triage: critical, care_class: "emergency" };
+  }
+
+  // Advisory (gold ≤ T3): full weighted coverage + communication (v1.0/v1.1 bands).
   const parts = {
     history_taking: dims.history_taking,
     diagnostic_reasoning: dims.diagnostic_reasoning,
@@ -206,7 +252,7 @@ export function scoreCase(c) {
   }
   const case_score = Object.entries(DIMENSION_WEIGHTS).reduce((s, [k, w]) => s + parts[k] * w, 0);
   const clinical_pass = case_score >= CASE_PASS_SCORE && !c.auto_fail && !critical;
-  return { ungrounded: false, fully_scored: true, case_score, clinical_pass, critical_under_triage: critical };
+  return { ungrounded: false, fully_scored: true, case_score, clinical_pass, critical_under_triage: critical, care_class: "advisory" };
 }
 
 /**

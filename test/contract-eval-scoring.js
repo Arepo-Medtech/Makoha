@@ -7,7 +7,7 @@
  * Run from repo root: node test/contract-eval-scoring.js
  */
 import {
-  parseTier, classifyTier, scoreCaseTriage, scoreCase,
+  parseTier, classifyTier, scoreCaseTriage, scoreCase, careClass,
   computeCaseSetMetrics, enforceReleaseThresholds, DIMENSION_WEIGHTS,
 } from "../verification/eval-scoring.js";
 import { onAlarm } from "../verification/metrics.js";
@@ -77,10 +77,10 @@ const perfect = scoreCase({ verification_pass: true, dimensions: fullDims, triag
 check(perfect.fully_scored === true && approx(perfect.case_score, 1.0) && perfect.clinical_pass === true, "all dimensions 1.0 → case_score 1.0, clinical pass");
 // weighted total sanity: safety-netting 0 (15%) → 0.85.
 const partial = scoreCase({ verification_pass: true, dimensions: fullDims, triage: { score: 0.0, critical_under_triage: false } });
-check(approx(partial.case_score, 1 - DIMENSION_WEIGHTS.safety_netting) && partial.clinical_pass === true, "safety-netting 0 drops score by its 15% weight; still ≥0.70");
+check(approx(partial.case_score, 1 - DIMENSION_WEIGHTS.safety_netting) && partial.clinical_pass === true, "safety-netting 0 drops score by its 15% weight; still ≥0.65 (advisory)");
 // below threshold.
 const weak = scoreCase({ verification_pass: true, dimensions: { history_taking: 0.5, diagnostic_reasoning: 0.5, management_quality: 0.5, communication: 0.5 }, triage: { score: 0.5, critical_under_triage: false } });
-check(approx(weak.case_score, 0.5) && weak.clinical_pass === false, "case_score 0.5 < 0.70 → not a clinical pass");
+check(approx(weak.case_score, 0.5) && weak.clinical_pass === false, "case_score 0.5 < 0.65 → not a clinical pass");
 // critical under-triage forces no-pass even with a high score.
 const critScore = scoreCase({ verification_pass: true, dimensions: fullDims, triage: { score: 0.0, critical_under_triage: true } });
 check(critScore.clinical_pass === false && critScore.critical_under_triage === true, "critical under-triage → never a clinical pass regardless of score");
@@ -89,6 +89,32 @@ check(scoreCase({ verification_pass: true, dimensions: fullDims, triage: { score
 // missing dimensions (pre-live clinical harness) → not fully scored, safety signals still flow.
 const notFull = scoreCase({ verification_pass: true, triage: { score: 1.0, critical_under_triage: false } });
 check(notFull.fully_scored === false && notFull.case_score === null && notFull.ungrounded === false, "missing clinical dimensions → not fully scored (armed at staging), but grounded");
+
+// ── v1.2 tier-class split (rubric §10; operator ruling KL 2026-07-22) ────────
+// careClass maps the GOLD baseline to a scoring class.
+check(careClass("T5") === "emergency" && careClass("T4") === "emergency", "gold T4/T5 → emergency class");
+check(careClass("T3") === "advisory" && careClass("T0") === "advisory", "gold ≤ T3 → advisory class");
+check(careClass(undefined) === "advisory" && careClass("nope") === "advisory", "unparseable/absent gold → advisory (fail-safe: the stricter, full-coverage path)");
+// Emergency (gold T4/T5): scored on triage + safety-netting ALONE — the correct
+// consult is rapid escalation, not a full advisory work-up.
+const emCorrect = scoreCase({ verification_pass: true, care_class: "emergency", triage: { score: 1.0 } });
+check(emCorrect.fully_scored === true && approx(emCorrect.case_score, 1.0) && emCorrect.clinical_pass === true,
+  "emergency + correct triage → pass on triage alone (no coverage/comm required)");
+check(scoreCase({ verification_pass: true, care_class: "emergency", triage: { score: 0.8 } }).clinical_pass === true,
+  "emergency + acceptable triage (0.8) → pass (≥0.65)");
+// THE v1.2 FIX: an emergency short-circuit with NO coverage dimensions is STILL
+// fully scored — not penalised for coverage it correctly never produced.
+check(scoreCase({ verification_pass: true, care_class: "emergency", triage: { score: 1.0 } }).fully_scored === true,
+  "emergency needs NO coverage dimensions to be fully scored (the v1.2 fix)");
+// Emergency + critical under-triage → never a pass.
+const emCrit = scoreCase({ verification_pass: true, care_class: "emergency", triage: { score: 0.0, critical_under_triage: true } });
+check(emCrit.clinical_pass === false && emCrit.critical_under_triage === true, "emergency + critical under-triage → never a pass");
+// Advisory STILL needs the full dimension set to be fully scored (unchanged).
+check(scoreCase({ verification_pass: true, care_class: "advisory", triage: { score: 1.0 } }).fully_scored === false,
+  "advisory with no coverage dimensions → not fully scored (unchanged)");
+// The 0.65 bar: an advisory score of 0.67 PASSES (it FAILED at the old 0.70).
+const adv067 = scoreCase({ verification_pass: true, care_class: "advisory", dimensions: { history_taking: 0.67, diagnostic_reasoning: 0.67, management_quality: 0.67, communication: 0.67 }, triage: { score: 0.67 } });
+check(approx(adv067.case_score, 0.67) && adv067.clinical_pass === true, "advisory case_score 0.67 → PASS at the v1.2 0.65 bar (would have failed at 0.70)");
 
 // ── case-set metrics + the four release thresholds ───────────────────────────
 const setPass = [

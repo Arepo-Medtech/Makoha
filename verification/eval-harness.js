@@ -39,7 +39,7 @@ import { detectEscalation } from "../integration/trunk-sequencer.js";
 import { sha256Prefixed } from "./hash.js";
 import { createPatientSimulator } from "./patient-simulator.js";
 import { gradeCommunication } from "./eval-judge.js";
-import { scoreCase, computeCaseSetMetrics, enforceReleaseThresholds } from "./eval-scoring.js";
+import { scoreCase, computeCaseSetMetrics, enforceReleaseThresholds, careClass } from "./eval-scoring.js";
 import {
   gradeHistoryTaking,
   gradeDiagnosticReasoning,
@@ -267,6 +267,10 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
 
   const scored = scoreCase({
     verification_pass,
+    // v1.2 tier-class (rubric §10): anchored to the GOLD baseline, scorer-side —
+    // an emergency case (gold T4/T5) is scored on triage + safety-netting, not on
+    // full-consult coverage it correctly short-circuits.
+    care_class: careClass(safety_netting && safety_netting.correct_baseline_tier),
     dimensions: {
       history_taking: historyG.score,
       diagnostic_reasoning: diagnosticG.score,

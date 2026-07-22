@@ -4,6 +4,65 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: `eval-rubric:v1.2` tier-class quality scoring — DRAFTED (pending KL sign-off) (2026-07-22)
+
+The first live canary scored **0/45** clinical pass despite strong triage (33/45
+correct/acceptable, 0 critical under-triage): the case-score gate graded every case on a
+full advisory consult, but 37/45 correctly short-circuit to escalation, so it penalised
+the right answer. v1.2 splits scoring by **gold** care-class (ungameable):
+- `verification/eval-scoring.js`: new `careClass()` (gold T4/T5 → emergency, else advisory);
+  `scoreCase` scores **emergency** on triage + safety-netting alone (no coverage/comm
+  required — an emergency short-circuit is now *fully scored*, not failed for absent
+  coverage), **advisory** on the full weighted dimensions as before. Pass bar **0.70 → 0.65**
+  (operator ruling KL 2026-07-22).
+- `verification/eval-harness.js`: threads `care_class` from the gold `correct_baseline_tier`
+  into `scoreCase`.
+- `test/contract-eval-scoring.js`: 0.65 bar + tier-class cases pinned.
+
+**Free replay re-score on the canary fixtures: clinical pass 0% → 63.2%**; critical
+under-triage 0 (unchanged); grounding 97.8% (unchanged). Still below the 80% case-set gate
+(residual = advisory cases + positional instability, both tracked). Rubric addendum drafted
+`eval-rubric.md` §10 — **PROPOSED, PENDING KL SIGN-OFF**; `RUBRIC_VERSION` stays v1.1 until
+signed. Communication-surface fix DEFERRED (advisory-only, 5% weight, needs the routine
+tranche to validate). Full `npm test` EXIT=0.
+
+---
+
+## PPP-TTT: unknown → CAUTION — fail-SAFE, not fail-loud (operator ruling KL 2026-07-22)
+
+Recalibrates PPP-TTT's default-deny posture for a low-acuity everyday tool (mākoha).
+**A genuine red still STOPs; a clinical unknown is now orange (CAUTION + human), not a
+reflexive escalation.** Rationale: "I can't rule it out from here" is the telehealth-
+normal absence of bedside data, not a danger sign — and over-escalation is itself a
+harm (it drives patients away from a tool built for routine complaints and erodes what
+a real escalation means). CAUTION is never an unsupervised pass: it runs the light
+ABCDE and hands to a clinician.
+
+Changed (two files — the second is the reason tracing mattered):
+- `verification/ppp-ttt/interrogate.js`: an unresolved (unknown/unanswered) discriminator
+  with **no stigma present**, an off-registry / managed-only condition, and an unattested
+  single condition now grade to **fail-SAFE CAUTION** (new `failSafeCautionVerdict`), not
+  STOP. `fail_closed:true` now marks a safe-DEFAULT verdict; its tier is CAUTION for a
+  clinical unknown and STOP for a broken instrument.
+- `verification/ppp-ttt/abcde/a-plausible-passage.js`: A-PP re-escalates only on a
+  **present** stigma, not on "unknown" — otherwise the ABCDE defence-in-depth would
+  silently drag every can't-rule-out-remotely CAUTION back to STOP, undoing the change.
+
+**Broken instrument still STOPs (loud):** drifted/unattested REGISTRY (version ≠ pinned
+1.3.0, no attestation), unrecognised tier_model, malformed input, module error. A tool
+that cannot trust its own attested data halts — it does not quietly proceed. A **present**
+stigma, `always_immediate`, and `safeguarding_always_report` are untouched — genuine reds
+still escalate. The scope-registry DATA is unchanged (still pinned v1.3.0, attested_by KL);
+this is a code-interpretation ruling, not a dataset edit.
+
+Invariants preserved: the monotone-AND compose (never rescues a failing base, tier only
+rises within a run), hashing, and the frozen safety core (verifier / verification-gate /
+audit-store hashes unchanged). Tests re-baselined: `contract-ppp-ttt.js`,
+`contract-ppp-ttt-monotone.js` (default-deny SPLIT into clinical-unknown→CAUTION vs
+broken-instrument→STOP). Full `npm test` EXIT=0.
+
+---
+
 ## FL-40: `eval-rubric:v1.1` SIGNED — scope/acuity recalibration attested (2026-07-22)
 
 Operator-clinician KL (Kenneth Lee, AHPRA MED0001857758) attested and signed off on
