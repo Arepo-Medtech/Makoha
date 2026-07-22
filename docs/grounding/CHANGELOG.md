@@ -4,6 +4,30 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## FL-40: eval canary resume + crash-durability (2026-07-22)
+
+The first representative gate canary (123 cases) died ~2h in on an exhausted API
+balance and lost EVERYTHING — the harness flushed fixtures only at the very end,
+so hours of paid consults, held in memory, vanished with the process. Fixed so a
+live run is crash-durable and resumable, and never re-bills recorded work:
+- `verification/llm-replay.js`: **record-or-replay** — `call()` returns an
+  already-recorded key in ANY mode, so a live run replays keys already on disk for
+  free (resume/top-up) instead of regenerating. Each new record **persists
+  immediately** (autosave, default on) via **atomic write-tmp-then-rename**, so a
+  crash mid-write can never corrupt the fixture. Keys are prompt-hash based →
+  a changed prompt yields a new key and regenerates; delete the fixture to force
+  fresh. `save()` becomes a final flush (no-op when clean).
+- `scripts/eval-run.mjs`: logs a resume line when recorded fixtures are present.
+- `test/contract-llm-replay.js`: NEW — proves the live-hit replays without calling
+  liveFn (no re-bill), the miss persists immediately + atomically, a fresh replayer
+  resumes prior state, and replay-miss still fails closed. Wired into `npm test`.
+
+Result: an interrupted live run keeps every case it recorded; re-running the same
+command resumes it and spends API only on the cases still missing. Full `npm test`
+EXIT=0 (117 suites). Eval harness only — no pipeline/safety code touched.
+
+---
+
 ## FL-40: `eval-rubric:v1.2` tier-class quality scoring — DRAFTED (pending KL sign-off) (2026-07-22)
 
 The first live canary scored **0/45** clinical pass despite strong triage (33/45

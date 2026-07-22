@@ -136,6 +136,14 @@ async function main() {
     const judgeReplayer = createReplayer({ fixturePath: judgePath, mode: args.mode });
     const judgeTransport = args.mode === "live" ? makeDefaultJudgeTransport() : undefined;
 
+    // RESUME: a live run replays keys already on disk for free (llm-replay
+    // record-or-replay) and persists each new record immediately, so an
+    // interrupted run is resumed by simply re-running — only missing cases
+    // call the API. Make that visible.
+    if (args.mode === "live" && genReplayer.size() > 0) {
+      console.log(`[${backend}] resuming: ${genReplayer.size()} generation + ${judgeReplayer.size()} judge response(s) already recorded — those replay free; only missing cases spend on the API. (Delete ${genPath} to force a fully fresh run.)`);
+    }
+
     if (Number.isInteger(args.positionalSample) && args.positionalSample < longListTotal) {
       console.log(`[${backend}] positional: sampling ${args.positionalSample} of ${longListTotal} long-list cases (${longListTotal - args.positionalSample} UNCHECKED — sanctioned M3 canary)`);
     }
