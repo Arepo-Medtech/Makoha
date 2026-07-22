@@ -36,7 +36,7 @@ import { resolveClinicianSignoff } from "../verification/eval-signoff.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CASES_DIR = join(ROOT, "data", "cases");
-const RUBRIC_VERSION = "eval-rubric:v1.0"; // clinician-signed 2026-07-21 (docs/grounding/eval-rubric.md §8)
+const RUBRIC_VERSION = "eval-rubric:v1.1"; // clinician-signed 2026-07-22 (docs/grounding/eval-rubric.md §9); recalibrated scorer (PR #6). v1.0 (§8) remains a valid citation for runs recorded before 2026-07-22.
 
 function parseArgs(argv) {
   const out = {
