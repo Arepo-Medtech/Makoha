@@ -1,0 +1,32 @@
+{
+  "_note": "MedAgentBench corpus provenance manifest (Mechanical Inventory B2). Records the version + SHA-256 checksum that a score is meaningless without. FIRST-PARTY CLEAN-ROOM harness — no upstream MedAgentBench dataset lifted (methodology reference only). v0.1.0 is a DEV/SYNTHETIC seed tranche: all tasks attested_by:null, so the benchmark is ARMED-BUT-INERT (SKIP-green) until a clinician attests. Checksum is over the *.corpus.json files only (manifest.json excluded).",
+  "corpus_version": "0.1.0",
+  "generated": "2026-07-24",
+  "harness": "first-party MedAgentBench-style (no upstream dataset code/content; published methodology REFERENCE only)",
+  "threshold": 0.6,
+  "checksum": "sha256:84b790b87fbcf3e03731f27044041e27d610b26a3865d2b6ee897116f54c2047",
+  "files": ["tasks.corpus.json"],
+  "task_types": {
+    "query": "read a fact from the virtual FHIR EHR (grounded, not parametric)",
+    "order": "draft a non-medication order/action (referral) — must never contain a dose",
+    "compute": "derive a value from EHR data (e.g. age band) — must not fabricate or emit a dose"
+  },
+  "counts": { "query": 1, "order": 1, "compute": 1, "attested": 0, "unattested": 3, "total": 3 },
+  "virtual_ehr": {
+    "engine": "benchmark/medagent/virtual-ehr.js — in-memory, non-persistent, synthetic-only sandbox",
+    "conformance": "reuses mcp/servers/fhir-broker/conformance.js validateResource (AU Core, vendored 2.0.1-ci-build SDs); seeded Patients validate 'conformant'",
+    "boundary": "never contacts a live/real FHIR endpoint; the fhir-broker live backend is never imported, so no live-mode marker can flip"
+  },
+  "assertions": {
+    "scoring_store_firewall_clean": true,
+    "firewall_note": "no task prompt/provenance references the sealed scoring store / case nodes; the loader reads only benchmark/medagent/corpora and never opens data/cases (10-13). Loader-enforced (task-loader.js SCORING_PROVENANCE_RE).",
+    "synthetic_only": true,
+    "no_licensed_benchmark_lifts": true
+  },
+  "attestation": {
+    "status": "UNATTESTED (v0.1.0 DEV/SYNTHETIC seed) — armed-but-inert; the benchmark SKIPs green until a clinician attests the tasks",
+    "rule": "attested tasks drive the score (MIRAGE §7 posture). Benchmark-eligible != patient-eligible.",
+    "records": []
+  },
+  "growth_path": "MA.2 DONE — driver + scorer wired: a fresh sandbox per task, the reference agent EXECUTES each task's action_spec (real sandbox work), scored on task_success (soft) + invariant_adherence (HARD gate = 1.00: no fabricated code, no dose outside pharmacology, HARD_FAIL respected). Gate teeth in test/bench-medagent-gate.js (reference passes; fabricated-code / dose / HARD_FAIL-ignoring agents each fail the invariant gate; a wrong-answer agent fails sub-threshold; the pipelineAgent genuinely drives runTrunkWithGrounding with writeArtifacts OFF — ledger untouched). MA.3: add the blocking bench:medagent CI job + a harvest-manifest reference row. Clinician attestation (KL) then arms the gate. Honest caveat: correctness/topology test, not a scale test."
+}

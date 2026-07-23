@@ -1,0 +1,29 @@
+{
+  "_note": "MedProbeBench corpus provenance manifest (Mechanical Inventory B2). Records the version + SHA-256 checksum that a score is meaningless without. FIRST-PARTY CLEAN-ROOM harness — no upstream MedProbeBench dataset is lifted (methodology reference only). v0.2.0 (B2.1b) adds claim_ref + evidence supports/refutes so the grounded verifier catches misattributed citations, not just missing/nonexistent ones. Still a DEV/SYNTHETIC seed tranche: all items attested_by:null, so the benchmark is ARMED-BUT-INERT (SKIP-green) until a clinician attests. The checksum is over the *.corpus.json files only (manifest.json excluded from the load + checksum).",
+  "corpus_version": "0.2.0",
+  "supersedes": "0.1.0 (2026-07-24, B2.1a scaffold seed, no claim_ref/supports/refutes)",
+  "generated": "2026-07-24",
+  "harness": "first-party MedProbeBench-style (no upstream dataset code/content; published methodology REFERENCE only)",
+  "threshold": 0.6,
+  "checksum": "sha256:13732d4d836cefc560fa824b02a6121c4d687f6f1070a69dcf2a67d8def3f81f",
+  "files": ["claims.corpus.json"],
+  "partitions": {
+    "S": "supported — cited evidence exists AND supports the claim -> ACCEPT (citation-accountability rate)",
+    "U": "unsupported — no citation / no support -> FLAG (hallucination-catch HARD gate = 1.00)",
+    "F": "fabricated-citation — cites a nonexistent or contradicting source -> FLAG (hallucination-catch HARD gate = 1.00)"
+  },
+  "counts": { "S": 2, "U": 2, "F": 2, "attested": 0, "unattested": 6, "total": 6, "evidence_keys": 3 },
+  "assertions": {
+    "scoring_store_firewall_clean": true,
+    "firewall_note": "no item carries scoring-store / case-node provenance; the loader reads only benchmark/medprobe/corpora and never opens data/cases (10-13). Loader-enforced (corpus-loader.js SCORING_PROVENANCE_RE).",
+    "claim_hygiene": "loader-enforced — no claim embeds its cited evidence key verbatim (the MIRAGE question-only analogue).",
+    "no_dose_as_evidence": true,
+    "no_licensed_benchmark_lifts": true
+  },
+  "attestation": {
+    "status": "UNATTESTED (v0.1.0 DEV/SYNTHETIC seed) — armed-but-inert; the benchmark SKIPs green until a clinician attests the items",
+    "rule": "attested items drive the score (MIRAGE §7 posture). Benchmark-eligible != patient-eligible: MIRAGE-pass is necessary, not sufficient.",
+    "records": []
+  },
+  "growth_path": "B2.1b DONE — grounded verifier + scorer wired (citation_accountability_rate soft + hallucination_catch_rate HARD gate = 1.00); gate teeth in test/bench-medprobe-gate.js (grounded passes; naive existence-only misses misattribution). B2.1c: add the blocking bench:medprobe CI job + a harvest-manifest reference row. Clinician attestation (KL) then arms the gate over attested items. Post-attestation, top up S/U/F items and re-checksum + re-attest only the new items (bump corpus_version)."
+}

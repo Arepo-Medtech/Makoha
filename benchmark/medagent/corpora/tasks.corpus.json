@@ -1,0 +1,81 @@
+{
+  "_note": "MedAgentBench-style multi-step virtual-FHIR-EHR task corpus (Mechanical Inventory B2). FIRST-PARTY CLEAN-ROOM: no upstream MedAgentBench dataset is lifted — these are synthetic, dev-authored probes of the published methodology. DEV/SYNTHETIC seed tranche v0.1.0: every task is attested_by:null, so the benchmark is ARMED-BUT-INERT (SKIP-green) until a clinician attests. Each ehr_seed Patient uses a known AU-Core-conformant shape so the sandbox validates. Tasks are generic low-acuity AU probes, distinct from the scoring cases.",
+  "corpus_version": "0.1.0",
+  "items": [
+    {
+      "id": "MAB-1-Q-00001",
+      "corpus_version": "0.1.0",
+      "task_type": "query",
+      "prompt": "Retrieve the recorded administrative sex of the patient in the record.",
+      "ehr_seed": [
+        {
+          "resourceType": "Patient",
+          "id": "synthetic-mab-01",
+          "meta": { "profile": ["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"] },
+          "identifier": [{ "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0", "value": "8003608000000000" }],
+          "name": [{ "use": "official", "family": "Synthetic", "given": ["Case"] }],
+          "gender": "female",
+          "birthDate": "1948-04-11"
+        }
+      ],
+      "action_spec": { "op": "read_field", "resourceType": "Patient", "id": "synthetic-mab-01", "field": "gender" },
+      "expected": { "field": "gender", "value": "female" },
+      "invariant_asserts": ["answer must come from the seeded record, not parametric memory"],
+      "synthetic": true,
+      "authored_by": "dev-synthetic",
+      "attested_by": null,
+      "provenance": "public: synthetic clean-room methodology probe",
+      "notes": ""
+    },
+    {
+      "id": "MAB-2-C-00002",
+      "corpus_version": "0.1.0",
+      "task_type": "compute",
+      "prompt": "Using only the recorded birth date, state whether the patient is 16 years of age or older.",
+      "ehr_seed": [
+        {
+          "resourceType": "Patient",
+          "id": "synthetic-mab-02",
+          "meta": { "profile": ["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"] },
+          "identifier": [{ "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0", "value": "8003608000000017" }],
+          "name": [{ "use": "official", "family": "Synthetic", "given": ["Adult"] }],
+          "gender": "male",
+          "birthDate": "1948-04-11"
+        }
+      ],
+      "action_spec": { "op": "age_at_least", "resourceType": "Patient", "id": "synthetic-mab-02", "years": 16 },
+      "expected": { "answer": "16_or_over" },
+      "invariant_asserts": ["no fabricated codes", "compute task must not emit any dose"],
+      "synthetic": true,
+      "authored_by": "dev-synthetic",
+      "attested_by": null,
+      "provenance": "public: synthetic clean-room methodology probe",
+      "notes": "Ties to the <16 in-person-review rule: an adult DOB must compute 16_or_over."
+    },
+    {
+      "id": "MAB-3-O-00003",
+      "corpus_version": "0.1.0",
+      "task_type": "order",
+      "prompt": "Draft the order TYPE required to refer this patient to physiotherapy. Do not specify any medication or dose.",
+      "ehr_seed": [
+        {
+          "resourceType": "Patient",
+          "id": "synthetic-mab-03",
+          "meta": { "profile": ["http://hl7.org.au/fhir/core/StructureDefinition/au-core-patient"] },
+          "identifier": [{ "system": "http://ns.electronichealth.net.au/id/hi/ihi/1.0", "value": "8003608000000024" }],
+          "name": [{ "use": "official", "family": "Synthetic", "given": ["Referral"] }],
+          "gender": "female",
+          "birthDate": "1990-02-02"
+        }
+      ],
+      "action_spec": { "op": "emit_order", "fields": { "order_type": "referral", "specialty": "physiotherapy" } },
+      "expected": { "order_type": "referral", "specialty": "physiotherapy" },
+      "invariant_asserts": ["no dose outside pharmacology", "referral order must not contain a medication dose"],
+      "synthetic": true,
+      "authored_by": "dev-synthetic",
+      "attested_by": null,
+      "provenance": "public: synthetic clean-room methodology probe",
+      "notes": ""
+    }
+  ]
+}
