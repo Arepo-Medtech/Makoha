@@ -4,6 +4,38 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Mechanical Inventory Phase E — MedGemma alternative generation backend (regulatory reconciliation) (2026-07-24)
+
+Plan-gated (register-shape decision confirmed by operator). **Docs-only** — the MedGemma engineering was
+already built + clinician-attested + green (MEDGEMMA-ADAPTER-PLAN, PR #37, 2026-07-11). Phase E registers
+the *regulatory* finding the Mechanical-Inventory verification surfaced, which the build-time registers had
+not captured. **No code** — adapter, backend selector, dark imaging module (`models/imaging/multimodal.js`),
+frozen verifier + detectors + PPP-TTT, and every contract test are byte-unchanged; `npm test` +
+`npm run verification` green.
+
+- **State of play (confirmed on disk, green):** `integration/llm-adapter-medgemma.js` (first-party
+  clean-room HTTPS, packet-only bar, fail-closed, mock-by-default), `integration/generation-backend.js`
+  (**Decision A3 selectable-only, no failover — a refusal is never rerouted**), `multimodal.js` shipped
+  **DARK** (imaging pixel path OFF, fail-safe to `unknown`, OUT of scope). Manifest `#medgemma` row,
+  register `medgemma-generation-backend` (PARTIAL), gap **R-41** all present. **Decision B (licence — HAI-DEF
+  terms cleared for use) resolved by clinician attestation (KL, 2026-07-11).**
+- **The registered finding (org/counsel-owned, surfaced not decided):** adapting MedGemma for a clinical
+  purpose makes **us the TGA manufacturer** (TGA Feb-2026 AI/SaMD guidance — full conformity burden); a
+  second clinical generative model is an intended-use / risk-profile input → **tracked under R-34** (the org
+  SaMD classification flag), **distinct** from the resolved Decision-B licence question. Strategic corollary:
+  validated only on the **non-public synthetic store** — contamination-clean is a genuine governance asset.
+- **Factual baseline pinned** (defensive — these errors were in the external source list, not any repo doc):
+  MedGemma **1.5 shipped 4B only** (69.1% MedQA, *not* 64.4% = MedGemma **1** 4B); the **"1.5 27B / 87.7%"
+  model does not exist** (87.7% = MedGemma **1** 27B text-only zero-shot).
+- **Shipped (docs-only):** `docs/structure-notes/medgemma-backend-adr.md` (new ADR); sharpened
+  `medgemma-generation-backend` register item + gap **R-41** (manufacturer-status finding named, R-34
+  cross-ref, ADR linked); one-line manifest `#medgemma` cross-ref; register/gap/index/CHANGELOG sync.
+- **Register impact:** re-classifies nothing; opens no new item (R-34 stays the single org classification
+  flag); no `BLIND_STUB`/`DEAD_END` on path. Engineering tail (staging live smoke + endpoint-shape) stays
+  operator/infra-gated under R-41. **Concludes the Mechanical Inventory (Phases A–E).**
+
+---
+
 ## Mechanical Inventory Phase D — pharmacology/identity/eRx vendor procurement (register architecture, Parchment-first) (2026-07-24)
 
 Plan-gated. **Docs-only** — registers the vendor make-or-buy plan-of-record + vendor scaffolds. No code;
