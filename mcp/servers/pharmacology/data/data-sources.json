@@ -1,7 +1,7 @@
 {
   "_note": "Provenance + licence registry for the pharmacology clinical DATA sources (FL-30 Step 3). Distinct from integration/harvest-manifest.json, which tracks harvested CODE repos. Every clinical fact authored into mcp/servers/pharmacology/data/* MUST cite one of these source ids in its ProvenanceSchema.source_ref. Sources with use_restriction='structure_only' (STOPP/START, TDM, DrugBank, AusDI, APF22) supply FACTS + STRUCTURE + CITATION only — no monograph/criteria prose or tables are copied into the datastore (FL-30 Guardrail 1). Facts are not copyrightable; the source is cited as where the fact was found. This file is the backbone of the provenance-coverage report.",
-  "registry_version": "1.3.0",
-  "generated": "2026-07-15",
+  "registry_version": "1.4.0",
+  "generated": "2026-07-24",
   "sources": [
     {
       "id": "pbs-api-v3",
@@ -216,6 +216,43 @@
       "use_basis": "facts_and_citation",
       "content_licence_held": false,
       "notes": "*** NOT AN AUSTRALIAN SOURCE. NEVER AN ORIGIN FOR AN AU DOSE. *** Probed live 2026-07-15: the agency enum is exactly [FDA, EMA] - there is no TGA in it. ROLE CORRECTED 2026-07-15 (operator ruling): AMASS is NOT a verification oracle collapsed to pass/fail. It is real regulatory knowledge and is stored as what it IS - US dose guidance / EU dose guidance - in the parallel ENGINE-ISOLATED `international_dose_guidance` register (no accessor; a foreign label cannot become an AU dose by construction, exactly as dose_evidence is isolated). The AU dose record's `au_congruence` block then APPRAISES the AU dose against those labels: congruent | non_congruent | no_comparator. **The appraisal ANNOTATES; it NEVER vetoes.** A non-congruent AU dose SHIPS, carrying the appraisal, and the clinician sees the AU dose and the foreign label side by side (Guardrail 2: the engine proposes, a registered practitioner disposes). This replaces the original design, which omitted a 'diverges' state so a differing AU dose could not be written. That was wrong twice over: it INVERTED the jurisdiction rule (an AU dose's authority is APF22/TGA PI - a US/EU regulator has no standing to veto it, and letting it do so makes AU subordinate to a foreign agency), and it conflated 'different jurisdiction' with 'wrong' (AU/US/EU labels legitimately differ by approved indication, population and regulatory history - divergence is the NORMAL case, so binning on it was over-triage). Licence: label FACTS + citation (amass_id, source_url) only. FDA SPL is US public domain; EMA SmPC is (c) EMA - so no SPL/SmPC prose is copied, on the same facts-and-citation basis that governs apf22. Reached at AUTHORING time from scripts/ tooling (the dose-evidence get_article_metadata precedent) - NOT a runtime dependency, no receipt-mode impact."
+    },
+    {
+      "id": "mims-au",
+      "name": "MIMS Web Services (Australia)",
+      "kind": "clinical_reference",
+      "provider": "MIMS Australia Pty Ltd",
+      "licence": "Commercial subscription (MIMS Web Services agreement)",
+      "licence_status": "pending",
+      "use_restriction": "structure_only",
+      "provides": [
+        "drug_drug_interactions",
+        "drug_allergy_screening",
+        "drug_disease_contraindications",
+        "duplicate_therapy",
+        "drugs_in_pregnancy",
+        "drugs_in_lactation",
+        "pbs_subsidy_lookup"
+      ],
+      "url": "https://developer.mims.com/au",
+      "notes": "Phase D SCAFFOLD, NOT CONNECTED (2026-07-24; ADR docs/structure-notes/vendor-procurement-adr.md). Candidate commercial drug-knowledge feed for the LicensedFeedSource / cds-adapter — the patient-facing authoritative dose/interaction/contraindication source, EMPTY->HARD_FAIL today. REST, AU-hosted; MIMS CDS modules map ~1:1 onto Trunk 8.0 firewall checks (DDI, allergy, contraindication, duplicate therapy, pregnancy, lactation); editorially independent of manufacturer PI. use_restriction:structure_only because the feed is QUERIED LIVE under licence — no MIMS content is copied into the repo datastore. licence_status:pending — no contract/credentials/licence clearance held (operator + counsel). No fact in data/* cites this id yet. Connecting it is build-order #1 / FL-34, DEFERRED. AMT gives identity, not decision support, which is why a drug-data buy is the floor."
+    },
+    {
+      "id": "parchment",
+      "name": "Parchment (parchment.health) — AU eScript + integration API",
+      "kind": "clinical_reference",
+      "provider": "Parchment Health",
+      "licence": "Commercial subscription (Parchment integration agreement)",
+      "licence_status": "pending",
+      "use_restriction": "structure_only",
+      "provides": [
+        "escript_erx_conformance",
+        "hi_service_identity",
+        "safescript_qscript_rtpm",
+        "mims_medicine_database"
+      ],
+      "url": "https://parchment.health/api",
+      "notes": "Phase D SCAFFOLD, NOT CONNECTED (2026-07-24; ADR). PRIMARY make-or-buy evaluation target (blueprint C-4): an ADHA-approved AU integration API CLAIMING to bundle eRx conformance + HI Services (identity) + SafeScript/QScript + all state RTPM + the MIMS medicine database (subscription covered). If it holds, ONE contract covers pharmacology + identity-au + messaging-geo. *** CLAIM UNVERIFIED — vendor claim, NOT a fact; operator to verify independently against Parchment's contract/API terms. *** Ships an MCP server, kept OUT of the harvest-manifest (evaluation only, not wrapped, per operator decision). MIMS-direct is the documented fallback. licence_status:pending; use_restriction:structure_only (live-queried, not ingested). Connecting it is build-order #1 / FL-34, DEFERRED; dispensing-lawfulness + no-revenue-share are counsel-owned (blueprint C-6)."
     }
   ]
 }
