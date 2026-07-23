@@ -9,7 +9,7 @@
  * non-AU system misses without a network call. An OPT-IN live smoke is skipped in CI.
  * Run from repo root: node test/contract-terminology-ontoserver.js
  */
-import { validateCode, lookupConcept, resolveSystem, loadValueSets } from "../mcp/servers/terminology/ontoserver-client.js";
+import { validateCode, lookupConcept, resolveSystem, loadValueSets, expandValueSet, translateCode } from "../mcp/servers/terminology/ontoserver-client.js";
 
 const errors = [];
 const check = (label, cond) => { if (!cond) errors.push(label); };
@@ -83,6 +83,60 @@ async function main() {
     check("validate: non-AU system → miss without a network call", nonAu.validated === false && called === false && /not an AU system/.test(nonAu.reason));
     const lookupMiss = await lookupConcept({ baseUrl: "https://tx/fhir", system: "AMT", code: "x", fetchImpl: async () => ({ ok: false, status: 500 }) });
     check("lookup: HTTP 500 → found:false", lookupMiss.found === false);
+  }
+
+  // A1.1 — text lookup via ValueSet/$expand.
+  {
+    const expandVs = () => ({ ok: true, json: async () => ({ resourceType: "ValueSet", expansion: { contains: [
+      { system: "http://snomed.info/sct", code: "44054006", display: "Type 2 diabetes mellitus" },
+      { system: "http://snomed.info/sct", code: "46635009", display: "Type 1 diabetes mellitus" },
+    ] } }) });
+    let seenUrl;
+    const ex = await expandValueSet({ baseUrl: "https://tx/fhir", system: "SNOMED_CT", filter: "diabetes", fetchImpl: async (url) => { seenUrl = url; return expandVs(); } });
+    check("expand: found + top concept", ex.found === true && ex.concepts[0].code === "44054006" && ex.concepts.length === 2);
+    check("expand: routes to ValueSet/$expand with the implicit VS + filter", /\/ValueSet\/\$expand\?/.test(seenUrl) && /filter=diabetes/.test(seenUrl) && seenUrl.includes(encodeURIComponent("http://snomed.info/sct?fhir_vs")));
+    const exMiss = await expandValueSet({ baseUrl: "https://tx/fhir", system: "SNOMED_CT", filter: "zzz", fetchImpl: async () => ({ ok: false, status: 500 }) });
+    check("expand: HTTP 500 → fail-safe empty", exMiss.found === false && exMiss.concepts.length === 0 && /HTTP 500/.test(exMiss.reason));
+    let called = false;
+    const exNonAu = await expandValueSet({ baseUrl: "https://tx/fhir", system: "PBS", filter: "x", fetchImpl: async () => { called = true; return expandVs(); } });
+    check("expand: non-AU system → miss without a network call", exNonAu.found === false && called === false && /not an AU system/.test(exNonAu.reason));
+  }
+
+  // A1.1 — mapping via ConceptMap/$translate.
+  {
+    const translateP = () => ({ ok: true, json: async () => ({ resourceType: "Parameters", parameter: [
+      { name: "result", valueBoolean: true },
+      { name: "match", part: [
+        { name: "equivalence", valueCode: "equivalent" },
+        { name: "concept", valueCoding: { system: "http://snomed.info/sct", code: "44054006", display: "Type 2 diabetes mellitus" } },
+      ] },
+    ] }) });
+    let seenUrl;
+    const tr = await translateCode({ baseUrl: "https://tx/fhir", fromSystem: "SNOMED_CT", toSystem: "SNOMED_CT", code: "73211009", fetchImpl: async (url) => { seenUrl = url; return translateP(); } });
+    check("translate: found + mapping", tr.found === true && tr.mappings[0].code === "44054006" && tr.mappings[0].equivalence === "equivalent");
+    check("translate: routes to ConceptMap/$translate with source system", /\/ConceptMap\/\$translate\?/.test(seenUrl) && seenUrl.includes(encodeURIComponent("http://snomed.info/sct")));
+    const trThrow = await translateCode({ baseUrl: "https://tx/fhir", fromSystem: "SNOMED_CT", toSystem: "SNOMED_CT", code: "x", fetchImpl: async () => { throw new Error("network down"); } });
+    check("translate: transport throw → fail-safe empty", trThrow.found === false && trThrow.mappings.length === 0 && /network down/.test(trThrow.reason));
+    let called2 = false;
+    const trNonAu = await translateCode({ baseUrl: "https://tx/fhir", fromSystem: "PBS", toSystem: "SNOMED_CT", code: "x", fetchImpl: async () => { called2 = true; return translateP(); } });
+    check("translate: non-AU source → miss without a network call", trNonAu.found === false && called2 === false && /not an AU system/.test(trNonAu.reason));
+  }
+
+  // A1.2 — ECL-authored value sets + extended system coverage.
+  {
+    // AMT $expand uses the DEV medicine-picker ECL value set (via implicit_valueset),
+    // while AMT $validate-code stays on CodeSystem membership (valueset_url null).
+    check("A1.2 value-sets: AMT expand VS is the ECL medicine-picker", /fhir_vs=ecl/.test(resolveSystem("AMT")?.implicit_valueset || ""));
+    check("A1.2 value-sets: AMT validate binding still null (CodeSystem membership)", resolveSystem("AMT")?.valueset_url === null);
+    let seenUrl;
+    const ex = await expandValueSet({ baseUrl: "https://tx/fhir", system: "AMT", filter: "paracetamol", fetchImpl: async (url) => { seenUrl = url; return { ok: true, json: async () => ({ resourceType: "ValueSet", expansion: { contains: [{ system: "http://snomed.info/sct", code: "23628011000036104", display: "paracetamol 500 mg tablet" }] } }) }; } });
+    check("A1.2 AMT expand: resolves via the ECL VS", ex.found === true && /\/ValueSet\/\$expand\?/.test(seenUrl) && seenUrl.includes("763158003"));
+    // LOINC is now a resolvable system (Ontoserver-syndicated).
+    check("A1.2 value-sets: LOINC resolves → loinc.org", resolveSystem("LOINC")?.system_uri === "http://loinc.org");
+    // ICD-10-AM / PBS are explicitly NOT resolved by this client (documented + fail-safe).
+    check("A1.2 value-sets: ICD_10_AM not resolved here", resolveSystem("ICD_10_AM") === null);
+    check("A1.2 value-sets: PBS not resolved here", resolveSystem("PBS") === null);
+    check("A1.2 value-sets: not_resolved_here documents ICD-10-AM + PBS", !!vs.not_resolved_here?.ICD_10_AM && !!vs.not_resolved_here?.PBS);
   }
 
   // OPT-IN live smoke (real self-hosted/NCTS Ontoserver; needs an endpoint + credentials → skipped in CI).

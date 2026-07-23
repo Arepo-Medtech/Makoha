@@ -22,7 +22,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveTxEndpoint, validateCodeLive } from "./live-adapter.js";
-import { validateCode as ontoserverValidateCode } from "./ontoserver-client.js";
+import { validateCode as ontoserverValidateCode, expandValueSet as ontoserverExpand, translateCode as ontoserverTranslate } from "./ontoserver-client.js";
 
 // AU-specific systems the CSIRO-targeted live-adapter maps to null. When a live
 // endpoint holding AU content (self-host / NCTS, B6) is configured, these route
@@ -37,6 +37,17 @@ async function validateCodeDispatch(baseUrl, system, code) {
     return ontoserverValidateCode({ baseUrl, system, code });
   }
   return validateCodeLive(baseUrl, system, code);
+}
+
+// A1.1 — text lookup ($expand) and mapping ($translate) route through the Ontoserver
+// client, which resolves the systems it holds (SNOMED CT-AU + AMT) and FAILS SAFE for
+// any other system (miss without a network call), never a fabricated concept/mapping.
+// The CSIRO sandbox live-adapter has no expand/translate, so these are Ontoserver-only.
+async function expandDispatch(baseUrl, system, filter) {
+  return ontoserverExpand({ baseUrl, system, filter });
+}
+async function translateDispatch(baseUrl, fromSystem, toSystem, code) {
+  return ontoserverTranslate({ baseUrl, fromSystem, toSystem, code });
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -119,7 +130,12 @@ server.registerTool(
           ? { status: "hit", concept: { system, code: query.value, display: v.display || query.value, version: v.version } }
           : { status: "miss", detail: v.reason };
       } else {
-        response = { status: "miss", detail: "live text lookup not implemented in P1 (use query.kind=code)" };
+        // A1.1 — live text lookup via $expand (was a P1 fail-safe miss). Returns the top
+        // match as `concept` plus up to 10 `candidates`; fail-safe miss on no expansion.
+        const ex = await expandDispatch(LIVE_ENDPOINT.url, system, query.value);
+        response = ex.found
+          ? { status: "hit", concept: { system, code: ex.concepts[0].code, display: ex.concepts[0].display }, candidates: ex.concepts.slice(0, 10) }
+          : { status: "miss", detail: ex.reason || "no expansion match" };
       }
       const out = { request: { system, query }, response, receipt: receipt("live", requestId, LIVE_ENDPOINT.url) };
       return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }] };
@@ -193,10 +209,14 @@ server.registerTool(
     if (mode === "dry_run") {
       return { content: [{ type: "text", text: JSON.stringify({ mappings: [], receipt: receipt("dry_run", requestId) }, null, 2) }] };
     }
-    // Live path: ConceptMap $translate is out of P1 scope → fail-safe empty
-    // mappings (never fabricated) rather than returning mock mappings live.
+    // A1.1 — live mapping via ConceptMap/$translate (was a P1 fail-safe empty). Fail-safe
+    // empty mappings on miss/error (never fabricated); AU systems resolve through the
+    // Ontoserver client, others miss without a network call.
     if (LIVE_ENDPOINT) {
-      return { content: [{ type: "text", text: JSON.stringify({ mappings: [], detail: "live $translate not implemented in P1", receipt: receipt("live", requestId, LIVE_ENDPOINT.url) }, null, 2) }] };
+      const tr = await translateDispatch(LIVE_ENDPOINT.url, from_system, to_system, code);
+      const mappings = tr.mappings.map((m) => ({ code: m.code, display: m.display, system: m.system, equivalence: m.equivalence }));
+      const payload = { mappings, detail: tr.found ? undefined : (tr.reason || "no translation match"), receipt: receipt("live", requestId, LIVE_ENDPOINT.url) };
+      return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
     }
     const payload = {
       mappings: [{ code: "mock-mapped", display: "Mock mapping", score: 1 }],
