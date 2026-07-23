@@ -81,7 +81,23 @@
       "shippable": true,
       "governance_gate": "read path; record read gated by session-store (C8) + portal gate (C9)",
       "adoption_step": 1,
-      "notes": "Live backend behind the EXISTING fhir_read/search/validate contract; mock is rollback. Licence verified on-repo 2026-07-06 (Apache-2.0; release v0.10.0). Pinned commit = head of main at verification. Wrapped at H1 as an EXTERNAL pinned process behind mcp/servers/fhir-broker/live-backend.js — no Python vendored into this repo."
+      "notes": "Live backend behind the EXISTING fhir_read/search/validate contract; mock is rollback. Licence verified on-repo 2026-07-06 (Apache-2.0; release v0.10.0). Pinned commit = head of main at verification. Wrapped at H1 as an EXTERNAL pinned process behind mcp/servers/fhir-broker/live-backend.js — no Python vendored into this repo. Phase C (2026-07-24): RETAINED as a rollback/REFERENCE live backend; Medplum (#medplum) is now the primary fhir-broker backend + system-of-record (ADR docs/structure-notes/fhir-backend-and-record-architecture-adr.md)."
+    },
+    {
+      "ref": "medplum",
+      "repo": "medplum/medplum",
+      "url": "https://github.com/medplum/medplum",
+      "pinned_commit": null,
+      "pin_status": "unpinned_pending_adoption",
+      "licence": "Apache-2.0",
+      "licence_status": "verified",
+      "verdict": "ADOPT",
+      "mode": "WRAP",
+      "target_module": "mcp/servers/fhir-broker/",
+      "shippable": true,
+      "governance_gate": "FHIR spine + system-of-record; read path gated by session-store (C8) + portal (C9); AU-resident self-host only (residency guard refuses hosted SaaS in production); mock is rollback",
+      "adoption_step": 2,
+      "notes": "Mechanical Inventory Phase C (2026-07-24; ADR docs/structure-notes/fhir-backend-and-record-architecture-adr.md). Medplum chosen as the fhir-broker FHIR backend AND system-of-record — the single AU-Core-profiled FHIR spine, headless/Node-TS stack-fit, 'one record two views' ((AU)CARE clinician + (AU)PAIR patient-owned via AccessPolicies). Apache-2.0 (dossier-verified 2026-07-23; re-verify on-repo at adoption). NO Medplum code is vendored/forked — mcp/servers/fhir-broker/medplum-backend.js is a FIRST-PARTY clean-room FHIR R4 REST adapter (Node fetch, no @medplum/* dep) speaking to a SELF-HOSTED Medplum server (a network peer). Mock is the default + rollback; HEYDOC_FHIR_BACKEND=medplum selects it on the LIVE branch only (mock behaviour byte-identical). Live self-host connect + the operator's Medplum server-version pin are DEFERRED (C.3 / build-order #6), which is why pinned_commit is null. Bahmni (au-providers au-bahmni) is a SEPARATE operational/ingest EHR, not this spine — see the ADR."
     },
     {
       "ref": "dir-fasten-sources",

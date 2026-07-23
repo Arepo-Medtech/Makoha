@@ -18,6 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateResource, AU_CORE_MANIFEST } from "./conformance.js";
 import { chooseFhirRoute, fhirReadLive, fhirSearchLive } from "./live-backend.js";
+import { chooseMedplumRoute, medplumReadLive, medplumSearchLive } from "./medplum-backend.js";
 import { normaliseMode } from "../../../verification/mode.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,10 +32,23 @@ const RESOURCES = JSON.parse(readFileSync(join(__dirname, "mock-resources.json")
 // is an invalid enum and every mode-omitting call throws at the tool boundary.
 const DEFAULT_MODE = normaliseMode(MODE).context_mode;
 
-// H1 live wiring — the path decision (mock / live / blocked) is the pure,
-// unit-tested chooseFhirRoute() in live-backend.js. index.js only renders each
-// outcome. Rollback: unset HEYDOC_FHIR_MCP_ENDPOINT ⇒ mock in a mock context.
-const routeFor = (requestedMode) => chooseFhirRoute(process.env, requestedMode, MODE);
+// H1 live wiring — the path decision (mock / live / blocked) is a pure, unit-tested
+// route function; index.js only renders each outcome. Rollback: unset the backend's
+// endpoint ⇒ mock in a mock context.
+//
+// Phase C (Mechanical Inventory): the live FHIR backend is SELECTABLE via HEYDOC_FHIR_BACKEND
+// = wso2 (default, preserves H1 behaviour) | medplum (the ADR decision — see
+// docs/structure-notes/fhir-backend-and-record-architecture-adr.md). The choice ONLY affects
+// the LIVE branch; a mock context serves the mock resource regardless of backend, so mock
+// behaviour is byte-identical. Both routers share the same { kind, cfg|mode } shape and the
+// same fail-safe / mock-never-as-live invariant.
+const FHIR_BACKEND = (process.env.HEYDOC_FHIR_BACKEND || "wso2").trim().toLowerCase();
+const routeFor = (requestedMode) =>
+  FHIR_BACKEND === "medplum"
+    ? chooseMedplumRoute(process.env, requestedMode, MODE)
+    : chooseFhirRoute(process.env, requestedMode, MODE);
+const readLive = (cfg, args) => (FHIR_BACKEND === "medplum" ? medplumReadLive(cfg, args) : fhirReadLive(cfg, args));
+const searchLive = (cfg, args) => (FHIR_BACKEND === "medplum" ? medplumSearchLive(cfg, args) : fhirSearchLive(cfg, args));
 
 /** Fail-safe envelope for a live request with no live endpoint (never mock-as-live). */
 function blockedLive(nullKey) {
@@ -62,7 +76,7 @@ server.registerTool(
   },
   async ({ resource_type, id, mode }) => {
     const route = routeFor(mode);
-    if (route.kind === "live") return text(await fhirReadLive(route.cfg, { resource_type, id }));
+    if (route.kind === "live") return text(await readLive(route.cfg, { resource_type, id }));
     if (route.kind === "blocked") return text(blockedLive("resource"));
     const list = RESOURCES[resource_type] || [];
     const resource = (id ? list.find((r) => r.id === id) : list[0]) || null;
@@ -79,7 +93,7 @@ server.registerTool(
   },
   async ({ resource_type, params, mode }) => {
     const route = routeFor(mode);
-    if (route.kind === "live") return text(await fhirSearchLive(route.cfg, { resource_type, params }));
+    if (route.kind === "live") return text(await searchLive(route.cfg, { resource_type, params }));
     if (route.kind === "blocked") return text(blockedLive("bundle"));
     const list = RESOURCES[resource_type] || [];
     const bundle = { resourceType: "Bundle", type: "searchset", total: list.length, entry: list.map((r) => ({ resource: r })) };
