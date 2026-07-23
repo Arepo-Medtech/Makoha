@@ -105,8 +105,22 @@ function testExtractAiTier() {
   eq("prose escalate_now mention, real disposition urgent_review -> T3 not T5", '{"risk_outcome":"urgent_review","notes":{"rationale":"rest pain would raise this toward escalate_now/ACS"}}', "T3");
   eq("rationale_for_not_escalate_now field, real disposition routine -> T2 not T5", '{"risk_outcome":"routine_follow_up","notes":{"rationale_for_not_escalate_now":"no acute event"}}', "T2");
 
-  // Conservative fail-safe: genuinely no disposition still defaults to T0.
-  eq("no disposition", '{"intake_summary":"56yo male, chest tightness","structured_history":{}}', "T0");
+  // M0.2 fail-safe (2026-07-23): NO parseable disposition cue → INCOMPLETE, NOT T0.
+  // "We couldn't read a disposition" is not "the model said self-care"; flooring it to
+  // T0 on a gold ≥T3 case manufactures a false critical under-triage (the Phase-D canary
+  // did exactly this on Markdown-format outputs). INCOMPLETE is excluded from under-triage.
+  eq("no disposition cue -> INCOMPLETE (not T0)", '{"intake_summary":"56yo male, chest tightness","structured_history":{}}', "INCOMPLETE");
+  // Output-format drift regression: the reworked Trunk 1.0 output as MARKDOWN prose
+  // (headings, `- **status**: escalate_now`) is NOT the JSON contract, so the field
+  // regexes miss it → no cue → INCOMPLETE. It must NEVER floor to T0 (which is what
+  // manufactured the 5 false criticals in the 2026-07-23 canary).
+  eq("markdown-prose intake (no JSON contract) -> INCOMPLETE not T0",
+    '# Trunk 1.0 — Routing & Safety Gate Output\n## 2. safety_gate\n- **status**: escalate_now\n- **danger_signs**: hypoxia SpO2 89% (present)', "INCOMPLETE");
+  // ...and the incomplete flag must be set so the scorer excludes it from under-triage.
+  {
+    const r = extractAiTier('{"intake_summary":"unreadable","structured_history":{}}');
+    if (r.ai_tier !== "INCOMPLETE" || r.incomplete !== true) errors.push("extractAiTier[no-cue]: expected INCOMPLETE with incomplete:true");
+  }
 
   // Step-2 disposition mapping (operator ruling 2026-07-21, clinician KL):
   // urgent_review ≡ T3, routine_follow_up ≡ T2, blocked_incomplete ≡ INCOMPLETE.
