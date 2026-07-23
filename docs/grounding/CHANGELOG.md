@@ -4,6 +4,33 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Mechanical Inventory Phase D — pharmacology/identity/eRx vendor procurement (register architecture, Parchment-first) (2026-07-24)
+
+Plan-gated. **Docs-only** — registers the vendor make-or-buy plan-of-record + vendor scaffolds. No code;
+frozen schemas + engine + `PharmDataSource` seam + `cds-adapter` untouched; nothing patient-facing.
+
+- **The seams are already built + safe** — `LicensedFeedSource` (SAFE_STUB, fail-closed, licence-uncleared),
+  `cds-adapter` (EMPTY→HARD_FAIL, fillable by a commercial vendor OR the built OpenCDS gateway), and the
+  `data-sources.json` provenance registry. So Phase D is **procurement + counsel**, not engineering:
+  contracts, credentials, licence clearance, and the dispensing-law position are things the agent cannot do.
+- **Decision (operator):** **Parchment-first evaluation** (blueprint C-4) — an ADHA-approved AU API
+  *claiming* to bundle MIMS + eRx conformance + HI Services/identity + SafeScript/RTPM in one contract
+  (**claim UNVERIFIED — operator verifies independently**). **MIMS-direct fallback**; **OpenCDS gateway
+  retained as the rules layer** (it needs a drug-DB feed, so a drug-data buy is the floor — AMT is
+  identity-not-CDS).
+- **`docs/structure-notes/vendor-procurement-adr.md`** — the make-or-buy ADR incl. the counsel-owned
+  constraints (C-6: Rx-Remedy = decision-support+logistics, never a dispenser; mandatory pharmacist
+  Click-to-Confirm; **no revenue-share on script value**; async prescribing restricted; eRx/ADHA
+  conformance hard gate; HI Service needs PRODA/HPOS + NASH cert).
+- **`data-sources.json` v1.4.0** — `mims-au` + `parchment` scaffolds (`licence_status:pending`,
+  `use_restriction:structure_only` = live-queried under licence, never copied; **not connected**, no fact
+  cites them). Parchment's MCP server kept OUT of the harvest-manifest (evaluation only).
+- **Verification.** `contract-pharm-datastore` / `-data-source` / `-schema-conformance` green (registry
+  additions pass the licence_status/use_restriction enums); `npm test` green; no new dependency.
+- **Register.** R-22 (Critical, patient-facing pharmacology arm) framing updated — vendor make-or-buy
+  plan registered (Parchment-first); live CDS provider connect remains the open blocker (build-order #1 /
+  FL-34, operator + counsel).
+
 ## Mechanical Inventory Phase C — FHIR backend + record architecture (Medplum spine, Bahmni operational EHR) (2026-07-24)
 
 Plan-gated. Locks the fhir-broker backend decision and registers the venture's record architecture +
