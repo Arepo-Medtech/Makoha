@@ -586,19 +586,36 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 
 ```md
 - id: fhir-live-adapter
-  path: mcp/servers/fhir-broker/live-backend.js, mcp/servers/fhir-broker/index.js, test/contract-fhir-live.js
+  path: mcp/servers/fhir-broker/{live-backend.js (wso2), medplum-backend.js (Phase C), index.js}, test/{contract-fhir-live.js, contract-fhir-medplum.js}; docs/structure-notes/fhir-backend-and-record-architecture-adr.md
   component_type: mcp-server
   state: PARTIAL
-  evidence: BUILT 2026-07-06 (FLOW_PLAN H1, #16). Node adapter to an EXTERNAL commit-pinned wso2/fhir-mcp-server (Apache-2.0, 6307fe71, v0.10.0) over MCP streamable-HTTP; maps onto the EXISTING fhir_read/fhir_search contract ({resource}/{bundle}); receipts mode=live; FAIL-SAFE to null on any transport/tool error (never a fabricated resource); PUBLIC_SANDBOX_HOSTS refused in production (mirrors the M11 terminology dev_sandbox rule). Live path taken only when HEYDOC_FHIR_MCP_ENDPOINT configured AND mode normalises to live (C16); mock stays default + full rollback. Contract-tested offline (mocked MCP transport) + wired into npm test; opt-in HAPI-sandbox smoke (HEYDOC_FHIR_LIVE_SMOKE=1). No Python vendored, no new runtime dep. PARTIAL: a real EHR/SMART-on-FHIR connection needs a running wso2 process + OAuth2 credentials via the secrets manager (input-gated) + AU Core ValueSet binding (needs live NCTS).
-  blocks: live FHIR reads for Trunk 6.0 (still mock until a live upstream + creds)
+  evidence: BUILT 2026-07-06 (FLOW_PLAN H1, #16) — wso2 adapter (retained as rollback/REFERENCE). PHASE C (2026-07-24, ADR): Medplum chosen as the PRIMARY fhir-broker backend + system-of-record — the single AU-Core FHIR spine ('one record two views': (AU)CARE + (AU)PAIR). NEW medplum-backend.js: first-party clean-room FHIR R4 REST adapter (Node fetch, no @medplum/* dep) behind the EXISTING fhir_read/fhir_search contract; receipts mode=live/backend=medplum; FAIL-SAFE to null on any HTTP/parse error; RESIDENCY guard (hosted Medplum SaaS refused in production); optional bearer via the secrets seam. index.js gained HEYDOC_FHIR_BACKEND=wso2(default)|medplum selector — affects the LIVE branch only, so MOCK behaviour is byte-identical (contract-fhir-broker/-conformance/-live all unchanged + green). Contract-tested offline (mocked FHIR REST, in npm test) + opt-in smoke (HEYDOC_FHIR_MEDPLUM_SMOKE=1). Bahmni registered as a SEPARATE operational/ingest EHR (au-providers au-bahmni), NOT this spine — Bahmni→(AU)CARE crossings go through record-sources ingest (receipt-gated, no auto-promote). PARTIAL: live self-hosted Medplum connect (AU residency) + OAuth2 client-credentials via secrets manager are DEFERRED (C.3 / build-order #6).
+  blocks: live FHIR reads for Trunk 6.0 (still mock until a live self-hosted Medplum + creds)
   safety_class: degrades_safe
-  invariant_exposure: no fabricated operational facts (fail-safe null); mock-never-as-live (C16); no-raw-lab (Observations routed via record-sources -> parser)
+  invariant_exposure: no fabricated operational facts (fail-safe null); mock-never-as-live (C16); no-raw-lab (Observations routed via record-sources -> parser); AU data residency (residency guard)
   risk: Medium
   blocks_patient_facing: false
-  build_action: REMAINING (input-gated) — operator supplies a running wso2 fhir-mcp-server + SMART-on-FHIR/OAuth2 creds via secrets manager; then live-smoke against a real AU EHR in staging (synthetic patients) before any prod consideration. Live AU Core binding tracked by fhir-r4-aucdi-conformance-unbuilt.
+  build_action: REMAINING (input-gated, C.3 / build-order #6) — operator stands up a self-hosted Medplum in AWS ap-southeast-2 (AU residency), supplies OAuth2 client-credentials via the secrets manager, then live-smoke + validate against the synthetic case set in staging before any prod consideration. wso2 kept as rollback. Live AU Core binding tracked by fhir-r4-aucdi-conformance-unbuilt.
   gap_register_link: R-28
   status: open
-  last_scanned: 2026-07-06
+  last_scanned: 2026-07-24
+```
+
+```md
+- id: patient-facing-c5-fence-unbuilt
+  path: (earmarked) verification/ verifier — the (AU)PAIR FORBIDDEN/ALLOWED enforcement; docs/structure-notes/fhir-backend-and-record-architecture-adr.md §5
+  component_type: verifier
+  state: UNBUILT
+  evidence: REGISTERED 2026-07-24 (Phase C ADR §5), from the venture blueprint C-5 (HIGH). The patient-facing (AU)PAIR interpretive layer must stay HEALTH-LITERACY / non-diagnostic or it crosses TGA Rule 4.5(1) into patient-facing CDSS ONE CLASS HIGHER, with no clinician gate to buy the tier back. The mechanical control — a verifier that BLOCKS a patient-facing generation emitting a diagnosis/differential/treatment-ranking/risk-probability (the same verifier that blocks invented codes), under change control (K9) — is NOT yet built. Sequenced for the patient layer (blueprint Steps 9–14), which must not ship before the clinician-facing verification gate (built) AND this C-5 boundary test exist. Registered now so the fence is tracked and cannot be crossed silently; nothing patient-facing is built in Phase C.
+  blocks: the entire (AU)PAIR patient-facing layer + multimodal ingestion + patient-facing interpretation (they cannot ship without this fence)
+  safety_class: can_emit_fabrication (a patient-facing diagnostic assertion is the exact failure this blocks) — until built, no patient-facing generation path may exist
+  invariant_exposure: no-autonomous-diagnosis (patient side); the K7-substitution firewall for the patient layer; device-classification control (keeps (AU)PAIR out of the higher CDSS class)
+  risk: High
+  blocks_patient_facing: true
+  build_action: at the patient-layer phase (Steps 9–14), build the C-5 verifier gate (FORBIDDEN-list enforcement) + its adversarial no-diagnostic-leak test BEFORE any (AU)PAIR generation ships; put the boundary under change control. Classification reading is a legal-counsel decision (blueprint C-5: "in writing, with counsel").
+  gap_register_link: R-C5 (promoted — High)
+  status: open
+  last_scanned: 2026-07-24
 ```
 
 ```md

@@ -4,6 +4,42 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Mechanical Inventory Phase C — FHIR backend + record architecture (Medplum spine, Bahmni operational EHR) (2026-07-24)
+
+Plan-gated. Locks the fhir-broker backend decision and registers the venture's record architecture +
+the (AU)CARE/(AU)PAIR regulatory fence. Additive; mock behaviour byte-identical; nothing patient-facing;
+no live connect. Uncommitted (on `main`; will branch before commit).
+
+- **Decision (operator, 2026-07-24):** **Medplum** = the fhir-broker FHIR backend **and** system-of-record —
+  the single AU-Core FHIR spine ("one record, two views": (AU)CARE clinician + (AU)PAIR patient-owned via
+  AccessPolicies). Chosen for headless/Node-TS stack-fit. **wso2** retained as rollback/REFERENCE.
+- **C.2 — Medplum adapter (mock-gated).** `mcp/servers/fhir-broker/medplum-backend.js`: first-party
+  clean-room FHIR R4 REST adapter (Node `fetch`, **no `@medplum/*` dep**) behind the existing
+  `fhir_read`/`fhir_search` → `{resource|bundle, receipt}` contract; receipts `mode:live`/`backend:medplum`;
+  **fail-safe** to null (never fabricated); **residency guard** (hosted Medplum SaaS refused in production);
+  optional bearer via the secrets seam. `index.js` gained `HEYDOC_FHIR_BACKEND = wso2 (default) | medplum` —
+  affects the **live branch only**, so mock behaviour is **byte-identical**. `test/contract-fhir-medplum.js`
+  (in `npm test`); `contract-fhir-live` / `-broker` / `-conformance` unchanged and green.
+- **C.1 — ADR + registration.** `docs/structure-notes/fhir-backend-and-record-architecture-adr.md`; a
+  harvest-manifest `medplum` row (Apache-2.0, ADOPT, first-party adapter / network peer, no code vendored);
+  and an expanded `au-bahmni` role note.
+- **Bahmni** registered as the venture's **deliberately "semi-siloed" operational / traditional all-in-one
+  clinical EHR** — partner-clinic ingest source, Rx-Remedy/clinic-operations, clinical-audit tracking,
+  operational patient-record retrieval, order-management engine (OpenELIS/dcm4chee), results-ingest —
+  **not** the CDSS's live spine. Recorded as a **documented operator deviation** from the blueprint's
+  "one FHIR spine / do not build a parallel record" directive, with the guardrail that keeps discipline:
+  any Bahmni datum entering (AU)CARE reasoning crosses the **existing record-sources ingest**
+  (provenance-tagged, receipt-gated, no auto-promote), so the grounding contract is unchanged.
+- **NEW register item `patient-facing-c5-fence-unbuilt`** (HIGH, `blocks_patient_facing:true`, gap-promoted
+  **R-C5**): the (AU)PAIR **health-literacy fence** (blueprint C-5) — a verifier that must block any
+  patient-facing diagnosis/treatment-ranking/risk-probability, keeping (AU)PAIR out of the higher TGA class.
+  **Registered, not built**; it gates the whole patient layer (Steps 9–14), sequenced after the clinician
+  verification gate. Classification + PHI-residency are **legal-counsel** decisions (surfaced, not decided).
+- **Verification.** `contract-fhir-medplum` green; `contract-fhir-live/-broker/-conformance` unchanged;
+  `verification` Pass:true; `trunk:stub:all` green; `licence:check` exit 0 (real manifest, 46 elements);
+  `contract-harvest-manifest` OK; `security:secrets` clean; **no new dependency**. Live self-hosted Medplum
+  connect (AU `ap-southeast-2`) + the patient layer are **deferred** (C.3 / build-order #6 / Steps 9–14).
+
 ## Mechanical Inventory B2.1c + MA.3 — external eval benchmarks CI-enforced (2026-07-24)
 
 Plan-gated (`.planning/PLAN-B2.md` + `.planning/PLAN-MEDAGENTBENCH.md`). The final wiring milestone: both
