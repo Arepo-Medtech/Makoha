@@ -653,20 +653,37 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: cql-rule-layer
+  path: verification/rules/{engine,packet-to-fhir,compose}.js + library/*.cql/*.elm.json; mcp/schemas/rule-verdict.schema.json; scripts/cql-compile.mjs; test/contract-cql-rules.js; verification/pipeline.js (A2.3 wiring)
+  component_type: verifier
+  state: PARTIAL
+  evidence: BUILT 2026-07-24 (Mechanical Inventory A2, plan .planning/PLAN-A1-A2.md). Standards-based deterministic clinical rules in HL7 CQL, executed in PURE NODE by cql-execution (^3.3.2) + cql-exec-fhir (^2.1.6, Apache-2.0) — no JVM at runtime. Build-time only: scripts/cql-compile.mjs compiles library/*.cql → *.elm.json via a cqframework/cql-translation-service Docker service PINNED BY DIGEST (@sha256:11b1b14c…) in CI; cql:verify recompiles + checksum-matches (SKIP-green until ELM committed). evaluateRules(packet) runs the compiled ELM with packet-derived params, returns a zod-.strict()-validated RuleVerdict (version read FROM the ELM). composeRules folds verdicts ADDITIVE + MONOTONE into verification (rules / requires_in_person_review / rule_flags / rule_caveats) — never flips pass, never touches candidate_output_hash, no-op when empty; wired in pipeline.js after composeTriage, gated on options.ruleset (byte-identical no-op otherwise), FAIL-CLOSED to review on a rule-layer error. Reads only the sealed packet (never scoring nodes 10–13); never emits a dose. Pilot rule paediatric-review.cql v0.2.0 (2026-07-24 clinical decision): <16 → review; 16–18 → proceed + non-blocking Gillick caveat; unknown → fail-safe review. Full npm test (90) + verification + trunk:stub:all green; contract-cql-rules runs the real ELM.
+  blocks: nothing — additive layer; no consumer depends on it yet (opt-in via options.ruleset)
+  safety_class: none — deterministic, fail-closed to review, never emits a dose, never rescues verification
+  invariant_exposure: strengthens no-dosages/no-autonomous behaviour — moves a deterministic rule out of the LLM into testable code; a new deterministic clinical source sitting behind receipts/EvidenceNode + the portal
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: migrate further deterministic rules to CQL; any CALIBRATION rule (e.g. positional/orthostatic) needs KL clinical sign-off. Add a wait-for-service step to the CI cql:verify job before it runs on main. Consider a packet demographic-age fact producer so the pilot exercises the 16–18 band in-pipeline (today the in-pipeline path sees unknown age → review).
+  gap_register_link: none (Medium — not promoted; the gap-register mirrors only High/Critical, one-way)
+  status: open (pilot wired; more rules + calibration migration pending)
+  last_scanned: 2026-07-24
+```
+
+```md
 - id: terminology-live-adapter
   path: mcp/servers/terminology/live-adapter.js + index.js (live branch); terminology-servers.json; test/contract-terminology-live.js
   component_type: mcp-server
   state: PARTIAL
-  evidence: BUILT 2026-07-05 (ARCH_PLAN M11 P1, operator-approved). The terminology server gained a LIVE path behind the frozen TerminologyLookup contract: a *code* lookup/validate is checked against a FHIR terminology server via CodeSystem $validate-code (live-adapter.js, Node 20 global fetch, no new dep). Endpoint selected by HEYDOC_TERMINOLOGY_ENDPOINT (mock default = rollback; dev_sandbox | ncts_live_api | self_hosted from terminology-servers.json). SAFETY: dev_sandbox (CSIRO reference server, unlicensed intl content) is REFUSED in production (server exits 1 — verified); receipts carry the actual endpoint + mode:"live"; fail-safe on any error/timeout/miss/AU-unmapped-system → validated:false, never a fabricated concept (verifier then blocks the unbound code). Contract-tested: mocked-fetch unit tests (request shape, mapping, all fail-safe paths, production-refuse guard) + an OPT-IN live smoke (HEYDOC_TX_LIVE_SMOKE=1) that validated a real SNOMED code against the CSIRO sandbox (22298006 → "Myocardial infarction"). Mock contract test unchanged (npm test 21/21). REMAINING (input-gated): AU-content validation (SNOMED CT-AU/ICD-10-AM/PBS/AMT) needs NCTS or self-host (sandbox validates only SNOMED-intl/LOINC/ICD-11); live text lookup ($expand) + $translate are P1-out-of-scope; the 301-case code re-validation happens at the NCTS/self-host connect.
-  blocks: nothing new — adapter mechanics proven; AU grounding is the next (input-gated) step
+  evidence: BUILT 2026-07-05 (ARCH_PLAN M11 P1, operator-approved). The terminology server gained a LIVE path behind the frozen TerminologyLookup contract: a *code* lookup/validate is checked against a FHIR terminology server via CodeSystem $validate-code (live-adapter.js, Node 20 global fetch, no new dep). Endpoint selected by HEYDOC_TERMINOLOGY_ENDPOINT (mock default = rollback; dev_sandbox | ncts_live_api | self_hosted from terminology-servers.json). SAFETY: dev_sandbox (CSIRO reference server, unlicensed intl content) is REFUSED in production (server exits 1 — verified); receipts carry the actual endpoint + mode:"live"; fail-safe on any error/timeout/miss/AU-unmapped-system → validated:false, never a fabricated concept (verifier then blocks the unbound code). Contract-tested: mocked-fetch unit tests (request shape, mapping, all fail-safe paths, production-refuse guard) + an OPT-IN live smoke (HEYDOC_TX_LIVE_SMOKE=1) that validated a real SNOMED code against the CSIRO sandbox (22298006 → "Myocardial infarction"). Mock contract test unchanged (npm test 21/21). **A1.1/A1.2 UPDATE 2026-07-23 (Mechanical Inventory):** the P1-out-of-scope gaps are now BUILT in the Ontoserver client (injected-transport tested, no new dep): `expandValueSet()` ($expand text lookup) + `translateCode()` ($translate mapping) added to `ontoserver-client.js` and wired into `index.js` (the two "not implemented in P1" fail-safe misses removed); `value-sets.json` gained an ECL medicine-picker value set for AMT $expand (validate stays CodeSystem membership) + LOINC as a resolvable system + an explicit `not_resolved_here` boundary (ICD-10-AM licensed/deploy-bound, PBS→PBS API, ICD-11→sandbox). Same fail-safe posture throughout. REMAINING (input-gated): AU-content validation (SNOMED CT-AU/ICD-10-AM/PBS/AMT) needs NCTS or self-host (sandbox validates only SNOMED-intl/LOINC/ICD-11); the canonical AMT reference set / ValueSet URL is confirmed at deploy; the 301-case code re-validation happens at the NCTS/self-host connect.
+  blocks: nothing new — adapter mechanics proven (validate + expand + translate); AU grounding is the next (input-gated) step
   safety_class: none — mock is the default rollback; live path is opt-in and refuses unlicensed content in production; fail-safe never fabricates
   invariant_exposure: no-fabricated-codes — strengthened (live validation or fail-safe miss; sandbox refused in production)
   risk: Medium
   blocks_patient_facing: false
-  build_action: NCTS/self-host connect (M11 onward, input-gated on the licence/RF2 deploy or NCTS OAuth creds): resolve the AU code systems, live-revalidate the 301 case codes, add live text/$translate.
+  build_action: NCTS/self-host connect (A1.OP, input-gated on the free ADHA Ontoserver licence + NCTS OAuth creds via the secrets manager): resolve the AU code systems, bind the canonical AMT ValueSet, live-revalidate the 301 case codes. ($expand/$translate + ECL value sets now built — A1.1/A1.2.)
   gap_register_link: R-20
-  status: open (adapter built; AU-content connect input-gated)
-  last_scanned: 2026-07-05
+  status: open (adapter built incl. $expand/$translate + ECL value sets; AU-content connect input-gated)
+  last_scanned: 2026-07-23
 ```
 
 ```md
@@ -680,10 +697,10 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
   invariant_exposure: no-fabricated-codes — all 4 mandated systems now groundable + bound (mock)
   risk: High
   blocks_patient_facing: true
-  build_action: REMAINING (input-gated) — live NCTS/Ontoserver connection (NCTS licence) + AU Core value-set binding (fhir-r4-aucdi-conformance-unbuilt / aucdi-r3-valueset-binding-unbuilt); no live PBS API; AMT subset not validated.
+  build_action: REMAINING (input-gated) — live NCTS/Ontoserver connection (NCTS licence) + AU Core value-set binding (fhir-r4-aucdi-conformance-unbuilt / aucdi-r3-valueset-binding-unbuilt); no live PBS API; AMT subset not validated. **A1.2 2026-07-23 (Mechanical Inventory):** LOINC now a resolvable Ontoserver-client system; AMT $expand bound to a DEV ECL medicine-picker value set (ADHA ecl-examples pattern; canonical refset deploy-bound). Stale-pin direction (AU Core 0.3.0→2.0.0, ICD-10-AM 12th→13th, SNOMED edition) recorded + operator-signed in `docs/structure-notes/standards-pin-decisions.md` (A1.3) — the mechanical re-pin + case-code re-validation remain FL-31.
   gap_register_link: R-20
   status: in-progress
-  last_scanned: 2026-06-30
+  last_scanned: 2026-07-23
 ```
 
 ```md

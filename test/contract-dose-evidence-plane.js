@@ -247,10 +247,10 @@ expect(/delivered in full the moment the block is resolved/.test(gatedHF[0].note
   expect(html.includes("WITHHELD"), "…but the clinician MUST be told it is held — silence is the failure the principle names");
 }
 
-// Paediatric — same shape, same reason, hard limit unchanged.
+// Paediatric — same shape, same reason (threshold is <16 per the 2026-07-24 clinical decision).
 const paed = assembleDoseEvidence("methotrexate", { firewallStatus: "PASS", ageYears: 9 });
-expect(!paed.some((e) => e.kind === "au_dose_signed"), "paediatric: no dose text — no paediatric tables exist, under-18 is flagged for in-person review");
-expect(/under 18|paediatric/i.test(paed[0]?.note || ""), "paediatric: the reason must be stated");
+expect(!paed.some((e) => e.kind === "au_dose_signed"), "paediatric: no dose text — no paediatric tables exist, under-16 is flagged for in-person review");
+expect(/under 16|paediatric/i.test(paed[0]?.note || ""), "paediatric: the reason must be stated");
 expect(assembleDoseEvidence("methotrexate", { firewallStatus: "PASS", ageYears: 45 }).some((e) => e.kind === "au_dose_signed"),
   "an adult on a PASS must still see the dose — the gate is the firewall, not age alone");
 

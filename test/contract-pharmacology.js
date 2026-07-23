@@ -70,11 +70,22 @@ async function run() {
     if (s8.status !== "HARD_FAIL") errors.push("S8-no-PDMP expected HARD_FAIL, got " + s8.status);
     if (!s8.flags.some((f) => f.flag_type === "schedule_8_pdmp_required")) errors.push("S8 PDMP flag missing");
 
-    // paediatric -> HARD_FAIL, no dose, age flag
+    // paediatric -> HARD_FAIL, no dose, age flag (threshold is <16 per the 2026-07-24 clinical decision)
     const paed = await pharmCheck(intent({ clinical_context: { patient_age_years: 10 } }), { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true });
     if (paed.status !== "HARD_FAIL") errors.push("paediatric expected HARD_FAIL, got " + paed.status);
     if (paed.dose_guidance) errors.push("paediatric must NEVER carry dose_guidance");
     if (!paed.flags.some((f) => f.flag_type === "age_paediatric_weight_based")) errors.push("paediatric flag missing");
+
+    // <16 boundary — a 15-year-old is still paediatric (HARD_FAIL on age alone, clean intent).
+    const fifteen = await pharmCheck(intent({ clinical_context: { patient_age_years: 15 }, drug_intent: { drug_name: "amoxicillin", drug_class: "penicillin" } }), { allergens: [], current_medications: [], s8_pdmp_checked: true });
+    if (fifteen.status !== "HARD_FAIL") errors.push("under-16 (15yo) clean intent expected HARD_FAIL on age, got " + fifteen.status);
+    if (!fifteen.flags.some((f) => f.flag_type === "age_paediatric_weight_based")) errors.push("under-16 paediatric flag missing");
+
+    // 16–18 are ADULT-DOSED (clinical decision 2026-07-24): a 16-year-old must NOT be paediatric-blocked
+    // on age grounds — this is the OCP-access case the threshold change exists to enable.
+    const sixteen = await pharmCheck(intent({ clinical_context: { patient_age_years: 16 }, drug_intent: { drug_name: "amoxicillin", drug_class: "penicillin" } }), { allergens: [], current_medications: [], s8_pdmp_checked: true });
+    if (sixteen.flags.some((f) => f.flag_type === "age_paediatric_weight_based")) errors.push("16yo must NOT carry the paediatric age flag (16–18 are adult-dosed)");
+    if (sixteen.status === "HARD_FAIL") errors.push("16yo clean intent must not HARD_FAIL on age grounds, got " + sixteen.status);
 
     // unknown age -> fail-safe BLOCKED_NO_PROOF, no dose (cannot confirm not paediatric)
     const noAge = await pharmCheck(intent({ clinical_context: {} }), { allergens: ["paracetamol"], current_medications: ["paracetamol"], s8_pdmp_checked: true });

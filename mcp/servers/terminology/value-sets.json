@@ -1,5 +1,5 @@
 {
-  "status": "DEV/PROVISIONAL (MI-05, terminology-value-sets-provisional): system + value-set bindings for SNOMED CT-AU + AMT used by ontoserver-client.js. The canonical NCTS ValueSet URLs are CONFIRMED AT DEPLOY against the live NCTS / self-hosted Ontoserver (blocker B6). Until an AMT ValueSet is bound, membership falls back to SNOMED CT-AU CodeSystem validation. NOT clinically authoritative; the RF2 distribution itself is licensed and never enters the repo.",
+  "status": "DEV/PROVISIONAL (MI-05 + A1.2, terminology-value-sets-provisional): system + value-set bindings for SNOMED CT-AU + AMT + LOINC used by ontoserver-client.js. The `ecl` expansions are DEV medicine-picker expressions (ADHA ecl-examples patterns), used by $expand only; the canonical AMT reference set + NCTS ValueSet URLs are CONFIRMED AT DEPLOY against the live NCTS / self-hosted Ontoserver (blocker B6). Single-code $validate-code still uses SNOMED CT-AU CodeSystem membership until a refset is bound. NOT clinically authoritative; the RF2 distribution itself is licensed and never enters the repo.",
   "edition": {
     "snomed_ct_au_module": "32506021000036107",
     "version": "20240301"
@@ -14,9 +14,24 @@
     },
     "AMT": {
       "system_uri": "http://snomed.info/sct",
-      "note": "AMT concepts are delivered within SNOMED CT-AU. The canonical AMT ValueSet URL is bound at deploy (NCTS); until then, an AMT code is validated by SNOMED CT-AU CodeSystem membership.",
+      "note": "AMT concepts are delivered within SNOMED CT-AU. A single AMT code is validated by SNOMED CT-AU CodeSystem membership (valueset_url stays null until a refset is bound). Text expansion ($expand) uses the DEV medicine-picker ECL below via implicit_valueset.",
+      "valueset_url": null,
+      "implicit_valueset": "http://snomed.info/sct?fhir_vs=ecl/<< 763158003 |Medicinal product|",
+      "ecl": "<< 763158003 |Medicinal product|",
+      "ecl_note": "DEV medicine-picker ECL (ADHA ecl-examples descendant-or-self pattern over the SNOMED 'Medicinal product' hierarchy). REPLACE at deploy with the AMT-module-scoped reference set (e.g. an AMT MPUU/TPUU refset) confirmed against NCTS. Provisional; not clinically authoritative.",
+      "provisional": true
+    },
+    "LOINC": {
+      "system_uri": "http://loinc.org",
+      "note": "LOINC is being added to the NCTS; resolves via Ontoserver syndication once loaded. $validate-code uses LOINC CodeSystem membership; $expand fails safe until a LOINC ValueSet is bound. Fail-safe miss when LOINC is not loaded on the endpoint.",
       "valueset_url": null,
       "provisional": true
     }
+  },
+  "not_resolved_here": {
+    "note": "Systems this Ontoserver client deliberately does NOT resolve — routed elsewhere or licensed/deploy-bound. Each FAILS SAFE (miss, no fabrication) if requested through this client; resolveSystem() returns null for them.",
+    "ICD_10_AM": "Licensed classification (IHACPA). CodeSystem URI + content are bound at deploy on a licensed NCTS/self-host endpoint; fail-safe until then. NOTE: 13th Edition is current (from 2025-07-01); the repo standards pin is 12th Edition — see the A1.3 decision memo (docs/structure-notes) before any AU coding claim ships.",
+    "PBS": "PBS item codes come from the PBS Data API (data.pbs.gov.au), not an Ontoserver terminology operation. Not resolved by this client.",
+    "ICD_11": "International classification; resolved by the CSIRO sandbox live-adapter (live-adapter.js), not this AU-content client."
   }
 }

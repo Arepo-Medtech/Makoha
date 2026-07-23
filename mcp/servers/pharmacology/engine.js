@@ -4,8 +4,8 @@
  * exact same logic runs whether the firewall is invoked over MCP or in-process.
  *
  * Hard rules (see index.js header): dose guidance ONLY on PASS/WARN and never on
- * HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric (<18) -> flag, no
- * dose; absent facts -> NOT_RUN -> BLOCKED_NO_PROOF.
+ * HARD_FAIL/BLOCKED/paediatric; HARD_FAIL terminal; paediatric (<16) -> flag, no
+ * dose (clinical decision 2026-07-24 — 16–18 are adult-dosed); absent facts -> NOT_RUN -> BLOCKED_NO_PROOF.
  *
  * STEP 4 (FL-30): the engine reads clinical REFERENCE knowledge (allergy cross-reactivity,
  * interactions, renal rules, AU scheduling, dose guidance) through the PharmDataSource seam
@@ -176,8 +176,9 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
       // Fail-closed (D-FL05-1) but AGE-GATED: an unknown pregnancy status blocks a teratogen
       // ONLY for a patient of childbearing potential (age ~12-55, or unknown age). Outside that
       // window (e.g. an elderly patient on warfarin) an unknown status does not block — the
-      // pregnancy concern is negligible, and blocking would be over-triage. Paediatric (<18)
-      // is already HARD_FAILed by the age check, which dominates.
+      // pregnancy concern is negligible, and blocking would be over-triage. Paediatric (<16)
+      // is already HARD_FAILed by the age check, which dominates. (16–18 are of childbearing
+      // potential and now reach this check — correct: pregnancy status matters for a teratogen.)
       const childbearingPotential = typeof age !== "number" || (age >= 12 && age <= 55);
       if (childbearingPotential) {
         addCheck("pregnancy_check", "NOT_RUN", undefined, `TGA category ${cat}: pregnancy status not provided — must be confirmed before prescribing a teratogenic/high-risk drug to a patient of childbearing potential`, ["pregnancy_status"]);
@@ -246,16 +247,22 @@ export function runPharmCheck(intentInput, resolved = {}, { source } = {}) {
     }
   }
 
-  // Paediatric / age appropriateness. A KNOWN under-18 → HARD_FAIL (flag, no dose).
-  // An UNKNOWN age must NOT silently produce a dose: per the fail-safe default
-  // (missing proof → blocked/unknown) we mark the check NOT_RUN, which forces overall
-  // BLOCKED_NO_PROOF and withholds dose guidance until age is confirmed.
+  // Paediatric / age appropriateness. A KNOWN under-16 → HARD_FAIL (flag, no dose).
+  // CLINICAL DECISION (clinician/operator Ken, 2026-07-24): the threshold is <16, NOT <18.
+  // 16–18-year-olds are dosed as ADULTS for the low-acuity medicines in scope — there is no
+  // separate paediatric dose to withhold — so blocking them is a barrier to care, not a
+  // safeguard (e.g. a 16-year-old's OCP). Genuinely paediatric (weight-based, young-child)
+  // dosing still has no tables → the <16 block stands. Consent-capacity for minors is handled
+  // separately by verification/rules/library/paediatric-review.cql (<16 → in-person review;
+  // 16–18 → non-blocking Gillick-competence caveat). An UNKNOWN age must NOT silently produce
+  // a dose: per the fail-safe default (missing proof → blocked/unknown) we mark the check
+  // NOT_RUN, which forces overall BLOCKED_NO_PROOF until age is confirmed.
   let paediatric = false;
   if (typeof age === "number") {
-    if (age < 18) {
+    if (age < 16) {
       paediatric = true;
-      addCheck("age_appropriateness_check", "HARD_FAIL", "critical", "paediatric (<18): no paediatric dosing tables — in-person review required");
-      flags.push({ flag_id: "flag-paed", flag_type: "age_paediatric_weight_based", severity: "critical", description: "Patient under 18 — paediatric dosing not available; in-person review required" });
+      addCheck("age_appropriateness_check", "HARD_FAIL", "critical", "paediatric (<16): no paediatric dosing tables — in-person review required");
+      flags.push({ flag_id: "flag-paed", flag_type: "age_paediatric_weight_based", severity: "critical", description: "Patient under 16 — paediatric dosing not available; in-person review required" });
       nextData.push("Refer for in-person paediatric review (no remote dosing).");
     } else {
       addCheck("age_appropriateness_check", "PASS");

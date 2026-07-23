@@ -9,6 +9,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # CQL rule-layer translation service (A2.1). Runs the JVM CQL→ELM translator as a
+    # Docker service so the `cql:verify` gate can recompile and checksum-check — the JVM
+    # lives ONLY here in CI; the runtime stays pure Node (cql-execution). PIN this image
+    # to the tag used by `npm run cql:compile` (recorded in verification/rules/library/
+    # checksums.json) — an unpinned translator would drift the checksum gate.
+    services:
+      cql-tx:
+        # PINNED by digest to the translator that produced the committed *.elm.json
+        # (verification/rules/library/checksums.json). An unpinned tag would drift the
+        # checksum gate. Resolved 2026-07-24 from cqframework/cql-translation-service:latest.
+        image: cqframework/cql-translation-service@sha256:11b1b14c6179c9e9a515ed0295e2394ecb93747076ce8e7ae89150c25ed679af
+        ports:
+          - 8080:8080
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +64,15 @@ jobs:
       # patient_eligible. FMEA G7 (governance-gate bypass) mitigation, contract-proven.
       - name: Contract tests (MCP servers + H7 governance wiring)
         run: npm test
+
+      # CQL rule-layer translation gate — BLOCKING once ELM is committed (A2.1).
+      # Recompiles verification/rules/library/*.cql via the cql-tx service and asserts the
+      # committed *.elm.json matches (checksum) — catches ELM drifting from its .cql source.
+      # SKIPs green until the first *.elm.json is committed (armed-and-inert, MIRAGE idiom).
+      - name: CQL translation gate (blocking once ELM committed)
+        run: npm run cql:verify
+        env:
+          HEYDOC_CQL_TX_URL: http://localhost:8080/cql/translator
 
       - name: Verification harness
         run: npm run verification

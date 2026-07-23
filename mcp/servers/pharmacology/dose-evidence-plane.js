@@ -86,7 +86,7 @@ function withheld(n, reason, cds = null) {
   if (!quarantined.length) return []; // nothing held → nothing to declare
 
   const why = reason === "paediatric"
-    ? "the patient is under 18 and no paediatric dosing tables exist — this is flagged for in-person review (paediatric hard limit, unchanged)"
+    ? "the patient is under 16 and no paediatric dosing tables exist — this is flagged for in-person review (paediatric dosing limit is <16 per the 2026-07-24 clinical decision; 16–18 are adult-dosed)"
     : `the pharmacology firewall returned ${reason}`;
   const tally = Object.entries(quarantined.reduce((a, q) => ({ ...a, [q.of]: (a[q.of] || 0) + 1 }), {}))
     .map(([k, v]) => `${v} ${k}`).join(" · ");
@@ -166,8 +166,9 @@ const DOSE_BLOCKED = ["HARD_FAIL", "BLOCKED_NO_PROOF"];
  * a gated action with an honest account of the gate. It is not a silent drop, which is the failure
  * mode the principle actually names — evidence that vanishes with no trace that it existed.
  *
- * Paediatric is the same shape and the same reason: no paediatric dosing tables exist, under-18 is
- * flagged for in-person review, and the hard limit is unchanged.
+ * Paediatric is the same shape and the same reason: no paediatric dosing tables exist, under-16 is
+ * flagged for in-person review (2026-07-24 clinical decision — 16–18 are adult-dosed, so the block
+ * is <16, not <18).
  *
  * @param {string} drug
  * @param {{ firewallStatus?: string, ageYears?: number|null, cdsDoseCandidate?: object|null,
@@ -184,7 +185,7 @@ export function assembleDoseEvidence(drug, { firewallStatus = null, ageYears = n
   if (!n) return [];
 
   const blockedBy = DOSE_BLOCKED.includes(firewallStatus) ? firewallStatus
-    : (typeof ageYears === "number" && ageYears < 18) ? "paediatric"
+    : (typeof ageYears === "number" && ageYears < 16) ? "paediatric"
       : null;
   // The CDS candidate rides INTO the hold: it is a runtime value, so a file-count account could never
   // have known it existed.

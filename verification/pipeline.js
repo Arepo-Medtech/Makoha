@@ -22,6 +22,8 @@ import { queryCds, composeCdsVerdict } from "../mcp/servers/pharmacology/cds-ada
 import { assembleDoseEvidence, assertNoAdvisoryInDose, assertHoldNotInjected, assertMemoUnactionable } from "../mcp/servers/pharmacology/dose-evidence-plane.js";
 import { pharmCdsState } from "../config/flags.js";
 import { gradeConcern, composeTriage, buildAbcdeRecord } from "./ppp-ttt/index.js";
+import { evaluateRules } from "./rules/engine.js";
+import { composeRules } from "./rules/compose.js";
 
 /**
  * Stub routing: return a GroundingPlan.
@@ -479,6 +481,27 @@ export async function runPipeline(options = {}) {
     });
   }
 
+  // A2.3 — deterministic CQL rule layer. ADDITIVE + MONOTONE (composeRules): can only add a
+  // review flag / caveat, never flip pass, never touch candidate_output_hash. Gated on
+  // options.ruleset, so with no ruleset this whole block is skipped and the result is
+  // byte-identical (the same discipline as the PPP-TTT block above). Reads the SEALED packet
+  // only (never scoring nodes). The verdicts ride the AUDIT CHANNEL on the result, like
+  // ppp_ttt / fact_provenance — never merged into the ContextPacket (a rule output there would
+  // be an anchor). FAIL-CLOSED: a rule-layer error surfaces a review annotation, never a
+  // silent pass and never a pipeline crash.
+  let rule_verdicts = null;
+  if (options.ruleset) {
+    const ruleOpts = (typeof options.ruleset === "object") ? options.ruleset : {};
+    try {
+      rule_verdicts = await evaluateRules(packet, ruleOpts);
+      verification = composeRules(verification, rule_verdicts);
+    } catch (err) {
+      process.stderr?.write?.("rule layer error (fail-closed to review): " + err.message + "\n");
+      rule_verdicts = [{ rule_id: "rule-layer", version: "0.0.0", outcome: "review", flags: ["rule_layer_error"], caveats: [] }];
+      verification = composeRules(verification, rule_verdicts);
+    }
+  }
+
   return {
     run_id,
     timestamp_utc,
@@ -506,6 +529,10 @@ export async function runPipeline(options = {}) {
     // tagged ABCDE record. Audit channel only — never merged into the packet.
     ppp_ttt,
     abcde_record,
+    // A2.3 deterministic CQL rule verdicts (null when no options.ruleset). Audit channel,
+    // like ppp_ttt; the verdicts are also folded (additive, monotone) into verification
+    // (verification.rules / requires_in_person_review / rule_flags / rule_caveats).
+    rule_verdicts,
     // Step-4 generation audit (null when no generation hook ran): mode
     // (mock/live — never conflated), model id, prompt_sha256 (what the model
     // was shown), latency; on failure also status/reason. Medicolegal

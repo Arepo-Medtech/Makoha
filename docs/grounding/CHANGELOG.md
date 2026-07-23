@@ -4,6 +4,99 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Mechanical Inventory A2 — CQL deterministic rule layer, pilot (2026-07-24)
+
+Plan-gated (`.planning/PLAN-A1-A2.md`). Moves the first deterministic clinical rule OUT of the LLM prompt
+and into standards-based, testable CQL executed in **pure Node** (`cql-execution`) — no JVM at runtime. On
+branch `fl-40-eval-rubric-v1.1-signoff`, uncommitted.
+
+- **A2.1 — infra + deps.** Added `cql-execution` ^3.3.2 + `cql-exec-fhir` ^2.1.6 (Apache-2.0; npm audit clean
+  of high/critical — 2 pre-existing moderates only). `scripts/cql-compile.mjs` (`cql:compile`/`cql:verify`)
+  compiles `verification/rules/library/*.cql` → `*.elm.json` via a `cqframework/cql-translation-service` Docker
+  service **pinned by digest** (`@sha256:11b1b14c…`) in CI; `cql:verify` recompiles + checksum-matches (SKIP-green
+  until ELM committed). JVM lives only in the build.
+- **A2.2 — engine.** `verification/rules/{engine.js,packet-to-fhir.js,compose.js}` + `mcp/schemas/rule-verdict.schema.json`
+  + `test/contract-cql-rules.js` (runs the REAL ELM). `evaluateRules(packet)` executes the compiled ELM with
+  packet-derived parameters and returns a zod-`.strict()`-validated RuleVerdict (version read FROM the ELM).
+  `composeRules` folds verdicts additive + monotone — never flips `pass`, never touches `candidate_output_hash`,
+  no-op when empty. Reads only the sealed packet (never scoring nodes 10–13); never emits a dose.
+- **A2.3 — pipeline wiring.** `verification/pipeline.js` calls `composeRules(verification, await evaluateRules(packet))`
+  after `composeTriage`, gated on `options.ruleset` (byte-identical no-op otherwise, the PPP-TTT discipline).
+  FAIL-CLOSED: a rule-layer error surfaces a `review` annotation, never a silent pass or a crash. Verdicts on
+  `result.rule_verdicts` (audit channel).
+- **Pilot rule** `paediatric-review.cql` v0.2.0 (the 2026-07-24 clinical decision): `<16` → review; `16–18` →
+  proceed + non-blocking plausible-Gillick-competence caveat; unknown age → fail-safe review.
+
+Verified: full `npm test` (90 suites) + `npm run verification` + `npm run trunk:stub:all` green; `cql:verify`
+green with the translator up. Register: opens `cql-rule-layer` (PARTIAL, Medium — not promoted to the gap-register, which mirrors only
+High/Critical); partially addresses `trunk-constraint-claims-unenforced` (one constraint now has a mechanical
+deterministic rule behind it). Moves no release blocker.
+
+---
+
+## Clinical decision — minor age threshold 18 → 16 (2026-07-24)
+
+**Clinical decision by the clinician/operator (Ken).** The minor in-person-review / paediatric-dosing
+threshold is **age < 16, not < 18**. Basis: 16–18-year-olds are dosed as **adults** for the low-acuity
+medicines in scope — there is no separate paediatric dose to withhold — so a blanket under-18 block is a
+**barrier to care, not a safeguard** (e.g. a 16-year-old's OCP → an avoidable unwanted pregnancy).
+Over-restriction in a low-acuity everyday tool is a harm to weigh; refusal is not a free "safe" default.
+Genuinely paediatric (weight-based, young-child) dosing still has no tables → the `<16` block stands.
+
+Two independent gates moved to `<16`, both verified:
+- **Consent-capacity review rule** (CQL): `verification/rules/library/paediatric-review.cql` v0.2.0 —
+  `<16` → in-person review; `16–18` → care proceeds with a NON-BLOCKING plausible-Gillick-competence
+  caveat (a human judgment, never computed); unknown age → confirm. ELM recompiled + `cql:verify` green.
+- **Pharmacology dosing firewall** (`mcp/servers/pharmacology/engine.js` age check + `dose-evidence-plane.js`
+  paediatric classification): `age < 16 → HARD_FAIL, no dose`; a clean 16-year-old no longer HARD_FAILs on
+  age. Knock-on (correct): 16–18 are of childbearing potential, so the pregnancy check is now active for a
+  teratogen at that age. Contract tests updated (`contract-pharmacology.js` gains 15yo-blocks + 16yo-passes;
+  `contract-dose-evidence-plane.js` text). `pharm-intent`/`pharm-check` frozen schemas byte-unchanged.
+
+Docs reconciled: CLAUDE.md `<non_negotiable_invariants>` population-scope + Appendix-A wording updated from
+"under 18" to the `<16` decision (the governing doc no longer contradicts the code). Verified: full
+`npm test` + `npm run verification` + `npm run trunk:stub:all` + `npm run cql:verify` all green. On branch
+`fl-40-eval-rubric-v1.1-signoff`, uncommitted.
+
+---
+
+## Mechanical Inventory A1 — Terminology→Ontoserver live-path finish (2026-07-23)
+
+Plan-gated (`.planning/PLAN-A1-A2.md`), from the Mechanical-Inventory reconciliation
+(`.planning/MECHANICAL-INVENTORY-DOSSIER.md`). On branch `fl-40-eval-rubric-v1.1-signoff`,
+**uncommitted**. No new dependency; mock path byte-unchanged; no schema change.
+
+- **A1.1 — `$expand` + `$translate` (live path finished).** Added `expandValueSet()` (text
+  lookup via ValueSet/$expand) and `translateCode()` (mapping via ConceptMap/$translate) to
+  `mcp/servers/terminology/ontoserver-client.js`, same fail-safe posture (every error/timeout/
+  miss/non-AU-system → empty result, never a fabricated concept). Wired into
+  `mcp/servers/terminology/index.js` `terminology_lookup` (text branch) + `terminology_map`,
+  removing the two "not implemented in P1" fail-safe-miss placeholders. Injected-transport
+  contract cases added to `test/contract-terminology-ontoserver.js`.
+- **A1.2 — ECL value sets + LOINC + explicit boundary.** `value-sets.json`: AMT $expand now uses
+  a DEV ECL medicine-picker value set (`<< 763158003 |Medicinal product|`, ADHA ecl-examples
+  pattern) via `implicit_valueset`, while AMT $validate-code stays on SNOMED CT-AU CodeSystem
+  membership (`valueset_url` null — existing test unchanged); LOINC added as a resolvable system;
+  a `not_resolved_here` block documents ICD-10-AM (licensed/deploy-bound), PBS (PBS Data API, not
+  Ontoserver), ICD-11 (sandbox) as deliberate fail-safe boundaries.
+- **A1.3 — stale-pin decision memo + operator sign-off.** `docs/structure-notes/standards-pin-decisions.md`
+  surfaces three stale pins — **AU Core 0.3.0→2.0.0**, **ICD-10-AM 12th→13th Ed**, **SNOMED CT-AU
+  edition→current NCTS**. Operator-signed (direction only, 2026-07-23). Scoped faithfully: the
+  mechanical re-pin (swap vendored SDs, re-validate the 301 case codes) remains FL-31; the AUCDI R3
+  re-target question + live NCTS conformance validation stay open; residual KL clinical attestation
+  recommended for the ICD-10-AM re-coding. **CLAUDE.md `<standards_pins>` deliberately NOT edited** —
+  the pin list changes when the re-pin is executed and tested, not on a direction memo.
+- **A1.OP (operator, input-gated, NOT done here):** obtain the free ADHA Ontoserver licence + NCTS
+  account, set `HEYDOC_TERMINOLOGY_ENDPOINT` + OAuth via the secrets manager, bind the canonical AMT
+  ValueSet URL, run the opt-in live smoke.
+
+Verification: `contract-terminology-ontoserver` / `contract-terminology` / `contract-terminology-live`
+/ `contract-terminology-quarantine` all green. Register: `terminology-live-adapter` +
+`terminology-contract-incomplete` advanced (both still PARTIAL — AU-content connect input-gated);
+`.claude/completeness-index.md` synced. Moves no release blocker.
+
+---
+
 ## FL-40: `eval-rubric:v1.3` SIGNED — medal bands + permissive ±1 + management judge + derm recalibration (2026-07-22)
 
 Clinician (KL, AHPRA MED0001857758) ruled and attested the v1.3 recalibration in-session,
