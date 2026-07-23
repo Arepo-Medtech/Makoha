@@ -21,9 +21,16 @@ const ROOT = join(HERE, "..");
 const CLI = join(ROOT, "scripts", "eval-run.mjs");
 const REAL_RUBRIC = join(ROOT, "docs", "grounding", "eval-rubric.md");
 const V1 = "eval-rubric:v1.0";
+const V11 = "eval-rubric:v1.1";
 
 const UNSIGNED_DOC = "## 8. Sign-off block\n\n| Field | Value |\n|---|---|\n| Rubric version | `eval-rubric:v1.0` |\n| `clinician_signoff_ref` | _(recorded reference, e.g. `signoff:eval-rubric:v1.0:<initials>`)_ |\n";
 const WRONGVER_DOC = "## 8. Sign-off block\n\n| Field | Value |\n|---|---|\n| `clinician_signoff_ref` | `signoff:eval-rubric:v0.9:KL:2026-01-01` |\n";
+// A doc carrying TWO signed refs — v1.0 in §8 (first) then v1.1 in §9 (later).
+// The resolver must select BY VERSION, never by document order, so v1.0 in §8
+// cannot shadow a newer v1.1 sign-off in §9 (and vice-versa).
+const MULTIVER_DOC =
+  "## 8. Sign-off block\n\n| Field | Value |\n|---|---|\n| `clinician_signoff_ref` | `signoff:eval-rubric:v1.0:KL:2026-07-21` |\n\n" +
+  "## 9. v1.1\n\n| Field | Value |\n|---|---|\n| `clinician_signoff_ref` | `signoff:eval-rubric:v1.1:KL:2026-07-22` |\n";
 
 function runCli(args) {
   return spawnSync("node", [CLI, ...args], { cwd: ROOT, encoding: "utf8" });
@@ -41,9 +48,25 @@ function run() {
   };
 
   try {
-    // 1. Real signed rubric → returns the v1.0 ref.
+    // 1. Real signed rubric → returns the v1.0 ref when v1.0 is requested…
     const real = resolveClinicianSignoff({ rubricVersion: V1, rubricPath: REAL_RUBRIC });
     if (!real.ref || !real.ref.startsWith("signoff:eval-rubric:v1.0")) errors.push(`real rubric did not resolve a v1.0 signoff ref (got ${JSON.stringify(real)})`);
+
+    // 1b. …and the v1.1 ref when v1.1 is requested (the real rubric now carries
+    //     BOTH — §8 v1.0 and §9 v1.1 — so this proves version-selection, not order).
+    const real11 = resolveClinicianSignoff({ rubricVersion: V11, rubricPath: REAL_RUBRIC });
+    if (!real11.ref || !real11.ref.startsWith("signoff:eval-rubric:v1.1")) errors.push(`real rubric did not resolve a v1.1 signoff ref (got ${JSON.stringify(real11)})`);
+
+    // 1c. Multi-version doc: v1.0 appears FIRST, v1.1 later. Requesting v1.1 must
+    //     select the v1.1 ref (not the first-in-document v1.0) — the fail-open guard.
+    const multi = mkdoc("signoff-multi-", MULTIVER_DOC).path;
+    const pick11 = resolveClinicianSignoff({ rubricVersion: V11, rubricPath: multi });
+    if (pick11.ref !== "signoff:eval-rubric:v1.1:KL:2026-07-22") errors.push(`multi-version doc did not select v1.1 (got ${JSON.stringify(pick11)})`);
+    const pick10 = resolveClinicianSignoff({ rubricVersion: V1, rubricPath: multi });
+    if (pick10.ref !== "signoff:eval-rubric:v1.0:KL:2026-07-21") errors.push(`multi-version doc did not select v1.0 (got ${JSON.stringify(pick10)})`);
+    // A version signed in NEITHER section → null (fail-closed), with both refs named.
+    const pickMissing = resolveClinicianSignoff({ rubricVersion: "eval-rubric:v2.0", rubricPath: multi });
+    if (pickMissing.ref !== null) errors.push("multi-version doc wrongly resolved a ref for an unsigned version");
 
     // 2. Unsigned/draft → null.
     const unsigned = resolveClinicianSignoff({ rubricVersion: V1, rubricPath: mkdoc("signoff-unsigned-", UNSIGNED_DOC).path });

@@ -41,7 +41,23 @@ const TRIAGE_CLASS = [
 /** score in [0,1] or null (null = dimension stubbed on a replay/pre-live run). */
 const ScoreOrNull = z.number().min(0).max(1).nullable();
 
-/** Deterministic coverage-scored dimension (history / diagnostic / management). */
+/** A judge receipt — the proof artifact for any LLM call in scoring (the
+ *  communication judge AND the v1.3 management-coverage cross-check). */
+const JudgeReceiptSchema = z
+  .object({
+    request_id: z.string().min(6),
+    timestamp_utc: z.string().datetime(),
+    upstream: z.string().min(1),
+    mode: z.enum(EVAL_MODE),
+    prompt_hash: z.string().regex(SHA256_HASH, "judge prompt_hash must be 'sha256:' + 64 lowercase hex chars"),
+    verdict: z.string().min(1),
+  })
+  .strict();
+
+/** Deterministic coverage-scored dimension (history / diagnostic / management).
+ *  management_quality may additionally carry a judge cross-check (v1.3):
+ *  evidence.judge_matched lists the items the judge rescued from a containment
+ *  miss, and judge_receipt is that call's proof artifact. */
 const CoverageDimensionSchema = z
   .object({
     score: ScoreOrNull,
@@ -52,8 +68,10 @@ const CoverageDimensionSchema = z
         missed: z.array(z.string()),
         total: z.number().int().min(0),
         penalised: z.array(z.string()).optional(),
+        judge_matched: z.array(z.string()).optional(),
       })
       .strict(),
+    judge_receipt: JudgeReceiptSchema.optional(),
   })
   .strict();
 
@@ -62,16 +80,7 @@ const JudgeDimensionSchema = z
   .object({
     score: ScoreOrNull,
     method: z.literal("judge"),
-    judge_receipt: z
-      .object({
-        request_id: z.string().min(6),
-        timestamp_utc: z.string().datetime(),
-        upstream: z.string().min(1),
-        mode: z.enum(EVAL_MODE),
-        prompt_hash: z.string().regex(SHA256_HASH, "judge prompt_hash must be 'sha256:' + 64 lowercase hex chars"),
-        verdict: z.string().min(1),
-      })
-      .strict(),
+    judge_receipt: JudgeReceiptSchema,
   })
   .strict();
 
@@ -118,6 +127,10 @@ const CaseResultSchema = z
     fully_scored: z.boolean(),
     case_score: z.number().min(0).max(1).nullable(),
     clinical_pass: z.boolean(),
+    // v1.3 medal band (quality lens) + care_class (which scoring path ran).
+    // Optional for backward-compat with pre-v1.3 reports; always emitted now.
+    medal: z.enum(["gold", "silver", "bronze", "none", "dq"]).optional(),
+    care_class: z.enum(["emergency", "advisory"]).optional(),
     auto_fail: z.boolean().optional(),
   })
   .strict();
@@ -148,6 +161,17 @@ const MetricsSchema = z
     critical_under_triage_count: z.number().int().min(0),
     t5_critical_under_triage_count: z.number().int().min(0),
     incomplete_count: z.number().int().min(0).optional(),
+    // v1.3 medal table (quality readout). Optional for backward-compat.
+    medal_table: z
+      .object({
+        gold: z.number().int().min(0),
+        silver: z.number().int().min(0),
+        bronze: z.number().int().min(0),
+        none: z.number().int().min(0),
+        dq: z.number().int().min(0),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

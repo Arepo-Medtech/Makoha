@@ -18,7 +18,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rmSync, existsSync } from "node:fs";
 import { loadCaseNodes } from "../verification/eval-case-loader.js";
-import { runBackendCases, extractAiTier } from "../verification/eval-harness.js";
+import { runBackendCases, extractAiTier, interrogatedTier, mostUrgentTier, replayKey, trunkPromptFingerprint } from "../verification/eval-harness.js";
 import { createReplayer } from "../verification/llm-replay.js";
 import { validateEvalRunReport } from "../verification/eval-report-schema.js";
 
@@ -52,7 +52,11 @@ function scriptedFactory(captured) {
     });
   };
 }
-const scriptedJudge = () => Promise.resolve("clear");
+// The scripted judge answers BOTH judges by prompt type: "clear" for the
+// communication judge, and "1" for the v1.3 management cross-check (rescues the
+// first containment-missed item, proving the rescue merges end-to-end).
+const scriptedJudge = (promptText) =>
+  Promise.resolve(/EXPECTED MANAGEMENT POINTS/.test(String(promptText)) ? "1" : "clear");
 const throwGenFactory = () => () => {
   throw new Error("generator must not be called in replay");
 };
@@ -101,8 +105,22 @@ function testExtractAiTier() {
   eq("prose escalate_now mention, real disposition urgent_review -> T3 not T5", '{"risk_outcome":"urgent_review","notes":{"rationale":"rest pain would raise this toward escalate_now/ACS"}}', "T3");
   eq("rationale_for_not_escalate_now field, real disposition routine -> T2 not T5", '{"risk_outcome":"routine_follow_up","notes":{"rationale_for_not_escalate_now":"no acute event"}}', "T2");
 
-  // Conservative fail-safe: genuinely no disposition still defaults to T0.
-  eq("no disposition", '{"intake_summary":"56yo male, chest tightness","structured_history":{}}', "T0");
+  // M0.2 fail-safe (2026-07-23): NO parseable disposition cue → INCOMPLETE, NOT T0.
+  // "We couldn't read a disposition" is not "the model said self-care"; flooring it to
+  // T0 on a gold ≥T3 case manufactures a false critical under-triage (the Phase-D canary
+  // did exactly this on Markdown-format outputs). INCOMPLETE is excluded from under-triage.
+  eq("no disposition cue -> INCOMPLETE (not T0)", '{"intake_summary":"56yo male, chest tightness","structured_history":{}}', "INCOMPLETE");
+  // Output-format drift regression: the reworked Trunk 1.0 output as MARKDOWN prose
+  // (headings, `- **status**: escalate_now`) is NOT the JSON contract, so the field
+  // regexes miss it → no cue → INCOMPLETE. It must NEVER floor to T0 (which is what
+  // manufactured the 5 false criticals in the 2026-07-23 canary).
+  eq("markdown-prose intake (no JSON contract) -> INCOMPLETE not T0",
+    '# Trunk 1.0 — Routing & Safety Gate Output\n## 2. safety_gate\n- **status**: escalate_now\n- **danger_signs**: hypoxia SpO2 89% (present)', "INCOMPLETE");
+  // ...and the incomplete flag must be set so the scorer excludes it from under-triage.
+  {
+    const r = extractAiTier('{"intake_summary":"unreadable","structured_history":{}}');
+    if (r.ai_tier !== "INCOMPLETE" || r.incomplete !== true) errors.push("extractAiTier[no-cue]: expected INCOMPLETE with incomplete:true");
+  }
 
   // Step-2 disposition mapping (operator ruling 2026-07-21, clinician KL):
   // urgent_review ≡ T3, routine_follow_up ≡ T2, blocked_incomplete ≡ INCOMPLETE.
@@ -126,8 +144,77 @@ function testExtractAiTier() {
   return errors;
 }
 
+// ── UNIT: Phase C intake-escalation interrogation (interrogatedTier/mostUrgentTier) ──
+// An intake `escalate_now` is downgraded to T3 only when it names NO demonstrably
+// present danger sign; a present sign or an un-interrogable escalation stands as T5.
+// Pre-contract fixtures (no danger_signs) classify broken→honoured→T5 → replay-safe.
+function testInterrogatedTier() {
+  const errors = [];
+  const eq = (label, aiText, expected) => {
+    const got = interrogatedTier(aiText).ai_tier;
+    if (got !== expected) errors.push(`interrogatedTier[${label}]: got ${got}, expected ${expected}`);
+  };
+  const gate = (o) => JSON.stringify({ intake_summary: "x", safety_gate: o });
+
+  // present danger sign → stands as T5.
+  eq("escalate_now + present sign → T5",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [{ sign: "thunderclap worst-ever headache", status: "present", evidence_ref: "c1" }] }), "T5");
+  // no present sign (inferred only) → DOWNGRADED to T3.
+  eq("escalate_now + inferred-only → T3 (downgrade)",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [{ sign: "severe pain", status: "inferred", evidence_ref: "c2" }] }), "T3");
+  // un-interrogable (no danger_signs) → HONOURED as T5 (this is the pre-contract fixture case).
+  eq("escalate_now + no danger_signs → T5 (honoured, replay-safe)",
+    gate({ status: "escalate_now", reasons: ["acute emergency"] }), "T5");
+  // empty danger_signs[] → downgraded to T3 (escalated but articulated nothing present).
+  eq("escalate_now + empty danger_signs[] → T3",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [] }), "T3");
+  // a non-escalate gate falls through to extractAiTier (routine prose here → its cue).
+  eq("clear gate + prose 'see your gp' → T2 (fallthrough)",
+    JSON.stringify({ safety_gate: { status: "clear", reasons: [] } }) + "\nPlease book an appointment to see your GP.", "T2");
+  // prose-only escalation (no safety_gate) → T5 via the extractAiTier fallthrough.
+  eq("prose 'call 000' (no safety_gate) → T5 (fallthrough)", "This is an emergency — call an ambulance now.", "T5");
+
+  // mostUrgentTier precedence.
+  const mu = (arr, expected) => { const got = mostUrgentTier(arr); if (got !== expected) errors.push(`mostUrgentTier(${JSON.stringify(arr)}): got ${got}, expected ${expected}`); };
+  mu(["T3", "T5", "T2"], "T5");
+  mu(["T2", "T3"], "T3");
+  mu(["T0", "INCOMPLETE"], "INCOMPLETE");
+  mu(["T1", "T0"], "T1");
+  mu([], "T0");
+  return errors;
+}
+
+// ── UNIT: replay key is prompt-sensitive (the fix for the silent stale-replay footgun) ──
+// Before this, a trunk-prompt edit left the generation cache key unchanged, so a
+// re-run replayed old outputs (2s, tested nothing). The key now folds in a
+// trunk-prompt fingerprint: a prompt change MUST bust the cache, while packet
+// independence and cross-run stability are preserved.
+function testReplayKey() {
+  const errors = [];
+  const pkt = { facts: [{ id: "f1", value: "x" }], evidence: [], constraints: ["c"], receipts: [], conversation: [{ role: "patient", text: "hi" }], mode: "live" };
+
+  const kA = replayKey(pkt, "claude", "1.0", "sha256:AAA");
+  const kA2 = replayKey(pkt, "claude", "1.0", "sha256:AAA");
+  const kB = replayKey(pkt, "claude", "1.0", "sha256:BBB");
+  if (kA !== kA2) errors.push("replayKey not stable for identical inputs (must be deterministic)");
+  if (kA === kB) errors.push("replayKey UNCHANGED across prompt fingerprints — the footgun is NOT fixed");
+
+  // Packet independence preserved: a different packet → different key at the same fingerprint.
+  const pkt2 = { ...pkt, facts: [{ id: "f1", value: "y" }] };
+  if (replayKey(pkt2, "claude", "1.0", "sha256:AAA") === kA) errors.push("replayKey ignores packet facts (lost the base keying)");
+  // Trunk + backend still discriminate.
+  if (replayKey(pkt, "claude", "3.0", "sha256:AAA") === kA) errors.push("replayKey ignores trunk_id");
+  if (replayKey(pkt, "medgemma", "1.0", "sha256:AAA") === kA) errors.push("replayKey ignores backend");
+
+  // The real fingerprint: an existing trunk prompt hashes; a non-existent trunk → "none".
+  const fp10 = trunkPromptFingerprint("1.0");
+  if (!/^sha256:[a-f0-9]{64}$/.test(fp10)) errors.push(`trunkPromptFingerprint(1.0) not a sha (got ${fp10}) — real prompt should hash`);
+  if (trunkPromptFingerprint("does-not-exist") !== "none") errors.push("absent trunk prompt should fingerprint 'none' (stable)");
+  return errors;
+}
+
 async function run() {
-  const errors = [...testExtractAiTier()];
+  const errors = [...testExtractAiTier(), ...testInterrogatedTier(), ...testReplayKey()];
   const fixtures = {
     gen: join(tmpdir(), `eval-harness-gen-${process.pid}.json`),
     judge: join(tmpdir(), `eval-harness-judge-${process.pid}.json`),
@@ -161,6 +248,27 @@ async function run() {
     }
     if (c.triage.ai_tier !== "T5") errors.push(`triage ai_tier ${c.triage.ai_tier} != T5`);
     if (c.dimensions.communication.judge_receipt.verdict !== "clear") errors.push("judge verdict not recorded");
+    // v1.3: the case record carries a medal band + care_class, and the aggregate
+    // metrics carry the medal_table. This case is a correct emergency → gold.
+    if (c.medal !== "gold") errors.push(`expected gold medal, got ${c.medal}`);
+    if (c.care_class !== "emergency") errors.push(`expected emergency care_class, got ${c.care_class}`);
+    if (!liveBody.metrics.medal_table || liveBody.metrics.medal_table.gold !== 1) errors.push("metrics.medal_table did not tally the gold case");
+    // v1.3 management-coverage judge cross-check ran + merged. Robust to which
+    // items this terse consult happened to cover: IF the judge ran (there were
+    // containment misses), it carries a receipt and any rescued label is now in
+    // matched and NOT in missed (merge correctness). The report already validated
+    // above, which proves the schema accepts judge_receipt/judge_matched on a
+    // COVERAGE dimension.
+    const mq = c.dimensions.management_quality;
+    if (mq.judge_receipt) {
+      if (typeof mq.judge_receipt.verdict !== "string" || !mq.judge_receipt.verdict.length) errors.push("mgmt judge_receipt verdict not a non-empty string");
+      if (!SHA256.test(mq.judge_receipt.prompt_hash)) errors.push("mgmt judge_receipt prompt_hash bad format");
+      const rescued = mq.evidence.judge_matched || [];
+      for (const l of rescued) {
+        if (!mq.evidence.matched.includes(l)) errors.push(`rescued ${l} not moved into matched`);
+        if (mq.evidence.missed.includes(l)) errors.push(`rescued ${l} still listed as missed`);
+      }
+    }
 
     let liveReport;
     try {

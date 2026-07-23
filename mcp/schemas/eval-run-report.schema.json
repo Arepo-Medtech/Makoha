@@ -183,9 +183,19 @@
             "type": ["number", "null"],
             "minimum": 0,
             "maximum": 1,
-            "description": "The weighted case score [0,1], or null when not fully_scored. case_score ≥ 0.70 (+ no auto-fail + verification pass + no critical under-triage) ⇒ clinical_pass."
+            "description": "The weighted case score [0,1], or null when not fully_scored. case_score ≥ 0.60 (silver floor, v1.3; + no auto-fail + verification pass + no critical under-triage) ⇒ clinical_pass."
           },
-          "clinical_pass": { "type": "boolean", "description": "Whether this case passed per the case-pass rule." },
+          "clinical_pass": { "type": "boolean", "description": "Whether this case passed per the case-pass rule (silver-or-better)." },
+          "medal": {
+            "type": "string",
+            "enum": ["gold", "silver", "bronze", "none", "dq"],
+            "description": "Optional (v1.3). Quality band: gold ≥0.75, silver 0.60–<0.75 (= pass line), bronze 0.45–<0.60, none <0.45; dq = critical under-triage (disqualified from the podium regardless of score). A quality/training readout, NOT a second gate."
+          },
+          "care_class": {
+            "type": "string",
+            "enum": ["emergency", "advisory"],
+            "description": "Optional. Which scoring path ran, anchored to the GOLD baseline: emergency (gold T4/T5, scored on triage+safety-netting) or advisory (gold ≤T3, full weighted dimensions)."
+          },
           "auto_fail": {
             "type": "boolean",
             "description": "Optional. True when an evaluation-guide / node-12-rubric auto-fail condition fired (e.g. a management error-of-commission), forcing clinical_pass=false regardless of score."
@@ -257,7 +267,20 @@
         },
         "critical_under_triage_count": { "type": "integer", "minimum": 0, "description": "Any-tier critical under-triage count. Gate: 0." },
         "t5_critical_under_triage_count": { "type": "integer", "minimum": 0, "description": "T5 (emergency) critical under-triage count. Zero-tolerance gate: 0." },
-        "incomplete_count": { "type": "integer", "minimum": 0, "description": "Optional. Cases whose consult reached no disposition (blocked_incomplete) — excluded from under-triage; a measurement/turn-plan gap, not a triage miss." }
+        "incomplete_count": { "type": "integer", "minimum": 0, "description": "Optional. Cases whose consult reached no disposition (blocked_incomplete) — excluded from under-triage; a measurement/turn-plan gap, not a triage miss." },
+        "medal_table": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional (v1.3). Count of cases per medal band across the whole set (ungrounded/unscored ⇒ none; critical under-triage ⇒ dq). A quality readout; the gate reads clinical_pass_rate, never this.",
+          "required": ["gold", "silver", "bronze", "none", "dq"],
+          "properties": {
+            "gold": { "type": "integer", "minimum": 0 },
+            "silver": { "type": "integer", "minimum": 0 },
+            "bronze": { "type": "integer", "minimum": 0 },
+            "none": { "type": "integer", "minimum": 0 },
+            "dq": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     },
 
@@ -299,9 +322,15 @@
               "type": "array",
               "items": { "type": "string" },
               "description": "Optional. Error-of-commission items the output WRONGLY included (e.g. a contraindicated drug from node-12 errors_of_commission). A non-empty list can trigger case-level auto_fail per the rubric."
+            },
+            "judge_matched": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional (v1.3, management_quality only). Must-include items the JUDGE cross-check rescued from a containment MISS (paraphrase / a specific example of a class). These moved from missed→matched; judge_receipt is that call's proof."
             }
           }
-        }
+        },
+        "judge_receipt": { "$ref": "#/$defs/judge_receipt" }
       }
     },
     "judge_dimension": {
@@ -312,20 +341,21 @@
       "properties": {
         "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "[0,1] quantised score, or null when stubbed." },
         "method": { "const": "judge" },
-        "judge_receipt": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Mirrors the Receipt core (receipt.schema.json: request_id/timestamp_utc/upstream/mode) with eval-specific fields. 'mode' here uses the EVAL enum (replay/live), and 'upstream' is the judge model id.",
-          "required": ["request_id", "timestamp_utc", "upstream", "mode", "prompt_hash", "verdict"],
-          "properties": {
-            "request_id": { "type": "string", "minLength": 6 },
-            "timestamp_utc": { "type": "string", "format": "date-time" },
-            "upstream": { "type": "string", "description": "The judge model id, e.g. 'claude-opus-4-8'." },
-            "mode": { "type": "string", "enum": ["replay", "live"] },
-            "prompt_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$", "description": "Hash of the exact judge prompt — the replay key." },
-            "verdict": { "type": "string", "description": "The judge's raw categorical verdict before quantisation (e.g. 'clear', 'adequate', 'confusing')." }
-          }
-        }
+        "judge_receipt": { "$ref": "#/$defs/judge_receipt" }
+      }
+    },
+    "judge_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The proof artifact for an LLM call in scoring (communication judge OR v1.3 management cross-check). Mirrors the Receipt core (request_id/timestamp_utc/upstream/mode) with eval fields. 'mode' uses the EVAL enum (replay/live); 'upstream' is the judge model id.",
+      "required": ["request_id", "timestamp_utc", "upstream", "mode", "prompt_hash", "verdict"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 6 },
+        "timestamp_utc": { "type": "string", "format": "date-time" },
+        "upstream": { "type": "string", "description": "The judge model id, e.g. 'claude-opus-4-8'." },
+        "mode": { "type": "string", "enum": ["replay", "live"] },
+        "prompt_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$", "description": "Hash of the exact judge prompt — the replay key." },
+        "verdict": { "type": "string", "description": "The judge's raw categorical verdict (communication: clear/adequate/confusing; management: 'matched:1,3' or 'none')." }
       }
     }
   },

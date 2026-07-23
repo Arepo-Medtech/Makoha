@@ -36,7 +36,7 @@ import { resolveClinicianSignoff } from "../verification/eval-signoff.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CASES_DIR = join(ROOT, "data", "cases");
-const RUBRIC_VERSION = "eval-rubric:v1.0"; // clinician-signed 2026-07-21 (docs/grounding/eval-rubric.md §8)
+const RUBRIC_VERSION = "eval-rubric:v1.3"; // clinician-signed 2026-07-22 (docs/grounding/eval-rubric.md §11); permissive ±1 tolerance + 0.60 silver bar + medal bands + management judge + derm recalibration. v1.2 (§10) / v1.1 (§9) / v1.0 (§8) remain valid citations for runs recorded before their successor.
 
 function parseArgs(argv) {
   const out = {
@@ -135,6 +135,14 @@ async function main() {
     const genReplayer = createReplayer({ fixturePath: genPath, mode: args.mode });
     const judgeReplayer = createReplayer({ fixturePath: judgePath, mode: args.mode });
     const judgeTransport = args.mode === "live" ? makeDefaultJudgeTransport() : undefined;
+
+    // RESUME: a live run replays keys already on disk for free (llm-replay
+    // record-or-replay) and persists each new record immediately, so an
+    // interrupted run is resumed by simply re-running — only missing cases
+    // call the API. Make that visible.
+    if (args.mode === "live" && genReplayer.size() > 0) {
+      console.log(`[${backend}] resuming: ${genReplayer.size()} generation + ${judgeReplayer.size()} judge response(s) already recorded — those replay free; only missing cases spend on the API. (Delete ${genPath} to force a fully fresh run.)`);
+    }
 
     if (Number.isInteger(args.positionalSample) && args.positionalSample < longListTotal) {
       console.log(`[${backend}] positional: sampling ${args.positionalSample} of ${longListTotal} long-list cases (${longListTotal - args.positionalSample} UNCHECKED — sanctioned M3 canary)`);

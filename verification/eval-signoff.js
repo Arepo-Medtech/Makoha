@@ -40,8 +40,17 @@ export function resolveClinicianSignoff({ rubricVersion, rubricPath, override } 
 
   if (!rubricPath || !existsSync(rubricPath)) return { ref: null, reason: `rubric doc not found: ${rubricPath}` };
   const text = readFileSync(rubricPath, "utf8");
-  // The §8 sign-off table row: `| `clinician_signoff_ref` | `signoff:…` |`.
-  const m = /`clinician_signoff_ref`\s*\|\s*`(signoff:[^`]+)`/.exec(text);
-  if (!m) return { ref: null, reason: `no recorded clinician_signoff_ref in ${rubricPath} (rubric not signed)` };
-  return validate(m[1], rubricPath);
+  // A sign-off table row: `| `clinician_signoff_ref` | `signoff:…` |`. A rubric
+  // doc may carry MORE THAN ONE — e.g. v1.0 in §8 and v1.1 in §9. Collect every
+  // recorded ref and select the one that references the version this run cites,
+  // NOT merely the first in document order. Selecting by document order would
+  // let an older section (v1.0 §8) shadow a newer signed version (v1.1 §9) and
+  // silently arm a run against the wrong rubric — a fail-OPEN we must not permit.
+  const refs = [...text.matchAll(/`clinician_signoff_ref`\s*\|\s*`(signoff:[^`]+)`/g)].map((m) => m[1]);
+  if (!refs.length) return { ref: null, reason: `no recorded clinician_signoff_ref in ${rubricPath} (rubric not signed)` };
+  const forVersion = rubricVersion ? refs.find((r) => r.includes(rubricVersion)) : undefined;
+  if (!forVersion) {
+    return { ref: null, reason: `no clinician_signoff_ref in ${rubricPath} references rubric ${rubricVersion} (found: ${refs.join(", ")}) — unsigned for this version` };
+  }
+  return validate(forVersion, rubricPath);
 }
