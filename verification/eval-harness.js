@@ -39,6 +39,7 @@ import { detectEscalation } from "../integration/trunk-sequencer.js";
 import { sha256Prefixed } from "./hash.js";
 import { createPatientSimulator } from "./patient-simulator.js";
 import { gradeCommunication, judgeManagementItems } from "./eval-judge.js";
+import { interrogateIntakeConcern } from "./ppp-ttt/intake-concern.js";
 import { scoreCase, computeCaseSetMetrics, enforceReleaseThresholds, careClass } from "./eval-scoring.js";
 import {
   gradeHistoryTaking,
@@ -160,6 +161,61 @@ export function extractAiTier(transcript) {
   return { ai_tier: "T0", matched: "(no disposition cue — defaulted to T0, conservative under-triage)" };
 }
 
+/** Best-effort parse of a trunk turn's `safety_gate` object from its (JSON-ish)
+ *  output text. Returns null when there is no parseable safety_gate — the caller
+ *  then treats the turn as a non-intake turn (extractAiTier prose/field path). */
+function parseTrunkSafetyGate(aiText) {
+  const t = String(aiText || "");
+  const candidates = [];
+  const fenced = t.replace(/```(?:json)?/gi, "");
+  candidates.push(fenced);
+  const blob = fenced.match(/\{[\s\S]*\}/);
+  if (blob) candidates.push(blob[0]);
+  for (const c of candidates) {
+    try {
+      const j = JSON.parse(c.trim());
+      if (j && typeof j === "object" && j.safety_gate && typeof j.safety_gate === "object") return j.safety_gate;
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return null;
+}
+
+/**
+ * The EFFECTIVE disposition tier for one turn, AFTER intake-escalation
+ * interrogation (Phase C). An intake `safety_gate.status === escalate_now` is
+ * submitted to PPP-TTT: a demonstrably-present danger sign (or an un-interrogable
+ * escalation) STANDS as T5; an escalate_now with no present danger sign is
+ * downgraded to `urgent_review` (T3 — look closer, not 000). Every other turn
+ * falls through to the unchanged text-based extractAiTier.
+ *
+ * REPLAY-SAFE: pre-contract fixtures carry no `danger_signs`, so their
+ * escalate_now classifies as `broken` → honoured → T5 — identical to prior
+ * behaviour. Downgrades (and the consult-flow change they cause) arise only under
+ * the new Trunk 1.0 prompt, i.e. on a fresh live run.
+ */
+export function interrogatedTier(aiText) {
+  const sg = parseTrunkSafetyGate(aiText);
+  if (sg && sg.status === "escalate_now") {
+    const res = interrogateIntakeConcern(sg);
+    if (res && res.disposition === "urgent_review") {
+      return { ai_tier: "T3", matched: "intake escalate_now interrogated (no present danger sign) → CAUTION → urgent_review (T3)" };
+    }
+    // grounded / broken → the escalation stands; fall through (extractAiTier → T5).
+  }
+  return extractAiTier(aiText);
+}
+
+/** Most-urgent tier across per-turn effective dispositions (mirrors
+ *  extractAiTier's precedence: T5>T4>T3>T2>T1>INCOMPLETE>T0). Used to finalise
+ *  the case tier from interrogation-aware per-turn results. */
+export function mostUrgentTier(tiers) {
+  const order = ["T5", "T4", "T3", "T2", "T1", "INCOMPLETE", "T0"];
+  for (const level of order) if (tiers.includes(level)) return level;
+  return "T0";
+}
+
 /** Project a grader result to the eval-run-report coverage_dimension shape
  *  (score/method/evidence only — grader flags stay internal). */
 const coverageDim = (g) => ({
@@ -253,6 +309,7 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
   conversation.push({ role: "patient", turn: convTurn++, text: opening.patient_text });
 
   const verificationPasses = [];
+  const turnTiers = []; // per-turn EFFECTIVE disposition (post intake interrogation, Phase C)
   for (let i = 0; i < plan.length; i += 1) {
     const trunkId = plan[i];
     const generateCandidate = makeReplayGenerator({ trunkId, backendName, replayer, generatorFactory: genFactory });
@@ -274,15 +331,24 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
     verificationPasses.push(!!result.pass);
     conversation.push({ role: "assistant", turn: convTurn++, text: aiText });
 
-    // Emergency escalation short-circuits the consult (correct for a T5 case).
+    // EFFECTIVE disposition = the turn's tier AFTER intake-escalation interrogation
+    // (Phase C). An intake escalate_now with no demonstrably-present danger sign is
+    // downgraded to T3 (urgent_review) rather than standing as T5.
+    const eff = interrogatedTier(aiText);
+    turnTiers.push(eff.ai_tier);
+
+    // Emergency escalation short-circuits the consult (correct for a genuine T5).
     // Break on the FIELD-SCOPED disposition — the same surface the scorer reads —
     // NOT the sequencer's prose-permissive detector. A turn whose reasoning merely
     // *mentions* `escalate_now` while its actual gate is `clear` must not truncate
     // the consult before it reaches the triage gate (that mismatch floored real
-    // cases to T0). Production's sequencer keeps its own over-halting detector.
-    // NOTE: changes consult flow → old fixtures can't replay it; validate on a
-    // fresh live run (regenerates the truncated cases' downstream turns).
-    if (extractAiTier(aiText).ai_tier === "T5") break;
+    // cases to T0). Only a STANDING escalation (grounded present danger sign, or an
+    // un-interrogable escalation) short-circuits; a downgraded intake escalation
+    // (T3) routes onward. Production's sequencer keeps its own over-halting detector.
+    // NOTE: changes consult flow → old fixtures can't replay a NEW downgrade path;
+    // validate on a fresh live run (pre-contract fixtures lack danger_signs, so they
+    // classify broken→honoured→T5 and replay unchanged).
+    if (eff.ai_tier === "T5") break;
     // Otherwise the patient responds to this turn's questions (unless it was the
     // final planned turn).
     if (i < plan.length - 1) {
@@ -296,7 +362,11 @@ export async function runCaseEval({ caseNodes, backendName, replayer, judge, gen
   const transcript = conversation.filter((c) => c.role === "assistant").map((c) => c.text).join("\n");
   const verification_pass = verificationPasses.length > 0 && verificationPasses.every(Boolean);
 
-  const { ai_tier } = extractAiTier(transcript); // ai_tier may be "INCOMPLETE" (blocked_incomplete)
+  // The case tier is the most-urgent EFFECTIVE per-turn disposition (Phase C:
+  // interrogation-aware — a downgraded intake escalation contributes T3, not T5).
+  // Falls back to the whole-transcript parse if no turn ran (empty plan). May be
+  // "INCOMPLETE" (blocked_incomplete).
+  const ai_tier = turnTiers.length ? mostUrgentTier(turnTiers) : extractAiTier(transcript).ai_tier;
   // Grading escalation signal is broader than the loop's structured detector: a
   // T5 disposition (call 000 / emergency ambulance) IS escalation, so the
   // leading-dx-by-escalation credit (eval-rubric §3.2) fires on real prose too.

@@ -18,7 +18,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rmSync, existsSync } from "node:fs";
 import { loadCaseNodes } from "../verification/eval-case-loader.js";
-import { runBackendCases, extractAiTier } from "../verification/eval-harness.js";
+import { runBackendCases, extractAiTier, interrogatedTier, mostUrgentTier } from "../verification/eval-harness.js";
 import { createReplayer } from "../verification/llm-replay.js";
 import { validateEvalRunReport } from "../verification/eval-report-schema.js";
 
@@ -130,8 +130,48 @@ function testExtractAiTier() {
   return errors;
 }
 
+// ── UNIT: Phase C intake-escalation interrogation (interrogatedTier/mostUrgentTier) ──
+// An intake `escalate_now` is downgraded to T3 only when it names NO demonstrably
+// present danger sign; a present sign or an un-interrogable escalation stands as T5.
+// Pre-contract fixtures (no danger_signs) classify broken→honoured→T5 → replay-safe.
+function testInterrogatedTier() {
+  const errors = [];
+  const eq = (label, aiText, expected) => {
+    const got = interrogatedTier(aiText).ai_tier;
+    if (got !== expected) errors.push(`interrogatedTier[${label}]: got ${got}, expected ${expected}`);
+  };
+  const gate = (o) => JSON.stringify({ intake_summary: "x", safety_gate: o });
+
+  // present danger sign → stands as T5.
+  eq("escalate_now + present sign → T5",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [{ sign: "thunderclap worst-ever headache", status: "present", evidence_ref: "c1" }] }), "T5");
+  // no present sign (inferred only) → DOWNGRADED to T3.
+  eq("escalate_now + inferred-only → T3 (downgrade)",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [{ sign: "severe pain", status: "inferred", evidence_ref: "c2" }] }), "T3");
+  // un-interrogable (no danger_signs) → HONOURED as T5 (this is the pre-contract fixture case).
+  eq("escalate_now + no danger_signs → T5 (honoured, replay-safe)",
+    gate({ status: "escalate_now", reasons: ["acute emergency"] }), "T5");
+  // empty danger_signs[] → downgraded to T3 (escalated but articulated nothing present).
+  eq("escalate_now + empty danger_signs[] → T3",
+    gate({ status: "escalate_now", reasons: ["r"], danger_signs: [] }), "T3");
+  // a non-escalate gate falls through to extractAiTier (routine prose here → its cue).
+  eq("clear gate + prose 'see your gp' → T2 (fallthrough)",
+    JSON.stringify({ safety_gate: { status: "clear", reasons: [] } }) + "\nPlease book an appointment to see your GP.", "T2");
+  // prose-only escalation (no safety_gate) → T5 via the extractAiTier fallthrough.
+  eq("prose 'call 000' (no safety_gate) → T5 (fallthrough)", "This is an emergency — call an ambulance now.", "T5");
+
+  // mostUrgentTier precedence.
+  const mu = (arr, expected) => { const got = mostUrgentTier(arr); if (got !== expected) errors.push(`mostUrgentTier(${JSON.stringify(arr)}): got ${got}, expected ${expected}`); };
+  mu(["T3", "T5", "T2"], "T5");
+  mu(["T2", "T3"], "T3");
+  mu(["T0", "INCOMPLETE"], "INCOMPLETE");
+  mu(["T1", "T0"], "T1");
+  mu([], "T0");
+  return errors;
+}
+
 async function run() {
-  const errors = [...testExtractAiTier()];
+  const errors = [...testExtractAiTier(), ...testInterrogatedTier()];
   const fixtures = {
     gen: join(tmpdir(), `eval-harness-gen-${process.pid}.json`),
     judge: join(tmpdir(), `eval-harness-judge-${process.pid}.json`),
