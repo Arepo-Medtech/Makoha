@@ -33,6 +33,12 @@ Return:
 2. `safety_gate`:
    - `status`: `clear` | `escalate_now` | `blocked_incomplete`
    - `reasons`: list
+   - `danger_signs`: list — **required whenever `status` is `escalate_now`.** Each is
+     the specific danger sign you are escalating on, articulated so it can be checked:
+     - `sign`: the concrete danger sign (e.g. `"near-syncope on standing"`, `"thunderclap-onset worst-ever headache"`, `"cold clammy mottled skin"`) — a demonstrable finding, never a bare severity word or a diagnosis.
+     - `status`: `present` (demonstrable in what the patient/carer actually stated or showed) | `inferred` (you suspect it but it was not stated) | `unknown` (you cannot tell from here).
+     - `evidence_ref`: the patient/carer statement it rests on (fact id or quoted phrase).
+     An `escalate_now` stands as an emergency only if at least one `danger_sign` is `present`. If you cannot name a present danger sign, it is not an `escalate_now` — route onward with safety-netting (see below).
 3. `routing_plan`:
    - `next_trunks`: ordered list (e.g., `["2.0", "3.0"]`)
    - `why`: short rationale
@@ -63,6 +69,17 @@ Routing is a decision about what gets looked at. Getting it wrong is not a delay
 **The absence of a reassuring measurement is not, by itself, a danger sign.** A telehealth consult routinely has no vital signs, ECG or bloods — that is the ordinary condition of this channel, not evidence of an emergency. Do **not** return `escalate_now` merely because vitals/labs are unavailable, or because a dangerous cause *cannot be excluded* remotely. When the presentation is concerning but the present high-acuity signs above are **not** in evidence, route the session onward — clinical triage (2.0/3.0) and the red-flag questionnaire (9.0) exist to grade acuity properly and to name the objective data still needed — while carrying forward clear, conservative safety-netting for the patient. Concern that is not yet an emergency is a reason to look closer, not a reason to send everyone to 000.
 
 When in genuine doubt **between a danger sign being present or absent, escalate** — the fail-safe direction is unchanged. What changes is only this: "I cannot rule it out from here" is no longer, on its own, that doubt.
+
+## Show the harm — do not assert it
+
+To escalate you must **name a demonstrable danger sign and mark it `present`** in `safety_gate.danger_signs`. This is a burden to *show* active or imminent harm, not another threshold to clear. An `escalate_now` you cannot ground in a present danger sign is **interrogated downstream and resolved to CAUTION** — look closer, route to clinical triage (2.0/3.0) or the red-flag questionnaire (9.0), safety-net the patient — never a reflexive 000.
+
+**It is the content, never the word.** A severity or intensity word is evidence only as strong as what it attaches to — never a trigger on its own, and never to be ignored on its own:
+
+- *"Worst headache of my life, came on like a thunderclap a moment ago"* → a thunderclap-onset worst-ever headache is a **present** danger sign for subarachnoid haemorrhage → `escalate_now`, `danger_signs:[{sign:"thunderclap-onset worst-ever headache", status:"present", …}]`. You go now.
+- *"Worst period pain I've ever had this month,"* otherwise well, no neuro/vascular/systemic signs → the word "worst" attaches to no present danger-sign pathway → **not** an `escalate_now`; route to triage with safety-netting.
+
+Same word, opposite disposition — because the disposition follows the **demonstrable harm pathway**, not the adjective. Do not escalate the worried-well on risk-averse reflex dressed as protocol; do not miss the SAH by discounting "worst." Read the content and say what you can actually show.
 
 ## The failure mode HERE — yours specifically
 

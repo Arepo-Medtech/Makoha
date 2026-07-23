@@ -65,14 +65,14 @@ The verifier (`verification/verifier.js`) tags each of its five checks with a `s
 
 **Output contract:**
 1. `intake_summary` — concise normalised summary of known facts
-2. `safety_gate` — `status`: `clear` | `escalate_now` | `blocked_incomplete`; `reasons`: list
+2. `safety_gate` — `status`: `clear` | `escalate_now` | `blocked_incomplete`; `reasons`: list; `danger_signs`: list (required on `escalate_now`) — each `{ sign, status: present|inferred|unknown, evidence_ref }`, the specific demonstrable danger sign(s) the escalation rests on
 3. `routing_plan` — `next_trunks`: ordered list; `why`: short rationale
 4. `missing_inputs` — unanswered questions or missing receipts blocking safe progression
 5. `evidence_refs` — citation/receipt refs for non-obvious claims
 
 **Trunk-specific constraints:**
 - Initial routing and safety gate only — no history enrichment
-- `escalate_now` must be returned immediately if any T5 red flag is detected, without waiting for downstream trunks
+- `escalate_now` must be returned immediately when a high-acuity danger sign is **demonstrably present** — and must NAME it in `danger_signs` with `status: present`. An `escalate_now` grounded in a present danger sign STANDS (STOP/escalate). An `escalate_now` with no present danger sign is INTERROGATED downstream (PPP-TTT intake-concern → CAUTION: look closer, route to 2.0/3.0/9.0 with safety-netting), never a reflexive 000. Fail-safe: an escalation that cannot be interrogated (danger_signs absent/malformed) is HONOURED as escalation, never downgraded. Subjective severity/"worsening" alone is not a present danger sign; the disposition follows the demonstrable-harm pathway, not the intensity word (a thunderclap worst-ever headache IS present → escalate; "worst" pain otherwise-well is not).
 
 **Hard stops:**
 - Must not produce `routing_plan.next_trunks` without completing `safety_gate` first
