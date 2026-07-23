@@ -37,6 +37,9 @@ import { runTrunkWithGrounding } from "../integration/trunk-pipeline.js";
 import { makeSelectedGenerator } from "../integration/generation-backend.js";
 import { detectEscalation } from "../integration/trunk-sequencer.js";
 import { sha256Prefixed } from "./hash.js";
+import { readFileSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createPatientSimulator } from "./patient-simulator.js";
 import { gradeCommunication, judgeManagementItems } from "./eval-judge.js";
 import { interrogateIntakeConcern } from "./ppp-ttt/intake-concern.js";
@@ -63,10 +66,38 @@ function canonical(value) {
   return JSON.stringify(value);
 }
 
+const TRUNK_PROMPTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "trunk", "prompts");
+const _promptFingerprints = new Map();
+
+/**
+ * A stable fingerprint of a trunk's system prompt. Included in the replay key so
+ * an EDIT to the prompt invalidates that trunk's generation cache and forces
+ * regeneration — the fix for the silent stale-replay footgun (before this,
+ * replayKey ignored the prompt entirely, so a reworked prompt REPLAYED old
+ * outputs and a re-run finished in ~2s having tested nothing). Memoised per trunk
+ * (the file does not change mid-run); an absent prompt → "none" so scripted-factory
+ * tests and prompt-less trunks stay stable. sha256 of the exact prompt bytes: any
+ * change (even whitespace) regenerates — the conservative, correct direction.
+ */
+export function trunkPromptFingerprint(trunkId) {
+  if (_promptFingerprints.has(trunkId)) return _promptFingerprints.get(trunkId);
+  let fp = "none";
+  try {
+    const p = join(TRUNK_PROMPTS_DIR, `trunk-${trunkId}-system.md`);
+    if (existsSync(p)) fp = sha256Prefixed(readFileSync(p, "utf8"));
+  } catch {
+    fp = "none";
+  }
+  _promptFingerprints.set(trunkId, fp);
+  return fp;
+}
+
 /** Project a packet to the STABLE inputs the model actually depends on, so the
  *  replay key survives across runs (run_id / timestamps / receipt ids differ
- *  every run and must not enter the key). */
-function replayKey(packet, backendName, trunkId) {
+ *  every run and must not enter the key) — PLUS the trunk-prompt fingerprint, so a
+ *  prompt change correctly busts the cache. PURE: the fingerprint is passed in so
+ *  the keying is unit-testable without touching the filesystem. */
+export function replayKey(packet, backendName, trunkId, promptFingerprint) {
   const stable = {
     facts: packet.facts,
     evidence: (packet.evidence || []).map((e) => ({ claim: e.claim, supports: e.supports })),
@@ -76,15 +107,19 @@ function replayKey(packet, backendName, trunkId) {
     trunk_id: trunkId,
     mode: packet.mode,
     backend: backendName,
+    // The prompt the model is actually run under — a prompt edit must regenerate.
+    trunk_prompt: promptFingerprint,
   };
   return sha256Prefixed(canonical(stable));
 }
 
-/** Wrap a backend generator in the replay layer, keyed by the stable packet. */
+/** Wrap a backend generator in the replay layer, keyed by the stable packet +
+ *  the trunk-prompt fingerprint. */
 function makeReplayGenerator({ trunkId, backendName, replayer, generatorFactory }) {
   const live = generatorFactory(trunkId, backendName);
+  const fingerprint = trunkPromptFingerprint(trunkId);
   return async (packet) => {
-    const key = replayKey(packet, backendName, trunkId);
+    const key = replayKey(packet, backendName, trunkId, fingerprint);
     return replayer.call(key, () => live(packet));
   };
 }

@@ -18,7 +18,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rmSync, existsSync } from "node:fs";
 import { loadCaseNodes } from "../verification/eval-case-loader.js";
-import { runBackendCases, extractAiTier, interrogatedTier, mostUrgentTier } from "../verification/eval-harness.js";
+import { runBackendCases, extractAiTier, interrogatedTier, mostUrgentTier, replayKey, trunkPromptFingerprint } from "../verification/eval-harness.js";
 import { createReplayer } from "../verification/llm-replay.js";
 import { validateEvalRunReport } from "../verification/eval-report-schema.js";
 
@@ -170,8 +170,37 @@ function testInterrogatedTier() {
   return errors;
 }
 
+// ── UNIT: replay key is prompt-sensitive (the fix for the silent stale-replay footgun) ──
+// Before this, a trunk-prompt edit left the generation cache key unchanged, so a
+// re-run replayed old outputs (2s, tested nothing). The key now folds in a
+// trunk-prompt fingerprint: a prompt change MUST bust the cache, while packet
+// independence and cross-run stability are preserved.
+function testReplayKey() {
+  const errors = [];
+  const pkt = { facts: [{ id: "f1", value: "x" }], evidence: [], constraints: ["c"], receipts: [], conversation: [{ role: "patient", text: "hi" }], mode: "live" };
+
+  const kA = replayKey(pkt, "claude", "1.0", "sha256:AAA");
+  const kA2 = replayKey(pkt, "claude", "1.0", "sha256:AAA");
+  const kB = replayKey(pkt, "claude", "1.0", "sha256:BBB");
+  if (kA !== kA2) errors.push("replayKey not stable for identical inputs (must be deterministic)");
+  if (kA === kB) errors.push("replayKey UNCHANGED across prompt fingerprints — the footgun is NOT fixed");
+
+  // Packet independence preserved: a different packet → different key at the same fingerprint.
+  const pkt2 = { ...pkt, facts: [{ id: "f1", value: "y" }] };
+  if (replayKey(pkt2, "claude", "1.0", "sha256:AAA") === kA) errors.push("replayKey ignores packet facts (lost the base keying)");
+  // Trunk + backend still discriminate.
+  if (replayKey(pkt, "claude", "3.0", "sha256:AAA") === kA) errors.push("replayKey ignores trunk_id");
+  if (replayKey(pkt, "medgemma", "1.0", "sha256:AAA") === kA) errors.push("replayKey ignores backend");
+
+  // The real fingerprint: an existing trunk prompt hashes; a non-existent trunk → "none".
+  const fp10 = trunkPromptFingerprint("1.0");
+  if (!/^sha256:[a-f0-9]{64}$/.test(fp10)) errors.push(`trunkPromptFingerprint(1.0) not a sha (got ${fp10}) — real prompt should hash`);
+  if (trunkPromptFingerprint("does-not-exist") !== "none") errors.push("absent trunk prompt should fingerprint 'none' (stable)");
+  return errors;
+}
+
 async function run() {
-  const errors = [...testExtractAiTier(), ...testInterrogatedTier()];
+  const errors = [...testExtractAiTier(), ...testInterrogatedTier(), ...testReplayKey()];
   const fixtures = {
     gen: join(tmpdir(), `eval-harness-gen-${process.pid}.json`),
     judge: join(tmpdir(), `eval-harness-judge-${process.pid}.json`),
