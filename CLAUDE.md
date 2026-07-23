@@ -72,7 +72,7 @@ Reproduce and enforce these exactly. Do NOT paraphrase, soften, or "improve" the
 **Population scope:**
 - Jurisdiction: Australian healthcare context only.
 - Language: English consultations; an `interpreter_required` flag triggers escalation, not language switching.
-- Age: no paediatric dosing tables exist in the pharmacology stub — paediatric cases (under 18) are flagged for in-person review.
+- Age: **under-16** cases are flagged for in-person review (consent-capacity / Gillick mature-minor grounds). **16–18-year-olds are dosed as adults** for the low-acuity medicines in scope and access care normally, carrying a **non-blocking** caveat that they should have a *plausible* grasp of the understanding underlying Gillick competence (a human judgment, never computed by the tool). Genuinely paediatric (weight-based) dosing for young children has no tables → no dose, flag for in-person review. (Clinical decision — clinician/operator Ken, 2026-07-24 — implemented deterministically as `verification/rules/library/paediatric-review.cql` v0.2.0. Corrects the prior blanket "under 18 → review", which over-restricted care: refusal is not a free safe default; unmet low-acuity care is itself a harm to weigh. The pharmacology engine's own dose gate is being aligned to `<16` under the same decision.)
 - Emergency scope: the system identifies and escalates emergencies (safety tier T5) but does not provide resuscitation guidance.
 **Fail-safe default:** if proof is missing, return a blocked / unknown status (`BLOCKED_NO_PROOF`). Never degrade to a fabricated code, dose, or fact.
 </non_negotiable_invariants>
@@ -375,7 +375,7 @@ Resolve ambiguity by asking, never by inventing. If a schema is unclear, a recei
 **Phase 2 — Deterministic core (mock-validated).**
 - Build `mcp/servers/pharmacology/` (or `dist/index.js` per template) on `@modelcontextprotocol/sdk` ^1, zod-validated I/O.
 - Implement, against mock vendor data first: allergy cross-reactivity, drug-drug interaction, renal-dose adjustment, AU scheduling lookup, and the S8 PDMP check path.
-- **Enforce the invariants:** dose guidance is returned ONLY here; a HARD_FAIL is terminal; paediatric (under-18) dosing returns a flag-for-in-person-review, never a dose (no paediatric tables exist). **GATE.**
+- **Enforce the invariants:** dose guidance is returned ONLY here; a HARD_FAIL is terminal; paediatric (under-16) dosing returns a flag-for-in-person-review, never a dose (no paediatric tables exist; 16–18 are adult-dosed — clinical decision 2026-07-24). **GATE.**
 
 **Phase 3 — Firewall wiring.**
 - Connect the server behind Trunk 8.0: intent → PharmCheck → firewall_status gates continuation.
