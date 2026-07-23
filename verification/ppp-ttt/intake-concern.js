@@ -26,6 +26,9 @@
  *     (escalate now, exactly as before). Genuine reds are never touched.
  */
 
+import { ConcernVerdict } from "./verdict-schema.js";
+import { failClosedVerdict, failSafeCautionVerdict } from "./interrogate.js";
+
 const VALID_STATUS = new Set(["present", "inferred", "unknown"]);
 
 /**
@@ -61,4 +64,57 @@ export function buildIntakeConcern(safetyGate) {
     unresolved,
     danger_signs: signs,
   };
+}
+
+/**
+ * INTERROGATE an intake escalation (Phase B). Maps the intake-concern
+ * classification to a first-class PPP-TTT `ConcernVerdict`, reusing the SAME
+ * fail-closed / fail-safe verdict builders as `gradeConcern` — so the intake
+ * escalation is scrutinised against the demonstrable-harm standard and its verdict
+ * carries the standard audit shape (ledger-recordable). The frozen monotone-AND
+ * composition (`composeTriage`) is NOT touched; this only produces the verdict.
+ *
+ *   broken   (un-interrogable escalation)         → STOP  (fail-closed — HONOUR it)
+ *   grounded (≥1 demonstrably-present danger sign) → STOP  (positively interrogated escalate)
+ *   ungrounded (escalate_now, no present sign)     → CAUTION (fail-safe — look closer)
+ * An intake escalation never grades to GO: an `escalate_now` we could not ground
+ * is orange (look closer), never green (proceed as if clear).
+ *
+ * @param {{status?:string, reasons?:string[], danger_signs?:Array}} safetyGate
+ * @returns {null | { verdict: object, disposition: "escalate_now"|"urgent_review", concern: object }}
+ *   null when the gate is not an `escalate_now` (nothing to interrogate).
+ */
+export function interrogateIntakeConcern(safetyGate) {
+  const concern = buildIntakeConcern(safetyGate);
+  if (concern === null) return null;
+
+  const flag = { source: "trunk_1.0", area_id: "intake", condition: "intake_escalation" };
+
+  let verdict;
+  if (concern.broken) {
+    // Un-interrogable escalation — broken instrument. Honour it, loudly.
+    verdict = failClosedVerdict(flag, "intake escalate_now with absent/malformed danger_signs — cannot interrogate, escalation honoured");
+  } else if (concern.grounded) {
+    // Positively interrogated: a demonstrably present danger sign grounds the escalation.
+    verdict = ConcernVerdict.parse({
+      area_id: "intake",
+      condition: concern.present[0].sign.slice(0, 120) || "present_danger_sign",
+      tier: "STOP",
+      tier_model: "always_immediate",
+      entity_class: "typifies_stigmata",
+      discriminators_asked: [],
+      reason: `intake escalation grounded — present danger sign(s): ${concern.present.map((p) => p.sign).join("; ").slice(0, 200)}`,
+      fail_closed: false,
+      mandatory_report: false,
+    });
+  } else {
+    // escalate_now but no demonstrably-present danger sign → the worried-well /
+    // risk-averse-reflex case. Fail-SAFE CAUTION: look closer, route onward — NOT 000.
+    verdict = failSafeCautionVerdict(
+      flag,
+      `intake escalate_now with no demonstrably-present danger sign (${concern.unresolved.length} inferred/unknown) — downgraded to look-closer`,
+      { condition: "intake_escalation_unsubstantiated" },
+    );
+  }
+  return { verdict, disposition: verdict.tier === "STOP" ? "escalate_now" : "urgent_review", concern };
 }

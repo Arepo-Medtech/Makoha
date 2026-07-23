@@ -6,7 +6,8 @@
  *
  * Run from repo root: node test/contract-intake-concern.js
  */
-import { buildIntakeConcern } from "../verification/ppp-ttt/intake-concern.js";
+import { buildIntakeConcern, interrogateIntakeConcern } from "../verification/ppp-ttt/intake-concern.js";
+import { ConcernVerdict } from "../verification/ppp-ttt/verdict-schema.js";
 
 const errors = [];
 const check = (cond, msg) => { if (!cond) errors.push(msg); };
@@ -64,6 +65,47 @@ const mixed = buildIntakeConcern({
   ],
 });
 check(mixed.grounded === true && mixed.broken === false, "one present + one inferred → grounded (the present sign carries it)");
+
+// ── Phase B: interrogateIntakeConcern → PPP-TTT verdict + disposition ─────────
+const notEsc = interrogateIntakeConcern({ status: "clear" });
+check(notEsc === null, "interrogate: non-escalate_now → null (nothing to interrogate)");
+
+// grounded present danger sign (thunderclap SAH) → STOP → escalate_now, and it's a
+// POSITIVELY-interrogated verdict (not a fail-closed default).
+const iThunder = interrogateIntakeConcern({
+  status: "escalate_now",
+  danger_signs: [{ sign: "thunderclap-onset worst-ever headache", status: "present", evidence_ref: "case-1" }],
+});
+check(iThunder.verdict.tier === "STOP" && iThunder.disposition === "escalate_now", "interrogate: present thunderclap → STOP → escalate_now (genuine red stands)");
+check(iThunder.verdict.fail_closed === false, "grounded STOP is positively interrogated (fail_closed:false)");
+check(ConcernVerdict.safeParse(iThunder.verdict).success, "grounded verdict is a valid ConcernVerdict (composes through the frozen core)");
+
+// present poor-perfusion → STOP.
+const iPerf = interrogateIntakeConcern({
+  status: "escalate_now",
+  danger_signs: [{ sign: "cold clammy mottled skin", status: "present", evidence_ref: "case-3" }],
+});
+check(iPerf.verdict.tier === "STOP" && iPerf.disposition === "escalate_now", "interrogate: present poor-perfusion → STOP → escalate_now");
+
+// severe pain, otherwise well (no present sign) → CAUTION → urgent_review (look closer).
+const iSevere = interrogateIntakeConcern({
+  status: "escalate_now",
+  danger_signs: [{ sign: "severe pain", status: "inferred", evidence_ref: "case-2" }],
+});
+check(iSevere.verdict.tier === "CAUTION" && iSevere.disposition === "urgent_review", "interrogate: severe-pain-only (no present sign) → CAUTION → urgent_review (NOT 000)");
+check(iSevere.verdict.fail_closed === true, "ungrounded CAUTION is the fail-safe default (fail_closed:true)");
+
+// un-interrogable escalation (no danger_signs) → STOP → escalate_now (HONOURED).
+const iBroken = interrogateIntakeConcern({ status: "escalate_now", reasons: ["acute emergency"] });
+check(iBroken.verdict.tier === "STOP" && iBroken.disposition === "escalate_now", "interrogate: un-interrogable escalation → STOP → escalate_now (honoured, never downgraded)");
+check(iBroken.verdict.fail_closed === true, "broken-instrument STOP is fail-closed");
+
+// escalate_now with an explicitly EMPTY danger_signs[] → CAUTION (articulated nothing).
+const iEmpty = interrogateIntakeConcern({ status: "escalate_now", danger_signs: [] });
+check(iEmpty.verdict.tier === "CAUTION" && iEmpty.disposition === "urgent_review", "interrogate: empty danger_signs[] → CAUTION (escalated but articulated nothing present)");
+
+// An intake escalation NEVER grades to GO (orange, never green).
+for (const v of [iThunder, iPerf, iSevere, iBroken, iEmpty]) check(v.verdict.tier !== "GO", "intake interrogation never yields GO");
 
 if (errors.length) {
   console.error("Contract failures:");
