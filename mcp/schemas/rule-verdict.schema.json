@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heydoc.local/schemas/rule-verdict.schema.json",
+  "title": "RuleVerdict",
+  "description": "The deterministic verdict produced by one CQL rule library in the A2 rule layer (verification/rules/engine.js), after executing the compiled ELM against packet-derived parameters. Folded into the verification result additively + monotone by composeRules() — it can add a review flag or a caveat, never rescue or downgrade, never flip pass, and never emit a dose. Rides the audit channel; never merged into the ContextPacket. Mirrors the zod RuleVerdictSchema (.strict()) in engine.js.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rule_id", "version", "outcome"],
+  "properties": {
+    "rule_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable id of the rule (matches the library basename, e.g. 'paediatric-review')."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The rule version, read from the compiled ELM's library.identifier.version — so a verdict can never claim a version the artifact does not carry."
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["proceed", "review", "blocked_incomplete"],
+      "description": "proceed = no action; review = route to in-person review (a CAUTION/routing signal, NOT a verification failure); blocked_incomplete = a required input was missing to decide."
+    },
+    "flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Machine flags added to verification (e.g. 'in_person_review_required'). Additive only."
+    },
+    "caveats": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-blocking caveats surfaced to the clinician (e.g. 'plausible_gillick_competence_expected'). A human judgment the rule does not compute."
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What produced the verdict — the ELM library and the parameters it was given. Audit/reproducibility.",
+      "required": ["library", "parameters"],
+      "properties": {
+        "library": { "type": "string" },
+        "parameters": { "type": "object" }
+      }
+    }
+  }
+}
