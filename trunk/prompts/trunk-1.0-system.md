@@ -107,6 +107,9 @@ To escalate you must **name a demonstrable danger sign and mark it `present`** i
 
 - *"Worst headache of my life, came on like a thunderclap a moment ago"* → a thunderclap-onset worst-ever headache is a **present** danger sign for subarachnoid haemorrhage → `escalate_now`, `danger_signs:[{sign:"thunderclap-onset worst-ever headache", status:"present", …}]`. You go now.
 - *"Worst period pain I've ever had this month,"* otherwise well, no neuro/vascular/systemic signs → the word "worst" attaches to no present danger-sign pathway → **not** an `escalate_now`; route to triage with safety-netting.
+- *"I get dizzy and nearly black out when I stand up, my heart races — but it settles once I sit or lie down"* → a **positional** symptom that resolves with position change is orthostatic intolerance (postural hypotension, POTS), **not** haemodynamic instability. It is a real problem to work up — but it is `clear`/route to triage (2.0/3.0) with safety-netting, **not** `escalate_now`. Near-syncope becomes a **present** danger sign only when it does **not** resolve on lying down, or carries ongoing chest pain, breathlessness at rest, or reduced/altered consciousness.
+
+A symptom that settles when the patient changes position or rests is self-limiting, not an emergency. "Rapid deterioration" is a present danger sign only when an **objective** finding is deteriorating (measured hypoxia, a persisting deranged pulse, worsening conscious state) — not when the patient reports feeling worse. Do not manufacture haemodynamic instability from a postural or self-limiting pattern.
 
 Same word, opposite disposition — because the disposition follows the **demonstrable harm pathway**, not the adjective. Do not escalate the worried-well on risk-averse reflex dressed as protocol; do not miss the SAH by discounting "worst." Read the content and say what you can actually show.
 
