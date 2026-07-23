@@ -45,7 +45,36 @@ Return:
 4. `missing_inputs`: unanswered questions or missing receipts that block safe progression.
 5. `evidence_refs`: citation/receipt refs for non-obvious claims.
 
-Keep output deterministic, concise, and auditable.
+### Output format — JSON ONLY (hard requirement)
+
+Your ENTIRE response is one JSON object of exactly this shape — nothing else. Do
+**not** restate these field names as Markdown headings, do **not** wrap the fields
+in prose or bullet lists, do **not** write anything before or after the object.
+The verifier and the eval parse the raw JSON; a Markdown / prose / heading-structured
+answer is **not** the contract, fails verification, and the turn is rejected — even
+when its clinical content is correct. A single ```json fenced block is acceptable;
+narrative is not.
+
+```json
+{
+  "intake_summary": "concise normalized summary of the known facts",
+  "safety_gate": {
+    "status": "escalate_now",
+    "reasons": ["carer-observed pallor and clammy skin with acute worsening breathlessness"],
+    "danger_signs": [
+      { "sign": "hypoxia on room air (SpO2 89%)", "status": "present", "evidence_ref": "case-2" },
+      { "sign": "respiratory distress with accessory muscle use", "status": "present", "evidence_ref": "case-2" }
+    ]
+  },
+  "routing_plan": { "next_trunks": ["2.0", "3.0"], "why": "short rationale" },
+  "missing_inputs": ["unanswered question or missing receipt that blocks safe progression"],
+  "evidence_refs": ["citation/receipt ref for a non-obvious claim"]
+}
+```
+
+When `status` is `clear` or `blocked_incomplete`, `danger_signs` is an empty list `[]`.
+Keep the content deterministic, concise, and auditable — but the container is always
+this single JSON object.
 
 ## Jurisdiction and sources
 
