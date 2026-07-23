@@ -670,6 +670,40 @@ This is the exhaustive inventory of every artifact that is unbuilt, empty, parti
 ```
 
 ```md
+- id: medprobe-benchmark
+  path: benchmark/medprobe/{corpus-loader,score-schema,index}.js + corpora/*.corpus.json/manifest.json; mcp/schemas/medprobe-score.schema.json; test/bench-medprobe-gate.js
+  component_type: test
+  state: PARTIAL
+  evidence: BUILT 2026-07-24 (Mechanical Inventory B2.1a, plan .planning/PLAN-B2.md). First-party CLEAN-ROOM MedProbeBench-style claim-level citation-accountability benchmark (no upstream dataset lifted) — the external analogue of the EvidenceNode→Receipt→citation invariant. Follows the MIRAGE bolt-on pattern: strict fail-closed loader (zod .strict; the SAME scoring-store firewall SCORING_PROVENANCE_RE; claim-hygiene = no claim embeds its cited key; SHA-256 corpus checksum), score artifact validated schema-first against medprobe-score.schema.json (zod mirror), separate scores/latest.json (audit ledger untouched). B2.1b (2026-07-24) WIRED the scorer + adapter: corpus v0.2.0 adds claim_ref + evidence supports/refutes; groundedAdapter (existence + support/refute relation → catches MISATTRIBUTED citations) + naiveStructuralAdapter (existence-only, ships to prove the teeth); runMedProbe scores citation_accountability_rate (soft) + hallucination_catch_rate (HARD gate = 1.00) over ATTESTED items only; index.js writes a scored artifact. Seed corpus DEV/SYNTHETIC (6 items, 2 S / 2 U / 2 F), attested_by:null → ARMED-BUT-INERT (SKIP-green) until clinician attestation. bench:medprobe gate green: firewall/hygiene/schema teeth + scoring teeth (grounded passes; naive MISSES misattribution → catch_rate<1 → passed=false; sub-threshold blocked; attested-only). npm scripts bench:medprobe / bench:medprobe:run added. B2.1c (2026-07-24): the harness is now CI-ENFORCED — bench:medprobe is a BLOCKING CI job (alongside the MIRAGE trust gate) + a harvest-manifest `medprobebench` REFERENCE row records the methodology-only provenance (no dataset/code lifted). licence:check + contract-harvest-manifest green.
+  blocks: nothing — additive CI-side measurement; no consumer depends on it
+  safety_class: degrades_safe — SKIP-inert until corpus attested; benchmark metadata never patient-facing, never touches the audit ledger
+  invariant_exposure: strengthens grounding/no-fabrication — an external check on claim-level citation traceability; the loader re-asserts the scoring-store firewall
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: obtain clinician (KL) attestation to arm the corpus (armed-but-inert until then); then grow S/U/F items and re-checksum/re-attest. Harness + CI wiring COMPLETE (B2.1a–c).
+  gap_register_link: none (Medium — not promoted; the gap-register mirrors only High/Critical, one-way)
+  status: open (harness COMPLETE + CI-enforced [B2.1a–c]; clinician attestation to arm + corpus growth pending)
+  last_scanned: 2026-07-24
+```
+
+```md
+- id: medagentbench-benchmark
+  path: benchmark/medagent/{task-loader,virtual-ehr,score-schema,index}.js + corpora/*.corpus.json/manifest.json; mcp/schemas/medagent-score.schema.json; test/bench-medagent-gate.js
+  component_type: test
+  state: PARTIAL
+  evidence: BUILT 2026-07-24 (Mechanical Inventory MA.1, plan .planning/PLAN-MEDAGENTBENCH.md). First-party CLEAN-ROOM MedAgentBench-style benchmark (no upstream dataset lifted) — multi-step physician tasks (query/order/compute) in a benchmark-scoped virtual FHIR EHR; the only external benchmark that exercises the trunk TOPOLOGY. virtual-ehr.js is an in-memory, NON-PERSISTENT, SYNTHETIC-ONLY sandbox that REUSES the fhir-broker AU Core validator (conformance.js validateResource) — the fhir-broker server + live backend are never imported, so no live-mode marker can flip. Strict fail-closed task loader (zod .strict; scoring-store firewall over prompt+provenance; SHA-256 checksum). Score artifact validated schema-first against medagent-score.schema.json. MA.2 (2026-07-24) WIRED the driver + scorer: tasks gain action_spec (the executable oracle script, distinct from `expected`); runMedAgent seeds a FRESH sandbox per task, the referenceAgent EXECUTES action_spec against it (real read/compute/emit), scored on task_success_rate (soft) + invariant_adherence_rate (HARD gate = 1.00) via invariants.js (reuses the shared assertNoDose guard: no fabricated code, no dose outside pharmacology, HARD_FAIL respected). pipelineAgent drives the REAL trunk pipeline (runTrunkWithGrounding, writeArtifacts:false → audit ledger + report.json NEVER touched) — verified it captures a real verification + candidate_output_hash. Seed corpus DEV/SYNTHETIC (3 tasks), attested_by:null → ARMED-BUT-INERT. bench:medagent gate green: firewall/schema/sandbox teeth + scoring teeth (reference passes; fabricated-code / dose / HARD_FAIL-ignoring agents each fail the invariant HARD gate; wrong-answer agent fails sub-threshold; pipeline driven). npm scripts bench:medagent / bench:medagent:run added. MA.3 (2026-07-24): the harness is now CI-ENFORCED — bench:medagent is a BLOCKING CI job + a harvest-manifest `medagentbench` REFERENCE row records the methodology-only provenance (no dataset/code lifted; the virtual EHR reuses fhir-broker conformance.js). licence:check + contract-harvest-manifest green.
+  blocks: nothing — additive; fhir-broker + trunk pipeline are instantiated, never modified
+  safety_class: degrades_safe — SKIP-inert until corpus attested; sandbox is isolated/synthetic/non-persistent; benchmark metadata never patient-facing; pipeline driver runs writeArtifacts:false (ledger untouched)
+  invariant_exposure: strengthens the whole invariant set — MA.2 scores invariant adherence DURING the task (no fabricated code/dose, HARD_FAIL respected) as a HARD gate; the loader re-asserts the scoring-store firewall
+  risk: Medium
+  blocks_patient_facing: false
+  build_action: obtain clinician (KL) attestation to arm the corpus (armed-but-inert until then). Live agentic run over a real model/fixtures is input-gated (the pipelineAgent seam exists). Harness + CI wiring COMPLETE (MA.1–3). Honest caveat: correctness/topology test, not a scale test.
+  gap_register_link: none (Medium — not promoted; the gap-register mirrors only High/Critical, one-way)
+  status: open (harness COMPLETE + CI-enforced [MA.1–3]; clinician attestation to arm + live run pending)
+  last_scanned: 2026-07-24
+```
+
+```md
 - id: terminology-live-adapter
   path: mcp/servers/terminology/live-adapter.js + index.js (live branch); terminology-servers.json; test/contract-terminology-live.js
   component_type: mcp-server

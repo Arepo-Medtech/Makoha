@@ -4,6 +4,89 @@ Records what was committed to `kenleefreo/heydoc` for the grounding/MCP design a
 
 ---
 
+## Mechanical Inventory B2.1c + MA.3 — external eval benchmarks CI-enforced (2026-07-24)
+
+Plan-gated (`.planning/PLAN-B2.md` + `.planning/PLAN-MEDAGENTBENCH.md`). The final wiring milestone: both
+benchmark harnesses are now **CI-blocking** and provenance-recorded. Concomitant; uncommitted (on `main`;
+will branch before commit). No pipeline / schema-in-use / safety-path change.
+
+- **Two blocking CI jobs** in `.github/workflows/ci.yml` — **MedProbeBench gate** (`npm run bench:medprobe`)
+  and **MedAgentBench gate** (`npm run bench:medagent`), added alongside the existing MIRAGE trust gate. Both
+  are RED on a corpus/firewall/schema failure or a scoring regression (grounded/reference must pass while the
+  naive/breach agents fail the HARD gates); both green today because the DEV/SYNTHETIC seeds are unattested, so
+  the gates test **harness integrity over fixtures** (the MIRAGE blocking-but-inert pattern).
+- **Two harvest-manifest REFERENCE rows** (`medprobebench`, `medagentbench`) — methodology-only provenance,
+  **no upstream dataset or code lifted** (same posture as `gzxiong/MedRAG` #20 for MIRAGE), `target_module:null`,
+  `shippable:false`, non-shippable `benchmark/` path so the licence gate does not walk them. Records, in the
+  source of truth, that these are clean-room harnesses, not data lifts.
+- **Verification.** `bench:medprobe` + `bench:medagent` green; `licence:check` **exit 0** (walks the real
+  manifest, now 45 elements); `contract-harvest-manifest` **OK**; manifest valid JSON; CI YAML indentation
+  matches the sibling steps. No new dependency.
+- **Register.** `medprobe-benchmark` + `medagentbench-benchmark` → **harness COMPLETE + CI-enforced** (still
+  PARTIAL, Medium, not-promoted): the ONLY remaining work is **clinician (KL) attestation** to arm each gate
+  over its real corpus (plus the MedAgent live agentic run, input-gated via the `pipelineAgent` seam).
+  `.claude/completeness-index.md` synced.
+
+## Mechanical Inventory B2.1b + MA.2 — external eval benchmark scorers (2026-07-24)
+
+Plan-gated (`.planning/PLAN-B2.md` + `.planning/PLAN-MEDAGENTBENCH.md`). The two benchmarks now
+**score**, not just scaffold. Concomitant milestones; uncommitted (on `main`; will branch before commit).
+No pipeline / schema-in-use / safety-path change; both benchmarks stay ARMED-BUT-INERT (SKIP-green) until
+clinician attestation.
+
+- **B2.1b — MedProbe scorer + adapter.** Corpus → v0.2.0: items gain `claim_ref` (a neutral proposition id),
+  evidence entries gain `supports`/`refutes`. `adapter.js`: `groundedAdapter` (existence + support/refute
+  relation → **catches misattributed citations**: a real source cited for a claim it refutes) +
+  `naiveStructuralAdapter` (existence-only, ships to prove the teeth). `run-medprobe.js`:
+  `citation_accountability_rate` (soft) + `hallucination_catch_rate` (**HARD gate = 1.00**) over ATTESTED items
+  only. `index.js` writes a scored artifact. Gate teeth: grounded passes; naive **misses** the misattribution
+  (catch<1 → passed=false); sub-threshold blocked; attested-only.
+- **MA.2 — MedAgent driver + scorer.** Tasks gain `action_spec` (the executable oracle script, distinct from
+  `expected`). `run-medagent.js`: seeds a FRESH sandbox per task, the `referenceAgent` (agents.js) EXECUTES
+  action_spec against it (real read/compute/emit), scored on `task_success_rate` (soft) +
+  `invariant_adherence_rate` (**HARD gate = 1.00**) via `invariants.js` — which **reuses the shared
+  `assertNoDose` guard** (same bar as MIRAGE/the evidence servers): no fabricated code, no dose outside
+  pharmacology, HARD_FAIL respected. `pipelineAgent` drives the **real** trunk pipeline
+  (`runTrunkWithGrounding`, `writeArtifacts:false` → the medicolegal ledger + `report.json` are **never
+  touched** — verified) and captures a real verification + `candidate_output_hash`. Gate teeth: reference
+  passes; fabricated-code / dose / HARD_FAIL-ignoring agents each fail the invariant HARD gate; wrong-answer
+  agent fails sub-threshold; pipeline driven.
+- **Verification.** `bench:medprobe` + `bench:medagent` gates green; `licence:check` PASS (benchmark/ non-shippable);
+  `security:secrets` PASS. No new dependency. Score artifacts deterministic (fixed timestamp). CI jobs +
+  harvest-manifest reference rows remain deferred to B2.1c / MA.3.
+- **Register.** `medprobe-benchmark` + `medagentbench-benchmark` advanced (still PARTIAL, Medium, `degrades_safe`,
+  `blocks_patient_facing:false`; not gap-promoted). `.claude/completeness-index.md` synced.
+
+## Mechanical Inventory B1 + B2 — case-factory runbook + external eval benchmarks, scaffolds (2026-07-24)
+
+Plan-gated (`.planning/PLAN-B2.md` approved; `.planning/PLAN-MEDAGENTBENCH.md` approved). Adopts external
+medical benchmarks **alongside** the FL-40 harness (never replacing it), following the MIRAGE bolt-on pattern.
+Uncommitted (on `main` working tree; will branch before commit). No pipeline / schema-in-use / safety-path change.
+
+- **B1 — case-factory enablement runbook.** `case-factory/ENABLEMENT-RUNBOOK.md`: the operator sequence to turn on
+  the already-built factory (install a JDK, build Synthea at the pinned commits `synthea@2b0a55ba` / AU fork
+  `@4647221f` / chatty-notes `@a767a579`, set `HEYDOC_SYNTHEA_JAR` / `HEYDOC_CHATTY_NOTES_CMD` /
+  `HEYDOC_MOSTLY_AI_OUTPUT`, verify offline→live, generate→shape→complete→`cases:ingest`→clinician attestation).
+  Flags the C22 AU Core target as an org/regulatory decision and what the agent cannot do (install Java, attest).
+- **B2.1a — MedProbeBench (claim-level citation accountability).** First-party CLEAN-ROOM (no upstream dataset lifted):
+  `benchmark/medprobe/{corpus-loader,score-schema,index}.js` + `corpora/*.corpus.json`/`manifest.json` (6 DEV/SYNTHETIC
+  S/U/F items, 3 evidence keys) + `mcp/schemas/medprobe-score.schema.json` + `test/bench-medprobe-gate.js`. Strict
+  fail-closed loader (zod `.strict`; the SAME scoring-store firewall `SCORING_PROVENANCE_RE`; claim-hygiene = no claim
+  embeds its cited key; SHA-256 checksum); score artifact validated schema-first (zod mirror); separate `scores/latest.json`
+  (audit ledger untouched). SCAFFOLD/inert (`armed:false`) — MIRAGE armed-but-inert / SKIP-green idiom; scorer is B2.1b.
+- **MA.1 — MedAgentBench (trunk topology).** First-party CLEAN-ROOM: `benchmark/medagent/{task-loader,virtual-ehr,score-schema,index}.js`
+  + `corpora` (3 query/order/compute tasks) + `mcp/schemas/medagent-score.schema.json` + `test/bench-medagent-gate.js`.
+  `virtual-ehr.js` = an in-memory, NON-PERSISTENT, SYNTHETIC-ONLY FHIR sandbox that **reuses** the fhir-broker AU Core
+  validator (`conformance.js validateResource`) — the fhir-broker server + live backend are never imported, so no
+  live-mode marker can flip; the seed validates 3/3 conformant. Loader firewall over prompt+provenance. SCAFFOLD/inert.
+- **Verification.** `bench:medprobe` + `bench:medagent` gates green (corpus-acceptance + firewall + hygiene/sandbox +
+  schema teeth; runners inert). `licence:check` PASS (benchmark/ is a non-shippable path) · `security:secrets` PASS
+  (0 findings). No new dependency. npm scripts `bench:medprobe(:run)` / `bench:medagent(:run)` added; CI jobs + a
+  harvest-manifest reference row are deferred to the wiring milestones (B2.1c / MA.3).
+- **Register.** NEW `medprobe-benchmark` + `medagentbench-benchmark` (both PARTIAL, Medium, `degrades_safe`,
+  `blocks_patient_facing:false`; not gap-promoted — the gap-register mirrors only High/Critical). `.claude/completeness-index.md`
+  synced. Reconciliation dossier: `.planning/MECHANICAL-INVENTORY-DOSSIER.md`.
+
 ## Mechanical Inventory A2 — CQL deterministic rule layer, pilot (2026-07-24)
 
 Plan-gated (`.planning/PLAN-A1-A2.md`). Moves the first deterministic clinical rule OUT of the LLM prompt

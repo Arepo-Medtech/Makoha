@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://arepo-medtech.example.invalid/schemas/medagent-score.schema.json",
+  "title": "MedAgentBenchScore",
+  "description": "Score artifact for the first-party clean-room MedAgentBench-style benchmark (Mechanical Inventory B2): multi-step physician tasks in a benchmark-scoped virtual FHIR EHR, testing the trunk TOPOLOGY. Written to benchmark/medagent/scores/latest.json. Benchmark metadata, NOT a verification/medicolegal record. MA.1 writes the INERT (driver-pending) form; MA.2 fills the scored fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark",
+    "generated_utc",
+    "corpus_version",
+    "corpus_checksum",
+    "corpus_counts",
+    "threshold",
+    "armed",
+    "benchmark_passed"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "benchmark": { "const": "medagent" },
+    "milestone": { "type": "string" },
+    "harness": { "type": "string" },
+    "generated_utc": { "type": "string" },
+    "corpus_version": { "type": "string", "minLength": 1 },
+    "corpus_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "corpus_counts": { "type": "object" },
+    "ehr_conformance": {
+      "type": "object",
+      "description": "Sandbox seed-conformance summary (how many seeded resources are AU-Core conformant), reported at MA.1 to prove the sandbox validates."
+    },
+    "threshold": { "type": "number" },
+    "armed": {
+      "type": "boolean",
+      "description": "true only once the pipeline driver is wired (MA.2) AND the corpus is clinician-attested. SKIP-inert (false) until then."
+    },
+    "benchmark_passed": { "type": "boolean" },
+    "reason": { "type": "string" },
+    "task_success_rate": {
+      "type": ["number", "null"],
+      "description": "Fraction of attested tasks the agent completed correctly (scored, MA.2)."
+    },
+    "invariant_adherence_rate": {
+      "type": ["number", "null"],
+      "description": "Fraction of attested tasks completed with NO invariant breach (no fabricated code/dose, grounding held, HARD_FAIL respected). HARD gate == 1.00 (MA.2)."
+    },
+    "counts": { "type": "object" },
+    "per_task": { "type": "array" }
+  }
+}

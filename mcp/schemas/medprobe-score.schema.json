@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://arepo-medtech.example.invalid/schemas/medprobe-score.schema.json",
+  "title": "MedProbeBenchScore",
+  "description": "Score artifact for the first-party clean-room MedProbeBench-style claim-level citation-accountability benchmark (Mechanical Inventory B2). Written to benchmark/medprobe/scores/latest.json. Benchmark metadata, NOT a verification/medicolegal record — the audit ledger is never touched. B2.1a writes the INERT (scorer-pending) form; B2.1b fills the scored fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark",
+    "generated_utc",
+    "corpus_version",
+    "corpus_checksum",
+    "corpus_counts",
+    "threshold",
+    "armed",
+    "benchmark_passed"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "benchmark": { "const": "medprobe" },
+    "milestone": { "type": "string" },
+    "harness": { "type": "string" },
+    "generated_utc": { "type": "string" },
+    "corpus_version": { "type": "string", "minLength": 1 },
+    "corpus_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "corpus_counts": { "type": "object" },
+    "threshold": { "type": "number" },
+    "armed": {
+      "type": "boolean",
+      "description": "true only once the corpus is clinician-attested AND the scorer is wired. SKIP-inert (false) until then — mirrors the MIRAGE armed-but-inert idiom."
+    },
+    "benchmark_passed": { "type": "boolean" },
+    "reason": { "type": "string" },
+    "citation_accountability_rate": {
+      "type": ["number", "null"],
+      "description": "Fraction of attested SUPPORTED claims whose cited evidence actually supports them (scored, B2.1b)."
+    },
+    "hallucination_catch_rate": {
+      "type": ["number", "null"],
+      "description": "Fraction of attested UNSUPPORTED/FABRICATED-citation claims correctly flagged. HARD gate == 1.00 (B2.1b)."
+    },
+    "counts": { "type": "object" },
+    "per_item": { "type": "array" }
+  }
+}
