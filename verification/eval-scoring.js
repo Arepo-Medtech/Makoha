@@ -141,7 +141,15 @@ export function classifyTier(aiTier, node) {
   }
   const ai = parseTier(aiTier);
   const baseline = parseTier(node && node.correct_baseline_tier);
-  const minViable = parseTier(node && node.minimum_viable_tier_for_pass);
+  // minimum_viable_tier_for_pass is OPTIONAL (schema: "when absent, defaults to
+  // correct_baseline_tier"). It is advisory under the v1.3 ±1 rule — the ±1 branches
+  // below key off `baseline`, never minViable — so an ABSENT field must default to
+  // baseline, NOT drop the case to scored:false. Requiring it silently killed any case
+  // authored without it (a dead canary: full generation cost, no triage score). A field
+  // that is PRESENT but unparseable stays null → scored:false (honest data-error fail-safe).
+  const minViable = (node && node.minimum_viable_tier_for_pass != null)
+    ? parseTier(node.minimum_viable_tier_for_pass)
+    : baseline;
   const ts = (node && node.triage_scoring) || {};
   const critThresh = parseTier(ts.under_triage_critical_threshold);
   const overThresh = parseTier(ts.over_triage_threshold);

@@ -57,6 +57,18 @@ check(classifyTier("T4", node).classification === "acceptable",
 check(classifyTier("T2", { correct_baseline_tier: "T2" }).scored === false, "missing gold anchors → not tier-scored (fail-safe, no fabricated score)");
 check(classifyTier("nope", node).scored === false, "unparseable AI tier → not scored");
 
+// M0.3 — minimum_viable_tier_for_pass is OPTIONAL and defaults to baseline (schema
+// contract). An ABSENT field must NOT drop the case to scored:false (that silently
+// killed any case authored without it — a dead canary). A PRESENT-but-malformed value
+// still fails safe → scored:false.
+const nodeNoMinViable = { correct_baseline_tier: "T3", triage_scoring: { under_triage_critical_threshold: "T0", over_triage_threshold: "T4" } };
+check(classifyTier("T3", nodeNoMinViable).scored === true && classifyTier("T3", nodeNoMinViable).classification === "correct",
+  "absent minimum_viable_tier_for_pass → defaults to baseline, case IS scored (not a dead canary)");
+check(classifyTier("T2", nodeNoMinViable).classification === "acceptable" && classifyTier("T2", nodeNoMinViable).critical_under_triage === false,
+  "absent min-viable + ±1 rule still applies off baseline (T2 vs gold T3 → acceptable)");
+check(classifyTier("T3", { correct_baseline_tier: "T3", minimum_viable_tier_for_pass: "not-a-tier", triage_scoring: { under_triage_critical_threshold: "T0", over_triage_threshold: "T4" } }).scored === false,
+  "PRESENT-but-malformed minimum_viable_tier_for_pass → scored:false (honest data-error fail-safe)");
+
 // ── Permissive ±1 tolerance (rubric v1.3, KL 2026-07-22) ─────────────────────
 // The DIVERGENCE from v1.1 care-level bands is at EMERGENCY gold (T4/T5): a drop
 // of one tier is now acceptable, a drop of ≥2 is critical. The floor moved out by
